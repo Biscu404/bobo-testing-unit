@@ -38,105 +38,17 @@
    Run: node scripts/smoke.mjs
 */
 
-import { pathToFileURL } from 'node:url';
-import path from 'node:path';
+/* The headless browser this runs in — the canvas stub, the FakeEl that records
+   its listeners, the latched requestAnimationFrame — is shared with
+   `scripts/bekkedal_playtest.mjs`, which needs exactly the same one to walk
+   the valley and time a day. */
+import { setupGlobalEnv, importApp, mountApp as mountShared, findByText,
+         findCanvas } from './bek_headless.mjs';
 
-const ROOT = path.resolve(import.meta.dirname, '..');
-
-/* ---- a just-enough browser, built once, module-scoped singletons kernel
-   code expects (window.CRT etc.) survive across the mounts below ---------- */
-function makeLocalStorage() {
-  const m = new Map();
-  return {
-    getItem: k => (m.has(k) ? m.get(k) : null),
-    setItem: (k, v) => { m.set(k, String(v)); },
-    removeItem: k => { m.delete(k); },
-    clear: () => m.clear()
-  };
-}
-
-function makeCtx2D() {
-  const noop = () => {};
-  return {
-    fillStyle: '', font: '', globalAlpha: 1, lineWidth: 1, strokeStyle: '',
-    fillRect: noop, fillText: noop, strokeRect: noop, clearRect: noop,
-    drawImage: noop,
-    beginPath: noop, moveTo: noop, lineTo: noop, closePath: noop, stroke: noop,
-    rect: noop, clip: noop,
-    fill: noop, arc: noop, save: noop, restore: noop, translate: noop,
-    rotate: noop, scale: noop, setTransform: noop,
-    createPattern: () => ({}),
-    /* The local-light pass reads the canvas back and writes it again (see
-       `lamp.js`), so the stub has to return a real buffer of the size asked
-       for rather than a no-op: the pass indexes into `.data` directly and a
-       shorter array would loop off the end. Nothing here checks the pixels —
-       what this harness asserts is that the frame path does not throw. */
-    getImageData: (x, y, w, h) => ({ width: w, height: h,
-                                     data: new Uint8ClampedArray(Math.max(0, w * h * 4)) }),
-    putImageData: noop,
-    createLinearGradient: () => ({ addColorStop: noop }),
-    createRadialGradient: () => ({ addColorStop: noop }),
-    measureText: () => ({ width: 0 })
-  };
-}
-
-let createdEls = [];
-class FakeEl {
-  constructor(tag) {
-    this.tagName = String(tag || 'div').toLowerCase();
-    this.children = [];
-    this.style = {};
-    this.classList = { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false };
-    this._listeners = Object.create(null);
-    this.width = 0; this.height = 0;
-    this.tabIndex = 0;
-    this.textContent = '';
-    createdEls.push(this);
-  }
-  appendChild(c) { this.children.push(c); c.parentNode = this; return c; }
-  removeChild(c) { const i = this.children.indexOf(c); if (i >= 0) this.children.splice(i, 1); return c; }
-  addEventListener(ev, fn) { (this._listeners[ev] = this._listeners[ev] || []).push(fn); }
-  removeEventListener() {}
-  setAttribute() {}
-  focus() {}
-  contains() { return false; }
-  getContext(type) { return type === '2d' ? makeCtx2D() : null; }
-  click(payload) { (this._listeners.click || []).forEach(fn => fn(payload || {})); }
-  keydown(payload) { (this._listeners.keydown || []).forEach(fn => fn(payload)); }
-  /* The app latches direction keys on keydown and clears them on keyup, so a
-     harness that only ever presses would walk the player into a wall and
-     leave them there. Case 9 is the first case to hold a key down across
-     frames and then let go of it. */
-  keyup(payload) { (this._listeners.keyup || []).forEach(fn => fn(payload)); }
-}
-
-let rafCb = null;
-function setupGlobalEnv() {
-  globalThis.window = globalThis;
-  globalThis.localStorage = makeLocalStorage();
-  globalThis.document = {
-    createElement: tag => new FakeEl(tag),
-    getElementById: () => null,
-    body: new FakeEl('body'),
-    documentElement: new FakeEl('html'),
-    addEventListener: () => {}
-  };
-  globalThis.document.body.contains = () => true;
-  /* applyScale() watches the canvas wrapper for resizes. Nothing here ever
-     resizes, so the observer only has to exist and hold a reference — but
-     without it mount() throws before a single frame is drawn and every case
-     below fails on the same ReferenceError instead of on its own subject. */
-  globalThis.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
-  globalThis.requestAnimationFrame = fn => { rafCb = fn; return 1; };
-  globalThis.cancelAnimationFrame = () => {};
-  globalThis.performance = globalThis.performance || { now: () => Date.now() };
-}
 setupGlobalEnv();
 
-const dataMod = await import(pathToFileURL(path.join(ROOT, 'apps/bekkedal/data.js')));
+const { data: dataMod, app } = await importApp();
 const { BEK_SAVE, BEK_SEASON_DAYS, BEK_MAPS, BEK_LOFT } = dataMod;
-const appMod = await import(pathToFileURL(path.join(ROOT, 'apps/bekkedal/index.js')));
-const app = appMod.default;
 
 /* ---- test plumbing ------------------------------------------------------- */
 let failed = false;
@@ -145,28 +57,7 @@ function report(name, ok, detail) {
   else { failed = true; console.log('FAIL - ' + name + (detail ? ': ' + detail : '')); }
 }
 
-function findByText(tag, text) {
-  return createdEls.find(el => el.tagName === tag && el.textContent === text);
-}
-
-function freshCtx() {
-  return {
-    fs: { read: async () => null, write: async () => {}, list: async () => [], remove: async () => {} },
-    save: async () => {}, load: async () => null,
-    openWindow: () => {}, close: () => {}
-  };
-}
-
-/* mounts a fresh instance of the app; returns handles used to drive it */
-function mountApp() {
-  createdEls = [];
-  rafCb = null;
-  const root = new FakeEl('div');
-  app.mount(root, freshCtx());
-  const bSave = findByText('button', 'SAVE');
-  if (!bSave) throw new Error('SAVE button not found after mount');
-  return { root, bSave, tick: () => rafCb };
-}
+const mountApp = () => mountShared(app);
 
 function clearSave() { globalThis.localStorage.removeItem(BEK_SAVE); }
 
@@ -325,10 +216,6 @@ function caseMigration() {
    open the ending screen, then SPACE again to dismiss it. Asserts money,
    inventory and day are untouched (i.e. `S = fresh()` was not called) and
    that houseBuilt/houseBuiltDay/act2Unlocked landed on the same save. */
-function findCanvas() {
-  return createdEls.find(el => el.tagName === 'canvas');
-}
-
 function caseHouseCompletionMilestone() {
   clearSave();
   let seedHandle;
@@ -770,8 +657,12 @@ function caseDescent() {
        says any change to the shape of S bumps `ver` and adds a heal() line,
        and this is what makes forgetting either one a failing check rather
        than a save that loads wrong six months later. 17 added S.spine; 18
-       added S.placed (FURNISHING). */
-    if (out.ver !== 18) problems.push('a fresh save is ver ' + out.ver);
+       added S.placed (FURNISHING); 19 is the rebalance, whose new field is
+       S.enRescaled — the marker over heal()'s one-shot stamina raise, since
+       a save carrying the old 120-point bar into the retuned economy is not
+       a save of the old game but an unwinnable version of the new one. */
+    if (out.ver !== 19) problems.push('a fresh save is ver ' + out.ver);
+    if (out.enRescaled !== true) problems.push('the stamina rescale marker is missing');
   } catch (e) { report(NAME, false, 'threw driving the descent: ' + (e && e.stack || e)); return; }
 
   report(NAME, problems.length === 0, problems.join('; '));

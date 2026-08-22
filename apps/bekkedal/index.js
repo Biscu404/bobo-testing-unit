@@ -2,7 +2,10 @@ import { createWindow, raise } from '../../kernel/wm.js';
 import { fs as vfs } from '../../kernel/vfs.js';
 import { CRT, Vol, musGain, sfxGain } from '../../kernel/hardware.js';
 import { BEK_T, BEK_T_SRC, BEK_ART_SCALE, BEK_SAVE, BEK_LOT_COST, UI, BEK_ITEMS, BEK_SEED_ORDER,
-         BEK_CROPS, BEK_TOOLS, AXE_NAME, PICK_NAME, ROD_NAME, BEK_MAPS, BEK_SOLID, BEK_NPCS, BEK_GOATS,
+         BEK_CROPS, BEK_TOOLS, OKS_GRAN_E, AXE_NAME, PICK_NAME, ROD_NAME, BEK_MAPS, BEK_SOLID, BEK_NPCS, BEK_GOATS,
+         BEK_START_KR, BEK_EN_MAX, BEK_STEP_S, BEK_CLOCK_MIN_PER_S, BEK_DAY_START, BEK_DAY_END,
+         BEK_XP_STEP, BEK_XP_LVL_STAMINA, BEK_GRADE_MULT, BEK_PRESV_DAYS, BEK_RARE_CHANCE,
+         BEK_FORAGE_DROPS, BEK_FORAGE_BONUS, BEK_REGROW, BEK_GIFT_FR,
          BEK_TALK, BEK_SCENES, BEK_QUESTS, BEK_HOUSE, BEK_DECOR, BEK_FARM_PLOTS, BEK_BARN_PLOT,
          BEK_BARN_PLOT2, BEK_GREENHOUSE_PLOT, BEK_ANIMAL_KINDS, BEK_GIFT_CAP, BEK_MINE_MOUTH,
          BEK_RECIPES, BEK_FISH_WATERS, BEK_SEASON_DAYS, BEK_LOFT,
@@ -206,12 +209,15 @@ export default {
          for why an old save's own S.fr must be doubled, not just clamped
          wider, to land on the same relative progress. */
       const FR_MAX = 10;
+      /* what fresh()'s enMax was before the rebalance, kept only so heal()
+         can work out how much a stale save is owed. Never read by the game. */
+      const EN_MAX_WAS = 120;
       let S = null;
       const fresh = () => {
         const f = {
-        ver: 18, lang: BEK_LANG, fullscreen: 0,
+        ver: 19, lang: BEK_LANG, fullscreen: 0,
         map: 'farm', px: 8, py: 8, dir: 0, step: 0, walk: 0,
-        day: 1, min: 6 * 60, kr: 500, en: 120, enMax: 120,
+        day: 1, min: BEK_DAY_START, kr: BEK_START_KR, en: BEK_EN_MAX, enMax: BEK_EN_MAX,
         water: 20, waterMax: 20,
         tools: { spade: 1, kanne: 1, oks: 1, stang: 0, hakke: 0 },
         tool: 0, axeLv: 1, pickLv: 0, kanneLv: 0, seedIx: 0,
@@ -263,6 +269,9 @@ export default {
            save (see scripts/bekkedal_savetest.mjs's own ver-stays-put
            assertion) and so cannot gate the migration on S.ver itself. */
         frRescaled: true,
+        /* ver 19: the same marker, for the same reason, over the stamina
+           rescale in heal() below — see EN_MAX_WAS. */
+        enRescaled: true,
         chatIx: {}, disc: { farm: 1 }, weather: 'klar',
         /* the seasonal layer — always recomputed from `day` (seasons.js),
            never incremented on its own, so it cannot drift from it. See
@@ -428,6 +437,21 @@ export default {
         if (!Number.isFinite(s.spine.done)) s.spine.done = 0;
         /* ver 15: a save from before legendary fish existed has caught none */
         if (typeof s.legend !== 'object' || s.legend === null) s.legend = {};
+        /* ver 19: the rebalance. The bar went from 120 to 200 and every sell
+           price, tool cost and shop price moved with it, so a save that keeps
+           its old 120 is not a save of the old game — it is a save of the new
+           one played at three fifths of the stamina, which is unwinnable
+           inside the day the rest of the numbers assume. Raised by the same
+           delta rather than clamped to the new base, so a run that had
+           already earned stamina keeps what it earned on top. Gated on its
+           own marker for exactly the reason the friendship rescale above is:
+           heal() never rewinds S.ver on an existing save, so a save that goes
+           on loading at its original ver must still only be raised once. */
+        if (!s.enRescaled) {
+          s.enMax = Math.max(f.enMax, (s.enMax || 0) + (f.enMax - EN_MAX_WAS));
+          s.en = Math.min(s.enMax, (s.en || 0) + (f.enMax - EN_MAX_WAS));
+          s.enRescaled = true;
+        }
         /* ver 18: a save from before FURNISHING existed has placed nothing —
            the honest blank, same reasoning as S.legend and S.deepest above.
            Every authored prop still renders (BEK_DECOR, untouched by this),
@@ -713,13 +737,30 @@ export default {
          0..3 at XP_STEP apart. Each level's effect is applied at its own
          call site (spend(), the harvest/mine/forage/fish branches below)
          rather than here — this only owns the counting and the level-up. */
-      const XP_STEP = 20, XP_MAX_LVL = 3;
+      /* XP_STEP is what decides where in the 6-10 hours the recipe gates and
+         the arcs land. At 20 a first playthrough had all twelve levels inside
+         Act I, which spent the whole progression before the house was up; at
+         70 the four tracks finish across the first two seasons instead, one
+         at a time, because a day's work in any one activity is thirty-odd
+         XP rather than a hundred. See act2_check_balance.js's stage spread. */
+      const XP_STEP = BEK_XP_STEP, XP_MAX_LVL = 3;
+      /* and what a level is worth. Each one costs less energy at its own call
+         site (spend(), the branches below) *and* adds to the bar — twelve
+         levels is +60, which is the difference between a day that ends at
+         noon and a day that runs to the evening. Handed over here rather than
+         derived, the same one-shot way spineDonate() hands over its own
+         grants: `lvl > S.lvl[kind]` fires exactly once per level. */
+      const XP_LVL_STAMINA = BEK_XP_LVL_STAMINA;
       function addXp(kind, n) {
         S.xp[kind] = (S.xp[kind] || 0) + n;
         const lvl = Math.min(XP_MAX_LVL, Math.floor(S.xp[kind] / XP_STEP));
         if (lvl > (S.lvl[kind] || 0)) {
+          const steps = lvl - (S.lvl[kind] || 0);
           S.lvl[kind] = lvl;
-          say(TX('NIVÅ OPP: ', 'LEVEL UP: ') + kind.toUpperCase() + ' ' + lvl);
+          S.enMax += XP_LVL_STAMINA * steps;
+          S.en = Math.min(S.enMax, S.en + XP_LVL_STAMINA * steps);
+          say(TX('NIVÅ OPP: ', 'LEVEL UP: ') + kind.toUpperCase() + ' ' + lvl +
+              '  +' + (XP_LVL_STAMINA * steps) + TX(' UTHOLDENHET', ' STAMINA'));
           sfx.done();
         }
       }
@@ -1011,23 +1052,14 @@ export default {
          still leaves foraging the smallest of the four incomes. */
       function spawnDrops() {
         S.drops = [];
-        [['sopp',8],['blabar',6],['kantarell',2]].forEach(p => { for (let i=0;i<p[1];i++) dropAt('forest', p[0]); });
-        for (let i=0;i<6;i++) dropAt('setra','multe');
-        for (let i=0;i<3;i++) dropAt('setra','melk');
-        for (let i=0;i<6;i++) dropAt('vidda','tyttebar');
-        for (let i=0;i<2;i++) dropAt('vidda','blabar');
-        for (let i=0;i<4;i++) dropAt('fjord','tang');
-        /* the water's berries keep to the strip of shore west of the path */
-        for (let i=0;i<4;i++) dropAt('lake','blabar',40,[1,9,8,14]);
-        for (let i=0;i<3;i++) dropAt('enga','urt');
+        const scatter = t => { for (let i = 0; i < t.n; i++) dropAt(t.map, t.item, t.tries, t.area); };
+        BEK_FORAGE_DROPS.forEach(scatter);
         /* forage lvl2 — and the loft's wood wing, which pays out the same
            extra round rather than a second mechanism for it */
-        if (S.lvl.forage >= 2 || spineForageBonus(S)) {
-          dropAt('forest','sopp'); dropAt('setra','multe'); dropAt('vidda','tyttebar'); dropAt('enga','urt');
-        }
+        if (S.lvl.forage >= 2 || spineForageBonus(S)) BEK_FORAGE_BONUS.forEach(scatter);
       }
       function newDay(passedOut) {
-        S.day++; S.min = 6 * 60;
+        S.day++; S.min = BEK_DAY_START;
         /* yesterday, closed out: the difference between the XP counters now
            and the mark stamped at the start of the day that just ended. The
            chat lines gated on `S.yst.*` (BEK_TALK) read this and nothing
@@ -1163,13 +1195,20 @@ export default {
         return score >= 3 ? 2 : score >= 1 ? 1 : 0;
       }
       const GRADE_TAG = ['', ' (G)', ' (B)'];
+      /* farm level 3's second head. At 0.4 it stacked on top of the QUALITY
+         markup and the level-1 energy saving, and a fully-upgraded field paid
+         three times a fresh one — which is the same "one loop dominates"
+         failure the pick had, only at the far end of the game instead of the
+         near one. See act2_check_rates.js, which measures the spread at three
+         stages rather than only at the start. */
+      const FARM_LV3_DOUBLE = 0.2;
       /* ---- PRESERVES --------------------------------------------------
          Every crop feeds the same jam/wine, deliberately — the point is
          converting time and surplus into value, not a second economy of
          crop-specific vintages. S.presv is keyed like S.soil: `{x,y}` on
          the farm map, `{kind, item, day}` where `item` is '' while empty
          and `day` is the day it was last filled. */
-      const PRESV_DAYS = { jar: 2, keg: 4 };
+      const PRESV_DAYS = BEK_PRESV_DAYS;
       const PRESV_OUT = { jar: 'syltetoy', keg: 'fruktvin' };
       function presvAct(pr) {
         if (pr.item) {
@@ -1195,7 +1234,7 @@ export default {
       function gradeMult(id) {
         const g = S.cropGrade[id];
         if (g == null) return 1;
-        return g >= 1.5 ? 1.5 : g >= 0.5 ? 1.25 : 1;
+        return g >= 1.5 ? BEK_GRADE_MULT[2] : g >= 0.5 ? BEK_GRADE_MULT[1] : BEK_GRADE_MULT[0];
       }
       const sellPrice = id => Math.round((BEK_ITEMS[id].sell || 0) * gradeMult(id));
       /* the tier-2 kanne's line: the two tiles either side of the one
@@ -1229,7 +1268,7 @@ export default {
             S.min >= lw.h0 && S.min < lw.h1 &&
             S.day - (S.legend[water.legend] == null ? -Infinity : S.legend[water.legend]) >= BEK_SEASON_DAYS * 4)
           return water.legend;
-        const rareChance = 0.1 + (spotGood ? 0.05 : 0) +
+        const rareChance = BEK_RARE_CHANCE + (spotGood ? 0.05 : 0) +
           (bait && bait.weight && bait.weight[water.rare] ? 0.05 : 0);
         if (Math.random() < rareChance) return water.rare;
         const weights = water.pool.map(p => {
@@ -1360,12 +1399,18 @@ export default {
           return;
         }
         const tool = BEK_TOOLS[S.tool];
-        if (t === 'p' && S.picked[rkey(S.map, f.x, f.y)] <= S.day) {   /* pick a wildflower */
+        /* `|| 0`, and it matters: an unpicked square has no entry at all, and
+           `undefined <= S.day` is false, so before this every wildflower in
+           the valley was permanently unpickable — which took Marit's bouquet
+           quest, the bukett recipe and three entries of the loft's wood wing
+           down with it. Found by walking the meadow in
+           scripts/bekkedal_playtest.mjs, not by reading this line. */
+        if (t === 'p' && (S.picked[rkey(S.map, f.x, f.y)] || 0) <= S.day) {   /* pick a wildflower */
           if (S.lvl.forage < 1 && !spend(1)) return;   /* forage lvl1: picking costs no energy */
           const kinds = ['blomst_bla', 'blomst_gul', 'blomst_ro'];
           const got = kinds[Math.floor(Math.random() * kinds.length)];
           if (!gainCapped(got, 1)) return;
-          S.picked[rkey(S.map, f.x, f.y)] = S.day + 1; terrLater(); sfx.pick(); addXp('forage', 1);
+          S.picked[rkey(S.map, f.x, f.y)] = S.day + BEK_REGROW.flower; terrLater(); sfx.pick(); addXp('forage', 1);
           startSwing('hand').drop = BEK_ITEMS[got].col;
           say('+1 ' + iname(got)); return;
         }
@@ -1391,10 +1436,19 @@ export default {
           return;
         }
         if (tool.id === 'oks') {
-          if (t === 'Y') { if (!spend(tool.e)) return; S.felled[rkey(S.map, f.x, f.y)] = S.day + 2; terrLater(); if (!gainCapped('tommer', 1)) return; sfx.chop(); startSwing('oks'); say('+1 ' + iname('tommer')); return; }
+          /* the STÅLØKS is a better axe on a birch too, not only a licence
+             for the big firs — one point less a swing, which is the same
+             shape of tier reward the hakke's own mine-level saving is, and
+             what keeps felling's upgraded rate level with the other four */
+          const axeCut = S.axeLv >= 2 ? 1 : 0;
+          if (t === 'Y') { if (!spend(Math.max(1, tool.e - axeCut))) return; S.felled[rkey(S.map, f.x, f.y)] = S.day + BEK_REGROW.birch; terrLater(); if (!gainCapped('tommer', 1)) return; sfx.chop(); startSwing('oks'); say('+1 ' + iname('tommer')); return; }
           if (t === 'G') {
             if (S.axeLv < 2) { say(TX('FOR STOR. Du trenger en STÅLØKS.', 'TOO BIG. You need a STEEL AXE.')); deny(); return; }
-            if (!spend(tool.e)) return; S.felled[rkey(S.map, f.x, f.y)] = S.day + 3; terrLater(); if (!gainCapped('tommer', 2)) return; sfx.chop(); startSwing('oks'); say('+2 ' + iname('tommer')); return;
+            /* a gran pays two tømmer, so it has to cost more than a birch or
+               the STÅLØKS would double the felling rate outright rather than
+               improve it — the same "the reward is the depth, not a free
+               multiplier" rule the mine's own `dig` follows */
+            if (!spend(Math.max(1, tool.e + OKS_GRAN_E - axeCut))) return; S.felled[rkey(S.map, f.x, f.y)] = S.day + BEK_REGROW.gran; terrLater(); if (!gainCapped('tommer', 2)) return; sfx.chop(); startSwing('oks'); say('+2 ' + iname('tommer')); return;
           }
           say(TX('INGENTING Å FELLE.', 'NOTHING TO FELL.')); return;
         }
@@ -1419,7 +1473,7 @@ export default {
             S.run.dug[rkey(S.map, f.x, f.y)] = 1;
           } else {
             /* mine lvl2: a mined vein regrows a day sooner */
-            const regrow = Math.max(1, 3 - (S.lvl.mine >= 2 ? 1 : 0));
+            const regrow = Math.max(1, BEK_REGROW.vein - (S.lvl.mine >= 2 ? 1 : 0));
             S.mined[rkey(S.map, f.x, f.y)] = S.day + regrow;
           }
           terrLater(); sfx.mine();
@@ -1455,7 +1509,7 @@ export default {
           const spec = BEK_CROPS[c.seed];
           if (!spend(1)) return;
           /* farm lvl3: a chance at a second head off the same plant */
-          const qty = S.lvl.farm >= 3 && Math.random() < 0.4 ? 2 : 1;
+          const qty = S.lvl.farm >= 3 && Math.random() < FARM_LV3_DOUBLE ? 2 : 1;
           if (!gainCapped(spec.out, qty)) return;
           /* QUALITY: fertiliser, a full watering streak and farm level 2
              each add a point; three grades off that score (0/1-2/3), see
@@ -1706,7 +1760,7 @@ export default {
                harder — one more friendship point on a gift that already
                landed, never on a neutral or disliked one */
             const qBonus = (tier === 'loved' || tier === 'liked') && (S.cropGrade[giftSel] || 0) >= 1.5 ? 1 : 0;
-            const delta = { loved: 2, liked: 1, neutral: 0, disliked: -1 }[tier] + qBonus;
+            const delta = BEK_GIFT_FR[tier] + qBonus;
             add(giftSel, -1);
             S.giftWeek[npc.id] = given + 1;
             S.fr[npc.id] = Math.max(0, Math.min(FR_MAX, S.fr[npc.id] + delta));
@@ -1798,7 +1852,7 @@ export default {
         if (S.built) { mode = 'end'; S.ending = 0; return; }
         if (S.q.tommer !== 'done') { dlg = { lines: [{no:'SKILT: TOMT TIL SALGS.',en:'SIGN: LOT FOR SALE.'}, {no:'Håkon i byen har papirene.',en:'Håkon in town holds the papers.'}], i: 0 }; mode = 'talk'; return; }
         if (!S.flag.lot) {
-          if (S.kr < BEK_LOT_COST) { dlg = { lines: [{no:'SKILT: TOMT — 1200 KR.',en:'SIGN: LOT — 1200 KR.'}, {no:'Du har det ikke. Ikke ennå.',en:'You do not have it. Not yet.'}], i: 0 }; mode = 'talk'; return; }
+          if (S.kr < BEK_LOT_COST) { dlg = { lines: [{no:'SKILT: TOMT — ' + BEK_LOT_COST + ' KR.',en:'SIGN: LOT — ' + BEK_LOT_COST + ' KR.'}, {no:'Du har det ikke. Ikke ennå.',en:'You do not have it. Not yet.'}], i: 0 }; mode = 'talk'; return; }
           S.kr -= BEK_LOT_COST; S.flag.lot = 1; sfx.coin();
           dlg = { lines: ['You sign it against the post.', {no:'Tomten er din: skog på tre sider, vann på den fjerde.',en:'The lot is yours: trees on three sides, water on the fourth.'}, 'Now it needs a house. Go and see Håkon.'], i: 0 };
           mode = 'talk'; return;
@@ -2261,7 +2315,7 @@ export default {
       function landFish() {
         const sp = fish.sp, item = BEK_ITEMS[sp];
         if (gainCapped(sp, 1)) {
-          addXp('fish', item.legend ? 8 : item.rare ? 5 : 3);
+          addXp('fish', item.legend ? 8 : item.rare ? 4 : 2);
           if (item.legend) { S.legend[sp] = S.day; sfx.done(); say(TX('LEGENDARISK FANGST! +1 ', 'LEGENDARY CATCH! +1 ') + iname(sp)); }
           else if (item.rare) { sfx.done(); say(TX('SJELDEN FANGST! +1 ', 'RARE CATCH! +1 ') + iname(sp)); }
           else { sfx.catch_(); say('+1 ' + iname(sp)); }
@@ -2296,7 +2350,7 @@ export default {
         else if (keys.a || keys.ArrowLeft) { dx = -1; S.dir = 2; }
         else if (keys.d || keys.ArrowRight) { dx = 1; S.dir = 3; }
         if (!dx && !dy) { S.walk = 0; S.step = 0; return; }
-        S.walk += dt; if (S.walk < 0.14) return; S.walk = 0; S.step = (S.step + 1) % 4;
+        S.walk += dt; if (S.walk < BEK_STEP_S) return; S.walk = 0; S.step = (S.step + 1) % 4;
         const nx = S.px + dx, ny = S.py + dy;
         /* The mouth of the descent. It is not an `exits` entry like every
            other way through the world, and it is the only one that is not,
@@ -2324,8 +2378,8 @@ export default {
         /* a scene is a held breath: the hour it was triggered in is the hour
            it plays out in, however long the player takes over the lines */
         if (mode === 'end' || mode === 'loftend' || scene) return;
-        S.min += dt * 4;
-        if (S.min >= 26 * 60) { newDay(true); return; }
+        S.min += dt * BEK_CLOCK_MIN_PER_S;
+        if (S.min >= BEK_DAY_END) { newDay(true); return; }
       }
       /* Three phases off the frame loop's own dt, never a timer. The strike
          frame is where the effect lands, the camera kicks and the deferred

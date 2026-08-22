@@ -148,6 +148,25 @@ coordinates") lives in `bekkedal-art.md`.
   the same way and for the same reason `mine_ore.js` is. Still one command.
 - `season_check.js` — `node apps/bekkedal/season_check.js`. See `.claude/rules/bekkedal-content.md`.
 - `act2_check.js` — `node apps/bekkedal/act2_check.js`. See `.claude/rules/bekkedal-content.md`.
+- `act2_check_walk.js` — the valley as *distances*, for the balance pass:
+  breadth-first over squares and seams, and a nearest-neighbour tour per
+  resource, at the measured 0.56 in-game minutes a tile. Nothing authored —
+  every figure comes off `BEK_MAPS`' own rows and `maps.js`'s own seams.
+- `act2_check_rates.js` — what an hour of each of the five livelihoods is
+  worth, in kr per point of energy *and* kr per in-game minute, at three
+  stages of the game. Reads prices, tool costs, crop timings, the ore mix,
+  the fish pools and the forage table; writes down nothing.
+- `act2_check_sim.js` — four players, four whole runs, arrival to the loft's
+  ending. A day is two budgets (the bar and the 06:00-to-02:00 clock), the
+  round walked until one of them runs out. The purchase ladder is collected
+  out of `BEK_TALK`'s own `buy` offers plus `progression.js`, never listed.
+- `act2_check_ladder.js` — the two things a run is aiming at, split off
+  `act2_check_sim.js` for the same 300-line reason: the purchase ladder
+  (collected out of `BEK_TALK`'s own `buy` offers and `progression.js`, so
+  the lifetime figure is derived rather than tallied), and the loft's
+  sixty-four entries asked "could *this run* have got it by today".
+- `act2_check_balance.js` — the targets, asserted. See **The economy**,
+  `.claude/rules/bekkedal-content.md`.
 - `spine_check.js` — `node apps/bekkedal/spine_check.js`. The loft: its
   shape, that everything it asks for can actually be got, that no milestone
   is unreachable, that it completes, and how many in-game days it takes. See
@@ -180,7 +199,15 @@ coordinates") lives in `bekkedal-art.md`.
 ## Save versioning
 
 The save key is `BEK_SAVE` (`data.js`). The in-save schema version is the `ver`
-field written by `fresh()` in `index.js` — currently **18**, which added
+field written by `fresh()` in `index.js` — currently **19**, the rebalance.
+Its one new field is `S.enRescaled`, the marker over `heal()`'s one-shot
+stamina raise: `BEK_EN_MAX` went from 120 to 220 and every price, tool cost
+and shop price moved with it, so a save still carrying the old bar is not a
+save of the old game but an unwinnable version of the new one. Raised by the
+delta rather than clamped to the new base, so a run that had already earned
+stamina keeps what it earned on top, and gated on its own marker for exactly
+the reason the friendship rescale is — `heal()` never rewinds `ver` on an
+existing save. Version 18 before it added
 `S.placed`, FURNISHING's only field: every object a player has placed by
 hand, keyed by `rkey(map, x, y)` exactly like `S.mined`/`S.felled`, each a
 `{ kind, item, rot }` (the `decor.js`/`decor_place.js` drawing, the
@@ -255,10 +282,16 @@ Run all twelve before claiming anything is done:
   festival's own map at eight distinct tiles; and no heart event is ever
   played over somebody merely keeping their own hours. Full paragraph:
   `.claude/rules/bekkedal-content.md`.
-- `node apps/bekkedal/act2_check.js` — every Act II surface, the balance
-  pass, and a sweep of all ~190 chat gates across every weather, season, hour
-  and festival state: none throws, and no NPC is ever left with nothing to
-  say. Full paragraph: `.claude/rules/bekkedal-content.md`.
+- `node apps/bekkedal/act2_check.js` — every Act II surface, a sweep of all
+  ~190 chat gates across every weather, season, hour and festival state
+  (none throws, and no NPC is ever left with nothing to say), and **the
+  balance pass**: the five livelihoods held to 1.5x of each other per point
+  of energy at three stages of the game, and four whole runs — farm-, mine-
+  and fish-focused and mixed — from arrival to the loft's ending, asserting
+  Act I inside 20-25 days, Act II at four more seasons, six to ten real
+  hours to the end, no policy dramatically ahead at any milestone, and never
+  a morning with money and nothing to want. Full paragraph and the measured
+  figures: **The economy**, `.claude/rules/bekkedal-content.md`.
 - `node apps/bekkedal/mine_check.js` — four hundred generated mine floors
   (sixteen seeds × floors 1-25), walked: the same seed gives the same floor in
   a second process, every floor is rectangular and no smaller than one screen
@@ -301,7 +334,10 @@ Run all twelve before claiming anything is done:
   name and that every mood a line asks for is a face `portrait.js` has. Full
   paragraph: `.claude/rules/content.md`.
 
-Also see `node scripts/bekkedal_shots.mjs <dir>` (the screenshot matrix),
+Also see `node scripts/bekkedal_playtest.mjs` (the valley walked and Act I
+played through the real frame loop, with no debug hook — where the 0.56
+minutes a tile and the real minutes a day come from),
+`node scripts/bekkedal_shots.mjs <dir>` (the screenshot matrix),
 `node scripts/bekkedal_pairs.mjs <before> <after> <out>` (before/after
 composites), and `node scripts/bekkedal_savetest.mjs` (played-not-read save
 compatibility) — full paragraphs in `.claude/rules/bekkedal-engine.md`.

@@ -61,7 +61,7 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   is stable while you stand on it and different next time. Four depth bands
   move everything at once: the layout from the company's own rectangular
   workings to natural cavity, the ore mix from iron toward silver, the rock
-  from seven energy a swing to nine, and the dark down four steps of
+  from seven energy a swing to ten, and the dark down four steps of
   `MINE_LIGHT` (`light.js`). All of it out of parts the game already had — a
   floor is a `BEK_MAPS`-shaped map of the six glyphs the gruva already draws,
   a shaft is an `exits` entry on a dead-end stub exactly like a seam in
@@ -76,6 +76,20 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   survivable. `node apps/bekkedal/mine_check.js` walks four hundred generated
   floors — connected, viable, no vein sealed in rock, no shaft you can cross
   in passing.
+  **The economy is measured, not felt:** Act I is 20-25 in-game days to the
+  house, Act II four more seasons to the loft's ending on day 110, and the
+  whole run six to ten real hours — a day being the full 06:00-to-02:00
+  clock, five real minutes, now the valley has grown to the size where
+  walking out to the work and back with a full sekk is most of what a day is.
+  No livelihood pays more than 1.5x another per point of energy at any stage
+  (the failure the old pick was: 21 against 17, so a rational first
+  playthrough bought a hakke on day one and never farmed again), and about
+  169,000 kr of purchases are spread across the arc so there is never a
+  morning with money and nothing to want. All of it asserted by
+  `act2_check.js`'s balance pass — four players, four whole runs, every number
+  read from the real tables, never a hand-copied one — and the day length
+  measured off the real frame loop by `scripts/bekkedal_playtest.mjs`. See
+  **The economy**, `.claude/rules/bekkedal-content.md`.
   **There is a reason to be here on day thirty:** the long spine is **LOFTET**,
   the old log storehouse shut on the town square since the mine company left,
   which Astrid gives you the key to once the house is finished and she trusts

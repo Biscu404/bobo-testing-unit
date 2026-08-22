@@ -133,18 +133,18 @@ crafting, and Act II.
   coordinate, sits on a real room tile, and every `kind` exists in
   `decor.js`; that the board's `act2`-flagged templates never roll across
   400 trials before `S.act2Unlocked` and both roll at least once across 400
-  after. Then the balance pass itself: a day-by-day energy-budget simulation
-  reading real sell prices, `BEK_TOOLS`' own energy costs, `houseCost()` and
-  `BEK_LOT_COST` (never a hand-copied number for anything exported), which
-  deliberately ignores every level-up bonus, the steel axe and fishing —  a
-  documented lower bound, not a prediction — and asserts a mixed
-  mining/felling/farming policy reaches `houseBuilt` near the ~8-10 day
-  target while an all-in-on-mining policy is not dramatically faster, which
-  is the operational meaning of "no single money loop dominating". Run it
-  after touching `BEK_TOOLS`, `BEK_ITEMS`' sell prices, `houseCost()`/
-  `houseTierCost()`, `BEK_LOT_COST`, `BEK_QUEST_TEMPLATES`' `act2` entries,
-  `BEK_BARN_PLOT2`/`BEK_BARN_SLOTS2`, `BEK_DECOR.lakehouse_t2`, or any
-  `BEK_TALK` chat line gated on `S.act2Unlocked`.
+  after. Then **the balance pass**, which lives in three siblings of its own
+  (`act2_check_walk.js`, `act2_check_rates.js`, `act2_check_sim.js`) with
+  `act2_check_balance.js` stating the targets — split for the 300-line rule
+  the way `mine_check_ore.js` is one of `mine_check.js`, still one command.
+  See **The economy** below for what it measures and what the figures are.
+  Run it after touching `BEK_TOOLS`, `BEK_ITEMS`' prices or `eat` values, the
+  `BEK_*` rate block in `data.js`, `BEK_REGROW`, `BEK_GIFT_FR`/`BEK_GIFT_CAP`,
+  `BEK_FORAGE_DROPS`, `MINE_BANDS`, `houseCost()`/`houseTierCost()`/
+  `greenhouseCost()`, `BEK_LOT_COST`, any `buy` offer in `BEK_TALK`,
+  `BEK_QUEST_TEMPLATES`' `act2` entries, `BEK_BARN_PLOT2`/`BEK_BARN_SLOTS2`,
+  `BEK_DECOR.lakehouse_t2`, or any `BEK_TALK` chat line gated on
+  `S.act2Unlocked`.
 - `node apps/bekkedal/spine_check.js` — the loft, in five families. **Shape**:
   ids unique, every item real and holdable, one `c` plinth per wing with a
   display `decor.js` can draw, restoration stages that climb and land before
@@ -787,21 +787,163 @@ looking for something that does not exist — it has already found a legendary
 fish whose window the clock could not reach and a `planke` that had a price,
 two recipes wanting it, and no source anywhere in the valley.
 
+## The economy
+
+Every session in the queue before this one changed it, and the check that
+guarded it was still asserting numbers from a game that no longer existed: a
+house around day 8-10, a pick at 21 kr/energy against 17 for the best crop.
+Both were true of eleven 24x15 screens joined by a travel menu. They stopped
+being true when the nine outdoor maps went to three and four times that and a
+day became mostly walking, and then again with the descent, the fishing
+overhaul, farming's quality and preserves, a house full of furniture and the
+loft's year of work. This is the rebalance, and the figures below are
+*measured* — by `node apps/bekkedal/act2_check.js`'s balance pass, and against
+real play by `node scripts/bekkedal_playtest.mjs`.
+
+**A day has two budgets, and that is the whole change.** The clock runs at
+`BEK_CLOCK_MIN_PER_S` in-game minutes a real second and a day is
+`BEK_DAY_START` to `BEK_DAY_END`, so a day played to the end is exactly five
+real minutes and no more, whatever the stamina bar says. A tile costs
+`BEK_STEP_S` of real time and therefore 0.56 in-game minutes — measured off
+the real frame loop, not read off the source — which makes the farm-to-town
+walk 27 minutes, the farm-to-water walk 42, and the farm-to-adit walk 69. A
+round trip to the mine is 139 minutes of a 1200-minute day before a single
+swing. An energy budget that cannot see that is measuring a game nobody is
+playing, which is exactly what the old pass was doing.
+
+**The eight numbers that used to be literals inside `mount()`** — the bar, the
+clock, the step, the day's two ends, the XP step and what a level is worth,
+the QUALITY markup, the preserve clock and the rare-fish chance — are the
+`BEK_*` rate block near the top of `data.js` now, and `index.js` reads them
+from there. Along with `BEK_REGROW`, `BEK_GIFT_FR` and `BEK_FORAGE_DROPS`,
+which moved for the same reason. **The balance pass hand-copies nothing**, and
+that property is the entire reason it is worth trusting: a price that moves
+moves the rate, the rate moves the assertion, and the assertion fails in a
+check rather than in somebody's afternoon.
+
+### The targets, and what they measure
+
+| | target | simulated | played |
+|---|---|---|---|
+| ACT I, arrival to the finished house | 20-25 in-game days | **day 20-22** across four policies | — |
+| ACT II, house to the loft's ending | at least four more seasons | **4.4-4.5 seasons** (ending day 110) | — |
+| a day, in real minutes | — | 3.5-4.5 | **5.00 — the whole clock** |
+| TOTAL, to a complete finish | 6-10 real hours | **6.4-8.3 h** | **~9.2 h** at the played day length |
+| no livelihood dominating | ≤1.5x kr/energy | **1.34x / 1.05x / 1.35x** at the three stages | — |
+| no policy dominating | — | **≤1.15x** at every milestone along the way | — |
+| lifetime money sinks | ~150,000 kr | **169,290 kr** over 22 rungs | — |
+| a morning with nothing to want | never | **0 days**, longest wait for the next thing 16 | — |
+
+**The played column is the one that changed the conclusion.** The brief's
+100-125 minutes for Act I came from assuming five real minutes a day, and its
+own next sentence said to measure that rather than assume it — so it was
+measured, by `scripts/bekkedal_playtest.mjs` driving a fresh save through the
+real frame loop. A day is **1200 in-game minutes, 100% of the clock, five real
+minutes**, on every one of the sixty-odd days logged across six runs. The
+02:00 wall ends a day now, not the stamina bar, because on maps this size
+walking out to the work, into town with a full sekk and home again is most of
+what a day is. The simulation next door walks optimally and never walks
+anywhere twice, so its 3.5-4.5 minutes a day is a floor: a real 110-day run is
+about nine real hours, near the top of the six-to-ten target rather than the
+bottom of it.
+
+The played run also settles a thing no table shows: **one livelihood cannot
+fill a day.** Fifty-nine birches across the farm and the wood, regrowing over
+two days, is about half a bar's worth of felling — so a player who only chops
+runs out of trees at noon with stamina to spare and takes half again as long
+to the house as one who uses the valley. That is the "no single loop
+dominates" rule showing up as a fact about an afternoon instead of a number in
+a table, and it is the reason the four simulated policies all mix.
+
+### The four files that prove it
+
+- `act2_check_walk.js` — the valley as distances. Breadth-first over squares
+  *and* seams, so farm-to-mine is one number; a greedy nearest-neighbour tour
+  per resource, so "how far apart two birches are" is measured off the rows
+  rather than guessed. Nothing authored.
+- `act2_check_rates.js` — what an hour of each of the five livelihoods is
+  worth, in kr per point of energy **and** kr per in-game minute, at three
+  stages (day one / the house is up / the loft is filling). Comparing a fresh
+  hoe against the bottom of the mine says nothing; comparing everything
+  reachable on the same afternoon is the test the old one-shot figure was
+  reaching for. Two figures in it are measured rather than read and are
+  properties of a *player* — how long a reel takes and how often it is won.
+- `act2_check_sim.js` — four players (farm-, mine-, fish-focused and mixed),
+  four whole runs, day by day, arrival to the last shelf of the loft. A day is
+  the two budgets, the round walked again and again until one of them runs
+  out, a trip to town when the sekk fills, a meal when one pays for itself,
+  and the next rung of the ladder when it is affordable. The ladder itself is
+  collected out of the tables — every `buy` offer anywhere in `BEK_TALK`, the
+  lot, the house, the annex, the glass — never listed by hand.
+- `act2_check_balance.js` — the targets above, asserted.
+
+### What moved, and why
+
+- **Energy.** `BEK_EN_MAX` 120 → 220, and a level is worth
+  `BEK_XP_LVL_STAMINA` on top of the cheaper swing it always gave, so twelve
+  levels is +60 and the loft's own grants take a finished run to 300. At 120
+  the bar emptied around nine in the morning and a day was a real minute and
+  a half; the day is the thing the bigger valley made expensive, and the bar
+  had to be able to reach the end of one. `XP_STEP` 20 → 70, because at 20
+  every track finished inside Act I.
+- **Prices, at about 7 kr the point of energy.** That number is not a taste:
+  it is the lifetime sinks divided by the energy a run spends. Crops are
+  solved from it (`seed + 7 * (days + 4)`, a regrowing crop over its three
+  harvests), tømmer from the axe's own cost, the ore mix from `MINE_BANDS`,
+  the fish from the pools and the rare chance. Ore came down hardest — a
+  swing paid 104 kr against a 7-energy cost, which is still the old failure
+  with a bigger number on it — and seeds came down to a quarter, because a
+  fixed seed price subtracted from a multiplied revenue is what made
+  farming's upgrade stack superlinear.
+- **The upgrade curves, flattened.** QUALITY's markup 1.25/1.5 → 1.1/1.2, farm
+  level 3's second head 0.4 → 0.2, the deep band's `dig` 2 → 3, and the
+  STÅLØKS now takes a point off a birch as well as opening the big firs — so
+  felling has a curve at all. Fully upgraded, the five sit inside 1.35x of
+  each other instead of 3x.
+- **Money sinks, 16,000 → 169,290 kr.** The house is 28,000, the lot 6,000,
+  the fields 3,000 and 6,000, the pens 4,000 and 7,000, the annex 9,000, the
+  glass 15,000, a goat 2,200, a keg 1,800, and a full set of Håkon's
+  furniture about 21,000 across two passes. The check found the real hole
+  here: with the last upgrade bought around day sixty and the loft running to
+  a hundred and ten, there were forty mornings with money in the purse and
+  nothing at all to want. A second of each is what closed it, and the tail
+  past that is food and materials.
+- **Food is how a day gets longer.** Bought food costs about 9.5 kr the point
+  — a loss at day-one rates and a small gain at the end, so eating is a trade
+  of money for pace rather than a printing press, and the clock caps it
+  either way. Every cooked dish restores more than the best thing a shop
+  sells, off your own crops, which is what keeps the farm worth having once
+  money is easy.
+- **Friendship, halved.** A loved gift is `BEK_GIFT_FR.loved` = 1, not 2, and
+  the weekly cap is 1. At the old rate anybody went from met to friendship 10
+  in a fortnight, which fired all three of their heart events inside the
+  first month and finished the loft's FOLKET wing before its shelves were
+  swept. This is also what makes Act II four seasons rather than three and a
+  half: Astrid's own `BEK_LOFT_FR` is a month of visits now, so the loft opens
+  on day 30 and its four festival offerings fall on days 50, 70, 90 and 110.
+- **The loft's stages, evenly spread.** 8/24/44 → 16/32/48 — quarters of the
+  sixty-four, sixteen donations apart every time, instead of gaps of 8, 16
+  and 20 that made you wait longest for the last of it.
+
+### The bug the playtest found that no check could
+
+Walking the meadow through the real frame loop turned up a wildflower that
+could not be picked. `act()`'s gate read `S.picked[key] <= S.day`, and an
+unpicked square has no entry at all — `undefined <= 1` is `false`, so *every*
+`p` tile in the valley was permanently inert. That took Marit's bouquet quest,
+the `bukett` recipe and three entries of the loft's SKOGEN wing down with it,
+and it was invisible from the tables: `spine_check.js`'s obtainability pass
+knew the flowers existed and had a source, and it was right. Fixed with a
+`|| 0`. This is why the brief's last instruction is to play it.
+
 ## Act II
 
 `S.act2Unlocked` was added by the house-completion-milestone fix (bumped
 `ver` to 3, back when the ending screen's SPACE handler still called
-`S = fresh()`) as a hook nothing read yet. This is that hook wired up, plus
-the balance pass to go with it — reaching `houseBuilt` used to be
-unconstrained by anything but patience, and `act2_check.js`'s own balance
-simulation is what found the actual problem: `hakke` mining at its old
-5-energy cost paid roughly 21 kr/energy against ~17 for the best early crop
-and single digits for everything else, so a rational first playthrough
-bought a pick on day one and never touched farming, animals or fishing
-again. `hakke`'s energy cost moved to 7 (`BEK_TOOLS`, `data.js`) — not the
-ore sell prices, which this file already cites as measured values in **The
-veins** above, and not fishing, whose real throughput is gated by the reel
-minigame rather than by this table.
+`S = fresh()`) as a hook nothing read yet. This is that hook wired up. The
+balance figures that used to live in this paragraph — the old pick at 21
+kr/energy, the house at day 8-10 — are gone; see **The economy** below for
+what they were replaced with and why.
 
 Four surfaces, all read-only against `S.act2Unlocked` — nothing here ever
 sets it, only `S.houseBuilt` does (`index.js`'s `mode === 'end'` SPACE

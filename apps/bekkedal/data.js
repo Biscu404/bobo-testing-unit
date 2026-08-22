@@ -78,7 +78,7 @@ export const BEK_SAVE = 'templeos.bekkedal.v2';
 /* the lot by the water — index.js's lotSign() reads this rather than a
  * literal 1200, so act2_check.js's balance simulation can read the exact
  * same number rather than a hand-copied one. */
-export const BEK_LOT_COST = 1200;
+export const BEK_LOT_COST = 6000;
 
 /* ---- 27.0 the two tongues ------------------------------------------------
    Every player-facing string is either a plain string (same in both) or a
@@ -120,69 +120,69 @@ export const UI = {
    ========================================================================== */
 export const BEK_ITEMS = {
   /* seeds */
-  potetfro:   { name: { no: 'POTETFRØ',   en: 'POTATO SEED'  }, buy: 20,  sell: 8,   seed: 'potet',   icon: 'seed', col: 6  },
-  nepefro:    { name: { no: 'NEPEFRØ',    en: 'TURNIP SEED'  }, buy: 14,  sell: 5,   seed: 'nepe',    icon: 'seed', col: 13 },
-  gulrotfro:  { name: { no: 'GULROTFRØ',  en: 'CARROT SEED'  }, buy: 45,  sell: 18,  seed: 'gulrot',  icon: 'seed', col: 12 },
-  kalfro:     { name: { no: 'KÅLFRØ',     en: 'CABBAGE SEED' }, buy: 60,  sell: 24,  seed: 'kal',     icon: 'seed', col: 10 },
-  jordbarfro: { name: { no: 'JORDBÆRFRØ', en: 'STRAWB. SEED' }, buy: 110, sell: 44,  seed: 'jordbar', icon: 'seed', col: 12 },
-  rabarbrafro:{ name: { no: 'RABARBRAFRØ',en: 'RHUBARB SEED' }, buy: 160, sell: 64,  seed: 'rabarbra',icon: 'seed', col: 4  },
+  potetfro:   { name: { no: 'POTETFRØ',   en: 'POTATO SEED'  }, buy: 8,  sell: 3,   seed: 'potet',   icon: 'seed', col: 6  },
+  nepefro:    { name: { no: 'NEPEFRØ',    en: 'TURNIP SEED'  }, buy: 6,  sell: 2,   seed: 'nepe',    icon: 'seed', col: 13 },
+  gulrotfro:  { name: { no: 'GULROTFRØ',  en: 'CARROT SEED'  }, buy: 12,  sell: 5,  seed: 'gulrot',  icon: 'seed', col: 12 },
+  kalfro:     { name: { no: 'KÅLFRØ',     en: 'CABBAGE SEED' }, buy: 15,  sell: 6,  seed: 'kal',     icon: 'seed', col: 10 },
+  jordbarfro: { name: { no: 'JORDBÆRFRØ', en: 'STRAWB. SEED' }, buy: 28, sell: 11,  seed: 'jordbar', icon: 'seed', col: 12 },
+  rabarbrafro:{ name: { no: 'RABARBRAFRØ',en: 'RHUBARB SEED' }, buy: 40, sell: 16,  seed: 'rabarbra',icon: 'seed', col: 4  },
   /* ---- P20: six more seeds, one per new crop below */
-  laukfro:    { name: { no: 'LAUKFRØ',    en: 'ONION SEED'   }, buy: 25,  sell: 10,  seed: 'lauk',    icon: 'seed', col: 15 },
-  purrefro:   { name: { no: 'PURREFRØ',   en: 'LEEK SEED'    }, buy: 50,  sell: 20,  seed: 'purre',   icon: 'seed', col: 2  },
-  kalrotfro:  { name: { no: 'KÅLROTFRØ',  en: 'RUTABAGA SEED'}, buy: 55,  sell: 22,  seed: 'kalrot',  icon: 'seed', col: 9  },
-  gresskarfro:{ name: { no: 'GRESSKARFRØ',en: 'PUMPKIN SEED' }, buy: 130, sell: 52,  seed: 'gresskar',icon: 'seed', col: 14 },
-  spinatfro:  { name: { no: 'SPINATFRØ',  en: 'SPINACH SEED' }, buy: 16,  sell: 6,   seed: 'spinat',  icon: 'seed', col: 10 },
-  gronnkalfro:{ name: { no: 'GRØNNKÅLFRØ',en: 'KALE SEED'    }, buy: 90,  sell: 36,  seed: 'gronnkal',icon: 'seed', col: 10 },
+  laukfro:    { name: { no: 'LAUKFRØ',    en: 'ONION SEED'   }, buy: 9,  sell: 4,  seed: 'lauk',    icon: 'seed', col: 15 },
+  purrefro:   { name: { no: 'PURREFRØ',   en: 'LEEK SEED'    }, buy: 13,  sell: 5,  seed: 'purre',   icon: 'seed', col: 2  },
+  kalrotfro:  { name: { no: 'KÅLROTFRØ',  en: 'RUTABAGA SEED'}, buy: 14,  sell: 6,  seed: 'kalrot',  icon: 'seed', col: 9  },
+  gresskarfro:{ name: { no: 'GRESSKARFRØ',en: 'PUMPKIN SEED' }, buy: 32, sell: 13,  seed: 'gresskar',icon: 'seed', col: 14 },
+  spinatfro:  { name: { no: 'SPINATFRØ',  en: 'SPINACH SEED' }, buy: 6,  sell: 2,   seed: 'spinat',  icon: 'seed', col: 10 },
+  gronnkalfro:{ name: { no: 'GRØNNKÅLFRØ',en: 'KALE SEED'    }, buy: 22,  sell: 9,  seed: 'gronnkal',icon: 'seed', col: 10 },
   /* crops */
-  potet:      { name: { no: 'POTET',      en: 'POTATO'       }, sell: 45,  icon: 'root',  col: 14 },
-  nepe:       { name: { no: 'NEPE',       en: 'TURNIP'       }, sell: 30,  icon: 'root',  col: 13 },
-  gulrot:     { name: { no: 'GULROT',     en: 'CARROT'       }, sell: 85,  icon: 'root',  col: 6  },
-  kal:        { name: { no: 'KÅL',        en: 'CABBAGE'      }, sell: 120, icon: 'leaf',  col: 10 },
-  jordbar:    { name: { no: 'JORDBÆR',    en: 'STRAWBERRY'   }, sell: 190, icon: 'berry', col: 12 },
-  rabarbra:   { name: { no: 'RABARBRA',   en: 'RHUBARB'      }, sell: 240, icon: 'stalk', col: 10 },
+  potet:      { name: { no: 'POTET',      en: 'POTATO'       }, sell: 57,  icon: 'root',  col: 14 },
+  nepe:       { name: { no: 'NEPE',       en: 'TURNIP'       }, sell: 48,  icon: 'root',  col: 13 },
+  gulrot:     { name: { no: 'GULROT',     en: 'CARROT'       }, sell: 68,  icon: 'root',  col: 6  },
+  kal:        { name: { no: 'KÅL',        en: 'CABBAGE'      }, sell: 71, icon: 'leaf',  col: 10 },
+  jordbar:    { name: { no: 'JORDBÆR',    en: 'STRAWBERRY'   }, sell: 44, icon: 'berry', col: 12 },
+  rabarbra:   { name: { no: 'RABARBRA',   en: 'RHUBARB'      }, sell: 55, icon: 'stalk', col: 10 },
   /* ---- P20: six more crops, spread over the four seasons — see BEK_CROPS
      below for which. gronnkal (kale) is the multi-season regrowing one. */
-  lauk:       { name: { no: 'LAUK',       en: 'ONION'        }, sell: 55,  icon: 'root',  col: 15 },
-  purre:      { name: { no: 'PURRE',      en: 'LEEK'         }, sell: 95,  icon: 'stalk', col: 2  },
-  kalrot:     { name: { no: 'KÅLROT',     en: 'RUTABAGA'     }, sell: 100, icon: 'root',  col: 9  },
-  gresskar:   { name: { no: 'GRESSKAR',   en: 'PUMPKIN'      }, sell: 260, icon: 'root',  col: 14 },
-  spinat:     { name: { no: 'SPINAT',     en: 'SPINACH'      }, sell: 35,  icon: 'leaf',  col: 10 },
-  gronnkal:   { name: { no: 'GRØNNKÅL',   en: 'KALE'         }, sell: 110, icon: 'leaf',  col: 10 },
+  lauk:       { name: { no: 'LAUK',       en: 'ONION'        }, sell: 58,  icon: 'root',  col: 15 },
+  purre:      { name: { no: 'PURRE',      en: 'LEEK'         }, sell: 69,  icon: 'stalk', col: 2  },
+  kalrot:     { name: { no: 'KÅLROT',     en: 'RUTABAGA'     }, sell: 70, icon: 'root',  col: 9  },
+  gresskar:   { name: { no: 'GRESSKAR',   en: 'PUMPKIN'      }, sell: 109, icon: 'root',  col: 14 },
+  spinat:     { name: { no: 'SPINAT',     en: 'SPINACH'      }, sell: 48,  icon: 'leaf',  col: 10 },
+  gronnkal:   { name: { no: 'GRØNNKÅL',   en: 'KALE'         }, sell: 38, icon: 'leaf',  col: 10 },
   /* forage */
-  sopp:       { name: { no: 'SOPP',       en: 'MUSHROOM'     }, sell: 30,  icon: 'mush',  col: 12 },
-  kantarell:  { name: { no: 'KANTARELL',  en: 'CHANTERELLE'  }, sell: 90,  icon: 'mush',  col: 14 },
-  blabar:     { name: { no: 'BLÅBÆR',     en: 'BLUEBERRY'    }, sell: 35,  icon: 'berry', col: 9  },
-  multe:      { name: { no: 'MULTE',      en: 'CLOUDBERRY'   }, sell: 120, icon: 'berry', col: 14 },
-  tyttebar:   { name: { no: 'TYTTEBÆR',   en: 'LINGONBERRY'  }, sell: 55,  icon: 'berry', col: 12 },
-  tang:       { name: { no: 'TANG',       en: 'KELP'         }, sell: 20,  icon: 'leaf',  col: 2  },
-  urt:        { name: { no: 'URT',        en: 'HERB'         }, sell: 25,  icon: 'leaf',  col: 10 },
+  sopp:       { name: { no: 'SOPP',       en: 'MUSHROOM'     }, sell: 32,  icon: 'mush',  col: 12 },
+  kantarell:  { name: { no: 'KANTARELL',  en: 'CHANTERELLE'  }, sell: 70,  icon: 'mush',  col: 14 },
+  blabar:     { name: { no: 'BLÅBÆR',     en: 'BLUEBERRY'    }, sell: 38,  icon: 'berry', col: 9  },
+  multe:      { name: { no: 'MULTE',      en: 'CLOUDBERRY'   }, sell: 85, icon: 'berry', col: 14 },
+  tyttebar:   { name: { no: 'TYTTEBÆR',   en: 'LINGONBERRY'  }, sell: 45,  icon: 'berry', col: 12 },
+  tang:       { name: { no: 'TANG',       en: 'KELP'         }, sell: 24,  icon: 'leaf',  col: 2  },
+  urt:        { name: { no: 'URT',        en: 'HERB'         }, sell: 30,  icon: 'leaf',  col: 10 },
   /* flowers — the meadow */
-  blomst_bla: { name: { no: 'BLÅKLOKKE',  en: 'HAREBELL'     }, sell: 12,  icon: 'flower',col: 9  },
-  blomst_gul: { name: { no: 'SOLEIE',     en: 'BUTTERCUP'    }, sell: 12,  icon: 'flower',col: 14 },
-  blomst_ro:  { name: { no: 'REVEBJELLE', en: 'FOXGLOVE'     }, sell: 14,  icon: 'flower',col: 13 },
+  blomst_bla: { name: { no: 'BLÅKLOKKE',  en: 'HAREBELL'     }, sell: 9,  icon: 'flower',col: 9  },
+  blomst_gul: { name: { no: 'SOLEIE',     en: 'BUTTERCUP'    }, sell: 9,  icon: 'flower',col: 14 },
+  blomst_ro:  { name: { no: 'REVEBJELLE', en: 'FOXGLOVE'     }, sell: 10,  icon: 'flower',col: 13 },
   /* wood & stone & ore */
-  tommer:     { name: { no: 'TØMMER',     en: 'TIMBER'       }, sell: 25,  icon: 'wood',  col: 6  },
-  planke:     { name: { no: 'PLANKE',     en: 'PLANK'        }, sell: 40,  icon: 'wood',  col: 14 },
-  stein:      { name: { no: 'STEIN',      en: 'STONE'        }, sell: 18,  icon: 'stone', col: 7  },
-  jern:       { name: { no: 'JERN',       en: 'IRON ORE'     }, sell: 70,  icon: 'ore',   col: 7  },
-  kobber:     { name: { no: 'KOBBER',     en: 'COPPER ORE'   }, sell: 110, icon: 'ore',   col: 6  },
-  solv:       { name: { no: 'SØLV',       en: 'SILVER ORE'   }, sell: 220, icon: 'ore',   col: 15 },
+  tommer:     { name: { no: 'TØMMER',     en: 'TIMBER'       }, sell: 30,  icon: 'wood',  col: 6  },
+  planke:     { name: { no: 'PLANKE',     en: 'PLANK'        }, sell: 54,  icon: 'wood',  col: 14 },
+  stein:      { name: { no: 'STEIN',      en: 'STONE'        }, sell: 14,  icon: 'stone', col: 7  },
+  jern:       { name: { no: 'JERN',       en: 'IRON ORE'     }, sell: 26,  icon: 'ore',   col: 7  },
+  kobber:     { name: { no: 'KOBBER',     en: 'COPPER ORE'   }, sell: 42, icon: 'ore',   col: 6  },
+  solv:       { name: { no: 'SØLV',       en: 'SILVER ORE'   }, sell: 70, icon: 'ore',   col: 15 },
   /* Only ever out of a rich vein below MINE_GEM_FLOOR (mine.js) — the one
      thing in the game that has no source on the surface at all, which is what
      makes it a reason to go down rather than a better version of one. Sells
      for more than silver because getting it costs a descent, not a swing. */
-  krystall:   { name: { no: 'BERGKRYSTALL', en: 'ROCK CRYSTAL' }, sell: 320, icon: 'ore', col: 11 },
-  spiker:     { name: { no: 'SPIKER',     en: 'NAILS'        }, buy: 30, sell: 12, icon: 'nail', col: 8 },
-  tau:        { name: { no: 'TAU',        en: 'ROPE'         }, buy: 45, sell: 16, icon: 'rope', col: 6 },
+  krystall:   { name: { no: 'BERGKRYSTALL', en: 'ROCK CRYSTAL' }, sell: 150, icon: 'ore', col: 11 },
+  spiker:     { name: { no: 'SPIKER',     en: 'NAILS'        }, buy: 55, sell: 22, icon: 'nail', col: 8 },
+  tau:        { name: { no: 'TAU',        en: 'ROPE'         }, buy: 90, sell: 36, icon: 'rope', col: 6 },
   /* placeable farm gear — `place: true` is read by act()'s kanne branch,
      never by the shop or the bag, which treat it like any other item */
-  sprinkler:  { name: { no: 'SPREDER',    en: 'SPRINKLER'    }, buy: 250, sell: 60, icon: 'sprinkler', col: 7, place: true },
+  sprinkler:  { name: { no: 'SPREDER',    en: 'SPRINKLER'    }, buy: 1400, sell: 350, icon: 'sprinkler', col: 7, place: true },
   /* not sold anywhere — only BEK_RECIPES.craft produces it, at the chest.
      `place: 'gjerde'` is the one that was always craftable and never had
      placement code to go with it — see BEK_PLACE_CAT and PLACE_BLOCKS
      (decor.js): this is a real barrier, refused whenever it would trap the
      player (placement.js). */
-  gjerde:     { name: { no: 'GJERDE',     en: 'FENCE'        }, sell: 35, icon: 'wood', col: 6, place: 'gjerde' },
+  gjerde:     { name: { no: 'GJERDE',     en: 'FENCE'        }, sell: 60, icon: 'wood', col: 6, place: 'gjerde' },
   /* ---- P20: QUALITY -----------------------------------------------------
      Craftable at the chest (BEK_RECIPES.craft), from things the valley
      already made: kelp (tang), a fed animal's own wool (ull, standing in
@@ -193,7 +193,7 @@ export const BEK_ITEMS = {
      carries a seed) sets S.soil's own `fert` flag — see cropGradeScore()
      in index.js for how it and the watering streak (`tend`) combine with
      farm level into the three grades. */
-  aske:       { name: { no: 'ASKE',       en: 'ASH'          }, sell: 5,  icon: 'stone', col: 8 },
+  aske:       { name: { no: 'ASKE',       en: 'ASH'          }, sell: 6,  icon: 'stone', col: 8 },
   gjodsel:    { name: { no: 'GJØDSEL',    en: 'FERTILISER'   }, icon: 'leaf', col: 10 },
   /* ---- P20: PRESERVES ----------------------------------------------------
      Two more placeable farm objects, same `place: true` mechanism as the
@@ -204,8 +204,8 @@ export const BEK_ITEMS = {
      money stops mattering" per the brief) — no clicking beyond the deposit
      and the collect. Every crop feeds the same jam/wine, deliberately: the
      value is in the wait, not in which crop paid for it. */
-  jar:        { name: { no: 'SYLTEKRUKKE', en: 'PRESERVE JAR' }, buy: 180, sell: 40, icon: 'sprinkler', col: 12, place: true },
-  keg:        { name: { no: 'TØNNE',      en: 'KEG'          }, buy: 320, sell: 70, icon: 'sprinkler', col: 6,  place: true },
+  jar:        { name: { no: 'SYLTEKRUKKE', en: 'PRESERVE JAR' }, buy: 900, sell: 225, icon: 'sprinkler', col: 12, place: true },
+  keg:        { name: { no: 'TØNNE',      en: 'KEG'          }, buy: 1800, sell: 450, icon: 'sprinkler', col: 6,  place: true },
   /* ---- FURNISHING ---------------------------------------------------------
      A real placement system, not the sprinkler's one-off hack: `place` here
      is a *string*, the `decor.js`/`decor_place.js` kind it puts on the
@@ -219,23 +219,23 @@ export const BEK_ITEMS = {
      both buyable from Håkon (BEK_TALK.hakon.furniture) and craftable at the
      chest (BEK_RECIPES.craft), the same dual sourcing sprinkler/jar/keg
      already had. */
-  stol:        { name: { no: 'STOL',      en: 'CHAIR'        }, buy: 90,  sell: 30, icon: 'wood', col: 6,  place: 'stol' },
-  bord:        { name: { no: 'BORD',      en: 'TABLE'        }, buy: 150, sell: 55, icon: 'wood', col: 6,  place: 'bord' },
-  matte:       { name: { no: 'MATTE',     en: 'RUG'          }, buy: 70,  sell: 25, icon: 'wood', col: 12, place: 'matte' },
-  seng:        { name: { no: 'SENG',      en: 'BED'          }, buy: 300, sell: 110,icon: 'wood', col: 6,  place: 'seng' },
-  hylle:       { name: { no: 'HYLLE',     en: 'SHELF'        }, buy: 120, sell: 45, icon: 'wood', col: 6,  place: 'hylle' },
-  kommode:     { name: { no: 'KOMMODE',   en: 'DRESSER'      }, buy: 220, sell: 80, icon: 'wood', col: 6,  place: 'kommode' },
-  lampe:       { name: { no: 'GULVLAMPE', en: 'FLOOR LAMP'   }, buy: 200, sell: 70, icon: 'sprinkler', col: 14, place: 'lamp' },
-  lys:         { name: { no: 'LYSESTAKE', en: 'CANDLESTICK'  }, buy: 40,  sell: 14, icon: 'sprinkler', col: 14, place: 'candle' },
-  veggbilde:   { name: { no: 'VEGGBILDE', en: 'WALL PICTURE' }, buy: 90,  sell: 32, icon: 'wood', col: 6,  place: 'picture' },
-  grind:       { name: { no: 'GRIND',     en: 'GATE'         }, buy: 140, sell: 50, icon: 'wood', col: 6,  place: 'grind' },
-  sti:         { name: { no: 'STI',       en: 'PATH'         }, buy: 20,  sell: 6,  icon: 'stone', col: 14, place: 'sti' },
-  blomsterkasse:{ name: { no: 'BLOMSTERKASSE', en: 'PLANTER' }, buy: 60,  sell: 20, icon: 'wood', col: 12, place: 'blomsterkasse' },
-  benk:        { name: { no: 'BENK',      en: 'BENCH'        }, buy: 130, sell: 45, icon: 'wood', col: 6,  place: 'benk' },
-  fugleskremsel:{ name: { no: 'FUGLESKREMSEL', en: 'SCARECROW'}, buy: 80, sell: 28, icon: 'wood', col: 14, place: 'fugleskremsel' },
-  skilt:       { name: { no: 'SKILT',     en: 'SIGN'         }, buy: 50,  sell: 18, icon: 'wood', col: 6,  place: 'skilt' },
-  syltetoy:   { name: { no: 'SYLTETØY',   en: 'JAM'          }, sell: 220, icon: 'bowl', col: 12 },
-  fruktvin:   { name: { no: 'FRUKTVIN',   en: 'FRUIT WINE'   }, sell: 420, icon: 'bowl', col: 6 },
+  stol:        { name: { no: 'STOL',      en: 'CHAIR'        }, buy: 550,  sell: 140, icon: 'wood', col: 6,  place: 'stol' },
+  bord:        { name: { no: 'BORD',      en: 'TABLE'        }, buy: 900, sell: 225, icon: 'wood', col: 6,  place: 'bord' },
+  matte:       { name: { no: 'MATTE',     en: 'RUG'          }, buy: 420,  sell: 105, icon: 'wood', col: 12, place: 'matte' },
+  seng:        { name: { no: 'SENG',      en: 'BED'          }, buy: 1800, sell: 450,icon: 'wood', col: 6,  place: 'seng' },
+  hylle:       { name: { no: 'HYLLE',     en: 'SHELF'        }, buy: 700, sell: 175, icon: 'wood', col: 6,  place: 'hylle' },
+  kommode:     { name: { no: 'KOMMODE',   en: 'DRESSER'      }, buy: 1300, sell: 325, icon: 'wood', col: 6,  place: 'kommode' },
+  lampe:       { name: { no: 'GULVLAMPE', en: 'FLOOR LAMP'   }, buy: 1200, sell: 300, icon: 'sprinkler', col: 14, place: 'lamp' },
+  lys:         { name: { no: 'LYSESTAKE', en: 'CANDLESTICK'  }, buy: 240,  sell: 60, icon: 'sprinkler', col: 14, place: 'candle' },
+  veggbilde:   { name: { no: 'VEGGBILDE', en: 'WALL PICTURE' }, buy: 550,  sell: 140, icon: 'wood', col: 6,  place: 'picture' },
+  grind:       { name: { no: 'GRIND',     en: 'GATE'         }, buy: 850, sell: 210, icon: 'wood', col: 6,  place: 'grind' },
+  sti:         { name: { no: 'STI',       en: 'PATH'         }, buy: 120,  sell: 30,  icon: 'stone', col: 14, place: 'sti' },
+  blomsterkasse:{ name: { no: 'BLOMSTERKASSE', en: 'PLANTER' }, buy: 360,  sell: 90, icon: 'wood', col: 12, place: 'blomsterkasse' },
+  benk:        { name: { no: 'BENK',      en: 'BENCH'        }, buy: 800, sell: 200, icon: 'wood', col: 6,  place: 'benk' },
+  fugleskremsel:{ name: { no: 'FUGLESKREMSEL', en: 'SCARECROW'}, buy: 480, sell: 120, icon: 'wood', col: 14, place: 'fugleskremsel' },
+  skilt:       { name: { no: 'SKILT',     en: 'SIGN'         }, buy: 300,  sell: 75, icon: 'wood', col: 6,  place: 'skilt' },
+  syltetoy:   { name: { no: 'SYLTETØY',   en: 'JAM'          }, sell: 150, icon: 'bowl', col: 12 },
+  fruktvin:   { name: { no: 'FRUKTVIN',   en: 'FRUIT WINE'   }, sell: 300, icon: 'bowl', col: 6 },
   /* fish — each carries a `pattern` (index.js's tickFish reads it, never
      writes it) that shapes its own fight in the hold-to-reel tension bar:
      `tug`/`amp`/`period` are a sinusoidal pull on the line's own tension,
@@ -243,21 +243,21 @@ export const BEK_ITEMS = {
      fish (torsk) is high tug, low jerk; a darting one (orret, makrell) is
      the opposite; kveite (rare) alternates a long, deep pull — a sounding
      run — off its own wide amp/period. See index.js's "The reel" section. */
-  orret:      { name: { no: 'ØRRET',      en: 'TROUT'        }, sell: 65,  icon: 'fish',  col: 13,
+  orret:      { name: { no: 'ØRRET',      en: 'TROUT'        }, sell: 30,  icon: 'fish',  col: 13,
                 pattern: { tug: 0.14, amp: 0.05, period: 1.4, jerk: 0.55, kick: 0.09 } },
-  laks:       { name: { no: 'LAKS',       en: 'SALMON'       }, sell: 130, icon: 'fish',  col: 6,
+  laks:       { name: { no: 'LAKS',       en: 'SALMON'       }, sell: 62, icon: 'fish',  col: 6,
                 pattern: { tug: 0.26, amp: 0.07, period: 2.0, jerk: 0.15, kick: 0.08 } },
-  roye:       { name: { no: 'RØYE',       en: 'CHAR'         }, sell: 100, icon: 'fish',  col: 12,
+  roye:       { name: { no: 'RØYE',       en: 'CHAR'         }, sell: 48, icon: 'fish',  col: 12,
                 pattern: { tug: 0.20, amp: 0.06, period: 1.6, jerk: 0.35, kick: 0.08 } },
-  torsk:      { name: { no: 'TORSK',      en: 'COD'          }, sell: 90,  icon: 'fish',  col: 7,
+  torsk:      { name: { no: 'TORSK',      en: 'COD'          }, sell: 42,  icon: 'fish',  col: 7,
                 pattern: { tug: 0.38, amp: 0.05, period: 2.8, jerk: 0.05, kick: 0.06 } },
-  makrell:    { name: { no: 'MAKRELL',    en: 'MACKEREL'     }, sell: 75,  icon: 'fish',  col: 11,
+  makrell:    { name: { no: 'MAKRELL',    en: 'MACKEREL'     }, sell: 36,  icon: 'fish',  col: 11,
                 pattern: { tug: 0.16, amp: 0.09, period: 0.9, jerk: 0.70, kick: 0.11 } },
   /* the rare ones. One bite in ten leans this way, and the fight is a
      different animal: a sliver of a zone and a much deeper, longer pull. */
-  kveite:     { name: { no: 'KVEITE',     en: 'HALIBUT'      }, sell: 900, icon: 'fish',  col: 3,  rare: 1,
+  kveite:     { name: { no: 'KVEITE',     en: 'HALIBUT'      }, sell: 260, icon: 'fish',  col: 3,  rare: 1,
                 pattern: { tug: 0.28, amp: 0.16, period: 3.2, jerk: 0.10, kick: 0.13 } },
-  gullorret:  { name: { no: 'GULLØRRET',  en: 'GOLDEN TROUT' }, sell: 700, icon: 'fish',  col: 14, rare: 1,
+  gullorret:  { name: { no: 'GULLØRRET',  en: 'GOLDEN TROUT' }, sell: 220, icon: 'fish',  col: 14, rare: 1,
                 pattern: { tug: 0.22, amp: 0.08, period: 1.5, jerk: 0.45, kick: 0.10 } },
   /* legendary — one per water, `legend: 1` rather than `rare: 1` so a catch
      message and the sell price both read as a different order of thing.
@@ -268,11 +268,11 @@ export const BEK_ITEMS = {
      both 0.85) — holding must always win the tug of war and releasing must
      always lose it, on every fish including these three, or the fight stops
      being hard and starts being unwinnable. */
-  trollorret: { name: { no: 'TROLLØRRET', en: 'TROLL TROUT'  }, sell: 2200, icon: 'fish', col: 14, legend: 1,
+  trollorret: { name: { no: 'TROLLØRRET', en: 'TROLL TROUT'  }, sell: 1200, icon: 'fish', col: 14, legend: 1,
                 pattern: { tug: 0.34, amp: 0.18, period: 2.6, jerk: 0.30, kick: 0.12 } },
-  havkonge:   { name: { no: 'HAVKONGE',   en: 'SEA KING'     }, sell: 2600, icon: 'fish', col: 3,  legend: 1,
+  havkonge:   { name: { no: 'HAVKONGE',   en: 'SEA KING'     }, sell: 1400, icon: 'fish', col: 3,  legend: 1,
                 pattern: { tug: 0.46, amp: 0.12, period: 3.6, jerk: 0.08, kick: 0.10 } },
-  sneulke:    { name: { no: 'SNEULKE',    en: 'SNOW CHAR'    }, sell: 2000, icon: 'fish', col: 12, legend: 1,
+  sneulke:    { name: { no: 'SNEULKE',    en: 'SNOW CHAR'    }, sell: 1100, icon: 'fish', col: 12, legend: 1,
                 pattern: { tug: 0.30, amp: 0.20, period: 2.2, jerk: 0.40, kick: 0.13 } },
   /* bait and tackle — craftable, consumable, spent on cast (act()'s stang
      branch picks the best one held, same "first match in the bag" rule
@@ -293,40 +293,40 @@ export const BEK_ITEMS = {
   snelle_stal:{ name: { no: 'STÅLSNELLE',  en: 'STEEL TACKLE' }, icon: 'rope', col: 15,
                 bait: { widen: 0.05, grace: 0.9 } },
   /* dairy & animal */
-  melk:       { name: { no: 'MELK',       en: 'MILK'         }, sell: 22,  icon: 'milk',  col: 15 },
-  brunost:    { name: { no: 'BRUNOST',    en: 'BROWN CHEESE' }, buy: 55, sell: 20, eat: 55, icon: 'cheese', col: 6 },
-  ull:        { name: { no: 'ULL',        en: 'WOOL'         }, sell: 30,  icon: 'wool',  col: 7  },
-  egg:        { name: 'EGG', sell: 18,  icon: 'egg',   col: 15 },
+  melk:       { name: { no: 'MELK',       en: 'MILK'         }, sell: 32,  icon: 'milk',  col: 15 },
+  brunost:    { name: { no: 'BRUNOST',    en: 'BROWN CHEESE' }, buy: 760, sell: 190, eat: 80, icon: 'cheese', col: 6 },
+  ull:        { name: { no: 'ULL',        en: 'WOOL'         }, sell: 45,  icon: 'wool',  col: 7  },
+  egg:        { name: 'EGG', sell: 45,  icon: 'egg',   col: 15 },
   /* animal feed, and the two animals themselves — `animal` is read by
      shopBuy() in index.js: an item that carries it never goes in the bag,
      it goes in the pen (see BEK_BARN_PLOT / BEK_ANIMAL_KINDS below) */
-  dyrefor:    { name: { no: 'DYREFOR',    en: 'ANIMAL FEED'  }, buy: 15, icon: 'leaf', col: 6 },
-  geit:       { name: { no: 'GEIT',       en: 'GOAT'         }, buy: 600, icon: 'wool', col: 15, animal: 'goat' },
-  hone:       { name: { no: 'HØNE',       en: 'CHICKEN'      }, buy: 250, icon: 'hen',  col: 6,  animal: 'chicken' },
+  dyrefor:    { name: { no: 'DYREFOR',    en: 'ANIMAL FEED'  }, buy: 20, icon: 'leaf', col: 6 },
+  geit:       { name: { no: 'GEIT',       en: 'GOAT'         }, buy: 2200, icon: 'wool', col: 15, animal: 'goat' },
+  hone:       { name: { no: 'HØNE',       en: 'CHICKEN'      }, buy: 1000, icon: 'hen',  col: 6,  animal: 'chicken' },
   /* food you eat */
-  kaffe:      { name: { no: 'KAFFE',      en: 'COFFEE'       }, buy: 40,  sell: 12, eat: 35,  icon: 'cup',  col: 6  },
-  vaffel:     { name: { no: 'VAFFEL',     en: 'WAFFLE'       }, buy: 65,  sell: 20, eat: 65,  icon: 'food', col: 14 },
-  lefse:      { name: 'LEFSE', buy: 50,  sell: 16, eat: 50,  icon: 'food', col: 7  },
-  fiskesuppe: { name: { no: 'FISKESUPPE', en: 'FISH SOUP'    }, buy: 90,  sell: 30, eat: 95,  icon: 'bowl', col: 11 },
-  multekrem:  { name: { no: 'MULTEKREM',  en: 'CLOUDB. CREAM'}, buy: 120, sell: 40, eat: 110, icon: 'bowl', col: 14 },
+  kaffe:      { name: { no: 'KAFFE',      en: 'COFFEE'       }, buy: 480, sell: 120, eat: 50,  icon: 'cup',  col: 6  },
+  vaffel:     { name: { no: 'VAFFEL',     en: 'WAFFLE'       }, buy: 900, sell: 225, eat: 95,  icon: 'food', col: 14 },
+  lefse:      { name: 'LEFSE', buy: 720, sell: 180, eat: 75,  icon: 'food', col: 7  },
+  fiskesuppe: { name: { no: 'FISKESUPPE', en: 'FISH SOUP'    }, buy: 1330, sell: 330, eat: 140,  icon: 'bowl', col: 11 },
+  multekrem:  { name: { no: 'MULTEKREM',  en: 'CLOUDB. CREAM'}, buy: 1560, sell: 390, eat: 165, icon: 'bowl', col: 14 },
   /* cooked at the chest, never sold — BEK_RECIPES.cook, one raw crop plus
      one animal product each, and each restores more than the best shop
      food (multekrem's 110) by design */
-  potetstuing:  { name: { no: 'POTETSTUING',  en: 'POTATO STEW'      }, sell: 40, eat: 130, icon: 'bowl', col: 14 },
-  gulrotkake:   { name: { no: 'GULROTKAKE',   en: 'CARROT CAKE'      }, sell: 55, eat: 140, icon: 'bowl', col: 6  },
-  rabarbragrot: { name: { no: 'RABARBRAGRØT', en: 'RHUBARB PORR.'    }, sell: 65, eat: 150, icon: 'bowl', col: 10 },
+  potetstuing:  { name: { no: 'POTETSTUING',  en: 'POTATO STEW'      }, sell: 150, eat: 190, icon: 'bowl', col: 14 },
+  gulrotkake:   { name: { no: 'GULROTKAKE',   en: 'CARROT CAKE'      }, sell: 170, eat: 210, icon: 'bowl', col: 6  },
+  rabarbragrot: { name: { no: 'RABARBRAGRØT', en: 'RHUBARB PORR.'    }, sell: 190, eat: 230, icon: 'bowl', col: 10 },
   /* THE LOFT: what finishing the field wing pays out — the one dish that
      wants the autumn-only crop, so the recipe lands about when a player who
      has filled that wing has a gresskar plot to spend on it. */
-  gresskarsuppe:{ name: { no: 'GRESSKARSUPPE', en: 'PUMPKIN SOUP'   }, sell: 80, eat: 170, icon: 'bowl', col: 14 },
+  gresskarsuppe:{ name: { no: 'GRESSKARSUPPE', en: 'PUMPKIN SOUP'   }, sell: 230, eat: 270, icon: 'bowl', col: 14 },
   /* worn / carried gear (no sell) */
-  lykt:       { name: { no: 'LYKT',       en: 'LANTERN'      }, icon: 'lamp', col: 14 },
+  lykt:       { name: { no: 'LYKT',       en: 'LANTERN'      }, buy: 450, icon: 'lamp', col: 14 },
   /* The other end of the loop the crystal opens: a lamp that reaches further,
      made of the thing you can only get where the reach is what you are short
      of. Carried, never sold, and accepted by the same 'lamp' gate the plain
      lantern is (gateOK() in index.js), so owning it is never owning less. */
   krystallykt:{ name: { no: 'KRYSTALLYKT', en: 'CRYSTAL LAMP' }, icon: 'lamp', col: 11 },
-  ullgenser:  { name: { no: 'ULLGENSER',  en: 'WOOL SWEATER' }, icon: 'shirt', col: 4 },
+  ullgenser:  { name: { no: 'ULLGENSER',  en: 'WOOL SWEATER' }, buy: 500, icon: 'shirt', col: 4 },
   bukett:     { name: { no: 'BUKETT',     en: 'BOUQUET'      }, icon: 'flower', col: 13 }
 };
 
@@ -444,6 +444,43 @@ export const BEK_FESTIVALS = {
             title: { no: 'JULEBLOT',   en: 'MIDWINTER FEAST' } }
 };
 
+/* ==========================================================================
+   27.1a-2 THE RATES THE BALANCE PASS READS
+   --------------------------------------------------------------------------
+   Eight numbers that used to be literals inside `index.js`'s mount() and were
+   therefore invisible to any check — `act2_check_balance.js` had to carry a
+   hand-copied copy of each and a comment promising to keep it in step. They
+   are all content rather than behaviour (a bar's size, a clock's speed, how
+   long a step takes, what a level is worth), so they belong here, and the
+   balance pass now reads the same number the game runs on. Everything in
+   `index.js` that used to state one of these reads it from here instead;
+   nothing was renamed and nothing changed shape.
+
+   BEK_STEP_S and BEK_CLOCK_MIN_PER_S together are why the maps growing three
+   and four times changed the economy: a tile is BEK_STEP_S of real time and
+   therefore BEK_STEP_S * BEK_CLOCK_MIN_PER_S = 0.56 in-game minutes, so the
+   walk across the valley is 40-odd minutes of a 1200-minute day, and the day
+   — not the energy bar alone — is what a policy has to fit inside.
+   ========================================================================== */
+export const BEK_START_KR = 500;              /* fresh(): what you arrive with */
+export const BEK_EN_MAX = 220;                /* fresh(): the bar, before any of it is earned */
+export const BEK_STEP_S = 0.14;               /* move(): real seconds per tile walked */
+export const BEK_CLOCK_MIN_PER_S = 4;         /* tickClock(): in-game minutes per real second */
+export const BEK_DAY_START = 6 * 60;          /* fresh()/newDay(): 06:00 */
+export const BEK_DAY_END = 26 * 60;           /* tickClock(): 02:00, and the day is over */
+export const BEK_XP_STEP = 70;                /* addXp(): XP between levels */
+export const BEK_XP_LVL_STAMINA = 5;          /* addXp(): what one level adds to the bar */
+export const BEK_GRADE_MULT = [1, 1.1, 1.2];  /* gradeMult(): the QUALITY sell markup, by grade */
+export const BEK_PRESV_DAYS = { jar: 2, keg: 4 };  /* presvAct(): how long a preserve works */
+export const BEK_RARE_CHANCE = 0.1;           /* pickFishSpecies(): the base one-in-ten */
+
+/* How many days until a worked square is worth working again — the numbers
+   act() stamps into S.felled/S.mined/S.picked, stated here so the balance
+   pass can work out how much of each thing a day actually offers instead of
+   assuming a map's whole stock every morning. `vein` is one day shorter at
+   mine level 2. */
+export const BEK_REGROW = { birch: 2, gran: 3, vein: 3, flower: 1 };
+
 /* ---- 27.1b tools ---------------------------------------------------------
    Five tools on one cycle. The axe and the pick also carry a *tier*, stored
    separately in S.axeLv / S.pickLv, so the same ØKS becomes a STÅLØKS after
@@ -452,19 +489,29 @@ export const BEK_FESTIVALS = {
 export const BEK_TOOLS = [
   { id: 'spade', name: { no: 'SPADE',      en: 'HOE'      }, e: 2 },
   { id: 'kanne', name: { no: 'VANNKANNE',  en: 'CAN'      }, e: 1 },
-  { id: 'oks',   name: { no: 'ØKS',        en: 'AXE'      }, e: 5 },
-  { id: 'stang', name: { no: 'FISKESTANG', en: 'ROD'      }, e: 4 },
-  /* e:7, not 5 — a swing here dropped an ore worth ~104kr on average (see
-     rock.js's "The die is rolled once per square" section) against a 5-energy
-     cost, ~21 kr/energy against ~17 for the best early crop and single-digits
-     for the rest. At the old cost a rational first playthrough bought a hakke
-     on day 1 and never touched farming, animals or fishing again — see
-     act2_check.js's balance simulation, which is what this number is tuned
-     against. Ore/fish sell prices stay untouched: the ore mix's kr figures
-     are cited as measured values below ("The veins"), and fishing's real
-     throughput is gated by the reel minigame, not by this table. */
+  { id: 'oks',   name: { no: 'ØKS',        en: 'AXE'      }, e: 4 },
+  /* e:7. A cast is the most valuable single action in the game — one fish
+     is worth twenty minutes of the clock and one in ten is a rare — and at
+     4 energy it paid about 12 kr/energy against 7 for everything else, which
+     is the same failure the hakke had before it. The *time* a fight takes is
+     not a price the energy budget can see, so the cast has to carry it. */
+  { id: 'stang', name: { no: 'FISKESTANG', en: 'ROD'      }, e: 7 },
+  /* e:7, and the ore prices came down to meet it. Raising this to 7 on its
+     own was not enough: a swing still dropped ~104 kr of ore against 7
+     energy, ~15 kr/energy where the best crop paid 7, so the rational first
+     playthrough still bought a hakke on day one. Both halves are tuned
+     together now — see the ore prices in BEK_ITEMS above and the rate table
+     act2_check_balance.js prints, which is what every number in this block
+     is measured against. The mine keeps its edge in *depth*: a band-4 swing
+     costs 9 (mine.js's `dig`) and pays silver. */
   { id: 'hakke', name: { no: 'HAKKE',      en: 'PICK'     }, e: 7 }
 ];
+/* What a gran costs on top of the øks's own figure. The one number act()
+   adds for the big firs, stated here beside the tool it modifies exactly the
+   way mine.js's `dig` is stated beside the bands it belongs to — a gran pays
+   two tømmer rather than one, so without this the STÅLØKS would not improve
+   the felling rate, it would double it. */
+export const OKS_GRAN_E = 3;
 export const AXE_NAME  = { no: ['ØKS', 'STÅLØKS'],  en: ['AXE', 'STEEL AXE'] };
 export const PICK_NAME = { no: ['HAKKE', 'STÅLHAKKE'], en: ['PICK', 'STEEL PICK'] };
 /* the rod's own tier, same shape as AXE_NAME/PICK_NAME and stored the same
@@ -538,6 +585,44 @@ export const BEK_FARM_PLOTS = [
    calendar outside says, this glass does not agree with it. season_check.js
    documents this plot as the deliberate exception to its per-season floor. */
 export const BEK_GREENHOUSE_PLOT = { flag: 'greenhouse', x0: 26, y0: 1, x1: 33, y1: 2 };
+
+/* ==========================================================================
+   27.1c-3 WHAT THE MORNING SCATTERS
+   --------------------------------------------------------------------------
+   Foraging's whole supply, as a table rather than as ten lines inside
+   `spawnDrops()` (index.js) — which is where it was, and which meant the one
+   activity in the game with no energy price was also the one no check could
+   see the size of. `[item, count, map]`, plus the optional `area` a `dropAt`
+   call already took (the water's berries keep to the strip of shore west of
+   the path). `bonus` is the extra round forage level 2 — and the loft's wood
+   wing — pay out; same table, one more of each.
+
+   The counts are a density, not a budget: the maps they are scattered over
+   are three to four times the ground they used to be, so the old numbers
+   would have left a morning's foraging as four mushrooms somewhere in eleven
+   hundred squares. What is here keeps a walk through the wood about as
+   rewarding per screen as it was and still leaves foraging the smallest of
+   the five incomes — which act2_check_balance.js now measures rather than
+   asserts by eye.
+   ========================================================================== */
+export const BEK_FORAGE_DROPS = [
+  { item: 'sopp',     n: 8, map: 'forest' },
+  { item: 'blabar',   n: 6, map: 'forest' },
+  { item: 'kantarell', n: 2, map: 'forest' },
+  { item: 'multe',    n: 6, map: 'setra' },
+  { item: 'melk',     n: 3, map: 'setra' },
+  { item: 'tyttebar', n: 6, map: 'vidda' },
+  { item: 'blabar',   n: 2, map: 'vidda' },
+  { item: 'tang',     n: 4, map: 'fjord' },
+  { item: 'blabar',   n: 4, map: 'lake', tries: 40, area: [1, 9, 8, 14] },
+  { item: 'urt',      n: 3, map: 'enga' }
+];
+export const BEK_FORAGE_BONUS = [
+  { item: 'sopp',     n: 1, map: 'forest' },
+  { item: 'multe',    n: 1, map: 'setra' },
+  { item: 'tyttebar', n: 1, map: 'vidda' },
+  { item: 'urt',      n: 1, map: 'enga' }
+];
 
 /* ==========================================================================
    27.1d THE PEN
@@ -1047,19 +1132,19 @@ export const BEK_SCENES = VALLEY_SCENES.concat(WILD_SCENES);
 
 /* ---- 27.5 the quests ----------------------------------------------------- */
 export const BEK_QUESTS = [
-  { id: 'potet',  who: 'astrid', need: { potet: 5 },  kr: 200, fr: 2,
+  { id: 'potet',  who: 'astrid', need: { potet: 5 },  kr: 500, fr: 2,
     t: { no: 'FEM POTETER — Astrid', en: 'FIVE POTATOES — Astrid' },
     d: { no: 'Bring Astrid five poteter.', en: 'Bring Astrid five potatoes.' } },
   { id: 'sopp',   who: 'ingrid', need: { sopp: 3 },   kr: 0,   fr: 2, tool: 'stang',
     t: { no: 'TRE SOPP — Ingrid', en: 'THREE MUSHROOMS — Ingrid' },
     d: { no: 'Bring Ingrid three sopp. She keeps a spare stang.', en: 'Bring Ingrid three mushrooms. She keeps a spare rod.' } },
-  { id: 'blomst', who: 'marit',  need: { blomst_bla: 1, blomst_gul: 1, blomst_ro: 1 }, kr: 150, fr: 2, grant: { item: { urt: 2 } },
+  { id: 'blomst', who: 'marit',  need: { blomst_bla: 1, blomst_gul: 1, blomst_ro: 1 }, kr: 250, fr: 2, grant: { item: { urt: 2 } },
     t: { no: 'EN BUKETT — Marit', en: 'A BOUQUET — Marit' },
     d: { no: 'Pick Marit one blåklokke, one soleie, one revebjelle.', en: 'Pick Marit one harebell, one buttercup, one foxglove.' } },
-  { id: 'tommer', who: 'hakon',  need: { tommer: 10 }, kr: 500, fr: 2,
+  { id: 'tommer', who: 'hakon',  need: { tommer: 10 }, kr: 800, fr: 2,
     t: { no: 'TI TØMMER — Håkon', en: 'TEN TIMBER — Håkon' },
     d: { no: 'Fell ten tømmer in the skogen for Håkon.', en: 'Fell ten timber in the forest for Håkon.' } },
-  { id: 'multe',  who: 'sigrid', need: { multe: 5 },  kr: 300, fr: 2,
+  { id: 'multe',  who: 'sigrid', need: { multe: 5 },  kr: 700, fr: 2,
     t: { no: 'FEM MULTE — Sigrid', en: 'FIVE CLOUDBERRIES — Sigrid' },
     d: { no: 'Bring Sigrid five multe from the setra.', en: 'Bring Sigrid five cloudberries from the dairy meadow.' } },
   { id: 'boat',   who: 'olav',   need: { tommer: 4, tau: 2 }, kr: 0, fr: 2, grant: { flag: { boat: 1 } },
@@ -1089,10 +1174,32 @@ export const BEK_QUEST_BOARD_MIN = 2;
 export const BEK_QUEST_BOARD_MAX = 3;
 export const BEK_QUEST_REFRESH_DAYS = 7;
 
-/* GIFTING: two gifts a week per person, cleared on the same
+/* GIFTING: one gift a week per person, cleared on the same
    BEK_QUEST_REFRESH_DAYS cadence the board itself turns over on
-   (isRefreshDay(), quests.js) — see S.giftWeek in index.js's newDay(). */
-export const BEK_GIFT_CAP = 2;
+   (isRefreshDay(), quests.js) — see S.giftWeek in index.js's newDay().
+   One rather than two, and that is the pacing knob for every arc in the
+   game: a loved gift is +2, so at two a week a character went from met to
+   friendship 10 in a fortnight and all three of their heart events fired
+   inside the first month. At one a week the same climb takes about four,
+   the eight arcs land across the first two seasons rather than together,
+   and the loft's FOLKET wing stops being the wing you finish first.
+   spineGiftCap() (spine.js) still doubles it once FOLKET is done, which is
+   the one place the old cadence comes back. */
+export const BEK_GIFT_CAP = 1;
+
+/* And what a gift is worth. A loved one used to be +2, which with a cap of
+   two a week took anybody from met to friendship 10 in a fortnight — all
+   three of their heart events inside the first month, every recipe gate open
+   before the house was up, and the loft's FOLKET wing finished before its
+   shelves had been swept. At +1 the same climb is about eight weeks, so the
+   eight arcs play out across the first half of the run instead of the first
+   month, and Astrid's own BEK_LOFT_FR is a month of visits rather than a
+   fortnight — which is what puts the loft's first festival offering a whole
+   season later and makes Act II the four seasons it is supposed to be.
+   The one way to climb faster is the one that costs something: a crop given
+   at its best running grade still lands an extra point (talkTo(), index.js),
+   so a well-farmed gift is worth what any gift used to be. */
+export const BEK_GIFT_FR = { loved: 1, liked: 1, neutral: 0, disliked: -1 };
 
 /* ==========================================================================
    27.4a THE WATER — species by map, weather, season and hour
@@ -1191,7 +1298,7 @@ export const BEK_RECIPES = {
        and fr 2 is the gate his own `gjerde` already sits behind. */
     { id: 'planke',     out: 'planke',   qty: 2, need: { tommer: 3 },
       fr: { npc: 'hakon',  min: 2 } },
-    { id: 'dyrefor',    out: 'dyrefor',  qty: 3, need: { potet: 1, nepe: 1 },
+    { id: 'dyrefor',    out: 'dyrefor',  qty: 8, need: { potet: 1, nepe: 1 },
       fr: { npc: 'sigrid', min: 2 }, lvl: { kind: 'farm', min: 1 } },
     /* GIFTING: the one item on the ghost list — a name, an icon and a
        colour in BEK_ITEMS with nothing that ever obtained it. The three
@@ -1392,14 +1499,19 @@ export const BEK_LOFT = [
    `props` layer into the room the way BEK_DECOR.lakehouse_t2 layers into the
    house (propsPrepare(), index.js): over what is there, never instead of it.
    `town` is the same overlay seen from outside — BEK_DECOR.town_t1. */
+/* At 8 / 24 / 44 the gaps between them were 8, 16 and 20 — the building came
+   back fastest at the start and then made you wait longest for the last of
+   it, which is the opposite of what a year's work wants. Quarters of the
+   sixty-four instead: the same three stages, sixteen donations apart every
+   time, with sixteen more past the last one for the wings themselves. */
 export const BEK_LOFT_STAGES = [
-  { id: 'st1', at: 8,  t: { no: 'TAKET OG LEMMENE', en: 'THE ROOF AND THE SHUTTERS' },
+  { id: 'st1', at: 16, t: { no: 'TAKET OG LEMMENE', en: 'THE ROOF AND THE SHUTTERS' },
     grant: { bagCap: 20 }, gt: { no: '+20 SEKKEPLASS', en: '+20 BAG SPACE' },
     props: [{ x: 2, y: 2, kind: 'lamp' }, { x: 21, y: 12, kind: 'broom' }] },
-  { id: 'st2', at: 24, t: { no: 'GOLVET OG OVNEN', en: 'THE FLOOR AND THE STOVE' },
+  { id: 'st2', at: 32, t: { no: 'GOLVET OG OVNEN', en: 'THE FLOOR AND THE STOVE' },
     grant: { enMax: 10 }, gt: { no: '+10 UTHOLDENHET', en: '+10 STAMINA' },
     props: [{ x: 2, y: 7, kind: 'coat' }, { x: 21, y: 7, kind: 'firewood' }, { x: 13, y: 6, kind: 'cat' }] },
-  { id: 'st3', at: 44, t: { no: 'SVALGANGEN', en: 'THE UPPER GALLERY' },
+  { id: 'st3', at: 48, t: { no: 'SVALGANGEN', en: 'THE UPPER GALLERY' },
     grant: { enMax: 10 }, gt: { no: '+10 UTHOLDENHET', en: '+10 STAMINA' },
     props: [{ x: 6, y: 2, kind: 'picture' }, { x: 16, y: 2, kind: 'crockery' }, { x: 2, y: 12, kind: 'jars' }] }
 ];

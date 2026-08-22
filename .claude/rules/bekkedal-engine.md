@@ -220,6 +220,26 @@ that harness this change was verified 72/72 byte-identical against HEAD.
   carries over, and that nothing transient (a swing, a particle list, the
   camera shake) has leaked *into* the save. Reading the migration code and
   concluding "yes" is not a test.
+- `node scripts/bekkedal_playtest.mjs [rates|commutes|act1]` — the valley
+  walked, and a fresh save played. Same headless stub as `smoke.mjs` (both
+  import it from `scripts/bek_headless.mjs` now), driven at half of
+  `BEK_STEP_S` a frame so a tile costs the in-game minutes it really costs
+  rather than whatever a coarser step rounds it up to. Every action is a real
+  keydown or keyup on the real canvas; state comes back out of the save blob
+  the SAVE button writes; the one thing it reads that a save does not carry is
+  which panel is open, off `__bekDebug`, and only to *know* — nothing here
+  teleports, grants an item, skips a walk or opens a panel by hand.
+  `rates` confirms the two figures the whole balance pass is built on (0.560
+  in-game minutes a tile, and what a swing costs); `commutes` prints how far
+  it is to everywhere off the real rows and seams; `act1` plays a fresh save
+  and reports, day by day, how much of the 06:00-to-02:00 clock a day actually
+  used and what stopped the work. That last number is the one the balance
+  figures in `.claude/rules/bekkedal-content.md` hang off: **a day is the whole
+  clock, five real minutes**, which the day-by-day simulation in
+  `act2_check_sim.js` — walking optimally and never twice — underestimates by
+  about a fifth. The scripted player works one livelihood and its shop
+  scripting is brittle against NPCs who keep hours, so it is a measurement of
+  *a day*, not a substitute for the four simulated runs.
 
 ## Autosave
 

@@ -7,21 +7,27 @@ import { BEK_BARN_SLOTS, BEK_BARN_SLOTS2 } from './data.js';
 
 /* the house itself. Two build paths chosen once (S.flag.build), each with
  * its own kr/tømmer/stein price; S.flag.rabatt2 (Håkon's own fr>=4 discount,
- * skog path only) knocks 500 kr off. Unchanged by Act II — this is the
- * milestone that unlocks it, not a thing Act II repriced. */
+ * skog path only) knocks 1500 kr off. Unchanged by Act II — this is the
+ * milestone that unlocks it, not a thing Act II repriced.
+ *
+ * The kr figures are the last and largest step of Act I's ladder, and they
+ * are what sets its length: at the measured ~7 kr per energy and a 200-point
+ * bar, a first playthrough clears the pick, the lot and this between day 20
+ * and day 25 (act2_check_balance.js). Move either number and that window
+ * moves with it. */
 export function houseCost(S) {
   const skog = S.flag.build === 'skog';
-  let kr = skog ? 5000 : 6500;
-  if (S.flag.rabatt2) kr -= 500;
+  let kr = skog ? 28000 : 35000;
+  if (S.flag.rabatt2) kr -= 1500;
   return { kr: kr, tommer: skog ? 30 : 12, stein: skog ? 20 : 10 };
 }
 
-/* Act II: the one purchasable house upgrade tier, priced well under the
- * house itself (a room added to a house you already live in costs less than
- * the house did) but still a real materials-and-kr sink, same shape as
+/* Act II: the one purchasable house upgrade tier, priced under the house
+ * itself (a room added to a house you already live in costs less than the
+ * house did) but still a real materials-and-kr sink, same shape as
  * houseCost() so hakonBuild() can check it the same way. */
 export function houseTierCost() {
-  return { kr: 1800, tommer: 10, stein: 8 };
+  return { kr: 9000, tommer: 10, stein: 8 };
 }
 
 /* The single gate hakonTilbygg() (index.js) checks before offering the
@@ -43,7 +49,7 @@ export function barnSlots(S) {
  * and hakonGreenhouse() (index.js). Independent of S.houseTier: it is its
  * own late unlock, not a second annex. */
 export function greenhouseCost() {
-  return { kr: 3500, tommer: 20, stein: 15 };
+  return { kr: 15000, tommer: 20, stein: 15 };
 }
 export function greenhouseAvailable(S) {
   return !!S.act2Unlocked && !!S.built && !S.flag.greenhouse;
