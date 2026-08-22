@@ -50,14 +50,20 @@ export function howLong(C) {
    pass is: no energy budget, no walking, no bag limit, no missed casts, and
    every seed and every recipe already unlocked the day the loft opens. A real
    playthrough takes at least this long and never less. */
-  const OPEN_DAY = 8;            /* houseBuilt lands day 6-12 (act2_check.js's own balance pass) */
+  /* When the loft can first be given to at all: the house lands day 20-25
+     and Astrid's own BEK_LOFT_FR takes about a month of a gift a week on
+     top of it, so 30 is the earliest a key changes hands — measured by
+     act2_check_sim.js's four runs, which all open it on the same day. */
+  const OPEN_DAY = 30;
   const HORIZON = 400;
   const FISH_LEAD = 1, GATHER_LEAD = 1, DEEP10 = 3, DEEP20 = 6, KRYSTALL = 4, FR10 = 14;
   const PRESV = { syltetoy: 2, fruktvin: 4 };     /* PRESV_DAYS, index.js */
   function earliestCrop(id) {
   const cid = Object.keys(BEK_CROPS).filter(c => BEK_CROPS[c].out === id)[0];
   if (!cid) return null;
-  for (let d = OPEN_DAY; d < HORIZON; d++) if (cropInSeason(cid, d)) return d + BEK_CROPS[cid].days;
+  /* the spec, not the id: cropInSeason() handed a string answers `true` for
+     every crop in every season, so this pass had no season gate at all */
+  for (let d = OPEN_DAY; d < HORIZON; d++) if (cropInSeason(BEK_CROPS[cid], d)) return d + BEK_CROPS[cid].days;
   return null;
   }
   function runOnce(rand) {

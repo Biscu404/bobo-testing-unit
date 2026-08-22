@@ -9,26 +9,28 @@
  * and actually opens after it — that is what section 1 checks, reading the
  * same predicates/tables the game reads rather than a second copy of them.
  *
- * Section 2 is the balance pass: a day-by-day simulation of a player's
- * energy budget (BEK_TOOLS' own costs), reading real sell prices, crop
- * timings, and houseCost()/BEK_LOT_COST — the brief this app's CLAUDE.md
- * task asked for ("propose deltas so a first playthrough reaches houseBuilt
- * in ~8-10 in-game days with no single money loop dominating") turned into
- * an assertion instead of a one-off spreadsheet, so a future price or
- * energy-cost change gets caught here rather than only in playtesting.
+ * Section 2 is the balance pass, and it lives in three siblings of its own —
+ * `act2_check_walk.js` (how far it is to everywhere, measured off the real
+ * rows and seams), `act2_check_rates.js` (what an hour of each of the five
+ * livelihoods is worth, priced off the real tables at three stages of the
+ * game) and `act2_check_sim.js` (four players, four whole runs, arrival to
+ * ending) — with `act2_check_balance.js` stating the targets. Split for the
+ * 300-line rule, the way `mine_check_ore.js` is one of `mine_check.js`; still
+ * one command.
  *
- * The simulation is a deliberate lower bound, not a prediction: it ignores
- * every farm/mine level-up bonus (index.js's addXp()/S.lvl), the steel axe,
- * fishing (skill-gated by the reel minigame, not modelled), and quest/board
- * income beyond the one mandatory tømmer quest. A real playthrough that uses
- * any of those reaches houseBuilt at least as fast as this does, not slower.
+ * The simulation is a deliberate lower bound, not a prediction: it plays
+ * optimally, never walks anywhere twice, never loses a fish it should not and
+ * never stands still reading a conversation. A real playthrough takes at
+ * least this long and never less — which is why the figures in the docs are
+ * the ones `scripts/bekkedal_playtest.mjs` measured off the real frame loop,
+ * with these beside them as the floor.
  */
-import { BEK_ITEMS, BEK_CROPS, BEK_TOOLS, BEK_QUESTS, BEK_LOT_COST, BEK_TALK,
-         BEK_QUEST_TEMPLATES, BEK_BARN_PLOT, BEK_BARN_PLOT2, BEK_BARN_SLOTS2, BEK_FARM_PLOTS,
-         BEK_GREENHOUSE_PLOT, BEK_DECOR, BEK_MAPS } from './data.js';
-import { houseCost, houseTierAvailable, barnSlots } from './progression.js';
+import { BEK_TALK, BEK_QUEST_TEMPLATES, BEK_BARN_PLOT, BEK_BARN_PLOT2, BEK_BARN_SLOTS2,
+         BEK_FARM_PLOTS, BEK_GREENHOUSE_PLOT, BEK_DECOR, BEK_MAPS } from './data.js';
+import { houseTierAvailable, barnSlots } from './progression.js';
 import { refreshBoard } from './quests.js';
 import { PROP } from './decor.js';
+import { balancePass } from './act2_check_balance.js';
 
 let fails = 0, checks = 0;
 const ok = (cond, label, detail) => {
@@ -199,90 +201,25 @@ pass('act2 quest templates', '400+400 rolls');
 /* ============================================================================
    2. THE BALANCE PASS
    ---------------------------------------------------------------------------
-   Hand-authored inputs that are not exported constants (fresh()'s starting
-   kr/enMax in index.js, and rock.js's own documented ore-mix weights — see
-   apps/bekkedal/CLAUDE.md "The die is rolled once per square"). Kept in sync
-   by citation rather than by import, the same way quest_check.js's own GATE
-   table is: these describe what the engine does, not a formula it exposes.
+   Three siblings, split for the 300-line rule the way `mine_check_ore.js` is
+   one of `mine_check.js` — still one command. `act2_check_walk.js` measures
+   the valley (how far to the wood, how far apart two birches are, how many
+   in-game minutes that is); `act2_check_rates.js` prices every livelihood off
+   the real tables at three stages of the game; `act2_check_sim.js` plays four
+   whole runs, day by day, from arrival to the last shelf of the loft; and
+   `act2_check_balance.js` states what all of it has to add up to.
+
+   What used to be here was a single day-by-day energy budget asserting the
+   house landed around day 8-10 with no loop dominating. Both halves of that
+   were true of a game that has since been rebuilt underneath them — the maps
+   are three and four times the size, so a day is mostly walking; the descent,
+   the fishing overhaul, farming's quality and preserves, the loft's year of
+   work and a house full of furniture all arrived after it was written. The
+   targets are Act I in 20-25 days, Act II in at least four more seasons, six
+   to ten real hours to the ending, and no livelihood or policy running away
+   with it at any point along the way.
    ========================================================================== */
-const STARTING_KR = 500;                        /* fresh(), index.js */
-const EN_MAX = 120;                              /* fresh(), index.js — never upgraded */
-const HAKKE_COST = 400;                          /* BEK_TALK.lars.nodes[1].buy.kr, data.js */
-/* normal-vein ore mix, 55/30/15 jern/kobber/solv (rock.js's oreKind(), cited
-   in this app's own CLAUDE.md) */
-const AVG_ORE = 0.55 * BEK_ITEMS.jern.sell + 0.30 * BEK_ITEMS.kobber.sell + 0.15 * BEK_ITEMS.solv.sell;
-const toolE = id => BEK_TOOLS.filter(t => t.id === id)[0].e;
-const OKS_E = toolE('oks'), HAKKE_E = toolE('hakke'), SPADE_E = toolE('spade'), KANNE_E = toolE('kanne');
-
-/* one early, always-available crop as the farming loop's representative:
-   kål (BEK_CROPS.kal), the best kr/energy of the four crops available with
-   no friendship or seasonal gate to clear first */
-const CROP = BEK_CROPS.kal, CROP_ITEM = BEK_ITEMS[CROP.out];
-const TOMMER_QUEST = BEK_QUESTS.filter(q => q.id === 'tommer')[0];
-
-/* policy: energy-share weights per activity, remainder idle. Mining and
-   felling pay off the same day; farming pays off CROP.days later — plots
-   already growing are watered before any new energy is spent, so the
-   simulation cannot "skip" the wait by throwing more energy at it. */
-function simulate(policy, maxDays) {
-  let kr = STARTING_KR, tommer = 0, stein = 0, hasHakke = false, tommerDelivered = false, lotBought = false;
-  let plots = [];
-  for (let day = 1; day <= maxDays; day++) {
-    let energy = EN_MAX;
-    if (!hasHakke && kr >= HAKKE_COST) { kr -= HAKKE_COST; hasHakke = true; }
-
-    /* water every growing plot first (a plot already in the ground is not
-       optional upkeep the policy can choose to skip) */
-    const Wc = Math.max(1, KANNE_E);
-    plots.forEach(p => { if (energy >= Wc) { energy -= Wc; p.age++; } });
-    /* harvest anything ready */
-    const ready = plots.filter(p => p.age >= CROP.days);
-    ready.forEach(p => { if (energy >= 1) { energy -= 1; kr += CROP_ITEM.sell; p.done = true; } });
-    plots = plots.filter(p => !p.done);
-
-    const mineE = Math.floor(energy * policy.mine);
-    const fellE = Math.floor(energy * policy.fell);
-    const farmE = Math.max(0, energy - mineE - fellE);
-
-    if (hasHakke) {
-      const swings = Math.floor(mineE / HAKKE_E);
-      kr += swings * AVG_ORE; stein += swings;
-    }
-    tommer += Math.floor(fellE / OKS_E);
-
-    const Tc = Math.max(1, SPADE_E);
-    const newPlots = Math.floor(farmE / (Tc + 1));
-    for (let i = 0; i < newPlots; i++) plots.push({ age: 0, done: false });
-
-    /* the mandatory gate: the lot cannot be bought before this fixed quest
-       is turned in, and turning it in spends the tømmer it asks for */
-    if (!tommerDelivered && tommer >= TOMMER_QUEST.need.tommer) {
-      tommer -= TOMMER_QUEST.need.tommer; kr += TOMMER_QUEST.kr; tommerDelivered = true;
-    }
-    if (tommerDelivered && !lotBought && kr >= BEK_LOT_COST) { kr -= BEK_LOT_COST; lotBought = true; }
-
-    if (lotBought) {
-      const c = houseCost({ flag: { build: 'skog' } });
-      if (kr >= c.kr && tommer >= c.tommer && stein >= c.stein) return day;
-    }
-  }
-  return null;
-}
-
-console.log('\n-- balance pass --');
-const MIXED = { mine: 0.40, fell: 0.35 };                 /* farm gets the energy remainder */
-const MINING_HEAVY = { mine: 0.70, fell: 0.30 };
-const HORIZON = 60;
-const mixedDay = simulate(MIXED, HORIZON);
-const heavyDay = simulate(MINING_HEAVY, HORIZON);
-ok(mixedDay != null, 'a mixed policy reaches houseBuilt within ' + HORIZON + ' simulated days', 'day ' + mixedDay);
-ok(mixedDay != null && mixedDay >= 6 && mixedDay <= 12,
-   'a mixed policy lands near the ~8-10 day target',
-   'day ' + mixedDay + ' (target 6-12)');
-ok(heavyDay != null && mixedDay != null && heavyDay >= mixedDay * 0.7,
-   'a mining-heavy policy is not dramatically faster than a mixed one (no single loop dominating)',
-   'mixed day ' + mixedDay + ', mining-heavy day ' + heavyDay);
-pass('balance pass', 'mixed=' + mixedDay + ' mining-heavy=' + heavyDay + ' (avg ore ' + Math.round(AVG_ORE) + ' kr, hakke ' + HAKKE_E + ' energy/swing)');
+balancePass({ ok: ok, pass: pass });
 
 console.log('\n' + (fails ? fails + ' of ' + checks + ' checks FAILED' : 'All ' + checks + ' act2 checks pass.'));
 process.exit(fails ? 1 : 0);

@@ -143,10 +143,10 @@ export const STONE_TALK = {
             reply: [{ no: 'A builder. Good. Every swing gives stein along with the ore.', en: 'A builder. Good. Every swing gives stone along with the ore.' }] }
         ] } },
       { id: 'l2', when: S => !S.tools.hakke,
-        lines: [{ no: 'You will need a HAKKE. I sell one for 400 kr.', en: 'You will need a PICK. I sell one for 400 kr.' }],
-        buy: { label: { no: 'HAKKE — 400 kr', en: 'PICK — 400 kr' }, kr: 400, tool: 'hakke', pickLv: 1,
+        lines: [{ no: 'You will need a HAKKE. I sell one for 1500 kr.', en: 'You will need a PICK. I sell one for 1500 kr.' }],
+        buy: { label: { no: 'HAKKE — 1500 kr', en: 'PICK — 1500 kr' }, kr: 1500, tool: 'hakke', pickLv: 1,
                ok: ['Swing at the veins, not the walls.'],
-               no: ['400 kr. The ore is not going anywhere.'] } },
+               no: ['1500 kr. The ore is not going anywhere.'] } },
       { id: 'l3', when: S => S.tools.hakke && !S.q.jern && S.pickLv < 2,
         lines: [{ no: 'Bring me six jern and I will forge you a STÅLHAKKE.', en: 'Bring me six iron and I will forge you a STEEL PICK.' },
                 { no: 'The rich veins — the sølv — need steel to crack.', en: 'The rich veins — the silver — need steel to crack.' }],

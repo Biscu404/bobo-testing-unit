@@ -51,7 +51,11 @@ import { placeVeins, dressing } from './mine_ore.js';
    metal, not a probability: the generator scores candidate faces by it and
    takes the best, so a band's mix is a shape it converges on rather than a
    die it rolls. `rich` is out of twelve (the `rich` channel's own modulus),
-   `dig` is what a swing costs on top of the hakke's own 7, `wander` is how
+   `dig` is what a swing costs on top of the hakke's own 7 — three on the
+   bottom band rather than two, because that band pays two multipliers at
+   once (five parts silver in eight, and the only crystal in the game) and at
+   two it was worth twice the surface per point of energy rather than the
+   third act2_check_rates.js holds every livelihood to. `wander` is how
    far a drift is allowed off the straight line the survey would have cut, and
    `fall` is how much of the roof has come down (out of sixteen — nothing at
    all on a level the company still swept, two squares in sixteen where the
@@ -71,7 +75,7 @@ export const MINE_BANDS = [
     ore: { jern: 4, kobber: 5, solv: 2 }, props: ['timbering', 'spoilheap', 'railtrack'] },
   { id: 'hard',   cut: '.', from: 10, layout: 'rough',  wander: 2, dig: 1, rich: 4, gem: 2, fall: 1,
     ore: { jern: 1, kobber: 5, solv: 5 }, props: ['timbering', 'spoilheap'] },
-  { id: 'deep',   cut: 'g', from: 15, layout: 'blob',   wander: 3, dig: 2, rich: 5, gem: 4, fall: 2,
+  { id: 'deep',   cut: 'g', from: 15, layout: 'blob',   wander: 3, dig: 3, rich: 5, gem: 4, fall: 2,
     ore: { jern: 0, kobber: 3, solv: 8 }, props: ['spoilheap'] }
 ];
 /* Every fifth floor is a station: it is the one that carries a hoist out, and
