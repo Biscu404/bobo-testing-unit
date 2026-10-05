@@ -39,7 +39,7 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
 
 ## The machine's own behaviour (kernel)
 - **Boot.** `kernel/boot.js` decides, `kernel/bootseq.js` performs. A launch after **eight hours** away (a 5 min
-  heartbeat in `templeos.lastseen.v1`, not the launch time) gets the *long boot*: ten seconds, unskippable — seven of a
+  heartbeat in IndexedDB `templeos_meta`, not the launch time) gets the *long boot*: ten seconds, unskippable — seven of a
   PC in trouble (dying fan, bad block, drive timeout, a progress bar that goes backwards, a freeze, the song coming
   through a wall), then three of crawling text. **The text is `kernel/boot_text.js`: edit that file, nothing else.**
   Every other power-on is the quick boot. Both end on `PRESS [~] TO ENTER` and only `~` (`` ` ``/Backquote) enters:
