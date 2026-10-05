@@ -14,6 +14,7 @@ import { Music } from './music.js';
 import { SunUI } from './economy.js';
 import { MixerUI } from './mixer.js';
 import { panic } from './panic.js';
+import { runBootSequence, cancelBoot } from './bootseq.js';
 window.Music = Music;
 
 /* window.onerror is the closest a browser gets to a machine check */
@@ -26,18 +27,6 @@ window.addEventListener('unhandledrejection', e => {
 });
 
 const PALETTE = ['#FFFF55','#55FF55','#55FFFF','#FF55FF','#FF5555','#FFFFFF','#5555FF'];
-
-const BOOT_LINES = [
-  ['TempleOS V5.03', 'w'],
-  ['Public Domain. God\'s Third Temple.', 'y'],
-  ['Loading Adam (task 0)...', 'g'],
-  ['Spawning Seth...', 'g'],
-  ['Mem: 640K OK', 'g'],
-  ['HolyC JIT Ready', 'g'],
-  ['DolDoc Ready', 'g'],
-  ['Ring 0. No user mode. No network.', 'y'],
-  ['Press Any Key', 'w']
-];
 
 function drawWordmark() {
   const wm = document.getElementById('wordmark');
@@ -58,43 +47,55 @@ function drawWordmark() {
 }
 
 let bootDone = false;
-let bootTimer = null;
 let booting = false;
 let vfsReady = false;
+
+/* ---- when was the machine last used? -------------------------------------
+   A launch after eight hours away gets the long boot, and it cannot be
+   skipped. "Last used" is a heartbeat, not a launch time: a machine left
+   running for a week and closed a minute ago is not a cold one. */
+const SEEN_KEY = 'templeos.lastseen.v1';
+const COLD_MS = 8 * 60 * 60 * 1000;
+function readSeen() {
+  try { return Number(localStorage.getItem(SEEN_KEY)) || 0; } catch (e) { return 0; }
+}
+function stampSeen() {
+  try { localStorage.setItem(SEEN_KEY, String(Date.now())); } catch (e) {}
+}
+/* the machine has been away if nothing was ever recorded, or the last mark
+   is eight hours old. A mark from the future (a clock set back) is not away. */
+let owesLongBoot = (() => {
+  const seen = readSeen(), now = Date.now();
+  return !seen || (seen <= now && now - seen >= COLD_MS);
+})();
+stampSeen();
+setInterval(stampSeen, 30000);
+window.addEventListener('pagehide', stampSeen);
+window.addEventListener('beforeunload', stampSeen);
+
+/* ~ is the way in, and nothing else: a stray click or a held key on the way
+   to somewhere else must not throw the splash away. */
+const isEnterKey = ev => !ev.ctrlKey && !ev.metaKey && !ev.altKey &&
+  (ev.key === '~' || ev.key === '`' || ev.code === 'Backquote');
+function onEnterKey(ev) {
+  if (!isEnterKey(ev) || ev.repeat) return;
+  ev.preventDefault();
+  dismissSplash();
+}
 
 function runBootLines() {
   bootDone = false;
   booting = true;
-  clearTimeout(bootTimer);
-
-  const box = document.getElementById('bootlines');
-  if (!box) { booting = false; return; }
-  box.innerHTML = '';
-
-  let i = 0;
-  const step = () => {
-    if (!CRT.on) { booting = false; return; } // Pause if turned off
-
-    if (i >= BOOT_LINES.length) {
-      const cur = document.createElement('span');
-      cur.id = 'bootcursor';
-      cur.className = 'blink';
-      cur.textContent = '\u2588';
-      box.lastChild.appendChild(cur);
-      bootDone = true;
-      booting = false;
-      document.addEventListener('keydown', dismissSplash);
-      document.addEventListener('click', dismissSplash);
-      return;
-    }
-    const d = document.createElement('div');
-    d.className = 'bootline ' + BOOT_LINES[i][1];
-    d.textContent = BOOT_LINES[i][0];
-    box.appendChild(d);
-    i++;
-    bootTimer = setTimeout(step, 150);
-  };
-  bootTimer = setTimeout(step, 400);
+  document.removeEventListener('keydown', onEnterKey, true);
+  const mode = owesLongBoot ? 'long' : 'quick';
+  if (window.Music && window.Music.bootStart) window.Music.bootStart();
+  runBootSequence(mode, () => {
+    if (mode === 'long') owesLongBoot = false;      /* only a boot that finished counts */
+    bootDone = true;
+    booting = false;
+    stampSeen();
+    document.addEventListener('keydown', onEnterKey, true);
+  });
 }
 
 window.runBoot = async function() {
@@ -109,10 +110,10 @@ window.runBoot = async function() {
 window.powerOff = function() {
   if (!CRT.on) return;
   CRT.on = false;
-  document.removeEventListener('keydown', dismissSplash);
-  document.removeEventListener('click', dismissSplash);
-  clearTimeout(bootTimer);
+  document.removeEventListener('keydown', onEnterKey, true);
+  cancelBoot();
   booting = false;
+  bootDone = false;
   const lamp = document.getElementById('lamp');
   if (lamp) lamp.classList.remove('on');
   const screen = document.getElementById('screen');
@@ -137,7 +138,6 @@ window.powerOn = function() {
   if (sp) sp.style.display = 'flex';
   window.runBoot();
   if (window.Snd && window.Snd.boot) window.Snd.boot();
-  if (window.Music && window.Music.sync) window.Music.sync();
 };
 
 let desktopBuilt = false;
@@ -150,11 +150,11 @@ function dismissSplash() {
   
   sp.style.display = 'none';
   document.getElementById('shell').style.display = 'block';
+  document.removeEventListener('keydown', onEnterKey, true);
   
   if (window.Snd && window.Snd.wake) window.Snd.wake();
-
-  document.removeEventListener('keydown', dismissSplash);
-  document.removeEventListener('click', dismissSplash);
+  /* leaving the lobby: from here the song is the LOBBY switch's business */
+  if (window.Music && window.Music.bootEnd) window.Music.bootEnd();
 
   if (desktopBuilt) {
     if (window.Snd && window.Snd.ok) window.Snd.ok(); // coming back from a power cycle

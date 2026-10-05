@@ -16,7 +16,7 @@ await pg.addInitScript(() => { window.AudioContext = window.webkitAudioContext =
 await pg.goto(URL, { waitUntil: 'domcontentloaded' });
 await pg.evaluate(() => { if (window.powerOn) window.powerOn(); });
 await pg.waitForSelector('#bootcursor', { timeout: 30000 });
-await pg.evaluate(() => document.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+await pg.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: '~', code: 'Backquote', bubbles: true, cancelable: true })));
 await pg.waitForSelector('#shell', { state: 'visible', timeout: 15000 });
 await pg.evaluate(() => import('/kernel/wm.js').then(m => m.openWindow('bekkedal')));
 await pg.waitForSelector('canvas.bekcv', { state: 'visible', timeout: 15000 });

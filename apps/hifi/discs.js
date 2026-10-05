@@ -82,16 +82,29 @@ export function hifiPress(spec, rate) {
   const leadB = bus(0.18, 0.34), bassB = bus(0, 0.46), padB = bus(-0.26, 0.22),
         arpB  = bus(0.34, 0.18), drumB = bus(0, 0.40);
 
-  const note = (dest, f, at, dur, type, vol, glide) => {
+  const note = (dest, f, at, dur, type, vol, glide, detune) => {
+    if (!f || !(vol > 0)) return;
     const o = oc.createOscillator(), g = oc.createGain();
     o.type = type; o.frequency.setValueAtTime(f, at);
-    if (glide) o.frequency.exponentialRampToValueAtTime(glide, at + dur);
+    if (glide) o.frequency.exponentialRampToValueAtTime(Math.max(20, glide), at + dur);
+    if (detune) o.detune.setValueAtTime(detune, at);
+    const atk = Math.min(0.012, dur * 0.3);
     g.gain.setValueAtTime(0.0001, at);
-    g.gain.exponentialRampToValueAtTime(vol, at + 0.012);
-    g.gain.setValueAtTime(vol, at + dur * 0.6);
+    g.gain.exponentialRampToValueAtTime(vol, at + atk);
+    g.gain.setValueAtTime(vol, at + Math.max(atk, dur * 0.6));
     g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
     o.connect(g); g.connect(dest); o.start(at); o.stop(at + dur + 0.05);
   };
+  /* a note is [name | hertz, at, length, extras?] -- the extras are what the
+     lobby variants use (glide ratio g, volume v, detune d, type t, octave o) */
+  const pitch = n => (typeof n === 'number' ? n : HFN[n]);
+  const tb = Object.assign({ lead: 'square', bass: 'square', pad: 'triangle', arp: 'triangle' }, spec.timbre || {});
+  const rel = Object.assign({ lead: 1, bass: 1, pad: 1, arp: 1, drum: 1 }, spec.rel || {});
+  const layer = (dest, list, key, at, lenK, vol, fade) => (list || []).forEach(n => {
+    const x = n[3] || {}, f = pitch(n[0]) * (x.o || 1);
+    note(dest, f, at(n[1]), n[2] * step * lenK, x.t || tb[key], vol * rel[key] * (x.v || 1) * fade,
+         x.g ? f * x.g : 0, x.d || 0);
+  });
   const hit = (dest, at, ms, freq, q, vol) => {
     const n = Math.max(1, Math.floor(rate * ms / 1000));
     const buf = oc.createBuffer(1, n, rate), d = buf.getChannelData(0);
@@ -106,14 +119,15 @@ export function hifiPress(spec, rate) {
     const t0 = r * barLen;
     const at = i => t0 + i * step;
     const fade = r === 0 ? 0.55 : (r >= spec.reps - 2 ? 0.6 : 1);   /* in at the top, out at the end */
-    (spec.bass || []).forEach(n => note(bassB, HFN[n[0]], at(n[1]), n[2] * step * 0.92, 'square', 0.30 * fade));
-    (spec.pad  || []).forEach(n => note(padB,  HFN[n[0]], at(n[1]), n[2] * step * 0.96, 'triangle', 0.22 * fade));
-    (spec.lead || []).forEach(n => note(leadB, HFN[n[0]], at(n[1]), n[2] * step * 0.90, 'square', 0.26 * fade));
-    if (spec.arp && r > 0) (spec.arp).forEach(n => note(arpB, HFN[n[0]], at(n[1]), n[2] * step * 0.7, 'triangle', 0.20 * fade));
+    layer(bassB, spec.bass, 'bass', at, 0.92, 0.30, fade);
+    layer(padB,  spec.pad,  'pad',  at, 0.96, 0.22, fade);
+    layer(leadB, spec.lead, 'lead', at, 0.90, 0.26, fade);
+    if (spec.arp && r > 0) layer(arpB, spec.arp, 'arp', at, 0.7, 0.20, fade);
     if (r > 0) {
-      (spec.kick  || []).forEach(i => note(drumB, 132, at(i), 0.17, 'sine', 0.55 * fade, 44));
-      (spec.snare || []).forEach(i => { hit(drumB, at(i), 140, 1850, 0.9, 0.32 * fade); note(drumB, 190, at(i), 0.09, 'triangle', 0.16 * fade, 92); });
-      (spec.hat   || []).forEach(i => hit(drumB, at(i), 28, 8200, 1.7, 0.14 * fade));
+      const dk = rel.drum;
+      (spec.kick  || []).forEach(i => note(drumB, 132, at(i), 0.17, 'sine', 0.55 * fade * dk, 44));
+      (spec.snare || []).forEach(i => { hit(drumB, at(i), 140, 1850, 0.9, 0.32 * fade * dk); note(drumB, 190, at(i), 0.09, 'triangle', 0.16 * fade * dk, 92); });
+      (spec.hat   || []).forEach(i => hit(drumB, at(i), 28, 8200, 1.7, 0.14 * fade * dk));
     }
   }
   return oc.startRendering();

@@ -21,6 +21,7 @@ export default {
   width: 1000,
   height: 620,
   resizable: true,
+  fluid: true,
 
   async mount(root, ctx) {
     const saveStore = createSaveStore(ctx);

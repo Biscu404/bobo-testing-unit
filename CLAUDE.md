@@ -37,6 +37,27 @@ An app that opens its own window (`open()`) is never sent `unmount()`: add its w
 `apps/standbattle/fairness_check.js` is imported at runtime — do not treat `*_check*.js` as dev-only in packaging.
 CI (`.github/workflows/build.yml`) builds and tests both installers. Record of the move: `docs/electron-migration-plan.md`.
 
+## The machine's own behaviour (kernel)
+- **Boot.** `kernel/boot.js` decides, `kernel/bootseq.js` performs. A launch after **eight hours** away (a 30 s
+  heartbeat in `templeos.lastseen.v1`, not the launch time) gets the *long boot*: ten seconds, unskippable — seven of a
+  PC in trouble (dying fan, bad block, drive timeout, a progress bar that goes backwards, a freeze, the song coming
+  through a wall), then three of crawling text. **The text is `kernel/boot_text.js`: edit that file, nothing else.**
+  Every other power-on is the quick boot. Both end on `PRESS [~] TO ENTER` and only `~` (`` ` ``/Backquote) enters:
+  clicks and every other key are ignored. The `#bootcursor` element appears when it is ready (the checks wait for it).
+  A long boot that is interrupted (power cut mid-way) is owed again.
+- **Lobby music.** The boot always plays the hymn, whatever the LOBBY switch says; on the desktop the switch and MUS
+  govern it. `kernel/music_variants.js` builds four moods of the *same notes* (HYMN, MELLOW, DYNAMIC, GLITCH) as
+  plain specs; the lobby plays them live (`kernel/music.js`) and TheStack presses the same specs as discs. The listener
+  picks the variant in the mixer panel (♫).
+- **Mixer.** `kernel/mixer.js` lists only what is running: a channel is offered while a window with its `appId` is open
+  (`openWins` carries `appId`; `wm.js` fires `wins-changed`). A new app with music: add a channel to `CHANNELS`, multiply
+  its bus by `window.Mixer.get('<id>')`, and listen for `mixer-changed`.
+- **Fullscreen.** Every window has `[□]` (also F11 or a double-click on the title bar). A window whose app lays itself
+  out off its own size sets `fluid: true` (or `body.dataset.fluid = '1'`) and is simply given the room; any other window
+  with a canvas is kept at its built size and scaled to fit; plain DOM windows just fill the desktop.
+- **Drunk.** `kernel/drunk.js` (the bottle app) acts on `#tube` through an inline filter/transform. Never give `#tube` a
+  fill-forwards animation: an animated value beats an inline style, which is what silently killed this effect before.
+
 ## The App Contract
 Every app is a module with a default export shaped exactly like this:
 
@@ -210,6 +231,22 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   exercises directly, with synthetic corridors where the trap is
   constructed rather than merely hoped for, and a sweep of every real map.
   **Palette:** this app is the second explicit, user-requested exception to the machine's base 16-colour rule above — see `apps/bekkedal/CLAUDE.md` and `.claude/rules/bekkedal-art.md` for the full doctrine.
+- `sweeper`: `apps/sweeper/index.js` - Sweeper, a Hollow-Knight-flavoured minesweeper on one scalable canvas (`gfx.js`
+  draws a 960x640 sheet onto whatever size the window is, so fullscreen is bigger, not blurrier). Two ways in: the plain
+  game in three sizes, and a **campaign** — an ink-on-vellum *map* of six regions / 18 rooms (`map.js`, data in `data.js`)
+  with benches, guardians, and a mechanical layer taken from the source: *masks* (a larva costs a mask, not the game),
+  *soul* (earned by opening ground, spent on FOCUS to mend, SCRY to settle one tile, DIVE to settle an area), *geo*,
+  *charms in notches* (`bench.js`: twelve charms, three starting notches, so a build is a choice), *regions that change
+  the rules* (bramble, spores, web, dark) and a *shade* that keeps half your geo where you fell. The rules of a board are
+  pure in `board.js` (`node apps/sweeper/board_check.js`); `run.js` is play, `run_draw.js` is the room.
+- `cook`: Jesse (`apps/cook/jesse.js`) is drawn as a person — skin tone, buzzed hair, stubble, the yellow suit and the
+  respirator round his neck. **That portrait is a third user-requested exception to the 16-colour rule** (a face needs a
+  skin tone); nothing else in the app leaves VGA16. On a win he speaks first, in a box that fits what he says, and the
+  BATCH COMPLETE panel does not start until he has finished.
+- `bottle`: a Jägermeister bottle (green slab, stepped shoulder, orange label, stag with a lit cross), a poured stream that
+  is a real arc aimed at the glass, glugs, ripples and spray, and a drink that tips the glass. Drinking drives `kernel/drunk.js`.
+- `hifi` (TheStack): a disc library with **folders** — one for the lobby's four variants and one per app that scores itself
+  with music (`apps/hifi/library.js` lifts each app's own score into a disc spec; a disc is pressed the first time it is played).
 - `standbattle`: `apps/standbattle/index.js` - Stand Battle Arena, a JoJo's Bizarre Adventure roguelike combat prototype (see `docs/stand-battle-arena-spec.md`), ported in full from the jojo-roguelike repo's current, far more developed build (replacing this repo's earlier prototype port). Playable Jotaro Kujo/Star Platinum vs. Morioh enemies and boss Yoshikage Kira/Killer Queen, across a 6-node Act 1 (Morioh) map. Zero meta-progression by design; internal 480×270 canvas on a 720×260 belt plane (x, z) with a tracking camera, integer-only upscale.
   **Combat engine:** dodge (Step) is edge-triggered and gated by a 2-charge meter (`fighter.js`, GDD §3.7) with a HUD pip readout. All action inputs are queued in a 9-frame input buffer (`combat.js`) and fire the instant the player returns to idle. Arena world bounds are centralized in `arena_bounds.js`, shared by the sim (`combat.js`) and camera (`render.js`).
   **Simulation core:** the sim steps in whole frames at a fixed 60Hz (`sim_loop.js`'s `createFixedStepLoop`) on a real (x, z) belt plane. `fighter.js` is the entity/component store (`combat.entities = [player, enemy]`). `render_adapter.js` handles depth projection/sorting/camera targeting. Depth movement (`input.js`'s forward/back, W/S by default) is clamped via `arena_bounds.js`; hit detection remains x-only per Phase 1 scope. `headless_harness.js` (`node apps/standbattle/headless_harness.js`) runs the sim with no canvas for reproducible, seeded testing.

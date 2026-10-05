@@ -694,6 +694,11 @@ export default {
          changes what you are hearing, and the two arrive together.
          ========================================================================== */
       let alive = true;
+      const eleMix = ev => {
+        if (!alive) { window.removeEventListener('mixer-changed', eleMix); return; }
+        if (ev.detail && ev.detail.channel === 'elephant') Song.level(0.2);
+      };
+      window.addEventListener('mixer-changed', eleMix);
       const Song = {
         on: false, cur: 'first', bus: null, when: 0, timer: null, voices: [], g0: -1,
         swap: null, FADE: 1.4,
@@ -748,7 +753,7 @@ export default {
         want(id) { if (id !== this.cur) { if (this.on) this.crossfade(id); else this.cur = id; } },
         level(ramp) {
           if (!this.bus || !Snd.ctx) return;
-          const want = musGain();
+          const want = musGain() * (window.Mixer ? window.Mixer.get('elephant') : 1);
           if (ramp == null && Math.abs(want - this.g0) < 0.0005) return;
           this.g0 = want;
           const now = Snd.ctx.currentTime, gn = this.bus.gain;

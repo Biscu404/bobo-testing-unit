@@ -59,7 +59,7 @@ async function freshBoot() {
   await page.goto(t.url, { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => { if (window.powerOn) window.powerOn(); });
   await page.waitForSelector('#bootcursor', { state: 'attached', timeout: 30000 });
-  await page.evaluate(() => document.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+  await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: '~', code: 'Backquote', bubbles: true, cancelable: true })));
   await page.waitForSelector('#shell', { state: 'visible', timeout: 15000 });
   await page.waitForTimeout(800);
 }

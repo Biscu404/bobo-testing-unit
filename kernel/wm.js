@@ -18,6 +18,12 @@ const TITLE_COLORS = {
   terminal: { bar: '#AAAAAA', border: '#FFFFFF' }
 };
 
+/* the mixer (and anything else that cares what is running) listens for this
+   instead of polling the window list */
+export function announceWins() {
+  try { window.dispatchEvent(new CustomEvent('wins-changed')); } catch (e) {}
+}
+
 let taskSeq = 0;
 function nextTaskId() { return ++taskSeq; }
 
@@ -68,6 +74,11 @@ export function createWindow(opts) {
   mbtn.className = 'm';
   mbtn.textContent = '[_]';
 
+  const fbtn = document.createElement('span');
+  fbtn.className = 'f';
+  fbtn.textContent = '[\u25A1]';
+  fbtn.title = 'FULLSCREEN. Fill the desktop. F11 or double-click the title bar also works.';
+
   const x = document.createElement('span');
   x.className = 'x';
   x.textContent = '[X]';
@@ -104,6 +115,7 @@ export function createWindow(opts) {
   }
 
   bar.appendChild(mbtn);
+  bar.appendChild(fbtn);
   bar.appendChild(x);
 
   const body = document.createElement('div');
@@ -139,6 +151,65 @@ export function createWindow(opts) {
     Snd.open();
   }
 
+  /* ---- fullscreen -------------------------------------------------------
+     Every window can fill the desktop. A window whose app lays itself out
+     off its own size (flagged data-fluid, or any plain DOM layout) is simply
+     given the room. A canvas game that draws at a fixed size is instead kept
+     at the size it was built for and scaled to fit, so a 960x540 field is
+     never a postage stamp in the middle of a big black pane. */
+  let full = false, saved = null;
+  const fitScaled = () => {
+    if (!full || !win.classList.contains('scaled')) return;
+    const room = desk.getBoundingClientRect();
+    const th = bar.offsetHeight;
+    const aw = desk.clientWidth - 4, ah = desk.clientHeight - th - 4;
+    const k = Math.min(aw / saved.bw, ah / saved.bh);
+    body.style.width = saved.bw + 'px';
+    body.style.height = saved.bh + 'px';
+    body.style.transform = 'translate(' + Math.max(0, (aw - saved.bw * k) / 2) + 'px,' +
+      Math.max(0, (ah - saved.bh * k) / 2) + 'px) scale(' + k + ')';
+    void room;
+  };
+  function setFull(on) {
+    if (on === full) return;
+    if (win.classList.contains('hidden')) return;
+    if (on) {
+      saved = { l: win.style.left, t: win.style.top, w: win.style.width, h: win.style.height,
+                bw: body.clientWidth, bh: body.clientHeight };
+      const fluid = body.dataset.fluid === '1';
+      const fixedCanvas = !fluid && !!body.querySelector('canvas');
+      win.classList.add('full');
+      if (fixedCanvas) win.classList.add('scaled');
+      fbtn.textContent = '[\u25A3]';
+      full = true;
+      fitScaled();
+    } else {
+      win.classList.remove('full', 'scaled');
+      body.style.width = body.style.height = body.style.transform = '';
+      win.style.left = saved.l; win.style.top = saved.t;
+      win.style.width = saved.w; win.style.height = saved.h;
+      fbtn.textContent = '[\u25A1]';
+      full = false;
+    }
+    raise(win);
+    Snd.open();
+    /* anything that sizes itself off the window gets to hear about it */
+    requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
+  }
+  const toggleFull = () => setFull(!full);
+  fbtn.addEventListener('mousedown', ev => { ev.stopPropagation(); toggleFull(); });
+  bar.addEventListener('dblclick', ev => {
+    if (ev.target === x || ev.target === mbtn || ev.target === fbtn || ev.target.className === 'th') return;
+    toggleFull();
+  });
+  window.addEventListener('resize', fitScaled);
+  const onKey = ev => {
+    if (ev.key !== 'F11' || !btn.classList.contains('active') || win.classList.contains('hidden')) return;
+    ev.preventDefault();
+    toggleFull();
+  };
+  document.addEventListener('keydown', onKey);
+
   mbtn.addEventListener('mousedown', ev => { ev.stopPropagation(); minimize(); });
   btn.addEventListener('mousedown', () => {
     if (win.classList.contains('hidden')) unminimize();
@@ -147,8 +218,10 @@ export function createWindow(opts) {
   });
 
   const rec = { win: win, btn: btn, title: opts.title, kind: opts.kind || 'text',
-                id: nextTaskId(), born: Date.now(), close: null };
+                appId: opts.appId || null, id: nextTaskId(), born: Date.now(), close: null,
+                setFull: setFull, toggleFull: toggleFull };
   openWins.push(rec);
+  announceWins();
 
   win.addEventListener('mousedown', () => raise(win));
 
@@ -157,7 +230,10 @@ export function createWindow(opts) {
     btn.remove();
     const i = openWins.indexOf(rec);
     if (i >= 0) openWins.splice(i, 1);
+    document.removeEventListener('keydown', onKey);
+    window.removeEventListener('resize', fitScaled);
     Snd.close();
+    announceWins();
   }
   rec.close = closeWin;
 
@@ -165,7 +241,7 @@ export function createWindow(opts) {
 
   let dragging = false, offX = 0, offY = 0;
   bar.addEventListener('mousedown', ev => {
-    if (ev.target === x || ev.target === mbtn) return;
+    if (ev.target === x || ev.target === mbtn || ev.target === fbtn || full) return;
     const r = desk.getBoundingClientRect();
     dragging = true;
     offX = ev.clientX - r.left - win.offsetLeft;
@@ -176,6 +252,7 @@ export function createWindow(opts) {
 
   let sizing = false, sx = 0, sy = 0, sw = 0, sh = 0;
   grip.addEventListener('mousedown', ev => {
+    if (full) return;
     ev.stopPropagation();
     ev.preventDefault();
     sizing = true;
@@ -218,7 +295,15 @@ export async function openWindow(appId, args = {}) {
   if (!registry[appId]) throw new Error('App not found');
   const mod = await registry[appId]();
   const app = mod.default;
-  if (app.open) return app.open(args);
+  if (app.open) {
+    /* these make their own window; tag whatever they open with the app's id
+       so the mixer knows who is running */
+    const before = openWins.slice();
+    const res = await app.open(args);
+    openWins.forEach(r => { if (before.indexOf(r) < 0 && !r.appId) r.appId = appId; });
+    announceWins();
+    return res;
+  }
   
   const made = createWindow({
     kind: 'app',
@@ -229,6 +314,7 @@ export async function openWindow(appId, args = {}) {
     appId: appId
   });
   
+  if (app.fluid) made.body.dataset.fluid = '1';
   const ctx = {
     fs,
     save: async (key, val) => {
