@@ -84,6 +84,7 @@ export default {
   width: 988,                              /* 960 canvas at 1:1, plus frame */
   height: 640,
   resizable: true,
+  fluid: true,
   mount(root, ctx) {
   const body = root;
       const wrap = document.createElement('div');

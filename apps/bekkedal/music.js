@@ -20,7 +20,7 @@
  * with the rest of the SFX, because they are per-line and not per-scene.
  */
 
-const NOTE = { A2:110, B2:123.47, Cs3:138.59, D3:146.83, E3:164.81, Fs3:185, G3:196, A3:220, B3:246.94,
+export const NOTE = { A2:110, B2:123.47, Cs3:138.59, D3:146.83, E3:164.81, Fs3:185, G3:196, A3:220, B3:246.94,
                Cs4:277.18, D4:293.66, E4:329.63, Fs4:369.99, G4:392, A4:440, B4:493.88, Cs5:554.37,
                D5:587.33, E5:659.26, Fs5:739.99, G5:783.99, A5:880 };
 /* Every lead is a short phrase followed by open bars of pad and bass — a
@@ -30,7 +30,7 @@ const NOTE = { A2:110, B2:123.47, Cs3:138.59, D3:146.83, E3:164.81, Fs3:185, G3:
    marks the two tracks that already serve the night context (kveld, gruva)
    as ones whose lead drops out entirely there — read by bar() below, not a
    sixth song. */
-const SONGS = {
+export const SONGS = {
   dag: { bpm: 59, len: 32, wave: 'triangle',
     lead: [['Fs4',0,4],['A4',4,3],['B4',8,3],['D5',12,5]],
     bass: [['D3',0,4],['D3',4,4],['A2',8,4],['A2',12,4],['B2',16,4],['B2',20,4],['G3',24,4],['A2',28,4]],
@@ -132,7 +132,7 @@ export function createSongs(A) {
     },
     level(ramp) {
       if (!this.bus || !A.snd().ctx) return;
-      const want = A.musGain();
+      const want = A.musGain() * (window.Mixer ? window.Mixer.get('bekkedal') : 1);
       if (ramp == null && Math.abs(want - this.g0) < 0.0005) return;
       this.g0 = want;
       const now = A.snd().ctx.currentTime, gn = this.bus.gain;
@@ -176,5 +176,13 @@ export function createSongs(A) {
       this.voices = [];
     }
   };
+  /* the mixer's slider for this app: ride the bus the moment it moves */
+  const onMix = ev => {
+    if (!(ev.detail && ev.detail.channel === 'bekkedal')) return;
+    if (Song.on) Song.level(0.2);
+  };
+  window.removeEventListener('mixer-changed', window.__bekMix || (() => {}));
+  window.__bekMix = onMix;
+  window.addEventListener('mixer-changed', onMix);
   return Song;
 }

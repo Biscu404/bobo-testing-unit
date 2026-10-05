@@ -3,13 +3,23 @@
    radio, the garden's wind) -- this just gives each one a persisted
    multiplier and a small taskbar panel to work it from, the way a real
    volume mixer keeps one slider per application instead of one for
-   everything at once. */
+   everything at once -- and, like one, it lists only what is running. */
+import { openWins } from './wm.js';
+import { Music } from './music.js';
+import { VARIANTS } from './music_variants.js';
 const KEY = 'templeos.mixer.v1';
+/* `app` is the id the window manager gives the window; a channel is only
+   offered while that window is open. The lobby is not an app: it is offered
+   while it is the lobby music that is playing. */
 const CHANNELS = [
-  { id: 'lobby',  n: 'LOBBY MUSIC' },
-  { id: 'magen',  n: 'MAGEN' },
-  { id: 'cook',   n: 'THE COOK' },
-  { id: 'garden', n: 'GARDEN' }
+  { id: 'lobby',      n: 'LOBBY MUSIC' },
+  { id: 'hifi',       n: 'THESTACK',   app: 'hifi' },
+  { id: 'magen',      n: 'MAGEN',      app: 'magen' },
+  { id: 'cook',       n: 'THE COOK',   app: 'cook' },
+  { id: 'garden',     n: 'GARDEN',     app: 'garden' },
+  { id: 'elephant',   n: 'ELEPHANT',   app: 'elephant' },
+  { id: 'bekkedal',   n: 'BEKKEDAL',   app: 'bekkedal' },
+  { id: 'standbattle', n: 'STAND BATTLE', app: 'standbattle' }
 ];
 
 let st = {};
@@ -30,26 +40,55 @@ export const Mixer = {
 window.Mixer = Mixer;
 
 export const MixerUI = {
-  box: null, panel: null,
-  mount() {
-    const bar = document.getElementById('taskbar');
-    const sunbox = document.getElementById('sunbox');
-    if (!bar || document.getElementById('mixerbox')) return;
+  box: null, panel: null, rows: null,
+  /* which channels are live right now */
+  live() {
+    const apps = new Set(openWins.map(w => w.appId).filter(Boolean));
+    return CHANNELS.filter(ch => ch.app ? apps.has(ch.app) : (Music.on && !Music.inBoot));
+  },
+  build() {
+    const panel = this.panel;
+    if (!panel) return;
+    panel.textContent = '';
 
-    const box = document.createElement('div');
-    box.id = 'mixerbox';
-    box.title = 'MIXER. Per-app music and ambience volume.';
-    box.textContent = '♫';
-    bar.insertBefore(box, sunbox || document.getElementById('clock'));
-    this.box = box;
+    /* what the lobby plays, outside of the boot */
+    const head = document.createElement('div');
+    head.className = 'mixhead';
+    head.textContent = 'LOBBY TRACK';
+    panel.appendChild(head);
+    const picks = document.createElement('div');
+    picks.className = 'mixpicks';
+    VARIANTS.forEach(v => {
+      const b = document.createElement('button');
+      b.className = 'mixpick' + (Music.variant === v.id ? ' on' : '');
+      b.textContent = v.name;
+      b.title = v.mood + (v.id === 'hymn' ? '' : '. Same song, different mood.');
+      b.addEventListener('mousedown', ev => {
+        ev.stopPropagation();
+        if (window.Snd) window.Snd.click();
+        Music.setVariant(v.id);
+      });
+      picks.appendChild(b);
+    });
+    panel.appendChild(picks);
+    const sub = document.createElement('div');
+    sub.className = 'mixsub';
+    sub.textContent = Music.VARIANTS.find(v => v.id === Music.variant).mood +
+      (window.CRT && window.CRT.lobby ? '' : ' (LOBBY SWITCH IS OFF)');
+    panel.appendChild(sub);
 
-    const panel = document.createElement('div');
-    panel.id = 'mixerpanel';
-    panel.style.display = 'none';
-    document.getElementById('shell').appendChild(panel);
-    this.panel = panel;
-
-    CHANNELS.forEach(ch => {
+    const sep = document.createElement('div');
+    sep.className = 'mixhead';
+    sep.textContent = 'RUNNING';
+    panel.appendChild(sep);
+    const live = this.live();
+    if (!live.length) {
+      const none = document.createElement('div');
+      none.className = 'mixsub';
+      none.textContent = 'NOTHING IS MAKING MUSIC.';
+      panel.appendChild(none);
+    }
+    live.forEach(ch => {
       const row = document.createElement('div');
       row.className = 'mixrow';
       const lbl = document.createElement('span');
@@ -71,13 +110,39 @@ export const MixerUI = {
       row.appendChild(lbl); row.appendChild(rng); row.appendChild(pct);
       panel.appendChild(row);
     });
+    if (panel.style.display !== 'none') this.position();
+  },
+  mount() {
+    const bar = document.getElementById('taskbar');
+    const sunbox = document.getElementById('sunbox');
+    if (!bar || document.getElementById('mixerbox')) return;
+
+    const box = document.createElement('div');
+    box.id = 'mixerbox';
+    box.title = 'MIXER. Volume for whatever is running, and which lobby track plays.';
+    box.textContent = '\u266B';
+    bar.insertBefore(box, sunbox || document.getElementById('clock'));
+    this.box = box;
+
+    const panel = document.createElement('div');
+    panel.id = 'mixerpanel';
+    panel.style.display = 'none';
+    document.getElementById('shell').appendChild(panel);
+    this.panel = panel;
+    this.build();
+
+    /* the panel follows what is running: a window opening or closing, the
+       lobby starting or stopping, a variant being picked */
+    const refresh = () => { if (panel.style.display !== 'none') this.build(); };
+    window.addEventListener('wins-changed', refresh);
+    window.addEventListener('music-state', refresh);
 
     box.addEventListener('mousedown', ev => {
       ev.stopPropagation();
       if (window.Snd) window.Snd.click();
       const on = panel.style.display === 'none';
       panel.style.display = on ? 'flex' : 'none';
-      if (on) this.position();
+      if (on) { this.build(); this.position(); }
     });
     document.addEventListener('mousedown', ev => {
       if (panel.style.display === 'none') return;

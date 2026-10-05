@@ -5,13 +5,13 @@
    scheduler drives three layers -- bass, lead, percussion -- and
    `setIntensity` turns layers on/off live: 0 explore, 1 combat, 2 tension. */
 
-const BPM = 148;
+export const BPM = 148;
 const STEP_DUR = 60 / BPM / 4;
 const LOOKAHEAD = 0.12;
-const ROOT = 82.41; // E2
+export const ROOT = 82.41; // E2
 
-const BASS = [0, null, 0, null, 7, null, 5, null, 0, null, 0, null, 10, null, 7, null];
-const LEAD = [
+export const BASS = [0, null, 0, null, 7, null, 5, null, 0, null, 0, null, 10, null, 7, null];
+export const LEAD = [
   12, null, 15, 12, null, 19, 17, null, 15, null, 12, null, 10, null, null, null,
   12, null, 15, 12, null, 19, 22, null, 19, 17, 15, null, 12, null, null, null
 ];
@@ -78,9 +78,13 @@ function scheduleStep(t, idx) {
 function updateBusGain() {
   if (!bus || !ctxRef || !window.CRT) return;
   const musVal = window.CRT.mus == null ? 5 : window.CRT.mus;
-  const g = window.CRT.on ? Math.pow(musVal / 10, 1.6) * 0.85 * 0.5 : 0;
+  const g = window.CRT.on ? Math.pow(musVal / 10, 1.6) * 0.85 * 0.5 * (window.Mixer ? window.Mixer.get('standbattle') : 1) : 0;
   bus.gain.setTargetAtTime(g, ctxRef.currentTime, 0.15);
 }
+
+window.addEventListener('mixer-changed', ev => {
+  if (ev.detail && ev.detail.channel === 'standbattle') updateBusGain();
+});
 
 function tick() {
   if (!running || !ctxRef) return;
