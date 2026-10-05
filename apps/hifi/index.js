@@ -3,6 +3,7 @@ import { Snd } from '../../kernel/snd.js';
 import { Cos } from '../../kernel/cos.js';
 import { fs as vfs } from '../../kernel/vfs.js';
 import { HIFI_DISCS, HFN, HFP, hifiPress, hifiTags } from './discs.js';
+import { stackFolders } from './library.js';
 import { Vault } from '../../kernel/vault.js';
 import { scopedListeners } from '../lifecycle.js';
 
@@ -190,13 +191,13 @@ export default {
         tray: 0, trayDir: 0, disc: 0, spin: 0, sheen: 0, touched: false,
         vuL: 0, vuR: 0, vuLv: 0, vuRv: 0, peakL: 0, peakR: 0, corr: 0,
         glow: 0, marquee: 0, drag: null, note: '', noteT: 0, loading: 0, xfaded: false,
-        filter: '', sort: 0, scroll: 0
+        filter: '', sort: 0, scroll: 0, folder: null
       };
       const eqGains = EQ_BANDS.map(() => 0);
       const say = t => { S.note = t; S.noteT = 3.2; };
 
       const store = () => { try { return JSON.parse(localStorage.getItem(SAVE) || '{}'); } catch (e) { return {}; } };
-      const keyOf = t => (t.builtin ? 'b:' : 'f:') + t.name;
+      const keyOf = t => (t.builtin ? 'b:' : 'f:') + (t.folder ? t.folder + '/' : '') + t.name;
 
       function applyEQ() {
         N.eq.forEach((f, i) => f.gain.setTargetAtTime(eqGains[i], ctx.currentTime, 0.02));
@@ -204,7 +205,7 @@ export default {
       function applyAll() {
         const t = ctx.currentTime;
         N.pre.gain.setTargetAtTime(Math.pow(10, S.pre / 20), t, 0.02);
-        N.master.gain.setTargetAtTime(CRT.on ? S.vol : 0, t, 0.03);
+        N.master.gain.setTargetAtTime(CRT.on ? S.vol * (window.Mixer ? window.Mixer.get('hifi') : 1) : 0, t, 0.03);
         if (N.pan.pan) N.pan.pan.setTargetAtTime(S.bal, t, 0.02);
         const w = S.mono ? 0 : S.width;
         N.sidePos.gain.setTargetAtTime(w, t, 0.02);
@@ -220,6 +221,7 @@ export default {
         N.texG.gain.setTargetAtTime(S.texture === 'off' ? 0 : (S.texture === 'hiss' ? 0.016 : 0.026), t, 0.05);
         S.voices.forEach(v => { try { v.src.playbackRate.setTargetAtTime(S.speed, t, 0.05); } catch (e) {} });
       }
+      winL.on(window, 'mixer-changed', ev => { if (ev.detail && ev.detail.channel === 'hifi') applyAll(); });
       function routeEQ() {
         try { N.pre.disconnect(); } catch (e) {}
         if (S.eqOn) N.pre.connect(N.eq[0]); else N.pre.connect(N.join);
@@ -305,6 +307,16 @@ export default {
         }).catch(() => { S.loading--; setTimeout(() => pressNext(i + 1), 30); });
       })(0);
 
+      /* ---- the folders ------------------------------------------------------
+         One per app that scores itself, and one for the lobby. They are on the
+         shelf at once but pressed only when somebody plays one. */
+      stackFolders().forEach((f, fi) => f[2].forEach((d, di) => {
+        const spec = d[1], secs = spec.len * 15 / spec.bpm * spec.reps + 2.2;
+        addTrack({ name: d[0], artist: spec.artist || f[0], folder: f[0], folderTint: f[1], spec: spec,
+                   builtin: true, sleeve: 100 + fi * 20 + di, tint: spec.tint || f[1],
+                   art: makeArt(f[0] + d[0], spec.tint || f[1]), dur: secs });
+      }));
+
       /* ---- the library on disk ---------------------------------------------
          A shelf of two hundred records is the case this has to survive, so
          nothing heavy is kept in the settings drawer: the audio lives in the
@@ -377,6 +389,15 @@ export default {
         if (!t || t.buf) return t && t.buf;
         if (t.decoding) return null;
         t.decoding = true;
+        if (t.spec) {                                   /* a folder disc: press it now */
+          try {
+            const buf = await hifiPress(t.spec, ctx.sampleRate);
+            if (buf) { t.buf = buf; t.dur = buf.duration; t.peaks = analysePeaks(buf, 480); }
+            else t.missing = true;
+          } catch (e) { t.missing = true; say('COULD NOT PRESS ' + t.name); }
+          t.decoding = false;
+          return t.buf;
+        }
         try {
           const blob = await Vault.get(t.vault);
           if (!blob) { t.decoding = false; t.missing = true; say(t.name + ' IS NOT ON THE DISK ANY MORE.'); return null; }
@@ -407,12 +428,25 @@ export default {
       function view() {
         const q = S.filter.trim().toUpperCase();
         let idx = S.list.map((t, i) => i);
-        if (q) idx = idx.filter(i => (S.list[i].name + ' ' + S.list[i].artist).toUpperCase().indexOf(q) >= 0);
+        if (q) idx = idx.filter(i => (S.list[i].name + ' ' + S.list[i].artist + ' ' + (S.list[i].folder || '')).toUpperCase().indexOf(q) >= 0);
+        else idx = idx.filter(i => (S.list[i].folder || null) === S.folder);
         const by = S.sort;
         if (by === 1) idx.sort((a, b) => S.list[a].name.localeCompare(S.list[b].name));
         else if (by === 2) idx.sort((a, b) => S.list[a].artist.localeCompare(S.list[b].artist) || S.list[a].name.localeCompare(S.list[b].name));
         else if (by === 3) idx.sort((a, b) => (S.list[a].dur || 0) - (S.list[b].dur || 0));
         return idx;
+      }
+
+      /* the folders a shelf shows at its top level: none while searching */
+      function dirs() {
+        if (S.folder || S.filter.trim()) return [];
+        const seen = {}, out = [];
+        S.list.forEach(t => {
+          if (!t.folder) return;
+          if (!seen[t.folder]) { seen[t.folder] = { name: t.folder, tint: t.folderTint, count: 0 }; out.push(seen[t.folder]); }
+          seen[t.folder].count++;
+        });
+        return out;
       }
 
       /* ---- importing ------------------------------------------------------- */
@@ -494,7 +528,15 @@ export default {
         S.voices.slice().forEach(v => killVoice(v, 0.12));
         S.ix = i;
         const t = S.list[i];
-        if (!t.buf && !t.decoding) ensureBuf(t).then(() => { if (S.list[S.ix] === t) S.dur = t.dur; });
+        if (!t.buf && !t.decoding) {
+          if (t.spec) say('PRESSING ' + t.name + '...');
+          ensureBuf(t).then(() => {
+            if (S.list[S.ix] !== t) return;
+            S.dur = t.dur;
+            /* a disc that took a moment to press still starts when it is ready */
+            if (wasPlaying && t.buf && !curVoice()) play();
+          });
+        }
         S.dur = t.dur; S.seekBase = 0; S.pos = 0;
         for (let b = 0; b < EQ_BANDS.length; b++) eqGains[b] = t.eq[b] || 0;
         applyEQ();
@@ -528,14 +570,25 @@ export default {
         S.pos = S.seekBase;
         if (S.playing) play(); 
       }
+      /* next and previous stay inside the folder the disc is in: a lobby
+         track runs into the next lobby track, not into a cook song */
+      function siblings() {
+        const f = S.list[S.ix] ? (S.list[S.ix].folder || null) : null;
+        const out = [];
+        S.list.forEach((t, i) => { if ((t.folder || null) === f) out.push(i); });
+        return out;
+      }
       function nextIx() {
         if (!S.list.length) return -1;
-        if (S.shuffle) { if (S.list.length === 1) return S.ix; let n; do { n = Math.floor(Math.random() * S.list.length); } while (n === S.ix); return n; }
-        return (S.ix + 1) % S.list.length;
+        const sib = siblings();
+        if (!sib.length) return -1;
+        if (S.shuffle) { if (sib.length === 1) return S.ix; let n; do { n = sib[Math.floor(Math.random() * sib.length)]; } while (n === S.ix); return n; }
+        return sib[(sib.indexOf(S.ix) + 1) % sib.length];
       }
       function skip(d) {
         if (!S.list.length) return;
-        const n = d > 0 ? nextIx() : (S.ix - 1 + S.list.length) % S.list.length;
+        const sib = siblings();
+        const n = d > 0 ? nextIx() : sib[(sib.indexOf(S.ix) - 1 + sib.length) % sib.length];
         loadDisc(n, S.playing);
       }
 
@@ -865,19 +918,42 @@ export default {
         hits.push({ k: 'btn', id: 'search', x: x + 3, y: sy, w: w - 42, h: 11 });
         button('sort', x + w - 37, sy, 34, 11, SORTS[S.sort], S.sort > 0);
 
-        TXT(S.filter ? v.length + '/' + S.list.length : 'DISCS  ' + S.list.length, x + 5, y + 24, HFP.brushHi, 7);
+        const dl = dirs();
+        const head = S.filter ? v.length + '/' + S.list.length : S.folder ? S.folder : 'SHELF  ' + S.list.length;
+        TXT(head, x + 5, y + 24, HFP.brushHi, 7);
         if (S.loading) TXT('...' + S.loading, x + w - 5, y + 24, HFP.amber, 7, 'right');
         else if (S.drag && S.drag.k === 'row') TXT('DRAG TO REORDER', x + w - 5, y + 24, HFP.amber, 7, 'right');
         else TXT('DEL = REMOVE', x + w - 5, y + 24, HFP.screw, 7, 'right');
 
+        /* the rows: [back] or the folders, then the discs */
+        const entries = [];
+        if (S.folder && !S.filter.trim()) entries.push({ back: true });
+        dl.forEach(d => entries.push({ dir: d }));
+        v.forEach(n => entries.push({ n: n }));
         const top = y + 28, rows = Math.floor((h - (top - y) - 3) / 11);
-        const maxScroll = Math.max(0, v.length - rows);
+        const maxScroll = Math.max(0, entries.length - rows);
         S.scroll = Math.max(0, Math.min(maxScroll, S.scroll));
         /* keep the disc that is playing in sight unless you are scrolling */
-        const at = v.indexOf(S.ix);
+        const at = entries.findIndex(e => e.n === S.ix);
         if (at >= 0 && !S.userScrolled) S.scroll = Math.max(0, Math.min(maxScroll, at - Math.floor(rows / 2)));
-        for (let i = 0; i < rows && S.scroll + i < v.length; i++) {
-          const n = v[S.scroll + i], t = S.list[n], yy = top + i * 11;
+        const TINT = { green: HFP.green, cyan: HFP.cyan, amber: HFP.amber, white: HFP.white, red: HFP.red };
+        for (let i = 0; i < rows && S.scroll + i < entries.length; i++) {
+          const e = entries[S.scroll + i], yy = top + i * 11;
+          if (e.back) {
+            TXT('\u25C4 .. BACK TO SHELF', x + 5, yy + 8, HFP.amber, 7);
+            hits.push({ k: 'back', id: 0, x: x + 2, y: yy, w: w - 4, h: 10 });
+            continue;
+          }
+          if (e.dir) {
+            R(x + 2, yy, w - 4, 10, HFP.case_);
+            R(x + 5, yy + 2, 8, 6, TINT[e.dir.tint] || HFP.amber);
+            R(x + 5, yy + 1, 4, 1, TINT[e.dir.tint] || HFP.amber);
+            TXT(e.dir.name, x + 18, yy + 8, HFP.white, 7);
+            TXT(e.dir.count + '', x + w - 5, yy + 8, HFP.brush, 7, 'right');
+            hits.push({ k: 'dir', id: e.dir.name, x: x + 2, y: yy, w: w - 4, h: 10 });
+            continue;
+          }
+          const n = e.n, t = S.list[n];
           const on = n === S.ix;
           if (on) R(x + 2, yy, w - 4, 10, HFP.panel);
           TXT((n + 1) + '.', x + 5, yy + 8, on ? HFP.white : HFP.brush, 7);
@@ -889,13 +965,13 @@ export default {
           hits.push({ k: 'row', id: n, x: x + 2, y: yy, w: w - 4, h: 10 });
         }
         /* a thumb, so two hundred discs feel like a shelf and not a hole */
-        if (v.length > rows) {
-          const tr = h - (top - y) - 3, th = Math.max(8, tr * rows / v.length);
+        if (entries.length > rows) {
+          const tr = h - (top - y) - 3, th = Math.max(8, tr * rows / entries.length);
           R(x + w - 3, top, 2, tr, HFP.case_);
           R(x + w - 3, top + (tr - th) * (S.scroll / Math.max(1, maxScroll)), 2, th, HFP.brush);
         }
         if (!S.list.length) TXT('TRAY EMPTY', x + w / 2, y + h / 2, HFP.brush, 7, 'center');
-        else if (!v.length) TXT('NOTHING MATCHES', x + w / 2, y + h / 2 + 8, HFP.brush, 7, 'center');
+        else if (!entries.length) TXT('NOTHING MATCHES', x + w / 2, y + h / 2 + 8, HFP.brush, 7, 'center');
       }
 
       /* ---- one frame of the whole face -------------------------------------- */
@@ -1139,6 +1215,8 @@ export default {
             window.addEventListener('mouseup', up); return; }
           press(h.id); return;
         }
+        if (h.k === 'dir') { S.folder = h.id; S.scroll = 0; S.userScrolled = true; S.filter = ''; say('FOLDER: ' + h.id); return; }
+        if (h.k === 'back') { S.folder = null; S.scroll = 0; S.userScrolled = false; return; }
         if (h.k === 'row') { S.drag = { k: 'row', from: h.id, moved: false }; return; }
         if (h.k === 'scrub') { seek((p.x - h.x - 2) / (h.w - 4) * S.dur); S.drag = { k: 'scrub', h: h }; return; }
         if (h.k === 'knob') { S.drag = { k: 'knob', id: h.id, y0: p.y, v0: KNOBS[h.id] ? KNOBS[h.id].get() : 0, h: h }; }
@@ -1150,6 +1228,7 @@ export default {
         if (S.drag.k === 'row') {
           const over = hitAt(p);
           if (!over || over.k !== 'row' || over.id === S.drag.from) return;
+          if ((S.list[over.id].folder || null) !== (S.list[S.drag.from].folder || null)) return;
           const from = S.drag.from, to = over.id;
           const moving = S.list[from];
           S.list.splice(from, 1); S.list.splice(to, 0, moving);
