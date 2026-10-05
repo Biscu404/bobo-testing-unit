@@ -416,10 +416,11 @@ export default {
     this._onEcon = () => fill();
     window.Economy.onChange(this._onEcon);
     
-    this._raf = raf;
+    /* the loop re-arms itself every frame, so cancel whichever id is current, not the first */
+    this._stop = () => cancelAnimationFrame(raf);
   },
   unmount() {
-    if (this._raf) cancelAnimationFrame(this._raf);
+    if (this._stop) { this._stop(); this._stop = null; }
     // There isn't an Economy.offChange, but we could make one. We'll skip for now.
     window.Cos.hover(null, null);
   }

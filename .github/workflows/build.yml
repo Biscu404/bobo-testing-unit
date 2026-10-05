@@ -59,6 +59,8 @@ jobs:
         run: eval $XV npm run check:persist
       - name: All apps open/close (fails only on NEW leaks)
         run: eval $XV npm run check:apps
+      - name: Listener cleanup keeps behaviour
+        run: eval $XV npm run check:listeners
 
       # ---- the product ----
       - name: Build installer

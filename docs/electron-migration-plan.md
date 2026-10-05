@@ -252,3 +252,16 @@ One bug found by the cleanup itself: `check-paths` scanned the untracked `dist/`
 Re-verified after the removal (Linux/Xvfb): `check:paths` 537 refs 0 problems; `lint-content`; all 12 `*_check.js`; `smoke` (full, ~10 min) 0 failures; `check:shell` 40/40; `check:persist`; `check:apps` 18 clean + 10 known, 0 new; `bekkedal_furnish_check`; `bekkedal_shots` (subset); `check:perf` clock 4.00 min/s; `npm run pack` + `check:package` (196 files, all reachable files present, none of the scaffolding) + the same shell checks against the packaged binary.
 
 Still open: the Windows pass above; the 10 known app leaks (`scripts/check-apps.known.json`); placeholder icon and maintainer address; signing, auto-update, Electron fuses. `bekkedal_pairs.mjs` still composes its comparison images in a plain Chromium that Playwright must find, because it never ran the app itself.
+
+**Follow-up — the 10 known app leaks are fixed (all 28 apps now pass `check:apps` with an empty known-issues list, from source and from the packaged build)**
+
+| App | What was wrong | Fix |
+|---|---|---|
+| `shop` | `unmount()` cancelled the *first* animation-frame id; the loop re-arms itself every frame, so it kept running at ~50 fps after close | cancel the current id |
+| `garden` | `mixer-changed` listener only removed lazily on its next event; same stale-first-id pattern for its frame loop | removed in `unmount()`; current frame id cancelled |
+| `folder` | `vfs-changed` listener only removed lazily on its next event (one handler per open folder, `unmount()` can't say which window closed) | `unmount()` sweeps, one tick later, every handler whose window has left the page |
+| `sweeper`, `solitaire` | anonymous `window` `mouseup` listener never removed | named, removed in the app's own teardown |
+| `crayon`, `notes`, `hifi`, `magen`, `cook` | `window` `mousemove`/`mouseup`/`keydown`/`mixer-changed`/`vfs-changed` listeners never removed | new `apps/lifecycle.js`: `scopedListeners(el).on(window, type, fn)` removes them when the window leaves the page (one `MutationObserver` on `#desktop`, nothing per frame). Needed because apps that open their own window are never sent `unmount()` |
+
+- New `npm run check:listeners` guards the other half: cleanup must not cost behaviour. In the real window a crayon drag still draws a stroke (and the stroke ends on mouseup), and a `vfs-changed` still redraws an open folder. It fails if the helper stops adding listeners (checked), and its first version was too weak (a single press dot was enough to pass), so it now requires a real stroke.
+- Not touched: `Economy.onChange` has no `offChange`, so `shop`'s economy callback outlives its window; it is a kernel API, not a `window`/`document` listener, and is harmless but unfixed. The kernel's own two `document` listeners per window ever opened (`wm.js createWindow`) are also still there and are the baseline the check measures against. Several apps (`crayon`, `hifi`, `magen`, `cook`, `notes`) import from `kernel/`, which CLAUDE.md forbids; pre-existing, not changed here.

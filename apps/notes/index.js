@@ -1,4 +1,5 @@
 import { createWindow, raise } from '../../kernel/wm.js';
+import { scopedListeners } from '../lifecycle.js';
 
 const NOTE_KEY = 'templeos.notes.v1';
 const NOTE_SEED = [
@@ -19,6 +20,7 @@ export default {
   const body = root;
       /* ---- the shell ---------------------------------------------------- */
       const _rootEl = document.createElement('div');
+      const winL = scopedListeners(root);
       root.className = 'notesroot';
       root.innerHTML =
         '<div class="ntop">' +
@@ -460,7 +462,7 @@ export default {
         const p = gAt(ev), k = gPick(p);
         G.drag = k || '#pan'; G.moved = false;
       });
-      window.addEventListener('mouseup', ev => {
+      winL.on(window, 'mouseup', ev => {
         if (!G.drag) return;
         if (G.drag !== '#pan' && !G.moved && G.drag.indexOf('ghost:') !== 0) {
           const i = N.notes.findIndex(n => n.id === G.drag);

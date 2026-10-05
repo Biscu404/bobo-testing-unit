@@ -26,11 +26,14 @@ npm run check:paths     # every import/asset path matches its file's exact case 
 npm run check:shell     # origin, sandbox, CSP, no outbound traffic, VFS seed, relaunch
 npm run check:persist   # a Bekkedal save survives quit + relaunch; power-cut loss window
 npm run check:apps      # all apps open/close cleanly; fails only on leaks NOT in scripts/check-apps.known.json
+npm run check:listeners # cleanup must not cost behaviour: an open window's listeners still work (crayon draws, folder redraws)
 npm run check:perf      # frame rate and Bekkedal's day clock
 npm run check:package   # after `npm run pack`: every file the app loads is packaged, no scaffolding is
 node scripts/smoke.mjs  # ~10 min; node scripts/lint-content.mjs; node apps/*/*_check.js (pure Node)
 ```
 Pixel comparison between two builds: `scripts/bekkedal_shots.mjs` twice per build, then `scripts/pngdiff.mjs`.
+An app that opens its own window (`open()`) is never sent `unmount()`: add its window/document listeners with
+`scopedListeners(el).on(window, type, fn)` from `apps/lifecycle.js`, which removes them when the window closes.
 `apps/standbattle/fairness_check.js` is imported at runtime — do not treat `*_check*.js` as dev-only in packaging.
 CI (`.github/workflows/build.yml`) builds and tests both installers. Record of the move: `docs/electron-migration-plan.md`.
 

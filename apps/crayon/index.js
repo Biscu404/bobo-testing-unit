@@ -4,6 +4,7 @@ import { Cos } from '../../kernel/cos.js';
 import { fs as vfs } from '../../kernel/vfs.js';
 import { lampDip } from '../../kernel/hardware.js';
 import { Vault, VaultURL } from '../../kernel/vault.js';
+import { scopedListeners } from '../lifecycle.js';
 
 
 const DRAW_KEY = 'templeos.draw';
@@ -81,6 +82,7 @@ export default {
   const made = createWindow({
     kind: 'app', title: 'DRAW.EXE', w: 800, h: 600, appId: 'crayon',
     build: body => {
+      const wl = scopedListeners(body);
       root = document.createElement('div');
       root.className = 'drawroot';
 
@@ -184,8 +186,8 @@ export default {
       }
       let wheelDrag = false;
       wheelCv.addEventListener('mousedown', ev => { ev.stopPropagation(); if (pickFromWheel(ev)) { wheelDrag = true; Snd.click(); } });
-      window.addEventListener('mousemove', ev => { if (wheelDrag) pickFromWheel(ev); });
-      window.addEventListener('mouseup', () => { wheelDrag = false; });
+      wl.on(window, 'mousemove', ev => { if (wheelDrag) pickFromWheel(ev); });
+      wl.on(window, 'mouseup', () => { wheelDrag = false; });
       briteCv.addEventListener('mousedown', ev => {
         ev.stopPropagation();
         const r = briteCv.getBoundingClientRect();
@@ -453,7 +455,8 @@ export default {
     lastX = p.x; lastY = p.y; lastT = performance.now();
     seg(p.x, p.y, p.x + 0.01, p.y, 0);
   });
-  window.addEventListener('mousemove', ev => {
+  const L = scopedListeners(made.win);
+  L.on(window, 'mousemove', ev => {
     if (!drawing) return;
     const p = pos(ev);
     const now = performance.now();
@@ -464,8 +467,8 @@ export default {
     lastX = p.x; lastY = p.y; lastT = now;
     if (now - scratchT > 55) { scratchT = now; Snd.scratch(speed); }
   });
-  window.addEventListener('mouseup', () => { drawing = false; });
-  window.addEventListener('keydown', ev => {
+  L.on(window, 'mouseup', () => { drawing = false; });
+  L.on(window, 'keydown', ev => {
     if (!document.body.contains(cv)) return;
     if (document.activeElement && /input|textarea/i.test(document.activeElement.tagName)) return;
     if ((ev.ctrlKey || ev.metaKey) && !ev.shiftKey && ev.key.toLowerCase() === 'z') {

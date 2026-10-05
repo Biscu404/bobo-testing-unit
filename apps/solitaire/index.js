@@ -323,7 +323,7 @@ export default {
     if (p.length && !p[p.length - 1].up) { p[p.length - 1].up = true; Snd.flick(); }
   }
 
-  window.addEventListener('mouseup', () => {
+  const onUp = () => {
     if (!drag) return;
     const c = drag.cards[0];
     const x = drag.x - drag.ox, y = drag.y - drag.oy;
@@ -360,7 +360,8 @@ export default {
       if (Math.abs(drag.x - drag.sx) + Math.abs(drag.y - drag.sy) > 6) Snd.err();
     }
     drag = null;
-  });
+  };
+  window.addEventListener('mouseup', onUp);
 
   /* ---- the cards -------------------------------------------------------- */
   function roundRect(x, y, w, h, r) {
@@ -588,6 +589,7 @@ export default {
   function paint() {
     if (!document.body.contains(made.win)) {
       raf = null; clearInterval(autoT); solWin = null;
+      window.removeEventListener('mouseup', onUp);
       return;
     }
     raf = requestAnimationFrame(paint);

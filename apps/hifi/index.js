@@ -4,6 +4,7 @@ import { Cos } from '../../kernel/cos.js';
 import { fs as vfs } from '../../kernel/vfs.js';
 import { HIFI_DISCS, HFN, HFP, hifiPress, hifiTags } from './discs.js';
 import { Vault } from '../../kernel/vault.js';
+import { scopedListeners } from '../lifecycle.js';
 
 export default {
   id: 'hifi',
@@ -16,6 +17,7 @@ export default {
       const wrap = document.createElement('div');
       wrap.className = 'gamepane hifipane';
       const cv = document.createElement('canvas');
+      const winL = scopedListeners(root);
       cv.width = 480; cv.height = 386;
       cv.className = 'gamecv hificv';
       cv.tabIndex = 0;
@@ -1141,7 +1143,7 @@ export default {
         if (h.k === 'scrub') { seek((p.x - h.x - 2) / (h.w - 4) * S.dur); S.drag = { k: 'scrub', h: h }; return; }
         if (h.k === 'knob') { S.drag = { k: 'knob', id: h.id, y0: p.y, v0: KNOBS[h.id] ? KNOBS[h.id].get() : 0, h: h }; }
       });
-      window.addEventListener('mousemove', ev => {
+      winL.on(window, 'mousemove', ev => {
         if (!S.drag) return;
         const p = at(ev);
         if (S.drag.k === 'scrub') { seek((p.x - S.drag.h.x - 2) / (S.drag.h.w - 4) * S.dur); return; }
@@ -1165,7 +1167,7 @@ export default {
         if (k.detent != null && Math.abs(v - k.detent) < (k.max - k.min) * 0.03) v = k.detent;
         k.set(Math.round(v / k.step) * k.step);
       });
-      window.addEventListener('mouseup', () => {
+      winL.on(window, 'mouseup', () => {
         if (S.drag && S.drag.k === 'row') {
           if (S.drag.moved) say('ORDER CHANGED.');
           else { S.touched = true; loadDisc(S.drag.from, true); }

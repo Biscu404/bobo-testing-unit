@@ -6,6 +6,7 @@ import { CRT, Vol, musGain } from '../../kernel/hardware.js';
 import { Mixer } from '../../kernel/mixer.js';
 import { CK_SAVE, CK_W, CK_H, CK_T, CK_LV, CK_STORY, CK_END, CK_KID, CK_ACH, CK_HZ, CK_SONGS } from './data.js';
 import { VGA16 } from '../../kernel/god.js';
+import { scopedListeners } from '../lifecycle.js';
 
 /* ---- the rules -----------------------------------------------------------
    The same functions the solver ran, so what the game allows and what was
@@ -47,6 +48,7 @@ export default {
       const wrap = document.createElement('div');
       wrap.className = 'gamepane ckpane';
       const cv = document.createElement('canvas');
+      const winL = scopedListeners(cv);
       cv.width = Math.round(420 * RES); cv.height = Math.round(320 * RES);
       cv.className = 'gamecv ckcv';
       cv.tabIndex = 0;
@@ -97,7 +99,7 @@ export default {
         const dir = ev.detail && ev.detail.dir;
         if (!dir || dir === '::' || dir === WALL_DIR) loadWallFrames();
       };
-      window.addEventListener('vfs-changed', wallHandler);
+      winL.on(window, 'vfs-changed', wallHandler);
 
       /* ---- 33.6 paint --------------------------------------------------- */
       const C = i => { const p = VGA16[i] || VGA16[7]; return 'rgb(' + p[0] + ',' + p[1] + ',' + p[2] + ')'; };
@@ -989,7 +991,7 @@ export default {
         if (!alive) { window.removeEventListener('mixer-changed', mixerHandler); return; }
         if (ev.detail && ev.detail.channel === 'cook') Song.level(0.2);
       };
-      window.addEventListener('mixer-changed', mixerHandler);
+      winL.on(window, 'mixer-changed', mixerHandler);
 
       /* ---- 33.15 input ----------------------------------------------------- */
       function refresh() {
