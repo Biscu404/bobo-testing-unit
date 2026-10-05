@@ -1,205 +1,184 @@
 # Plan: Holytron DM-640 (TempleOS) as a standalone Electron app
 
-Goal: ship the whole machine as a desktop app with **zero loss** — every app, every
-saved game, every wallpaper/CRT/mixer setting, every file in the VFS, the
-bit-exact 16-colour/no-antialiasing look, and the existing headless checks.
+Decisions so far:
+- Targets: **Windows** (primary, where it's developed) and **Debian Linux**.
+- **No existing saves** to carry over.
+- **The web build goes away.** Electron becomes the only way to run it.
+- Unsigned, no auto-update for now (see §9).
 
-## 0. What the repo is today (facts that drive the plan)
+Goal: ship the whole machine as a desktop app with every app, the bit-exact
+16-colour/no-antialiasing look, and the existing checks intact.
+
+## 0. What the repo is today
 
 - Pure static ES-module web app: `index.html` -> `kernel/boot.js` -> lazy
-  `import()` per app via `kernel/registry.js` (28 apps). No bundler, no build step.
-- Served by `server.js` (Express, port 3000) or `START.bat` / `start.sh`
-  (`python -m http.server 3000`). Only runtime dep is `express`; dev dep `playwright`.
-- **All user state is browser storage, scoped to the origin `http://localhost:3000`:**
-  - IndexedDB `TempleOS_VFS` / store `files` (`kernel/vfs.js`, seeded from `assets/seed.json`)
-  - IndexedDB `templeos.vault` (`kernel/vault.js`, blobs)
-  - localStorage: `templeos.vfs.seedVersion`, `templeos.cosm`, `templeos.crt.v1`,
-    `templeos.display.v1`, mixer key, sun/economy key, desktop icon positions,
-    wallpaper key, and `app_<appId>_<key>` (everything `ctx.save` writes — Bekkedal
-    saves, Stand Battle `run`/`meta`, Solitaire, Sweeper, Notes, Crayon, Cook, Hifi, Bottle, Magen)
-- One external network dependency: Google Fonts `VT323` in `index.html`.
-- Browser APIs in use: `AudioContext` (`snd.js`, `music.js`, `mixer.js`, Bekkedal,
-  Stand Battle), `canvas` (integer-scaled, smoothing off), `URL.createObjectURL`
-  (uploads in `desktop.js`, blobs in `vault.js`), `requestAnimationFrame`.
-- Verification already exists: `scripts/smoke.mjs`, `bekkedal_*`, `lint-content.mjs`,
-  `*_check.js` — headless Node/Playwright, so they keep working unchanged.
-- Repo clutter at root (`fix_*.cjs`, `*_check.txt`, `big html file`, `temp_*.js`) is
-  one-off migration scaffolding; it must not ship in the package.
+  `import()` per app via `kernel/registry.js` (28 apps). No bundler.
+- Run by `server.js` (Express, port 3000) or `START.bat` / `start.sh`.
+- All user state is browser storage: IndexedDB `TempleOS_VFS` and
+  `templeos.vault`, plus localStorage (`templeos.*`, `app_<appId>_<key>` for every
+  `ctx.save`, including Bekkedal and Stand Battle).
+- One network dependency: Google Fonts `VT323` in `index.html`.
+- Existing checks: `scripts/smoke.mjs`, `bekkedal_*`, `lint-content.mjs`, `*_check.js`
+  (headless Node / Playwright).
+- Root clutter (`fix_*.cjs`, `*_check.txt`, `big html file`, `temp_*.js`) is
+  one-off scaffolding and must not ship.
 
-## 1. The one real risk: storage origin
+## 1. Storage: pick the origin once and never change it
 
-Electron's `file://` origin and a different port/protocol are **different
-origins** from `http://localhost:3000`. If we just wrap the app, a user's
-existing saves stay behind in their browser and the Electron app starts empty.
-Everything else in this plan is routine; this is the part that must be done on
-purpose.
+Browser storage is keyed by origin, so the app must always load from the same
+one, or saves silently disappear between versions. (With no existing saves and
+no web build, there is nothing to migrate — only a rule to follow.)
 
-Decisions:
-
-1. **Pick one permanent origin and never change it.** Register a custom
-   privileged scheme `templeos://app/` (`protocol.registerSchemesAsPrivileged`
-   with `standard`, `secure`, `supportFetchAPI`, `corsEnabled`) and serve the
-   repo through `protocol.handle`. Reasons: ES-module `import()` and
-   `fetch('assets/seed.json')` need a real origin (they fail under `file://`),
-   IndexedDB/localStorage persist per scheme+host, and there is no port to
-   collide with. Fallback if a problem appears: loopback server on a fixed port
-   bound to `127.0.0.1` — equally stable, but the port can be taken.
-2. **Pin `userData`** (`app.setPath('userData', …/Holytron)`) so storage lives in
-   a known folder and survives app updates and renames.
-3. **Import path for existing browser data** (do this before cutting over):
-   - Add a **"Export machine" / "Import machine"** feature (kernel-level, in the
-     `display` or `account` app area, surfaced in the browser build first). It
-     dumps *all* IndexedDB stores + *all* `templeos.*` / `app_*` localStorage keys
-     to a single `.holytron.json` (blobs base64-encoded), and restores them.
-     Versioned envelope: `{format:1, seedVersion, exportedAt, idb:{…}, ls:{…}}`.
-   - Ship that into the **web build first**, so the user exports from the browser
-     they play in today, then imports in Electron. No data is moved implicitly.
-   - Import is additive-safe: it validates the envelope, writes to a temp copy,
-     then swaps; it refuses a file with a newer `format` than it understands.
-   - Keep `SEED_VERSION` logic as is; import sets `templeos.vfs.seedVersion`
-     from the file so the patch-only seed migration still runs correctly.
-4. **Backups in Electron:** on quit (and daily), write a rolling copy of the
-   export to `userData/backups/` (keep last 5). Cheap insurance against profile
-   corruption, which Chromium storage is not immune to.
+1. Serve the app from a custom privileged scheme, `templeos://app/`
+   (`protocol.registerSchemesAsPrivileged` + `protocol.handle`). `file://` breaks
+   ES-module `import()` and `fetch('assets/seed.json')`; a localhost port can
+   collide. A custom scheme has neither problem and behaves identically on
+   Windows and Linux.
+2. Pin `app.setPath('userData', …)` and freeze `appId` / `productName`; both
+   decide where saves live. Changing them later orphans every save.
+3. Rolling backups: on quit, write a JSON dump of IndexedDB + localStorage to
+   `userData/backups/` (keep last 5). Chromium storage can corrupt; this is the
+   safety net. Include a manual "Export / Import machine" in the kernel using the
+   same dump format, so saves can move between machines or Windows <-> Linux.
+   Format is versioned (`{format:1, seedVersion, idb, ls}`) and import refuses a
+   newer format.
 
 ## 2. Target layout
 
 ```
 electron/
-  main.js          # app lifecycle, window, protocol, menu, single-instance lock
-  preload.js       # contextBridge: tiny, explicit API (see §4); no Node in renderer
-  protocol.js      # templeos:// handler, path-traversal-safe, correct MIME types
-  backup.js        # export/import + rolling backups (main side of §1.3/1.4)
-  icons/           # .ico / .icns / .png generated from assets/images
-vendor/fonts/VT323-Regular.woff2   # bundled; index.html @font-face -> local
+  main.js       # lifecycle, window, single-instance lock, menu
+  preload.js    # contextBridge: exportMachine / importMachine / version / quit
+  protocol.js   # templeos:// handler, path-traversal-safe, correct MIME types
+  backup.js     # dump/restore + rolling backups
+build/icons/    # icon.ico (Windows), icon.png 512x512 (Linux)
+vendor/fonts/VT323-Regular.woff2
 ```
 
-The app source (`index.html`, `kernel/`, `apps/`, `assets/`) **stays where it is
-and stays unmodified except for the font link and the export/import hook** — the
-browser build keeps working, so `npm start` and every headless check are
-untouched. Electron is an additional shell, not a fork.
-
-`package.json` gains: `"main": "electron/main.js"`, scripts `electron`,
-`dist`; devDeps `electron`, `electron-builder`. `express` stays for the web build.
+`index.html`, `kernel/`, `apps/`, `assets/` stay in place; only changes are the
+bundled font, the export/import hook, and removing web-only files (§6, Phase 5).
 
 ## 3. Window and rendering fidelity
 
-The look is the product (`VGA16`, no antialiasing, integer upscale), so:
-
 - `BrowserWindow`: `backgroundColor:'#000000'`, `show:false` until
-  `ready-to-show` (no white flash), `autoHideMenuBar`, min size = the CRT's
-  native size. Remember bounds + fullscreen state in `userData/window.json`.
-- Disable anything that would resample the canvas: keep `zoomFactor` locked to 1
-  (`webPreferences.zoomFactor`, block `Ctrl +/-/0` zoom via
-  `before-input-event`), and verify `devicePixelRatio` handling on 125%/150%
-  Windows scaling and Retina macOS — this is the most likely place for a visible
-  regression. `webPreferences.backgroundThrottling:false` so Bekkedal's
-  clock/Stand Battle's 60 Hz fixed-step loop doesn't stall when occluded.
-- Fullscreen (F11) via the window, plus honour the existing CRT/display settings.
-- Audio: `autoplayPolicy:'no-user-gesture-required'` removes the browser
-  "click first" requirement for `snd.js`/`music.js`; confirm the mixer's MUS/SFX
-  knobs still gate the buses.
-- GPU: leave hardware acceleration on; add `--disable-gpu` fallback only if a
-  driver issue is reported (smoothing-off canvas is deterministic either way).
+  `ready-to-show`, hidden menu bar, remember size/position/fullscreen in
+  `userData/window.json`.
+- Lock zoom to 1 (block Ctrl +/-/0 in `before-input-event`); test Windows 125% /
+  150% scaling and Linux HiDPI (X11 and Wayland) — the likeliest place for the
+  pixel look to soften.
+- `backgroundThrottling:false` so Bekkedal's clock and Stand Battle's 60 Hz
+  fixed-step loop don't stall when the window is occluded.
+- `autoplayPolicy:'no-user-gesture-required'` for `snd.js` / `music.js`.
+- F11 fullscreen.
 
-## 4. Security (keep the sandbox)
-
-Apps must never touch `kernel/`, and the Electron shell shouldn't change that
-trust model:
+## 4. Security
 
 - `contextIsolation:true`, `nodeIntegration:false`, `sandbox:true`.
-- `preload.js` exposes only: `holytron.exportMachine()`, `importMachine()`,
-  `version`, `quit()`. Nothing is reachable from `ctx`, so the `ctx` API
-  contract in `CLAUDE.md` is unchanged.
-- CSP via the protocol handler: `default-src 'self'; img-src 'self' data: blob:;
-  media-src 'self' blob:; style-src 'self' 'unsafe-inline'` — `unsafe-inline`
-  is needed today (inline SVG data URIs / inline styles); tighten later, not now.
-  No remote origins at all after the font is bundled.
-- Deny `window.open`, block navigation off the app origin, deny all permission
-  requests.
+- Preload exposes only the four functions above; nothing reaches `ctx`, so the
+  app contract in `CLAUDE.md` is unchanged.
+- CSP in the protocol handler: `default-src 'self'; img-src 'self' data: blob:;
+  media-src 'self' blob:; style-src 'self' 'unsafe-inline'`. No remote origins
+  after the font is bundled.
+- Deny `window.open`, block navigation off-origin, deny all permission requests.
 
-## 5. Things that need a native equivalent
+## 5. Cross-platform concerns (Windows dev, Windows + Debian targets)
 
-| Browser behaviour today | Electron handling |
-|---|---|
-| Upload via `<input type=file>` + `createObjectURL` (`desktop.js`) | Works unchanged in Chromium; keep. |
-| Blob download of saved art/exports | `will-download` -> native Save dialog, default dir = Documents/Holytron. |
-| Google Fonts VT323 | Bundled `.woff2` + `@font-face`; works offline. |
-| `START.bat` / `start.sh` | Kept for the web build; Electron installers replace them for end users. |
-| Tab close / reload | Window close = unmount flow; confirm `unmount()` of every app runs on `beforeunload` so Bekkedal/Stand Battle flush saves (add an explicit flush on `before-quit` -> renderer `beforeunload`). |
+- **Line endings:** add `.gitattributes` (`* text=auto eol=lf`) so Windows
+  checkouts don't produce CRLF churn or break shell scripts.
+- **Paths:** the protocol handler and backup code use `path.join`, never
+  hard-coded `/` or `\`; decode and normalise URLs, reject anything resolving
+  outside the app root. File names are case-sensitive on Linux but not Windows —
+  add a check that every `import` / asset path matches its file's exact case
+  (this is a classic "works on Windows, breaks on Debian" bug).
+- **Building the Debian package from Windows:** `.deb` can't be built natively on
+  Windows. Use GitHub Actions with a matrix (`windows-latest` -> NSIS installer,
+  `ubuntu-latest` -> `.deb` + AppImage), or WSL locally.
+- **Linux runtime:** `.deb` declares Chromium's usual dependencies
+  (electron-builder does this); test on a real Debian install, including the
+  `chrome-sandbox` SUID issue (set `--no-sandbox` only as a documented fallback,
+  never the default).
+- **Save locations:** `userData` resolves to `%APPDATA%\Holytron` on Windows and
+  `~/.config/Holytron` on Linux — nothing OS-specific in our code.
+- **Downloads / Save dialogs:** `will-download` -> native dialog, default folder
+  = Documents/Holytron.
 
 ## 6. Phased execution
 
-**Phase 1 — Safety net (web build, no Electron yet)**
-1. Add Export/Import machine (§1.3) to the kernel. Tests: round-trip a populated
-   profile byte-for-byte (VFS files incl. blobs, vault, every `app_*` key).
-2. Bundle VT323 locally; confirm no remaining network requests (Playwright
-   `page.route('**/*', …)` fails on any non-local request).
-3. Remove nothing; run the full headless suite to baseline.
+**Phase 1 — Prep (still runnable in a browser)**
+1. Bundle VT323 locally; verify zero non-local requests (Playwright
+   request interception).
+2. Add `.gitattributes`; add the import-path case check.
+3. Baseline: run the full existing suite and record results.
 
 **Phase 2 — Shell**
-4. Add `electron/` + deps; custom protocol; pinned `userData`; security flags.
-5. `npm run electron` boots straight to the desktop; same as `npm start` visually.
+4. Add `electron/` and deps (`electron`, `electron-builder`); custom protocol;
+   pinned `userData`; security flags; `"main": "electron/main.js"`,
+   scripts `start` (`electron .`) and `dist`.
+5. App boots straight to the desktop on Windows and Debian.
 
 **Phase 3 — Parity verification (the "nothing is lost" gate)**
-6. Run the existing suite *against the Electron renderer* by pointing the
-   Playwright scripts at `templeos://app/` (Playwright's `_electron.launch`),
-   not only the localhost server: `smoke.mjs`, `bekkedal_*`, `lint-content.mjs`,
-   all `node apps/**/*_check.js` (these are pure Node and just keep passing).
-7. Per-app manual/automated pass over all 28 registry entries: open, interact,
-   close, reopen, no console errors, no leaked listeners (`unmount()` contract).
-8. Visual diff: screenshot the desktop and a handful of apps (Bekkedal, Stand
-   Battle, Solitaire, Hifi) in browser vs Electron at 100% / 125% / 150% DPI;
-   pixel-compare, expect exact match. Check "no antialiasing" explicitly.
-9. Persistence test: write data -> quit -> relaunch -> verify; then import an
-   export taken from the real browser profile and compare against it.
-10. Performance: Stand Battle holds 60 Hz sim; Bekkedal day-length measurement
-    (`bekkedal_playtest.mjs`, five real minutes per day) still reads ~300 s.
+6. Point the Playwright scripts (`smoke.mjs`, `bekkedal_*`) at the Electron
+   window via `_electron.launch`; pure-Node `*_check.js` keep passing as is.
+7. Open / interact / close / reopen all 28 apps; no console errors; `unmount()`
+   leaves no timers or listeners.
+8. Pixel diff of the desktop and Bekkedal, Stand Battle, Solitaire, Hifi against
+   baseline screenshots taken in Phase 1, at 100% / 125% / 150% on Windows and at
+   100% / 200% on Debian. No antialiasing.
+9. Persistence: write -> quit -> relaunch -> verify; kill the process mid-session
+   and confirm at most the last unflushed save is lost; flush saves on
+   `before-quit`.
+10. Performance: Stand Battle holds 60 Hz; `bekkedal_playtest.mjs` day length
+    still ~300 s.
 
 **Phase 4 — Packaging**
-11. `electron-builder`: NSIS (Windows, primary given `START.bat`), dmg (macOS),
-    AppImage (Linux). `files` allowlist: `index.html`, `kernel/`, `apps/`,
-    `assets/`, `vendor/`, `electron/` — excludes `fix_*.cjs`, `*_check.txt`,
-    `big html file`, `temp_*`, `scripts/`, `docs/`, `node_modules` dev deps.
-12. App id `com.holytron.dm640`, product name stable forever (it keys `userData`).
-13. Code signing is optional for personal use; unsigned Windows builds trigger
-    SmartScreen and unsigned macOS needs right-click-open. Decide before release.
-14. Auto-update deferred; if added later, it must never touch `userData`.
+11. `electron-builder` targets: `nsis` (Windows), `deb` (+ optional `AppImage`).
+    `files` allowlist: `index.html`, `kernel/`, `apps/`, `assets/`, `vendor/`,
+    `electron/`.
+12. App id `com.holytron.dm640`, frozen. Icons from `assets/images`.
+13. CI workflow builds both installers and runs the suite on both OSes.
 
-**Phase 5 — Cut-over**
-15. User exports from browser -> installs Electron build -> imports -> verifies
-    Bekkedal save loads on the same tile and day (the savetest scenario).
-16. Keep the web build working in-repo as the fallback and for CI.
-17. Update `CLAUDE.md` / `README.md`: how to run the Electron build, the
-    "never change the scheme/host/appId" rule, and the export/import procedure.
+**Phase 5 — Remove the web build**
+14. Only after Phase 3 passes on both OSes: delete `server.js`, `START.bat`,
+    `start.sh`, and drop `express` from `package.json`.
+15. Delete the root scaffolding (`fix_*.cjs`, `*_check.txt`, `big html file`,
+    `temp_*.js`, `bulk_port.cjs`, etc.) — confirm each is unused first.
+16. Update `CLAUDE.md` and `README.md`: run with `npm start`, build with
+    `npm run dist`, and the "never change scheme / appId / productName" rule.
 
-## 7. Acceptance checklist ("nothing lost")
+## 7. Acceptance checklist
 
-- [ ] All 28 registry apps launch and close cleanly; every `unmount()` leaves no timers/listeners.
-- [ ] Import of a real browser export restores VFS, vault, all `app_*` and `templeos.*` keys, verified by diff.
-- [ ] Bekkedal save round-trips and reloads onto the same square; Stand Battle `run` and `meta` blobs intact.
-- [ ] Zero network requests at runtime; works offline; font renders identically.
-- [ ] Screenshots pixel-identical to the browser build at three DPI scales; no antialiasing.
-- [ ] Audio plays without a click gesture; MUS/SFX knobs work.
+- [ ] All 28 apps launch and close cleanly on Windows and Debian.
+- [ ] Saves persist across relaunch; Bekkedal reloads onto the same square; Stand Battle `run` / `meta` intact.
+- [ ] Zero network requests; works offline; font identical.
+- [ ] Screenshots match baseline at all tested scales; no antialiasing.
+- [ ] Audio plays without a click; MUS/SFX knobs work.
 - [ ] 60 Hz sim holds; Bekkedal day length unchanged.
-- [ ] Existing headless suite green in both web and Electron runs.
-- [ ] Rolling backups written on quit; kill -9 mid-session loses at most the last unflushed save.
-- [ ] Installers build for each target; package contains no scaffolding files.
+- [ ] Existing suite green on both OSes, run against Electron.
+- [ ] Case-sensitivity check passes (Debian boots what Windows boots).
+- [ ] NSIS installer and `.deb` build in CI; package contains no scaffolding.
+- [ ] Backups written on quit; export/import round-trips.
 
-## 8. Risks and mitigations
+## 8. Risks
 
 | Risk | Mitigation |
 |---|---|
-| Origin change orphans saves | Fixed custom scheme + pinned `userData` + export/import done *first* (§1) |
-| Chromium storage wiped/corrupted | Rolling JSON backups; never rely on storage alone |
-| DPI scaling softens the pixel look | Lock zoom, test 125/150%, integer-scale in canvas already — verify in Phase 3 |
+| Origin / appId change orphans saves | Fixed scheme, pinned `userData`, frozen ids (§1) |
+| Works on Windows, breaks on Debian (case, paths, line endings) | Case check, `path.join`, `.gitattributes`, CI on both |
+| Can't build `.deb` on Windows | GitHub Actions ubuntu runner or WSL |
+| DPI scaling softens the pixel look | Lock zoom, test scales on both OSes |
 | Background throttling stalls the sim | `backgroundThrottling:false` |
-| Renaming app/id later changes `userData` | Treat `appId`/`productName` as frozen; documented in `CLAUDE.md` |
-| Bundle bloat from Electron | Accepted (~100 MB); app payload itself is ~1 MB + sources |
+| Storage corruption | Rolling backups |
+| Removing the web build too early | Phase 5 gated on Phase 3 passing |
 
-## 9. Open questions for you
+## 9. Signing and auto-update (explained)
 
-1. Which OS(es) must ship first — Windows only, or macOS/Linux too?
-2. Do you have existing saves in a browser you want carried over (decides how much of §1.3 is urgent)?
-3. Should the web build stay supported long-term, or does Electron replace it?
-4. Signed installers / auto-update now, or personal-use unsigned builds first?
+- **Code signing** costs money (a certificate). Unsigned Windows installers show a
+  blue "Windows protected your PC / unknown publisher" warning the first time;
+  users click *More info -> Run anyway*. Debian `.deb` files don't need signing.
+  Only matters if you give the app to other people.
+- **Auto-update** means the app downloads and installs new versions by itself,
+  which needs a server or GitHub Releases to host them. Without it, you
+  reinstall manually to update.
+
+Recommendation: neither for now. Both can be added later without changing saves,
+as long as `appId` stays the same.
