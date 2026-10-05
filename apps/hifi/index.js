@@ -956,7 +956,7 @@ export default {
           const n = e.n, t = S.list[n];
           const on = n === S.ix;
           if (on) R(x + 2, yy, w - 4, 10, HFP.panel);
-          TXT((n + 1) + '.', x + 5, yy + 8, on ? HFP.white : HFP.brush, 7);
+          TXT((S.folder && !S.filter.trim() ? v.indexOf(n) + 1 : n + 1) + '.', x + 5, yy + 8, on ? HFP.white : HFP.brush, 7);
           g.save(); g.beginPath(); g.rect(x + 18, yy, w - 46, 10); g.clip();
           TXT(t.name, x + 18, yy + 8, t.missing ? HFP.red : on ? HFP.amber : HFP.brushHi, 7);
           g.restore();

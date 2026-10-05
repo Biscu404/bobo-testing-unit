@@ -128,6 +128,11 @@ html, body {
 
 /* curved glass drawn on a canvas: scanlines, grille, vignette, glare.
    It sits outside #tube so animating it never re-runs the lens filter. */
+/* while drunk, the edges of the glass close in (see kernel/drunk.js) */
+#screen.drunk::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 8;
+  box-shadow: var(--drunk-vig, none);
+}
 #glass {
   position: absolute;
   inset: 0;
@@ -1709,7 +1714,11 @@ textarea.editor {
   100% { transform: scale(1, 1) translate3d(0, 0, 0); filter: brightness(1); }
 }
 #screen.off #tube { animation: crt-off 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
-#screen:not(.off) #tube { animation: crt-on 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
+/* NOT `forwards`: a fill-forwards animation keeps its last keyframe's transform
+   and filter on #tube for ever, and an animated value beats an inline style, so
+   nothing that ever set #tube's filter or transform (the drunk effect, the
+   hold knobs) could be seen. The last keyframe is the resting state anyway. */
+#screen:not(.off) #tube { animation: crt-on 0.4s cubic-bezier(0.23, 1, 0.32, 1); }
 #screen.off #glass { opacity: 0; transition: opacity 0.4s; }
 
 @keyframes dg-flash {

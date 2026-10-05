@@ -7,6 +7,7 @@ import { Mixer } from '../../kernel/mixer.js';
 import { CK_SAVE, CK_W, CK_H, CK_T, CK_LV, CK_STORY, CK_END, CK_KID, CK_ACH, CK_HZ, CK_SONGS } from './data.js';
 import { VGA16 } from '../../kernel/god.js';
 import { scopedListeners } from '../lifecycle.js';
+import { drawJesse, moodFor } from './jesse.js';
 
 /* ---- the rules -----------------------------------------------------------
    The same functions the solver ran, so what the game allows and what was
@@ -193,14 +194,16 @@ export default {
       /* He says one thing at a time and never the same thing twice running.
          `once` keys are remembered in the save, so a first-time reaction is
          genuinely a first time. */
-      function say(tag, once) {
+      function say(tag, once, big) {
         const pool = CK_KID[tag];
         if (!pool || !pool.length) return;
         if (once) { if (SV.said[tag]) return; SV.said[tag] = 1; save(); }
         let i = Math.floor(Math.random() * pool.length);
         if (pool.length > 1 && i === kidLast[tag]) i = (i + 1) % pool.length;
         kidLast[tag] = i;
-        kid = { s: pool[i], t: 0, life: 3.4 + pool[i].length * 0.022 };
+        kid = { s: pool[i], t: 0, life: 3.4 + pool[i].length * 0.022, tag: tag, mood: moodFor(tag) };
+        /* on a win he gets the whole stage: slower to type, longer to read */
+        if (big) { kid.big = true; kid.life = pool[i].length / 36 + 2.6; }
         idleT = 0;
         sfx.kid();
       }
@@ -337,8 +340,11 @@ export default {
         if (fresh & 1) sun += 30 + L.id * 6;
         if (fresh & 2) sun += 30 + L.id * 6;
         if (fresh & 4) sun += 40 + L.id * 8;
-        if (sun) { window.Economy.earn(sun, 'THE COOK: BENCH ' + L.id); setTimeout(() => Snd.coin(), 700); }
-        say(resets === 0 && lvRuins === 0 ? 'win_first' : st.steps <= L.par ? 'win_par' : 'win_over');
+        say(resets === 0 && lvRuins === 0 ? 'win_first' : st.steps <= L.par ? 'win_par' : 'win_over', 0, true);
+        /* the batch-complete panel does not start until he has finished: he
+           starts and ends before it begins, and the coin lands with it */
+        winT = kid ? -(kid.life + 0.4) : 0;
+        if (sun) { window.Economy.earn(sun, 'THE COOK: BENCH ' + L.id); setTimeout(() => Snd.coin(), Math.max(0, -winT) * 1000 + 700); }
         SV.money += Math.round(pur * 1000 * L.id);
         if (L.id >= SV.lv) SV.lv = Math.min(10, L.id + 1);
         if (L.id === 1) ach('a1');
@@ -587,33 +593,53 @@ export default {
       /* he sits under the bench and talks over the top of it */
       function drawKid() {
         if (!kid) return;
+        const talk = kid.t < kid.life - (kid.big ? 1.6 : 0.6) && Math.floor(kid.t * 9) % 2 === 0;
+        if (kid.big) { drawKidBig(talk); return; }
         const k = kid.t / kid.life;
-        const slide = k < 0.1 ? Math.round(-40 + (k / 0.1) * 40) : k > 0.94 ? Math.round(((k - 0.94) / 0.06) * 40) : 0;
-        const Y = 214 + slide;
-        R(6, Y, 408, 40, 0);
-        R(6, Y, 408, 1, 10); R(6, Y + 39, 408, 1, 10);
-        R(6, Y, 1, 40, 10); R(413, Y, 1, 40, 10);
-        wash(6, Y, 408, 40, 8, 2);
-        /* the face: a beanie, two eyes and a mouth that moves while he talks */
-        const bx = 14, by = Y + 6;
-        R(bx + 2, by, 24, 8, 4); R(bx + 2, by + 6, 24, 3, 12);
-        R(bx + 4, by + 9, 20, 18, 6);
-        R(bx + 4, by + 9, 20, 2, 14);
-        R(bx + 8, by + 14, 4, 4, 15); R(bx + 17, by + 14, 4, 4, 15);
-        R(bx + 9, by + 15, 2, 3, 0); R(bx + 18, by + 15, 2, 3, 0);
-        const talk = kid.t < kid.life - 0.6 && Math.floor(kid.t * 9) % 2 === 0;
-        R(bx + 10, by + 21, 9, talk ? 5 : 2, 0);
-        /* his line, wrapped once when he starts saying it */
-        g.font = '10px monospace';
-        if (!kid.lines) kid.lines = wrapTo(kid.s, 356);
-        const lines = kid.lines;
+        const slide = k < 0.1 ? Math.round(-60 + (k / 0.1) * 60) : k > 0.94 ? Math.round(((k - 0.94) / 0.06) * 60) : 0;
+        const H = 58, Y = 202 + slide;
+        R(6, Y, 408, H, 0);
+        R(6, Y, 408, 1, 10); R(6, Y + H - 1, 408, 1, 10);
+        R(6, Y, 1, H, 10); R(413, Y, 1, H, 10);
+        wash(6, Y, 408, H, 8, 2);
+        drawJesse(g, 12, Y + 5, 2.6, kid.mood, talk);
+        g.font = '11px monospace';
+        if (!kid.lines) kid.lines = wrapTo(kid.s, 340);
+        const lines = kid.lines.slice(0, 3);
         const shown = Math.floor(kid.t * 44);
         let n = 0;
-        lines.slice(0, 2).forEach((l, i) => {
+        txt('JESSE', 62, Y + 3, 14, '9px monospace');
+        lines.forEach((l, i) => {
           const cut = Math.max(0, Math.min(l.length, shown - n));
           n += l.length;
-          if (cut > 0) txt(l.slice(0, cut), 48, Y + (lines.length > 1 ? 8 : 15) + i * 13, 10, '10px monospace');
+          if (cut > 0) txt(l.slice(0, cut), 62, Y + 15 + i * 13, 15, '11px monospace');
         });
+      }
+      /* the win: the board dims, he gets the middle of the screen and a box
+         that fits what he says, and nothing else happens until he is done */
+      function drawKidBig(talk) {
+        const k = kid.t / kid.life;
+        const dy = k < 0.08 ? Math.round((1 - k / 0.08) * 30) : k > 0.96 ? Math.round(((k - 0.96) / 0.04) * 30) : 0;
+        wash(0, 0, 420, 320, 0, 6);
+        const X = 36, Y = 62 + dy, W = 348, H = 138;
+        R(X, Y, W, H, 0);
+        R(X, Y, W, 2, 14); R(X, Y + H - 2, W, 2, 14); R(X, Y, 2, H, 14); R(X + W - 2, Y, 2, H, 14);
+        wash(X + 2, Y + 2, W - 4, H - 4, 8, 2);
+        /* his own little window */
+        R(X + 10, Y + 10, 96, 118, 1);
+        R(X + 10, Y + 10, 96, 1, 14); R(X + 10, Y + 127, 96, 1, 14);
+        drawJesse(g, X + 14, Y + 14, 5.4, kid.mood, talk);
+        txt('JESSE', X + 118, Y + 10, 14, 'bold 12px monospace');
+        g.font = '12px monospace';
+        if (!kid.lines) kid.lines = wrapTo(kid.s, W - 140);
+        const shown = Math.floor(kid.t * 36);
+        let n = 0;
+        kid.lines.slice(0, 6).forEach((l, i) => {
+          const cut = Math.max(0, Math.min(l.length, shown - n));
+          n += l.length;
+          if (cut > 0) txt(l.slice(0, cut), X + 118, Y + 32 + i * 16, 15, '12px monospace');
+        });
+        if (kid.t > kid.life - 1.6) txt('space: skip', X + W - 10, Y + H - 14, 8, '9px monospace', 'right');
       }
 
       /* ---- 33.10 the shelf ------------------------------------------------ */
@@ -1018,7 +1044,7 @@ export default {
         const sx = 420 / cv.clientWidth, sy = 320 / cv.clientHeight;
         const mx = ev.offsetX * sx, my = ev.offsetY * sy;
         if (mode === 'story') { skipStory(); return; }
-        if (mode === 'won') { nextAfterWin(); return; }
+        if (mode === 'won') { if (winT < 0) { winT = 0; kid = null; return; } nextAfterWin(); return; }
         if (mode === 'book') { mode = 'menu'; sfx.page(); refresh(); return; }
         if (mode === 'menu') {
           for (let i = 0; i < 10; i++) {
@@ -1051,7 +1077,7 @@ export default {
       cv.addEventListener('keydown', ev => {
         const k = ev.key;
         if (k === ' ' || k === 'Enter') { ev.preventDefault();
-          if (mode === 'story') skipStory(); else if (mode === 'won') nextAfterWin(); return; }
+          if (mode === 'story') skipStory(); else if (mode === 'won') { if (winT < 0) { winT = 0; kid = null; } else nextAfterWin(); } return; }
         if (mode !== 'play') { if (k === 'Escape') { mode = 'menu'; refresh(); } return; }
         if (k >= '1' && k <= '9') { ev.preventDefault(); pour(+k - 1); }
         if (k === 'u' || k === 'U') undo();
@@ -1129,8 +1155,8 @@ export default {
         else if (mode === 'menu') drawMenu(t);
         else if (mode === 'book') drawBook(t);
         else {
-          drawBoard(t); drawTop(); drawShelf(t); drawKid();
-          if (mode === 'won') {
+          drawBoard(t); drawTop(); drawShelf(t); if (!(mode === 'won' && winT > 0)) drawKid();
+          if (mode === 'won' && winT > 0) {
             wash(0, 0, 420, 320, 0, 9);
             const over = Math.max(0, st.steps - L.par);
             const pur = Math.max(20, 99.1 - over * 2.5 - Math.min(8, resets) * 0.8);
@@ -1180,6 +1206,7 @@ export default {
       load();
       if (SV.lv > 1 || SV.seen.c1) { mode = 'menu'; L = CK_LV[0]; }
       else { mode = 'story'; storyIx = 0; storyT = 0; SV.seen.c1 = 1; save(); Song.want('desert'); }
+      window.__ckDebug = { win: () => win(), start: n => startLevel(n), get mode() { return mode; }, get winT() { return winT; }, get kid() { return kid; } };
       refresh();
       setTimeout(() => cv.focus(), 60);
       raf = requestAnimationFrame(frame);

@@ -14,7 +14,7 @@ import { ELE_SONGS, ELE_HZ } from '../elephant/quotes.js';
 import { SONGS as BEK_SONGS, NOTE as BEK_NOTE } from '../bekkedal/music.js';
 import { BPM as SB_BPM, ROOT as SB_ROOT, BASS as SB_BASS, LEAD as SB_LEAD } from '../standbattle/music.js';
 
-const TARGET_SECS = 105;                    /* roughly how long a pressed disc plays */
+const TARGET_SECS = 75;                     /* roughly how long a pressed disc plays */
 
 /* an app's score is in eighths against `bpm`; a disc is in sixteenths */
 function fromEighths(song, hzTable, tint, artist) {
