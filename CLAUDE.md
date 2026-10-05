@@ -1,5 +1,42 @@
 # TempleOS Module System
 
+## It is a desktop app (Electron)
+The machine ships as a Windows installer and a Debian package; there is no web build and no server.
+`index.html`, `kernel/` and `apps/` are the app and are loaded as-is — an app is still a plain ES module
+and never touches Electron. `electron/` is only the shell that hosts them:
+- `electron/resolve.js` / `protocol.js` — the app loads from `templeos://app/` and serves only `index.html`,
+  `kernel/`, `apps/`, `assets/`, `vendor/`. A new top-level folder the app needs must be added to `SERVED`.
+- `electron/main.js` — sandboxed window, no Node in the renderer, strict CSP, no outbound network, zoom
+  locked at 100%, remembers window size, single instance. `electron/preload.cjs` exposes only `version` and `quit`.
+- **Never change** the scheme/host (`resolve.js`), `app.setName`/the `userData` folder (`main.js`), or
+  `appId`/`productName` (`electron-builder.yml`). Every save lives under them; changing one orphans all saves.
+- The VT323 font is bundled in `vendor/fonts/` (`kernel/fonts.css`). Never add a remote URL: a request that
+  leaves the machine fails `check:shell`.
+
+### Commands
+```
+npm install
+npm start               # run it from source
+npm run pack            # unpacked app in dist/;  npm run dist  -> installer for this OS (win: .exe, linux: .deb)
+```
+Checks (Linux: prefix the GUI ones with `xvfb-run -a -s "-screen 0 1920x1080x24"`; add
+`HOLYTRON_EXE=<path to the built binary>` to run the same checks against the packaged app):
+```
+npm run check:paths     # every import/asset path matches its file's exact case (Windows ignores case, Debian does not)
+npm run check:shell     # origin, sandbox, CSP, no outbound traffic, VFS seed, relaunch
+npm run check:persist   # a Bekkedal save survives quit + relaunch; power-cut loss window
+npm run check:apps      # all apps open/close cleanly; fails only on leaks NOT in scripts/check-apps.known.json
+npm run check:listeners # cleanup must not cost behaviour: an open window's listeners still work (crayon draws, folder redraws)
+npm run check:perf      # frame rate and Bekkedal's day clock
+npm run check:package   # after `npm run pack`: every file the app loads is packaged, no scaffolding is
+node scripts/smoke.mjs  # ~10 min; node scripts/lint-content.mjs; node apps/*/*_check.js (pure Node)
+```
+Pixel comparison between two builds: `scripts/bekkedal_shots.mjs` twice per build, then `scripts/pngdiff.mjs`.
+An app that opens its own window (`open()`) is never sent `unmount()`: add its window/document listeners with
+`scopedListeners(el).on(window, type, fn)` from `apps/lifecycle.js`, which removes them when the window closes.
+`apps/standbattle/fairness_check.js` is imported at runtime — do not treat `*_check*.js` as dev-only in packaging.
+CI (`.github/workflows/build.yml`) builds and tests both installers. Record of the move: `docs/electron-migration-plan.md`.
+
 ## The App Contract
 Every app is a module with a default export shaped exactly like this:
 

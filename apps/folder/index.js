@@ -19,6 +19,9 @@ function spriteFor(type, app) {
   return SPRITES.text;
 }
 
+/* one vfs-changed handler per open folder window */
+const liveHandlers = new Set();
+
 export default {
   id: 'folder',
   title: 'FOLDER',
@@ -162,9 +165,18 @@ export default {
       if (!dir || dir === path || path.indexOf(dir + '/') === 0 || dir.indexOf(path + '/') === 0) render();
     };
     window.addEventListener('vfs-changed', vfsHandler);
+    liveHandlers.add({ body, vfsHandler });
 
     await render();
   },
 
-  unmount() {}
+  /* unmount() runs just before the closing window leaves the DOM, so sweep one tick
+     later: every handler whose body is gone is removed now instead of at the next event */
+  unmount() {
+    setTimeout(() => {
+      for (const h of liveHandlers) {
+        if (!h.body.isConnected) { window.removeEventListener('vfs-changed', h.vfsHandler); liveHandlers.delete(h); }
+      }
+    }, 0);
+  }
 };

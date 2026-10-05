@@ -2,7 +2,7 @@
 /* Bekkedal screenshot harness — `node scripts/bekkedal_shots.mjs [outdir]`
  *
  * Everything about this app's look is judged by eye, and you cannot judge by
- * eye what you have not rendered. This drives the real app in real Chromium
+ * eye what you have not rendered. This drives the real app in its real Electron window
  * and writes the whole matrix — eleven maps, several hours, both interiors,
  * the mine with and without a lamp, every tool mid-swing — in one pass.
  *
@@ -16,16 +16,17 @@
  * not out of an element screenshot, so what lands on disk is exactly what the
  * game rasterised — no page zoom, no scaling, no CSS in the way.
  *
- * Requires the static server (`npm start`) on :3000 and the pre-installed
- * Chromium at PLAYWRIGHT_BROWSERS_PATH; never run `playwright install`.
+ * Launches the Electron app itself (scripts/lib/target.mjs); on Linux run it
+ * under `xvfb-run -a -s "-screen 0 1920x1080x24"`. Never run `playwright install`:
+ * Electron is the only browser it needs.
  */
-import { chromium } from 'playwright';
+import { launchTarget } from './lib/target.mjs';
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { mineFloor, mineId, MINE_BANDS } from '../apps/bekkedal/mine.js';
 
 const OUT = path.resolve(process.argv[2] || '/tmp/bekshots');
-const URL_BASE = process.env.BEK_URL || 'http://localhost:3000/';
+
 const SAVE_KEY = 'templeos.bekkedal.v2';
 const ONLY = process.env.BEK_ONLY ? new RegExp(process.env.BEK_ONLY) : null;
 
@@ -210,8 +211,8 @@ mkdirSync(OUT, { recursive: true });
 /* The pre-installed Chromium is not necessarily the build this playwright
    version pins, so point at it explicitly rather than letting the launcher
    go looking for one to download. */
-const CHROME = process.env.BEK_CHROME || '/opt/pw-browsers/chromium';
-const browser = await chromium.launch({ executablePath: existsSync(CHROME) ? CHROME : undefined });
+const browser = await launchTarget();
+const URL_BASE = browser.url;
 const page = await browser.newPage({ viewport: { width: 1400, height: 900 }, deviceScaleFactor: 1 });
 /* A thrown draw call leaves a half-painted canvas that looks plausible in a
    thumbnail, so an error is a failed run and not a log line. */

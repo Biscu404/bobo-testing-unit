@@ -17,7 +17,7 @@ const W = 480, H = 270;
 export default {
   id: 'standbattle',
   title: 'STANDBATTLE.EXE',
-  icon: 'assets/images/standbattle.png',
+  icon: '',
   width: 1000,
   height: 620,
   resizable: true,

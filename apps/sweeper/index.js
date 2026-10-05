@@ -252,7 +252,8 @@ export default {
     if (revealed[i]) chord(i);
     else reveal(i);
   });
-  window.addEventListener('mouseup', () => { held = false; if (!over) face = 'neutral'; });
+  const onUp = () => { held = false; if (!over) face = 'neutral'; };
+  window.addEventListener('mouseup', onUp);
 
   /* ---- drawing ---------------------------------------------------------- */
   function tileArt(i, x, y) {
@@ -365,6 +366,7 @@ export default {
     if (!document.body.contains(made.win)) {
       raf = null;
       clearInterval(dripT);
+      window.removeEventListener('mouseup', onUp);
       sweepWin = null;
       return;
     }

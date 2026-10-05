@@ -1,0 +1,3 @@
+{
+  "_about": "Apps that leak something on close, to be fixed in the app and then removed from this list. The check fails on anything NOT listed here, and reports when a listed app starts passing. Empty: all 28 apps are clean."
+}

@@ -1,12 +1,13 @@
 # HOLYTRON DM-640
 
-A beige CRT with TempleOS inside it. One HTML file. Sixteen colours.
+A beige CRT with TempleOS inside it. A desktop app. Sixteen colours.
 
 ```
-templeos(7).html          22,020 lines, no build step, nothing to install
+Windows (installer)    Holytron-<version>-win-x64.exe
+Debian (package)       Holytron-<version>-linux-amd64.deb
 ```
 
-Open it in a browser. That is the whole install.
+Install it, open it. Nothing to configure, no network.
 
 ---
 
@@ -35,23 +36,60 @@ off it is the plastic of the case, because plastic is not phosphor.
 
 ## Running it
 
+You need [Node.js](https://nodejs.org) 22 or newer. From a checkout:
+
 ```sh
-git clone https://github.com/Teodor-Popa-Ghiorghici/terry
-cd terry
-open 'templeos(7).html'          # or just double-click it
+npm install
+npm start                 # opens the machine in its own window
 ```
 
-There is no `package.json`, no bundler, no server. It is one file that runs from
-`file://`. The only thing it reaches for over the network is the VT323 webfont
-from Google Fonts; with no connection it falls back to Courier New and everything
-still works.
+`npm run dist` builds the installer for the system you are on (Windows: an NSIS
+`.exe`; Linux: a `.deb`) into `dist/`; `npm run pack` makes the unpacked app
+without an installer. Windows and Debian are the two supported systems, and
+each installer can only be built on its own system (the GitHub Actions workflow
+in `.github/workflows/build.yml` builds both). Installing the `.deb` on Debian:
+`sudo apt install ./dist/Holytron-*-linux-amd64.deb`, then run `holytron`.
+
+The app loads from its own fixed address, `templeos://app/`, and refuses every
+network request: the VT323 font is bundled and nothing is fetched. F11 toggles
+fullscreen; zoom is locked at 100% so the pixels stay pixels.
+
+**The web build is gone.** There is no `server.js`, no `START.bat`, and the page
+no longer runs in a browser tab. `docs/electron-migration-plan.md` is the record
+of the move and of what was checked.
+
+### Where your data lives
 
 Everything that persists — uploads, edits, icon positions, notes, the Bekkedal
-save, the knob positions — lives in `localStorage` and IndexedDB under
-`templeos.*` keys, so it is per-browser and never leaves the machine.
+save, the knob positions — is stored by the app under `templeos.*` keys in its
+own data folder, and never leaves the machine:
 
-Chromium, Firefox and Safari are all fine. Web Audio needs one click or keypress
-before it will make a sound; the boot splash is that click.
+| System | Folder |
+|---|---|
+| Windows | `%APPDATA%\Holytron` |
+| Debian | `~/.config/Holytron` |
+
+Uninstalling never touches that folder, so a reinstall or an upgrade keeps your
+saves. A hard crash can cost the last few seconds of `localStorage` writes
+(Bekkedal autosaves every 6 s and on exit); a normal quit loses nothing. To back
+up or move a save, copy that folder while the app is closed (same system only;
+moving between Windows and Linux has not been tested). **Do not
+change the app's name or ID** (`appId` / `productName` in `electron-builder.yml`,
+the scheme in `electron/resolve.js`, the folder name in `electron/main.js`): the
+saves live under them, and changing one orphans every save.
+
+### Checking it
+
+`npm run check:paths`, `check:shell`, `check:persist`, `check:apps`, `check:perf`
+and `check:package` are the Electron-side checks (on Linux, run the GUI ones as
+`xvfb-run -a -s "-screen 0 1920x1080x24" npm run check:shell`). The game-logic
+checks are plain `node apps/bekkedal/*_check.js`, `node scripts/smoke.mjs` and
+`node scripts/lint-content.mjs`. See `CLAUDE.md` for the full list.
+
+> The sections below were written for the original single-file build
+> (`templeos(7).html`) and still describe the machine accurately; where they say
+> "page" or "browser", read "window". The file layout they describe has since
+> been split into `kernel/` and `apps/`.
 
 ---
 
@@ -533,7 +571,7 @@ two ranks, from a dry noise burst at D to a full chord at the top.
 
 Tuning lives in `STYLE_CFG`, thresholds in `STYLE_RANKS[].at`. As tuned, an
 unbroken chain reaches HAPPY BIRTHDAY at about 35 deletes; break the chain often
-and you will never get there. `style-meter-snippets.md` is the design note for
+and you will never get there. `docs/style-meter-snippets.md` is the design note for
 it, kept as reference — the code in it matches what shipped.
 
 ---

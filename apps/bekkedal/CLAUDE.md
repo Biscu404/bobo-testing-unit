@@ -2,8 +2,8 @@
 
 ## Running it locally
 
-`npm start` (or `node server.js`) from the repo root, then open
-`http://localhost:3000` and launch Bekkedal from the desktop. The app is loaded
+`npm start` from the repo root opens the machine in its Electron window; launch
+Bekkedal from the desktop. The app is loaded
 through `kernel/registry.js`'s dynamic import, not opened as a standalone file —
 there is no separate dev entry point for this app.
 

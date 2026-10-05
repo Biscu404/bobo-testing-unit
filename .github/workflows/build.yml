@@ -1,0 +1,88 @@
+name: build
+
+# Builds and tests the desktop app on the two supported systems. The Windows installer
+# (NSIS) can only be produced on Windows, the Debian package on Linux, hence the matrix.
+on:
+  push:
+    branches: [main, 'claude/**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-x64
+            os: windows-latest
+            exe: dist/win-unpacked/Holytron.exe
+            artifacts: dist/*.exe
+          - name: debian-x64
+            os: ubuntu-latest
+            exe: dist/linux-unpacked/holytron
+            artifacts: dist/*.deb
+    defaults:
+      run:
+        shell: bash
+    env:
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # Linux has no display on a runner: every GUI step goes through a virtual one.
+      - name: Linux display tooling
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+      - name: Set command prefix
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then echo 'XV=xvfb-run -a -s "-screen 0 1920x1080x24"' >> "$GITHUB_ENV"; else echo 'XV=' >> "$GITHUB_ENV"; fi
+
+      # ---- the source tree ----
+      - name: Paths and letter case (Windows ignores case, Debian does not)
+        run: npm run check:paths
+      - name: Shell (origin, sandbox, CSP, no outbound traffic, relaunch)
+        run: eval $XV npm run check:shell
+      - name: Persistence
+        run: eval $XV npm run check:persist
+      - name: All apps open/close (fails only on NEW leaks)
+        run: eval $XV npm run check:apps
+      - name: Listener cleanup keeps behaviour
+        run: eval $XV npm run check:listeners
+
+      # ---- the product ----
+      - name: Build installer
+        run: npm run dist
+      - name: Package contents (complete, no scaffolding)
+        run: npm run check:package
+      - name: Packaged binary - shell
+        run: HOLYTRON_EXE="$PWD/${{ matrix.exe }}" eval $XV node scripts/check-shell.mjs
+      - name: Packaged binary - persistence
+        run: HOLYTRON_EXE="$PWD/${{ matrix.exe }}" eval $XV node scripts/check-persist.mjs
+
+      - name: Debian package installs and registers a launcher
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get install -y ./dist/*.deb
+          dpkg -s holytron | grep -E '^(Package|Version|Status)'
+          test -x /opt/Holytron/holytron
+          test -f /usr/share/applications/holytron.desktop
+          test -L /usr/bin/holytron
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: holytron-${{ matrix.name }}
+          path: ${{ matrix.artifacts }}
+          if-no-files-found: error

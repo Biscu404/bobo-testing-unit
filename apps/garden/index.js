@@ -374,6 +374,7 @@ const mixerHandler = ev => {
   }
 };
 window.addEventListener('mixer-changed', mixerHandler);
+this._mixerHandler = mixerHandler;
 const W = 700, H = 436;
   let cv = null, g = null, info = null, seedBtn = null, canBtn = null, pullBtn = null;
   let canning = false, pulling = false, seedIx = 0;
@@ -747,11 +748,12 @@ const W = 700, H = 436;
     };
     window.addEventListener('garden-stock-refresh', this._stockHandler);
 
-    this._raf = raf;
+    this._stop = () => cancelAnimationFrame(raf);
   },
   unmount() {
-    if (this._raf) cancelAnimationFrame(this._raf);
+    if (this._stop) { this._stop(); this._stop = null; }
     if (this._GardenAir) this._GardenAir.stop();
     window.removeEventListener('garden-stock-refresh', this._stockHandler);
+    window.removeEventListener('mixer-changed', this._mixerHandler);
   }
 };

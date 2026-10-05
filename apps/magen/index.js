@@ -8,6 +8,7 @@ import { CRT, Vol, musGain } from '../../kernel/hardware.js';
 import { Mixer } from '../../kernel/mixer.js';
 import { VGA16 } from '../../kernel/god.js';
 import { mgIcon, mgUpIcon, mgTierIcon } from './icons.js';
+import { scopedListeners } from '../lifecycle.js';
 
 export default {
   open() {
@@ -56,6 +57,7 @@ export default {
 
       const $  = q => root.querySelector(q);
       const cv = $('.mgcv'), g = cv.getContext('2d');
+      const winL = scopedListeners(cv);
       if (!g) { $('.mghint').textContent = 'NO CANVAS.'; return; }
       const pane = $('.mgpane'), tip = $('.mgtip');
 
@@ -752,7 +754,7 @@ export default {
         if (!alive) { window.removeEventListener('mixer-changed', mixerHandler); return; }
         if (ev.detail && ev.detail.channel === 'magen') Song.level(0.2);
       };
-      window.addEventListener('mixer-changed', mixerHandler);
+      winL.on(window, 'mixer-changed', mixerHandler);
 
       /* ---- 32.25 save ---------------------------------------------------- */
       function save() {
@@ -1186,7 +1188,7 @@ export default {
       /* holding the button down keeps pressing, at a rate a hand could manage */
       let held = false, holdT = 0;
       cv.addEventListener('mousedown', () => { held = true; holdT = 0.24; });
-      window.addEventListener('mouseup', () => { held = false; });
+      winL.on(window, 'mouseup', () => { held = false; });
       cv.addEventListener('mouseleave', () => { held = false; });
       let yizT = 0;
 
