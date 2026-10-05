@@ -104,6 +104,10 @@ app.whenReady().then(() => {
   /* every permission request (camera, mic, geolocation, ...) is refused */
   session.defaultSession.setPermissionRequestHandler((_wc, _perm, cb) => cb(false));
   session.defaultSession.setPermissionCheckHandler(() => false);
+  /* spellcheck:false on the window is not enough: Chromium still fetches a dictionary
+     (en-us-*.bdic from redirector.gvt1.com) for the session. No languages, no download. */
+  session.defaultSession.setSpellCheckerEnabled(false);
+  session.defaultSession.setSpellCheckerLanguages([]);
 
   Menu.setApplicationMenu(null);
   ipcMain.on('holytron:version', (e) => { e.returnValue = app.getVersion(); });

@@ -13,15 +13,23 @@
     "check:shell": "node scripts/check-shell.mjs",
     "check:apps": "node scripts/check-apps.mjs",
     "check:persist": "node scripts/check-persist.mjs",
-    "check:perf": "node scripts/check-perf.mjs"
-  },
-  "dependencies": {
-    "express": "^4.21.2"
+    "check:perf": "node scripts/check-perf.mjs",
+    "icon": "node scripts/make-icon.mjs",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --publish never",
+    "dist:win": "electron-builder --win --publish never",
+    "dist:linux": "electron-builder --linux --publish never",
+    "check:package": "node scripts/check-package.mjs"
   },
   "devDependencies": {
     "electron": "^44.5.1",
     "electron-builder": "^26.15.3",
+    "express": "^4.21.2",
     "playwright": "^1.62.0",
     "pngjs": "^7.0.0"
-  }
+  },
+  "author": "Teodor Popa-Ghiorghici",
+  "private": true,
+  "homepage": "https://github.com/teodor-popa-ghiorghici/bobo-testing-unit",
+  "desktopName": "holytron.desktop"
 }

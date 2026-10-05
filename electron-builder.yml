@@ -1,0 +1,74 @@
+# Packaging for Holytron DM-640. Build: `npm run dist` (see docs/electron-migration-plan.md §6).
+#
+# FROZEN - do not change after the first release:
+#   appId, productName  They decide where saves live (userData = <appData>/Holytron) and
+#                       how the OS recognises an upgrade; changing either orphans every save.
+appId: com.holytron.dm640
+productName: Holytron
+
+directories:
+  output: dist
+  buildResources: build
+
+# Allowlist: only what the machine loads at runtime. Anything else in the repo root
+# (fix_*.cjs, *_check.txt, "big html file", temp_*, scripts/, docs/, server.js, ...)
+# is never packaged. `npm run check:package` proves nothing reachable is missing.
+files:
+  - package.json
+  - index.html
+  - kernel/**
+  - apps/**
+  - assets/**
+  - vendor/**
+  - electron/**
+  # dev-only files that live next to runtime ones (apps/standbattle/fairness_check.js is
+  # imported at runtime by content_registry.js, so it is deliberately NOT excluded)
+  - "!apps/bekkedal/*_check*.js"
+  - "!apps/bekkedal/CLAUDE.md"
+  - "!apps/standbattle/content_check.js"
+  - "!apps/standbattle/headless_harness.js"
+
+asar: true
+compression: normal
+artifactName: ${productName}-${version}-${os}-${arch}.${ext}
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: build/icon.ico
+  # unsigned for now: Windows shows "unknown publisher" once. Signing is a paid certificate;
+  # it can be added later without touching saves as long as appId stays the same.
+  signAndEditExecutable: true
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  # NEVER wipe %APPDATA%\Holytron (the saves) on uninstall or upgrade
+  deleteAppDataOnUninstall: false
+  runAfterFinish: true
+
+linux:
+  target:
+    - target: deb
+      arch: [x64]
+  icon: build/icon.png
+  category: Game
+  executableName: holytron
+  syncDesktopName: true
+  synopsis: TempleOS replica on a CRT, with games
+  description: Holytron DM-640 - a TempleOS CRT replica with a HolyC interpreter, DolDoc, and a desktop of apps and games.
+  maintainer: Teodor Popa-Ghiorghici <noreply@users.noreply.github.com>
+  desktop:
+    entry:
+      Name: Holytron DM-640
+      Comment: TempleOS replica
+      Keywords: templeos;crt;retro;
+
+deb:
+  packageName: holytron
+  # chrome-sandbox is installed setuid by electron-builder's default after-install script,
+  # so the renderer sandbox stays ON for a normal install

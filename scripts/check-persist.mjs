@@ -22,8 +22,10 @@ let fails = 0;
 const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'} - ${m}`); if (!c) fails++; };
 const info = (m) => console.log(`INFO - ${m}`);
 
+const EXE = process.env.HOLYTRON_EXE;       /* run against the packaged binary instead of the source tree */
 const launch = (profile) => electron.launch({
-  args: [ROOT, ...(noSandbox ? ['--no-sandbox'] : [])],
+  ...(EXE ? { executablePath: EXE } : {}),
+  args: [...(EXE ? [] : [ROOT]), ...(noSandbox ? ['--no-sandbox'] : [])],
   env: { ...process.env, HOLYTRON_USER_DATA: profile },
 });
 async function boot(app) {
@@ -73,7 +75,10 @@ const openBekkedal = async (page) => {
 }
 
 /* ---- B. power cut -------------------------------------------------------- */
-for (const wait of [0, 1, 3, 6, 10]) {
+/* Windows has no SIGKILL / pkill: killing only the main process orphans its children, which
+   keep the profile locked. The scenario is Linux/macOS only. */
+if (process.platform === 'win32') info('power-cut scenario skipped on Windows');
+for (const wait of process.platform === 'win32' ? [] : [0, 1, 3, 6, 10]) {
   const profile = mkdtempSync(join(tmpdir(), 'holytron-persist-'));
   try {
     let app = await launch(profile);

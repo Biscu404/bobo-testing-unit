@@ -30,8 +30,14 @@ const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'} - ${m}`); if (!c) fai
   ok(r('http://app/index.html') === null, 'wrong scheme refused');
 }
 
-const launch = () => electron.launch({
-  args: [ROOT, ...(noSandbox ? ['--no-sandbox'] : [])],
+/* HOLYTRON_EXE=<path to the packaged binary> runs the same checks against the built app */
+const EXE = process.env.HOLYTRON_EXE;
+/* the first launch also writes Chromium's own network log, so requests made by the browser
+   process (dictionary downloads, updater pings...) are caught, not just the page's */
+const NETLOG = join(profile, 'net.json');
+const launch = (netlog) => electron.launch({
+  ...(EXE ? { executablePath: EXE } : {}),
+  args: [...(EXE ? [] : [ROOT]), ...(noSandbox ? ['--no-sandbox'] : []), ...(netlog ? [`--log-net-log=${NETLOG}`, '--net-log-capture-mode=Everything'] : [])],
   env: { ...process.env, HOLYTRON_USER_DATA: profile },
 });
 
@@ -49,7 +55,7 @@ async function boot(app) {
 
 try {
   /* ---- 2. first launch ---------------------------------------------------- */
-  let app = await launch();
+  let app = await launch(true);
   let { page, external, errors } = await boot(app);
   ok(page.url().startsWith('templeos://app/'), `runs from the fixed origin (${page.url()})`);
   ok(external.length === 0, `no external requests ${external.join(' ')}`);
@@ -107,6 +113,20 @@ try {
     q.onsuccess = () => { const t = q.result.transaction('files', 'readwrite'); t.objectStore('files').put({ type: 'text', content: 'idb-ok' }, '/shellcheck.canary'); t.oncomplete = res; t.onerror = rej; };
   }));
   await app.close();
+
+  /* Chromium's own log: nothing may have left the machine */
+  try {
+    const raw = readFileSync(NETLOG, 'utf8');
+    const log = JSON.parse(raw);
+    const hosts = new Set();
+    for (const e of log.events || []) {
+      const p = e.params || {};
+      for (const k of ['url', 'original_url']) if (typeof p[k] === 'string') { try { const u = new URL(p[k]); if (/^https?:|^wss?:/.test(u.protocol)) hosts.add(u.host); } catch (x) {} }
+      if (typeof p.host === 'string' && !/^(templeos|app|localhost|127\.0\.0\.1|\[::1\])/.test(p.host.replace(/^https?:\/\//, ''))) hosts.add(p.host);
+    }
+    const remote = [...hosts].filter(h => !/^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/.test(h));
+    ok(remote.length === 0, `Chromium's network log shows no outbound hosts${remote.length ? ': ' + remote.join(', ') : ''}`);
+  } catch (e) { ok(false, `network log unreadable (${e.message})`); }
 
   /* ---- 3. relaunch, same profile ----------------------------------------- */
   app = await launch();

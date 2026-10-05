@@ -33,7 +33,8 @@ export async function launchTarget() {
     async newPage(opts = {}) {
       const profile = mkdtempSync(join(tmpdir(), 'holytron-run-'));
       const app = await electron.launch({
-        args: [ROOT, ...(noSandbox ? ['--no-sandbox'] : [])],
+        ...(process.env.HOLYTRON_EXE ? { executablePath: process.env.HOLYTRON_EXE } : {}),
+        args: [...(process.env.HOLYTRON_EXE ? [] : [ROOT]), ...(noSandbox ? ['--no-sandbox'] : [])],
         env: { ...process.env, HOLYTRON_USER_DATA: profile },
       });
       launched.push({ app, profile });
