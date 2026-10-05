@@ -182,3 +182,13 @@ bundled font, the export/import hook, and removing web-only files (§6, Phase 5)
 
 Recommendation: neither for now. Both can be added later without changing saves,
 as long as `appId` stays the same.
+
+## 10. Progress log
+
+**Phase 1 — done (baseline recorded on Linux/Node 22, pre-Electron)**
+- VT323 bundled (`kernel/fonts.css`, `vendor/fonts/`, OFL license included); `index.html` no longer hits Google Fonts.
+- `.gitattributes` added (LF everywhere, CRLF for `.bat`).
+- `npm run check:paths` — every relative import / asset reference matches its file's exact case (533 references, 0 problems). It found one real bug: `standbattle` pointed its `icon` at a nonexistent `assets/images/standbattle.png`; set to `''` like the other apps.
+- `npm run check:offline` — zero external requests, no page errors, font loads from the local copy. Before the change: one external request and the font did not load.
+- Baseline, all passing: `lint-content`, `smoke` (takes ~10 minutes; do not wrap it in a short timeout), `bekkedal_furnish_check`, `bekkedal_savetest`, and all 12 `apps/**/*_check.js`.
+- The browser-driven scripts expect a server on ports 3000/3001 until Phase 3 retargets them at Electron.
