@@ -69,7 +69,7 @@ let owesLongBoot = (() => {
   return !seen || (seen <= now && now - seen >= COLD_MS);
 })();
 stampSeen();
-setInterval(stampSeen, 30000);
+setInterval(stampSeen, 5 * 60 * 1000);
 window.addEventListener('pagehide', stampSeen);
 window.addEventListener('beforeunload', stampSeen);
 
@@ -93,7 +93,6 @@ function runBootLines() {
     if (mode === 'long') owesLongBoot = false;      /* only a boot that finished counts */
     bootDone = true;
     booting = false;
-    stampSeen();
     document.addEventListener('keydown', onEnterKey, true);
   });
 }
