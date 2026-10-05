@@ -233,7 +233,7 @@ await page.addInitScript(() => {
 await page.goto(URL_BASE, { waitUntil: 'domcontentloaded' });
 await page.evaluate(() => { if (window.powerOn) window.powerOn(); });
 await page.waitForSelector('#bootcursor', { timeout: 30000 });
-await page.evaluate(() => document.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: '~', code: 'Backquote', bubbles: true, cancelable: true })));
 await page.waitForSelector('#shell', { state: 'visible', timeout: 15000 });
 
 let n = 0;

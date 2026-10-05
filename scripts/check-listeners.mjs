@@ -15,7 +15,7 @@ const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'} - ${m}`); if (!c) fai
 await page.goto(t.url, { waitUntil: 'domcontentloaded' });
 await page.evaluate(() => { if (window.powerOn) window.powerOn(); });
 await page.waitForSelector('#bootcursor', { state: 'attached', timeout: 30000 });
-await page.evaluate(() => document.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: '~', code: 'Backquote', bubbles: true, cancelable: true })));
 await page.waitForSelector('#shell', { state: 'visible', timeout: 15000 });
 const open = (id, args = {}) => page.evaluate(([id, a]) => import('/kernel/wm.js').then(m => m.openWindow(id, a)), [id, args]);
 const closeTop = () => page.evaluate(() => { const ws = [...document.querySelectorAll('.win')], w = ws[ws.length - 1]; w.querySelector('.x').dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true })); });
