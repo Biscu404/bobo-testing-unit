@@ -190,7 +190,8 @@ function dismissSplash() {
 
 window._bootAt = Date.now();
 
-document.addEventListener('DOMContentLoaded', () => {
+/* boot.js is loaded by durable.js after a restore, so DOMContentLoaded may be behind us */
+const start = () => {
   initHardware();
   Cos.boot();
   drawWordmark();
@@ -200,4 +201,5 @@ document.addEventListener('DOMContentLoaded', () => {
     if (lamp) lamp.classList.add('on');
     window.runBoot();
   }
-});
+};
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();

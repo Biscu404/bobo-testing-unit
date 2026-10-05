@@ -58,6 +58,10 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
 - **Drunk.** `kernel/drunk.js` (the bottle app) acts on `#tube` through an inline filter/transform. Never give `#tube` a
   fill-forwards animation: an animated value beats an inline style, which is what silently killed this effect before.
 
+- **Durable storage.** `index.html` loads `kernel/durable.js`, which mirrors every `localStorage` write into IndexedDB
+  (`templeos_ls`) and restores it before `kernel/boot.js` loads. Chromium's own localStorage flush can lag by more than
+  ten seconds, so without it a power cut loses recent saves; `check:persist` measures exactly that.
+
 ## The App Contract
 Every app is a module with a default export shaped exactly like this:
 
