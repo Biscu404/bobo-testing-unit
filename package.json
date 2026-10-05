@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "node server.js",
     "start": "node server.js",
-    "build": "echo 'No build step required'"
+    "build": "echo 'No build step required'",
+    "check:paths": "node scripts/check-paths.mjs",
+    "check:offline": "node scripts/check-offline.mjs"
   },
   "dependencies": {
     "express": "^4.21.2"
