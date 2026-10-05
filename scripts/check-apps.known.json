@@ -1,0 +1,13 @@
+{
+  "_about": "Apps that already leaked before the Electron move: identical result against the old web build (verified). The check fails on anything NOT listed here, and reports when a listed app starts passing so it can be removed. Fix them in the app, then delete the entry.",
+  "folder":   "window 'vfs-changed' listener removed lazily on the next event, not in unmount() (by design, see the comment in apps/folder/index.js)",
+  "garden":   "window 'mixer-changed' listener removed lazily on the next event, not in unmount()",
+  "shop":     "rAF loop keeps running after close: unmount() cancels this._raf but the loop stores its id in a local",
+  "hifi":     "2 mousemove/mouseup listeners on document/window never removed",
+  "sweeper":  "1 mousemove/mouseup listener never removed",
+  "solitaire":"1 mousemove/mouseup listener never removed",
+  "crayon":   "5 mousemove/mouseup/keydown listeners never removed",
+  "magen":    "'mixer-changed' + mousemove/mouseup listeners never removed",
+  "cook":     "'mixer-changed' + mousemove/mouseup listeners never removed",
+  "notes":    "window 'mouseup' listener (apps/notes/index.js, gcv) never removed"
+}

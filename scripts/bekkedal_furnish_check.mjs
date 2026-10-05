@@ -5,11 +5,9 @@
  * the checks named in CLAUDE.md's own list — a one-off exercised for this
  * change, kept in scripts/ alongside the other harness-driven checks in
  * case it is useful again. */
-import { chromium } from 'playwright';
-import { existsSync } from 'node:fs';
-const CH = '/opt/pw-browsers/chromium';
-const URL = process.env.BEK_URL || 'http://localhost:3000/';
-const br = await chromium.launch({ executablePath: existsSync(CH) ? CH : undefined });
+import { launchTarget } from './lib/target.mjs';
+const br = await launchTarget();
+const URL = br.url;
 const pg = await br.newPage({ viewport: { width: 1000, height: 700 } });
 const errors = [];
 pg.on('pageerror', e => errors.push(String(e)));

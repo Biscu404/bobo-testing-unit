@@ -202,3 +202,24 @@ as long as `appId` stays the same.
 - `npm run check:shell` (run as `xvfb-run -a npm run check:shell` on Linux): 40 checks incl. boot from the fixed origin with no external requests or page errors, bundled font, seeded VFS, localStorage + IndexedDB surviving a relaunch, sandbox/CSP/navigation/popups. Stable 8/8 consecutive runs.
 - Known gap: the zoom-lock check passes even with the lock code removed (with no menu there is no zoom accelerator and Xvfb ignores Ctrl+wheel), so it is a regression guard, not proof. Verify zoom by hand on Windows in Phase 3.
 - Not done yet (still Phase 3/4): backups and Export/Import machine, DPI/pixel-diff checks, packaging.
+
+**Phase 3 — done on Linux/Xvfb; still to repeat by hand on Windows and a real Debian desktop (see the end of this entry)**
+
+How the "nothing is lost" gate was checked, and what came out:
+
+| Plan item | Check | Result |
+|---|---|---|
+| 6. Existing suite against Electron | `scripts/lib/target.mjs` launches Electron (default) or the old web server (`HOLYTRON_TARGET=web`); `bekkedal_furnish_check` and `bekkedal_shots` now go through it. `smoke`, `bekkedal_playtest`, `bek_headless`, `lint-content` and all `*_check.js` are pure Node with a stubbed canvas, so they have no target and the Phase 1 baseline stands. `bekkedal_savetest` compares an old *web* build with the new one and stays web-only; it goes away with the web build in Phase 5, its job (old save loads into the new build) being covered by `check-persist`. | furnish check passes in Electron |
+| 7. All 28 apps open / interact / close / reopen | `npm run check:apps`: real X button, twice per app, each in a freshly booted page; window/document listeners, intervals, rAF loops and timer chains are measured, not guessed. | 18 clean; 10 leak something on close. **Identical result on the old web build**, so none is an Electron regression. Listed with causes in `scripts/check-apps.known.json`; the check fails only on new problems. |
+| 8. Pixel diff vs the browser | `bekkedal_shots` (92 canvas captures) run twice per target; `scripts/pngdiff.mjs` compares with the reference's own run-to-run noise as the allowance, plus a "no colours the reference never produced" test for antialiasing. | 71 identical, 21 differ only within run-to-run noise, 0 beyond it. Planted defects (global blur, a recoloured patch) are caught. |
+| 9. Persistence | `npm run check:persist` | normal quit + relaunch: Bekkedal save byte-identical, same map and day. Hard kill (SIGKILL): IndexedDB always kept; localStorage (which `ctx.save` uses) is lost if the kill lands within ~1 s of the write, kept from 3 s on. |
+| 10. Timing | `npm run check:perf` | Bekkedal clock 4.00 in-game min/s against 4 declared, so a day is 300 s, same as the web build. Frame rates match the web build (software-rendered Xvfb: 23-35 fps in both). |
+
+Findings worth knowing:
+- The machine's own output is not reproducible run to run, even in one browser: the dusk/night dither phase and the HUD clock (08:01 vs 08:02) depend on frame timing. That is why the pixel check compares against noise, skips the top 22 px HUD strip and works on 8x8 block means. Byte-comparison would have failed forever.
+- Pre-existing app leaks (not touched, since this phase is about parity): `shop` is the only one with a loop that keeps running after close (`unmount()` cancels `this._raf` but the loop stores its id in a local); `notes`, `hifi`, `sweeper`, `solitaire`, `crayon`, `magen`, `cook` leave window/document listeners behind; `folder` and `garden` clean up lazily on their next event by design. The kernel itself leaves two `document` listeners per window ever opened (`wm.js` `createWindow`: `mousemove` + `mouseup`), which the check treats as the baseline.
+- A crash can cost up to about 3 seconds of localStorage writes. Bekkedal autosaves every 6 s and on exit, so a crash costs at most the last few seconds of play; a graceful quit loses nothing. If that is too much, moving `ctx.save` onto IndexedDB (durable on commit) is the fix, and it would be a kernel change.
+
+Run them: `xvfb-run -a -s "-screen 0 1920x1080x24" npm run check:shell` (and `check:apps`, `check:persist`, `check:perf`); on Windows just `npm run check:shell`. Pixel comparison: run `bekkedal_shots` twice per target into four folders, then `node scripts/pngdiff.mjs <webA> <electronA> --noiseA=<webB> --noiseB=<electronB>`.
+
+**Not verified yet (needs a real display; I only had Xvfb):** 125% / 150% Windows scaling and Linux HiDPI (the likeliest place for the pixel look to soften), Ctrl+wheel zoom lock, real-GPU frame rate (target 60), audio output, F11 fullscreen, and a real Debian desktop (Wayland and X11). On Windows run `npm run check:shell`, `check:apps`, `check:persist`, `check:perf`, then look at the desktop and Bekkedal at your display scale.

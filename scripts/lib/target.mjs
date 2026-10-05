@@ -1,0 +1,59 @@
+/* Where the browser-driven scripts run the machine.
+     HOLYTRON_TARGET=electron (default)  the real Electron shell, templeos://app/
+     HOLYTRON_TARGET=web                 plain Chromium against BEK_URL (the old
+                                         localhost:3000 server) - transition only
+   launchTarget() returns { kind, url, newPage(opts), close() } shaped like the
+   slice of Playwright's browser API those scripts use, so only the launch and
+   the URL change. On Linux run Electron under xvfb-run with a big screen:
+     xvfb-run -a -s "-screen 0 1920x1080x24" node scripts/<script>.mjs */
+import { chromium, _electron as electron } from 'playwright';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const noSandbox = process.platform === 'linux' && (process.getuid?.() === 0 || process.env.CI);
+
+export async function launchTarget() {
+  const kind = process.env.HOLYTRON_TARGET === 'web' ? 'web' : 'electron';
+  console.log('[target] ' + kind);
+  if (kind === 'web') {
+    const CH = process.env.BEK_CHROME || '/opt/pw-browsers/chromium';
+    const br = await chromium.launch({ executablePath: existsSync(CH) ? CH : undefined });
+    return { kind, url: process.env.BEK_URL || 'http://localhost:3000/', newPage: (o) => br.newPage(o), close: () => br.close() };
+  }
+
+  const launched = [];                       /* { app, profile } - one per window asked for */
+  return {
+    kind,
+    url: 'templeos://app/index.html',
+    /* Electron has one window per app instance, so each newPage() is a fresh
+       instance with its own throwaway profile (= its own empty storage). */
+    async newPage(opts = {}) {
+      const profile = mkdtempSync(join(tmpdir(), 'holytron-run-'));
+      const app = await electron.launch({
+        args: [ROOT, ...(noSandbox ? ['--no-sandbox'] : [])],
+        env: { ...process.env, HOLYTRON_USER_DATA: profile },
+      });
+      launched.push({ app, profile });
+      const page = await app.firstWindow();
+      const { width, height } = opts.viewport || {};
+      if (width && height) {
+        await app.evaluate(({ BrowserWindow }, [w, h]) => {
+          const win = BrowserWindow.getAllWindows()[0];
+          win.setMinimumSize(1, 1);
+          win.setContentSize(w, h);
+        }, [width, height]);
+        await page.waitForFunction(([w, h]) => innerWidth === w && innerHeight === h, [width, height], { timeout: 10000 });
+      }
+      return page;
+    },
+    async close() {
+      for (const { app, profile } of launched) {
+        await app.close().catch(() => {});
+        rmSync(profile, { recursive: true, force: true });
+      }
+    },
+  };
+}
