@@ -11,7 +11,7 @@ directories:
   buildResources: build
 
 # Allowlist: only what the machine loads at runtime. Anything else in the repo root
-# (fix_*.cjs, *_check.txt, "big html file", temp_*, scripts/, docs/, server.js, ...)
+# (scripts/, docs/, build resources, dev dependencies, ...)
 # is never packaged. `npm run check:package` proves nothing reachable is missing.
 files:
   - package.json

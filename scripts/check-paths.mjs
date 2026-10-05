@@ -8,7 +8,7 @@ import { join, dirname, resolve, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const SKIP = new Set(['node_modules', '.git', 'docs', 'scripts', '.claude']);
+const SKIP = new Set(['node_modules', '.git', 'docs', 'scripts', '.claude', 'dist', 'build']);
 const EXT = /\.(js|mjs|css|html)$/;
 const files = [];
 (function walk(d) {

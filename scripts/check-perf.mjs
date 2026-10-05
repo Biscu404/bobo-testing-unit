@@ -5,8 +5,7 @@
      - Bekkedal's in-game clock against BEK_CLOCK_MIN_PER_S, read off the save the
        game writes itself every 6 s (the same figure scripts/bekkedal_playtest.mjs
        derives a day length from: 06:00-02:00 = five real minutes)
-   Run against both targets to compare:
-     HOLYTRON_TARGET=web node scripts/check-perf.mjs
+   Run it from source or, with HOLYTRON_EXE=<binary>, against the packaged app:
      xvfb-run -a -s "-screen 0 1920x1080x24" node scripts/check-perf.mjs
    The fps floor is only meaningful on a machine with a real GPU: Xvfb renders in
    software, so there it is a sanity check, not a benchmark. */

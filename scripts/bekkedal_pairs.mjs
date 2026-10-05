@@ -6,17 +6,21 @@
  * the thing that is kept, not the pictures — run the harness twice and
  * compose:
  *
- *   git worktree add /tmp/bekold main
- *   (cd /tmp/bekold && python3 -m http.server 3001) &
- *   python3 -m http.server 3000 &
- *   BEK_URL=http://localhost:3001/ node scripts/bekkedal_shots.mjs shots/before
+ *   git worktree add /tmp/bekold main && (cd /tmp/bekold && npm ci)
+ *   (cd /tmp/bekold && node scripts/bekkedal_shots.mjs /tmp/shots/before)
  *   node scripts/bekkedal_shots.mjs shots/after
- *   node scripts/bekkedal_pairs.mjs shots/before shots/after shots/pairs
+ *   node scripts/bekkedal_pairs.mjs /tmp/shots/before shots/after shots/pairs
+ *
+ * (each run launches the Electron app of the checkout the script lives in; on
+ * Linux put `xvfb-run -a -s "-screen 0 1920x1080x24"` in front of the first two)
  *
  * Output is one labelled PNG per shot, grouped by which of the seven
  * reported problems it is evidence for, plus a phase strip for the swing —
  * four frames across, one row per tool, cropped to the player, because a
  * swing is the one thing a full-frame screenshot cannot show.
+ *
+ * Composing the pairs uses a plain headless Chromium (Playwright's, or set the path at
+ * `CH` below); the screenshots themselves come from the Electron app.
  */
 import { chromium } from 'playwright';
 import fs from 'node:fs';

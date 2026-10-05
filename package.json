@@ -6,10 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "electron .",
-    "serve": "node server.js",
     "dev": "electron .",
     "check:paths": "node scripts/check-paths.mjs",
-    "check:offline": "node scripts/check-offline.mjs",
     "check:shell": "node scripts/check-shell.mjs",
     "check:apps": "node scripts/check-apps.mjs",
     "check:persist": "node scripts/check-persist.mjs",
@@ -24,7 +22,6 @@
   "devDependencies": {
     "electron": "^44.5.1",
     "electron-builder": "^26.15.3",
-    "express": "^4.21.2",
     "playwright": "^1.62.0",
     "pngjs": "^7.0.0"
   },

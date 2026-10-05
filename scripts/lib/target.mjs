@@ -1,13 +1,10 @@
-/* Where the browser-driven scripts run the machine.
-     HOLYTRON_TARGET=electron (default)  the real Electron shell, templeos://app/
-     HOLYTRON_TARGET=web                 plain Chromium against BEK_URL (the old
-                                         localhost:3000 server) - transition only
-   launchTarget() returns { kind, url, newPage(opts), close() } shaped like the
-   slice of Playwright's browser API those scripts use, so only the launch and
-   the URL change. On Linux run Electron under xvfb-run with a big screen:
+/* Where the browser-driven scripts run the machine: the real Electron shell
+   (templeos://app/), from source, or - with HOLYTRON_EXE=<binary> - the packaged app.
+   launchTarget() returns { kind, url, newPage(opts), close() } shaped like the slice of
+   Playwright's browser API those scripts use. On Linux run under xvfb-run with a big screen:
      xvfb-run -a -s "-screen 0 1920x1080x24" node scripts/<script>.mjs */
-import { chromium, _electron as electron } from 'playwright';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { _electron as electron } from 'playwright';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,13 +13,8 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const noSandbox = process.platform === 'linux' && (process.getuid?.() === 0 || process.env.CI);
 
 export async function launchTarget() {
-  const kind = process.env.HOLYTRON_TARGET === 'web' ? 'web' : 'electron';
-  console.log('[target] ' + kind);
-  if (kind === 'web') {
-    const CH = process.env.BEK_CHROME || '/opt/pw-browsers/chromium';
-    const br = await chromium.launch({ executablePath: existsSync(CH) ? CH : undefined });
-    return { kind, url: process.env.BEK_URL || 'http://localhost:3000/', newPage: (o) => br.newPage(o), close: () => br.close() };
-  }
+  const kind = 'electron';
+  console.log('[target] ' + (process.env.HOLYTRON_EXE ? 'electron (packaged: ' + process.env.HOLYTRON_EXE + ')' : 'electron (source)'));
 
   const launched = [];                       /* { app, profile } - one per window asked for */
   return {

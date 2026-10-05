@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-/* Compare two targets' screenshot folders, allowing for the machine's own
+/* Compare two builds' screenshot folders, allowing for the machine's own
    run-to-run variation (animated water, smoke, the clock digit...):
 
      node scripts/pngdiff.mjs <A> <B> --noiseA=<A2> --noiseB=<B2> [--slack=N] [--skip-top=N] [--new-colours=N] [--exact]
 
-   A and A2 are two runs of the trusted reference (e.g. web), B and B2 two runs of the
-   target under test (e.g. electron). Per file:
+   A and A2 are two runs of the trusted reference (e.g. a known-good build), B and B2 two
+   runs of the build under test. Per file:
      noise = diff(A,A2)                                    (how much the reference target varies on its own)
      cross = the smallest of the four A/A2 x B/B2 diffs     (how close the targets get)
    A file fails only if cross > 1.5 x noise + slack, i.e. the targets differ by more than
