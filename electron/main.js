@@ -17,6 +17,10 @@ app.setPath('userData', process.env.HOLYTRON_USER_DATA || join(app.getPath('appD
 /* No click-first gate for the Web Audio buses (snd.js, music.js). */
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
+/* The app talks to nothing, so never probe for a proxy: on Windows Chromium otherwise
+   looks up wpad:80 (proxy auto-discovery) at startup, an outbound request of its own. */
+app.commandLine.appendSwitch('no-proxy-server');
+
 registerScheme();
 
 const gotLock = process.env.HOLYTRON_USER_DATA ? true : app.requestSingleInstanceLock();
