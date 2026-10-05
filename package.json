@@ -1,20 +1,23 @@
 {
   "name": "terry-templeos",
   "version": "1.0.0",
-  "description": "HOLYTRON DM-640 TempleOS replica",
-  "main": "server.js",
+  "description": "Holytron DM-640 (TempleOS replica) desktop app",
+  "main": "electron/main.js",
   "type": "module",
   "scripts": {
-    "dev": "node server.js",
-    "start": "node server.js",
-    "build": "echo 'No build step required'",
+    "start": "electron .",
+    "serve": "node server.js",
+    "dev": "electron .",
     "check:paths": "node scripts/check-paths.mjs",
-    "check:offline": "node scripts/check-offline.mjs"
+    "check:offline": "node scripts/check-offline.mjs",
+    "check:shell": "node scripts/check-shell.mjs"
   },
   "dependencies": {
     "express": "^4.21.2"
   },
   "devDependencies": {
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
     "playwright": "^1.62.0"
   }
 }

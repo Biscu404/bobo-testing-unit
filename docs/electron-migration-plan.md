@@ -192,3 +192,13 @@ as long as `appId` stays the same.
 - `npm run check:offline` — zero external requests, no page errors, font loads from the local copy. Before the change: one external request and the font did not load.
 - Baseline, all passing: `lint-content`, `smoke` (takes ~10 minutes; do not wrap it in a short timeout), `bekkedal_furnish_check`, `bekkedal_savetest`, and all 12 `apps/**/*_check.js`.
 - The browser-driven scripts expect a server on ports 3000/3001 until Phase 3 retargets them at Electron.
+
+**Phase 2 — done (verified on Linux under Xvfb; not yet run on Windows or a real Debian desktop)**
+- `electron/main.js`, `preload.cjs`, `protocol.js`, `resolve.js`. `npm start` now launches Electron; the old Express server remains as `npm run serve` until Phase 5.
+- Origin `templeos://app/` (standard, secure, fetch-capable). Only `index.html`, `kernel/`, `apps/`, `assets/`, `vendor/` are served; `electron/`, `node_modules/`, `docs/`, `.git`, `package.json` and `%2e%2e` traversal all return 404 (`electron/resolve.js`, pure and unit-tested).
+- `userData` pinned to `<appData>/Holytron` (`%APPDATA%\Holytron` on Windows, `~/.config/Holytron` on Linux) with the app name frozen; `HOLYTRON_USER_DATA` overrides it for tests only.
+- Security: sandbox + context isolation, no Node in the renderer, preload exposes only `version` and `quit`, strict CSP (no `unsafe-eval`, scripts `'self'` only), navigation off-origin blocked, `window.open` denied, all permission requests refused, DevTools only when unpackaged (F12).
+- Window: black background until ready, hidden menu, size/position/fullscreen remembered (off-screen positions discarded), F11 fullscreen, background throttling off, autoplay allowed, single-instance lock.
+- `npm run check:shell` (run as `xvfb-run -a npm run check:shell` on Linux): 40 checks incl. boot from the fixed origin with no external requests or page errors, bundled font, seeded VFS, localStorage + IndexedDB surviving a relaunch, sandbox/CSP/navigation/popups. Stable 8/8 consecutive runs.
+- Known gap: the zoom-lock check passes even with the lock code removed (with no menu there is no zoom accelerator and Xvfb ignores Ctrl+wheel), so it is a regression guard, not proof. Verify zoom by hand on Windows in Phase 3.
+- Not done yet (still Phase 3/4): backups and Export/Import machine, DPI/pixel-diff checks, packaging.
