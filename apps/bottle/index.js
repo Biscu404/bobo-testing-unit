@@ -4,17 +4,22 @@ import { makeArt, BW, BH, C, GLS, BOT } from './art.js';
 import { makeContainer } from './raster.js';
 import { clamp, makeSlosh, stepSlosh, JAG_FULL, JAG_SHOT, POURED_FILL, BOT_FULL } from './physics.js';
 import { startPour, pourStep } from './pour.js';
-import { startDrink, drinkStep, glassRim, glassRest } from './drink.js';
+import { startDrink, drinkStep, restPose } from './drink.js';
+import { makeGlass3D } from './glass3d.js';
 import { scopedListeners, whenGone } from '../lifecycle.js';
 
 const JAG_KEY = 'templeos.bottle.v1';
-const JAG_LINES = [
-  'GOOD.', 'STILL GOOD.', 'THAT IS THE ONE THAT WORKS.',
-  'YOU ARE HAVING A LOVELY TIME.', 'THE ROOM IS SLIGHTLY WIDER NOW.',
-  'YOU HAVE OPINIONS ABOUT THE MENUBAR.', 'YOU TELL THE MACHINE YOU LOVE IT.',
-  'THE MACHINE SAYS NOTHING BACK.', 'PERHAPS SOME WATER.',
-  'DRINK SOME WATER. THIS IS NOT A SUGGESTION.'
-];
+/* what the machine says as you go down, by how far you are */
+const JAG_LINES = {
+  'SOBER': ['GOOD.', 'STILL GOOD.'],
+  'WARM': ['THAT IS THE ONE THAT WORKS.', 'A LITTLE WARMER NOW.'],
+  'TIPSY': ['YOU ARE HAVING A LOVELY TIME.', 'THE ROOM IS SLIGHTLY WIDER NOW.'],
+  'LOOSE': ['YOU HAVE OPINIONS ABOUT THE MENUBAR.', 'YOU SMILE AT THE CURSOR. IT SMILES BACK.'],
+  'SLOSHED': ['YOU TELL THE MACHINE YOU LOVE IT.', 'THE MACHINE SAYS NOTHING BACK.'],
+  'HAMMERED': ['PERHAPS SOME WATER.', 'THE FLOOR IS A SUGGESTION.'],
+  'ABOUT TO GO': ['DRINK SOME WATER. THIS IS NOT A SUGGESTION.', 'THIS IS THE LAST ONE. IT IS NEVER THE LAST ONE.']
+};
+const BREATHER = 3.5;                       /* seconds after a measure before the next click means anything */
 const REST_C = [BOT.rest[0], BOT.rest[1] - BOT.cy];
 const GCX = GLS.rest[0], FLOOR = GLS.rest[1] - 6;
 
@@ -45,14 +50,14 @@ export default {
     g.imageSmoothingEnabled = false;
     const A = makeArt(g), { R, T } = A;
     const sfx = makeSfx(Snd);
-    const botC = makeContainer(A.bottleSpec), glsC = makeContainer(A.glassSpec), handC = makeContainer(A.handSpec);
+    const botC = makeContainer(A.bottleSpec), glass = makeGlass3D();
     const liq = C.liquid;
 
     const S = {
-      ml: JAG_FULL, drunk: 0, bottles: 1, phase: 'idle', t: 0, note: '', noteT: 0, queue: 0,
+      ml: JAG_FULL, drunk: 0, bottles: 1, phase: 'idle', t: 0, note: '', noteT: 0, rest: 0,
       bot: { c: REST_C.slice(), a: 0, vol: BOT_FULL, capOn: true, surf: null, n0: botC.n0, slosh: makeSlosh() },
-      gls: { c: glassRest(), a: 0, vol: 0, hand: false, slosh: makeSlosh() },
-      face: null, stream: 0, q: 0, lip: null, glassSurf: FLOOR, glassVol: 0, glugPh: 0, glugIn: 0, dripIn: 0,
+      gls: { pose: restPose(), vol: 0 },
+      sipDrops: [], stream: 0, q: 0, lip: null, glassSurf: FLOOR, glassVol: 0, glugPh: 0, glugIn: 0, dripIn: 0,
       bubbles: [], fizz: [], rings: [], drops: [], flight: [], ringIn: 0, foam: 0, poured: 0, swallowed: 0, pending: 0
     };
     let wasFull = 0;
@@ -112,46 +117,44 @@ export default {
       /* air going in as the liquor comes out */
       S.bubbles.forEach(b => { if (botC.inside(bpose, b.x, b.y)) { g.globalAlpha = 0.75; R(b.x, b.y, b.r, b.r, '#d8f0d0'); } });
       g.globalAlpha = 1;
-      if (S.face) {
-        const hx = 258 - 51, hy = 150 - 70 + S.face.dy;
-        A.face(hx, hy, S.face);
+      /* the reckoning: drawn first, so a glass brought up close covers it */
+      const frac = clamp(S.ml / JAG_FULL, 0, 1);
+      const shots = Math.floor(S.ml / JAG_SHOT + 1e-6);
+      T('JÄGERMEISTER', 190, 20, C.label, 13, 'center');
+      T(S.ml.toFixed(0) + ' ML LEFT  ·  ' + shots + ' MEASURE' + (shots === 1 ? '' : 'S'), 190, 34, C.white, 9, 'center');
+      const drinking = S.phase === 'drink';
+      if (!drinking) {
+        R(136, 300, 108, 8, '#1a1008');
+        R(137, 301, Math.round(106 * frac), 6, frac > 0.25 ? C.label : '#c8542a');
+        T('BOTTLE ' + S.bottles + (window.Drunk ? '  ·  ' + window.Drunk.stage() : ''), 190, 322, C.dim, 8, 'center');
+        T('DRUNK: ' + S.drunk + ' MEASURE' + (S.drunk === 1 ? '' : 'S') +
+          '  (' + (S.drunk * JAG_SHOT / 1000).toFixed(2) + ' L)', 190, 336, C.white, 8, 'center');
       }
-      if (G.hand) { A.arm(G.c[0] + 10, G.c[1] - 6 + 10); }
-      const gpose = { x: G.c[0], y: G.c[1], a: G.a };
-      const rim = glassRim(G.c, G.a);
-      const moving = Math.abs(G.slosh.w) > 0.02;
-      const rg = glsC.render(g, gpose, { frac: G.vol, slope: Math.tan(G.slosh.a), rim, layer: 0,
-        wave: S.stream > 0.05 ? 1.6 : (moving ? 0.8 : 0), phase: ts * 14, foam: S.foam > 0.1 ? Math.min(2.5, S.foam) : 0 });
-      if (rg.spilled > 0 && S.phase === 'drink' && S.t > 0.62) { G.vol = Math.max(0, rg.kk / rg.n); S.pending += rg.spilled / rg.n; S.run = ts; }
-      S.glassSurf = Math.min(FLOOR, rg.surfY(GCX)); S.glassVol = G.vol;
-      if (G.hand) handC.render(g, gpose, { frac: 0, layer: 0 });
-      /* the liquor running over the rim into a mouth */
-      if (S.phase === 'drink' && S.run && ts - S.run < 0.12) {
-        const r = rim[0]; R(r[0] - 7, r[1] + 1, 8, 3, '#e0903a'); R(r[0] - 7, r[1] + 1, 8, 1, '#f0c070');
-      }
+      const hint = S.phase === 'pour' ? 'POURING...'
+                 : S.phase === 'drink' ? 'DOWN IT GOES...'
+                 : S.rest > 0 ? 'CATCH YOUR BREATH...'
+                 : full() ? 'CLICK TO DRINK'
+                 : S.ml < JAG_SHOT ? 'THE BOTTLE IS EMPTY'
+                 : 'CLICK TO POUR';
+      T(S.note || hint, 190, drinking ? 50 : 350, S.note ? C.label : C.dim, 8, 'center');
+      /* the glass: lifted to the screen and tipped toward whoever is at it, when it is being drunk */
+      const rg = glass.render(g, G.pose, { vol: G.vol, foam: S.foam > 0.1 ? Math.min(2.5, S.foam) : 0 });
+      if (S.phase === 'drink') {
+        if (rg.spilled > 0) {
+          G.vol = rg.vol; S.pending += rg.spilled;
+          /* what goes over the edge heads for the viewer, and is gone off the bottom of the picture */
+          for (let k = 0; k < 2; k++) S.sipDrops.push({ x: rg.rimLow[0] + (Math.random() - 0.5) * 30, y: rg.rimLow[1], vx: (Math.random() - 0.5) * 20,
+            vy: 20 + Math.random() * 40, r: 4 + Math.random() * 3 * rg.scale, g: 0.4 + Math.random() * 0.6 });
+        }
+      } else S.glassSurf = Math.min(FLOOR, rg.surfY);
+      S.glassVol = G.vol;
+      S.sipDrops.forEach(d => { R(d.x, d.y, d.r, d.r, '#c8741c'); R(d.x, d.y, d.r, Math.max(1, d.r / 4), '#f0b868'); });
       drawStream(ts);
       /* what is thrown up when the stream lands, and the drops that leave the lip */
       S.rings.forEach(r => { g.globalAlpha = 1 - r.t / r.life; R(r.x - r.r, S.glassSurf - 1, r.r * 2, 1, C.foam); });
       g.globalAlpha = 1;
       S.fizz.forEach(f => R(f.x, f.y, f.r, f.r, f.y < S.glassSurf + 3 ? C.foam : '#c58a44'));
       S.drops.forEach(p => R(p.x, p.y, p.r || 2, p.r || 2, p.c === 'liq' ? liq : p.c));
-      /* the reckoning */
-      const frac = clamp(S.ml / JAG_FULL, 0, 1);
-      const shots = Math.floor(S.ml / JAG_SHOT + 1e-6);
-      T('JÄGERMEISTER', 190, 20, C.label, 13, 'center');
-      T(S.ml.toFixed(0) + ' ML LEFT  ·  ' + shots + ' MEASURE' + (shots === 1 ? '' : 'S'), 190, 34, C.white, 9, 'center');
-      R(136, 300, 108, 8, '#1a1008');
-      R(137, 301, Math.round(106 * frac), 6, frac > 0.25 ? C.label : '#c8542a');
-      T('BOTTLE ' + S.bottles, 190, 322, C.dim, 8, 'center');
-      T('DRUNK: ' + S.drunk + ' MEASURE' + (S.drunk === 1 ? '' : 'S') +
-        '  (' + (S.drunk * JAG_SHOT / 1000).toFixed(2) + ' L)', 190, 336, C.white, 8, 'center');
-      const hint = S.phase === 'pour' ? 'POURING...'
-                 : S.phase === 'drink' ? 'DOWN IT GOES...'
-                 : full() ? 'CLICK TO DRINK'
-                 : S.ml < JAG_SHOT ? 'THE BOTTLE IS EMPTY'
-                 : 'CLICK TO POUR';
-      T(S.note || hint, 190, 350, S.note ? C.label : C.dim, 8, 'center');
-      if (S.queue > 0) T('x' + S.queue, 366, 350, C.label, 8, 'right');
       g.globalAlpha = 0.06;
       const gr = g.createLinearGradient(0, 0, BW, BH);
       gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.5, 'rgba(255,255,255,0)');
@@ -162,15 +165,15 @@ export default {
     /* ---- what a click does ----------------------------------------------- */
     function next() {
       if (full()) { startDrink(S); sfx.sip(); return true; }
-      if (S.ml < JAG_SHOT) { say('EMPTY. BUY ANOTHER ONE.'); sfx.deny(); S.queue = 0; return false; }
+      if (S.ml < JAG_SHOT) { say('EMPTY. BUY ANOTHER ONE.'); sfx.deny(); return false; }
       startPour(S); sfx.cap(); return true;
     }
-    /* clicks while something is going on are kept and acted on in turn, and
-       the more of them there are the faster everything goes: drinking a whole
-       bottle in one go is a matter of not stopping */
+    /* a click is for now. While a measure is being poured or drunk, or while whoever
+       it is gets their breath back, it does nothing at all: nothing is kept for later,
+       and nothing can be hurried by it. */
     function request() {
       if (window.Drunk && window.Drunk.blackedOut && window.Drunk.blackedOut()) return;
-      if (S.phase === 'idle') next(); else S.queue = Math.min(8, S.queue + 1);
+      if (S.phase === 'idle' && S.rest <= 0) next();
     }
     cv.addEventListener('mousedown', ev => { ev.stopPropagation(); cv.focus(); if (ev.button === 0) request(); });
     cv.addEventListener('keydown', ev => {
@@ -193,17 +196,18 @@ export default {
       say('ONE MEASURE. FORTY MILLILITRES.');
     }
     function doneDrink() {
-      S.phase = 'idle'; S.drunk++;
-      S.gls.vol = Math.min(S.gls.vol, 0.03); S.face = null;
+      S.phase = 'idle'; S.drunk++; S.rest = BREATHER;
+      S.gls.vol = Math.min(S.gls.vol, 0.03);
       sfx.down(); sfx.ahh(); save();
-      if (window.Drunk) { if (window.Drunk.drink) window.Drunk.drink(); else window.Drunk.add(0.18); }
-      say(JAG_LINES[Math.min(JAG_LINES.length - 1, Math.floor(S.drunk / 3))]);
+      if (window.Drunk) window.Drunk.drink();
+      const lines = JAG_LINES[window.Drunk ? window.Drunk.stage() : 'SOBER'] || JAG_LINES.SOBER;
+      say(lines[S.drunk % lines.length]);
     }
 
     /* ---- the simulation --------------------------------------------------- */
     function step(rdt) {
-      const speed = 1 + Math.min(S.queue, 6) * 0.5;
-      const dt = rdt * speed;
+      const dt = rdt;
+      if (S.rest > 0) S.rest -= rdt;
       if (S.noteT > 0) { S.noteT -= rdt; if (S.noteT <= 0) S.note = ''; }
       let done = false;
       if (S.phase === 'pour') done = pourStep(S, dt, fx);
@@ -214,7 +218,6 @@ export default {
         if (S.flight[i].at <= S.t) { S.gls.vol = Math.min(0.95, S.gls.vol + S.flight[i].dv); S.flight.splice(i, 1); }
       }
       stepSlosh(S.bot.slosh, S.bot.c[0], S.bot.c[1], S.bot.a, dt, 0.4);
-      stepSlosh(S.gls.slosh, S.gls.c[0], S.gls.c[1], S.gls.a, dt, 0.45);
       /* the stream's sound, and its splash */
       if (S.stream > 0.04 && !pouringSnd) { pouringSnd = true; sfx.pourStart(); }
       if (pouringSnd) sfx.pourSet(S.stream, S.gls.vol);
@@ -228,6 +231,7 @@ export default {
         S.foam = Math.min(2.6, S.foam + dt * 3);
       } else S.foam = Math.max(0, S.foam - dt * 0.35);
       /* bits */
+      S.sipDrops = S.sipDrops.filter(d => { d.y += d.vy * dt; d.x += d.vx * dt; d.vy += 520 * dt; d.r += dt * 6; return d.y < BH; });
       S.bubbles = S.bubbles.filter(b => { b.y += b.vy * dt; return b.y > 0 && b.y > (S.bot.surf ? S.bot.surf.c + S.bot.surf.slope * b.x : 0); });
       S.fizz = S.fizz.filter(f => { f.y += f.vy * dt; return f.y > S.glassSurf + 1 && S.gls.vol > 0.05; });
       S.rings.forEach(r => { r.t += dt; r.r += dt * 26; });
@@ -238,13 +242,12 @@ export default {
       });
       if (done) {
         if (S.phase === 'pour') donePour(); else doneDrink();
-        if (S.queue > 0) { S.queue--; next(); }
       }
     }
 
-    /* coming round: whatever was queued is forgotten, and somebody has been tidying */
+    /* coming round: somebody has been tidying */
     L.on(window, 'blackout-end', () => {
-      S.queue = 0;
+      S.rest = BREATHER;
       if (S.phase === 'idle') S.gls.vol = 0;
       say('YOU WAKE UP. THE TABLE IS TIDY. NOBODY WILL SAY WHO.');
     });
@@ -266,7 +269,7 @@ export default {
     }
     raf = requestAnimationFrame(frame);
     whenGone(cv, () => { alive = false; if (raf) cancelAnimationFrame(raf); sfx.pourEnd(); });
-    info.textContent = 'CLICK TO POUR, CLICK AGAIN TO DRINK. KEEP CLICKING AND IT GETS FASTER.';
+    info.textContent = 'CLICK TO POUR, CLICK AGAIN TO DRINK. THERE IS NO HURRYING IT.';
     setTimeout(() => cv.focus(), 40);
     if (window.__jagTest) window.__jagTest = { S, step, draw, request, g, cv, sfx, pause: false };
   }
