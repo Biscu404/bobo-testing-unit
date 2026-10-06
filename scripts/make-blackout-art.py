@@ -2,7 +2,7 @@
 """Press a photograph down to the machine's sixteen colours: assets/blackout/<name>.png.
 
     python3 scripts/make-blackout-art.py park=chickens.jpg city=bridge.jpg boulder=wall.jpg \
-        cd=discs.jpg turtle=turtle.jpg lol=league.jpg
+        cd=discs.jpg turtle=turtle.jpg lol=league.jpg ultrakill=corridor.jpg
 
 Each picture is cropped, scaled to 320 pixels wide, nudged (colour, contrast, a little
 sharpening) and dithered with Floyd-Steinberg onto VGA16 -- the exact sixteen of
@@ -28,6 +28,7 @@ JOBS = {
     'turtle':  ((30, 165, 474, 415),  180, 1.25, 1.15, 1.00),
     'lol':     (None,                 180, 1.35, 1.25, 1.45),
     'city':    ((0, 330, 900, 940),   217, 1.25, 1.20, 1.15),
+    'ultrakill': (None,               180, 1.35, 1.25, 1.15),
 }
 
 def dither(im):

@@ -3,7 +3,7 @@
    Not a filter on the monitor: the whole window goes, case and all (the overlay is
    fixed to the viewport above everything, the monitor included). The edges close
    in, it is black, and then the machine shows you things it should not have: a
-   snowy bridge in a city, chickens on a park bench, something that runs on blood,
+   snowy bridge in a city, chickens on a park bench, a corridor that runs on blood,
    a chat that will not stop, a bouldering wall, a heap of discs, a very small
    turtle, a map with three lanes, a Debian desktop. The places are real photographs
    pressed down to the sixteen colours (blackout_photo.js); each is altered on the
@@ -22,7 +22,7 @@ import * as B from './blackout_b.js';
 
 /* id, how it is drawn, and the photograph it stands on (if it has one) */
 const SCENES = [
-  ['city', A.city, 'city'], ['park', A.park, 'park'], ['ultrakill', A.ultrakill], ['discord', A.discord], ['boulder', A.boulder, 'boulder'],
+  ['city', A.city, 'city'], ['park', A.park, 'park'], ['ultrakill', A.ultrakill, 'ultrakill'], ['discord', A.discord], ['boulder', A.boulder, 'boulder'],
   ['cd', B.cd, 'cd'], ['turtle', B.turtle, 'turtle'], ['lol', B.lol, 'lol'], ['linux', B.linux]
 ];
 export const SCENE_IDS = SCENES.map(s => s[0]);

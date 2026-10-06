@@ -11,7 +11,8 @@ const FILES = {
   boulder: ['assets/blackout/boulder.png', 40, 91],
   cd: ['assets/blackout/cd.png', 0, 1],
   turtle: ['assets/blackout/turtle.png', 0, 0],
-  lol: ['assets/blackout/lol.png', 0, 0]
+  lol: ['assets/blackout/lol.png', 0, 0],
+  ultrakill: ['assets/blackout/ultrakill.png', 0, 0]
 };
 const BANK = {};
 
