@@ -110,7 +110,7 @@ export function buildSong(spec) {
   const full = newSong(song);
   const len = full.bars * full.beats;
   (spec.tracks || []).forEach(t => {
-    const tr = newTrack({ name: t.name, inst: t.drums ? 'drums' : t.inst, vol: t.vol, pan: t.pan, reverb: t.reverb });
+    const tr = newTrack({ name: t.name, inst: t.drums ? 'drums' : t.inst, vol: t.vol, pan: t.pan, reverb: t.reverb, echo: t.echo, eq: t.eq, comp: t.comp, drive: t.drive, layer: t.layer, mute: t.mute });
     Object.keys(tr).forEach(k => { if (tr[k] === undefined) delete tr[k]; });
     const tt = newTrack(tr);
     if (t.drums) { tt.inst = 'drums'; tt.hits = parseDrums(t.drums, len); tt.notes = []; }

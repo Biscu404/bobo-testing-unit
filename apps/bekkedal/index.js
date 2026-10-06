@@ -1,6 +1,6 @@
 import { createWindow, raise } from '../../kernel/wm.js';
 import { fs as vfs } from '../../kernel/vfs.js';
-import { CRT, Vol, musGain, sfxGain } from '../../kernel/hardware.js';
+import { CRT, Vol, sfxGain } from '../../kernel/hardware.js';
 import { BEK_T, BEK_T_SRC, BEK_ART_SCALE, BEK_SAVE, BEK_LOT_COST, UI, BEK_ITEMS, BEK_SEED_ORDER,
          BEK_CROPS, BEK_TOOLS, OKS_GRAN_E, AXE_NAME, PICK_NAME, ROD_NAME, BEK_MAPS, BEK_SOLID, BEK_NPCS, BEK_GOATS,
          BEK_START_KR, BEK_EN_MAX, BEK_STEP_S, BEK_CLOCK_MIN_PER_S, BEK_DAY_START, BEK_DAY_END,
@@ -895,8 +895,7 @@ export default {
          between index.js and the file-size rule. `createSongs` takes the
          handful of things it needs from here and nothing else. */
       const Song = createSongs({
-        snd: () => Snd,
-        musGain: musGain,
+        studio: () => ctx.studio,
         playing: () => alive && CRT.on && Vol.mus > 0,
         context: () => {
           if (isCave(S.map)) return 'mine';

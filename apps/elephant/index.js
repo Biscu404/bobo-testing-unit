@@ -2,8 +2,10 @@ import { createWindow, raise, sysDialog } from '../../kernel/wm.js';
 import { Snd } from '../../kernel/snd.js';
 import { Cos } from '../../kernel/cos.js';
 import { fs as vfs } from '../../kernel/vfs.js';
-import { ELE_HELLO, ELE_QUOTES, ELE_PLACES, ELE_HZ, ELE_SONGS } from './quotes.js';
-import { phosLevel, CRT, Vol, musGain } from '../../kernel/hardware.js';
+import { ELE_HELLO, ELE_QUOTES, ELE_PLACES } from './quotes.js';
+import { song as eleSong } from './score.js';
+import { Studio } from '../../kernel/studio.js';
+import { phosLevel, CRT, Vol } from '../../kernel/hardware.js';
 import { VGA16 } from '../../kernel/god.js';
 
 export default {
@@ -694,104 +696,27 @@ export default {
          changes what you are hearing, and the two arrive together.
          ========================================================================== */
       let alive = true;
-      const eleMix = ev => {
-        if (!alive) { window.removeEventListener('mixer-changed', eleMix); return; }
-        if (ev.detail && ev.detail.channel === 'elephant') Song.level(0.2);
-      };
-      window.addEventListener('mixer-changed', eleMix);
+      /* the songs are in score.js, for real instruments; this only says which one is on. They play on
+         the game's own channel of the studio, so the taskbar mixer's ELEPHANT slider and the MUS knob
+         set how loud, and a new place's song comes in under the old one as it goes. */
       const Song = {
-        on: false, cur: 'first', bus: null, when: 0, timer: null, voices: [], g0: -1,
-        swap: null, FADE: 1.4,
-        ensure() {
-          Snd.wake();
-          if (!Snd.ctx) return false;
-          if (!this.bus) {
-            this.bus = Snd.ctx.createGain();
-            this.bus.gain.value = 0.0001;
-            this.bus.connect(Snd.ctx.destination);
-          }
-          return true;
+        on: false, cur: 'first', loading: null,
+        async play() {
+          const id = this.cur;
+          if (this.loading === id) return;
+          this.loading = id;
+          try { await Studio.deck('elephant').play(eleSong(Studio.lang, id), { fade: 1.6 }); } catch (e) { /* no sound on this machine */ }
+          if (this.loading === id) this.loading = null;
         },
-        voice(f, at, dur, type, vol) {
-          const c = Snd.ctx, o = c.createOscillator(), gn = c.createGain();
-          o.type = type;
-          o.frequency.setValueAtTime(f, at);
-          gn.gain.setValueAtTime(0.0001, at);
-          gn.gain.exponentialRampToValueAtTime(vol, at + 0.06);
-          gn.gain.setValueAtTime(vol, at + dur * 0.5);
-          gn.gain.exponentialRampToValueAtTime(0.0001, at + dur);
-          o.connect(gn); gn.connect(this.bus);
-          o.start(at); o.stop(at + dur + 0.06);
-          this.voices.push(o);
-          o.onended = () => { const i = this.voices.indexOf(o); if (i >= 0) this.voices.splice(i, 1); };
-        },
-        bar(t0, sg) {
-          const e = 30 / sg.bpm;
-          sg.pad.forEach(n  => this.voice(ELE_HZ[n[0]], t0 + n[1] * e, n[2] * e * 0.98, 'triangle', 0.036));
-          sg.bass.forEach(n => this.voice(ELE_HZ[n[0]], t0 + n[1] * e, n[2] * e * 0.9,  'triangle', 0.05));
-          sg.lead.forEach(n => this.voice(ELE_HZ[n[0]], t0 + n[1] * e, n[2] * e * 0.9,  'square',   0.04));
-          if (sg.arp) sg.arp.forEach(n => this.voice(ELE_HZ[n[0]], t0 + n[1] * e, n[2] * e * 0.8, 'triangle', 0.026));
-          return sg.len * e;
-        },
-        /* let the old one walk out before the new one walks in */
-        crossfade(next) {
-          if (!Snd.ctx || !this.bus) { this.cur = next; return; }
-          clearTimeout(this.timer); clearTimeout(this.swap);
-          this.on = false;
-          const now = Snd.ctx.currentTime, gn = this.bus.gain, F = this.FADE;
-          gn.cancelScheduledValues(now);
-          gn.setValueAtTime(Math.max(0.0001, gn.value), now);
-          gn.exponentialRampToValueAtTime(0.0001, now + F);
-          this.voices.forEach(o => { try { o.stop(now + F + 0.02); } catch (e) {} });
-          this.voices = [];
-          this.swap = setTimeout(() => {
-            this.swap = null;
-            this.cur = next;
-            if (alive && CRT.on && Vol.mus > 0) this.start();
-          }, F * 1000 + 40);
-        },
-        want(id) { if (id !== this.cur) { if (this.on) this.crossfade(id); else this.cur = id; } },
-        level(ramp) {
-          if (!this.bus || !Snd.ctx) return;
-          const want = musGain() * (window.Mixer ? window.Mixer.get('elephant') : 1);
-          if (ramp == null && Math.abs(want - this.g0) < 0.0005) return;
-          this.g0 = want;
-          const now = Snd.ctx.currentTime, gn = this.bus.gain;
-          gn.cancelScheduledValues(now);
-          gn.setValueAtTime(Math.max(0.0001, gn.value), now);
-          gn.exponentialRampToValueAtTime(Math.max(0.0002, want * 0.85), now + (ramp || 0.4));
-        },
+        want(id) { if (id === this.cur) return; this.cur = id; if (this.on) this.play(); },
         sync() {
           if (!(alive && CRT.on && Vol.mus > 0)) { this.stop(); return; }
-          if (this.swap) return;
-          if (this.on) this.level(); else this.start();
-        },
-        start() {
-          if (this.on || !this.ensure()) return;
-          this.on = true; this.g0 = -1;
-          this.when = Snd.ctx.currentTime + 0.15;
-          this.level(this.FADE);
-          this.tick();
-        },
-        tick() {
-          if (!this.on || !Snd.ctx) return;
-          const now = Snd.ctx.currentTime;
-          if (this.when < now) this.when = now + 0.05;
-          const len = this.bar(this.when, ELE_SONGS[this.cur] || ELE_SONGS.first);
-          this.when += len;
-          this.timer = setTimeout(() => this.tick(), Math.max(300, len * 1000 - 500));
+          if (!this.on) { this.on = true; this.play(); }
         },
         stop() {
-          clearTimeout(this.swap); this.swap = null;
           if (!this.on) return;
-          clearTimeout(this.timer); this.on = false;
-          if (!this.bus || !Snd.ctx) { this.voices = []; return; }
-          const now = Snd.ctx.currentTime, gn = this.bus.gain;
-          gn.cancelScheduledValues(now);
-          gn.setValueAtTime(Math.max(0.0001, gn.value), now);
-          gn.exponentialRampToValueAtTime(0.0001, now + 0.8);
-          this.voices.forEach(o => { try { o.stop(now + 0.82); } catch (e) {} });
-          this.voices = [];
+          this.on = false; this.loading = null;
+          Studio.deck('elephant').stop(0.8);
         }
       };
 
@@ -847,7 +772,7 @@ export default {
          ========================================================================== */
       let raf = null, last = 0, acc = 0;
       function frame(ts) {
-        if (!alive || !document.body.contains(cv)) { alive = false; window.removeEventListener("mixer-changed", eleMix); Song.stop(); return; }
+        if (!alive || !document.body.contains(cv)) { alive = false; Song.stop(); return; }
         raf = requestAnimationFrame(frame);
         if (!last) last = ts;
         let dt = (ts - last) / 1000;
@@ -901,7 +826,7 @@ export default {
       const watch = setInterval(() => {
         if (document.body.contains(cv)) return;
         clearInterval(watch);
-        alive = false; window.removeEventListener("mixer-changed", eleMix);
+        alive = false;
         Song.stop();
         if (raf) cancelAnimationFrame(raf);
       }, 900);

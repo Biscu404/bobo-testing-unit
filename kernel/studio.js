@@ -27,6 +27,7 @@ import * as Lang from './songtext.js';
 import { makeMix } from './studio_mix.js';
 import { wavBlob } from './wavfile.js';
 import * as Midi from './midi.js';
+import { makeDeck } from './deck.js';
 
 const SLICE = 0.25, AHEAD = 0.16, TICK = 25;
 
@@ -55,7 +56,9 @@ function slice(ctx, mix, song, b0, b1, t, spb, live) {
 }
 
 export const Studio = {
-  lang: Lang, ins: Ins, midi: Midi, user: 1, follow: 0, followT: null, chans: new Map(), lives: new Map(), insert: null,
+  lang: Lang, ins: Ins, midi: Midi, user: 1, follow: 0, followT: null, chans: new Map(), lives: new Map(), decks: new Map(), insert: null,
+  /* the deck for a game's own channel: see kernel/deck.js */
+  deck(id) { let d = this.decks.get(id); if (!d) { d = makeDeck(this, id); this.decks.set(id, d); } return d; },
 
   /* the level a channel should sit at: the MUS knob, the taskbar mixer's slider for it, and (the Garage) its own slider */
   level(id) {
@@ -116,7 +119,7 @@ export const Studio = {
     let loop = o.loop !== false, loopFrom = o.loopFrom || 0, loopTo = o.loopTo == null ? null : o.loopTo;
     const len = () => Lang.songLength(song), end = () => loopTo == null ? len() : Math.min(loopTo, len());
     const from = o.from || 0, cin = o.countIn || 0;
-    let nextBeat = from - cin, nextTime = ctx.currentTime + 0.1, done = false, finishAt = 0, stopAt = 0;
+    let nextBeat = from - cin, nextTime = ctx.currentTime + 0.1, done = false, finishAt = 0, stopAt = 0, counting = cin > 0;
     let marks = [[nextTime, nextBeat]];
     const p = {
       playing: true, mix,
@@ -130,7 +133,7 @@ export const Studio = {
       /* jump to a beat, now: whatever was scheduled ahead is dropped */
       seek(beat) {
         live.forEach(h => h.kill()); live.clear();
-        nextBeat = Math.max(0, beat); nextTime = ctx.currentTime + 0.05; done = false;
+        nextBeat = Math.max(0, beat); nextTime = ctx.currentTime + 0.05; done = false; counting = false;
         marks = [[nextTime, nextBeat]];
       },
       setLoop(on, a, b) { loop = on; loopFrom = a || 0; loopTo = b == null ? null : b; },
@@ -154,15 +157,17 @@ export const Studio = {
     };
     song.tracks.forEach(t => mix.bus(t.id));
     mix.apply(song.tracks, song.bpm);
+    if (o.fadeIn > 0) { mix.master.gain.value = 0.0001; p.fade(1, o.fadeIn); }
     const tick = () => {
       if (!p.playing) return;
       const spb = 60 / song.bpm;
       if (done) { if (ctx.currentTime > finishAt) { p.stop(); if (o.onEnd) o.onEnd(); } return; }
       while (nextTime < ctx.currentTime + AHEAD) {
         mix.apply(song.tracks, song.bpm);
-        slice(ctx, mix, song, nextBeat, nextBeat + SLICE, nextTime, spb, live);
+        if (counting && nextBeat >= from - 1e-6) counting = false;      /* the count-in is clicks only: nothing sounds until the music starts */
+        if (!counting) slice(ctx, mix, song, nextBeat, nextBeat + SLICE, nextTime, spb, live);
         const onBeat = Math.abs(nextBeat - Math.round(nextBeat)) < 1e-6;
-        if (onBeat && (o.metronome || nextBeat < from - 1e-6)) {
+        if (onBeat && (o.metronome || counting)) {
           const strong = (((Math.round(nextBeat) % song.beats) + song.beats) % song.beats) === 0;
           Studio._click(ctx, mix, nextTime, strong);
         }
