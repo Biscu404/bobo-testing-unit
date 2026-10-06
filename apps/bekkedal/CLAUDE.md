@@ -39,7 +39,12 @@ coordinates") lives in `bekkedal-art.md`.
 - `maps_valley.js` — the four places on the valley floor, and the three rooms
   (the two houses and the loft on the town square). Rows only.
 - `maps_wild.js` — the five places past it. Rows only.
-- `maps.js` — the seam table, and the one loop that turns it into both sides' `exits`.
+- `maps.js` — the seam table (`SEAMS`), the one loop that turns it into both sides' `exits`, and `BEK_WORLD`: where every
+  map stands relative to the farm, **derived from the seams** rather than kept as a second list, with every disagreement
+  between two routes to the same map recorded in `conflicts` (a loop that cannot exist on a plane). `world_check.js` fails on
+  any. The valley used to have two: the forest west of the farm *and* north of the town, the meadow south of both at once.
+  Now: the farm, then the square east of it, then the water east of that; the wood north of the square, and the track up to
+  the setra, the vidda and the mine beyond it; the meadow south of the farm and the square, which share its north edge.
 - `font.js` — bitmap glyph table and metrics. See `.claude/rules/bekkedal-art.md`.
 - `text.js` — glyph atlas / text layout helpers. See `.claude/rules/bekkedal-art.md`.
 - `layout.js` — panel rectangles, padding, column offsets. See `.claude/rules/bekkedal-art.md`.
@@ -103,8 +108,12 @@ coordinates") lives in `bekkedal-art.md`.
   owed and what each one pays out. Pure, the way `schedule.js` and `scene.js`
   are; `spineDonate()` in `index.js` is the one writer in the app. See **The
   loft**, `.claude/rules/bekkedal-content.md`.
-- `score.js` — the five tunes (dag, kveld, gruva, vidda, folkedans), eight bars each, orchestrated for the studio's real instruments (flute, violin, nylon guitar, harp, strings, cello, upright bass...); `lead` and `arp` layers are what the two night tunes drop after dark.
-- `music.js` — which tune and when: the pools by place, hour and season, the rotation, and the night layers. It plays the score on Bekkedal's channel of the studio through `Studio.deck` (`kernel/deck.js`), crossfading. See `.claude/rules/bekkedal-art.md`.
+- `score.js` — the five tunes (dag, kveld, gruva, vidda, folkedans), eight bars each, orchestrated for the studio's real instruments (flute, violin, nylon guitar, harp, strings, cello, upright bass...); `lead` and `arp` layers are what the two night tunes drop after dark. A second fiddle is a voice a number of *scale steps* away in the tune's own key (`inKey`), never a fixed number of semitones, which is a third only half the time.
+- `music.js` — which pool, and what the dark does to a tune. The choosing itself is the shared `apps/director.js`: a tune is heard through twice (`MIN_LOOPS`), the next in the pool follows on the downbeat after its last bar (`deck.segue`), the next is the *next*, not a dice roll, and a change of place takes a bar-aligned crossfade unless the pass is nearly over. It plays on Bekkedal's channel of the studio through `Studio.deck` (`kernel/deck.js`). See `.claude/rules/bekkedal-art.md`.
+- `music_check.js` — `node apps/bekkedal/music_check.js`. The director against a pretend studio whose deck counts bars the way the real one does: where the first tune is drawn from, how long a tune lasts, that the change is arranged once and lands at the end of the pass, the order, a change of place, the night as a layer.
+- `greet.js` — what somebody says before they say anything else: hello the first time you speak on a given day, hello *again* after that, and a remark (and a longer one the longer it has been) after four, nine and sixteen days. Pure, the way `schedule.js` is: a hash of the day, the speaker and how often you have spoken, never a random number, so a reload says the same thing. `talkTo()` calls it and stamps `S.lastTalk`. See **Greetings**, `.claude/rules/bekkedal-content.md`.
+- `talk_greet_a.js`, `talk_greet_b.js` — `BEK_GREET`, four characters per file. Content only, in the first person, to the player.
+- `greet_check.js` — `node apps/bekkedal/greet_check.js`. The greetings over a long simulated acquaintance.
 - `ambience.js` — a bed per map, weather and the hour layered over it, positional hearth crackle, and material footsteps. See `.claude/rules/bekkedal-art.md`.
 - `decor.js` — room prop kinds; authored placement lives in `data.js`'s `BEK_DECOR`. See `.claude/rules/bekkedal-art.md`.
 - `decor_outdoor.js` — the farm/town/lake prop kinds, split out of `decor.js` purely for the 300-line rule and merged back into one `PROP` table there. See `.claude/rules/bekkedal-art.md`.
@@ -200,8 +209,13 @@ coordinates") lives in `bekkedal-art.md`.
 ## Save versioning
 
 The save key is `BEK_SAVE` (`data.js`). The in-save schema version is the `ver`
-field written by `fresh()` in `index.js` — currently **19**, the rebalance.
-Its one new field is `S.enRescaled`, the marker over `heal()`'s one-shot
+field written by `fresh()` in `index.js` — currently **20**, the greetings.
+Its one new field is `S.lastTalk`: NPC id to the day number you last spoke to them,
+which is all `greet.js` needs to say hello, hello again, or "where have you been". It is
+stamped by `talkTo()` and backfilled to `{}` by `heal()`; a save from before it has never
+"spoken" to anybody, so nobody remarks on an absence they cannot date, and everybody's
+first words after the update are their own first words. Version 19 before it was the rebalance.
+Its one new field was `S.enRescaled`, the marker over `heal()`'s one-shot
 stamina raise: `BEK_EN_MAX` went from 120 to 220 and every price, tool cost
 and shop price moved with it, so a save still carrying the old bar is not a
 save of the old game but an unwinnable version of the new one. Raised by the
@@ -260,7 +274,7 @@ still load without throwing.
 
 ## Checks
 
-Run all twelve before claiming anything is done:
+Run all fourteen before claiming anything is done:
 
 - `node apps/bekkedal/tile_check.js` — terrain variation field is
   deterministic, uniform and aperiodic. Full paragraph: `.claude/rules/bekkedal-art.md`.
@@ -323,6 +337,13 @@ Run all twelve before claiming anything is done:
   house, every heart event's cast and the square it stands the player on, the
   menu's own landing squares — stands in a wall or on the water.
   This is the check that a map edit is most likely to break.
+- `node apps/bekkedal/greet_check.js` — the greetings: every NPC has every pool, no line names its
+  own speaker, the first time on a day is a hello most of the time and not always, the second a
+  hello again, four days away is always remarked on and longer says more, a stranger says
+  nothing before their own first words, and the answer is a function of the save.
+- `node apps/bekkedal/music_check.js` — the director: where the first tune is drawn from, that
+  a tune is heard through before another follows it, that a change is arranged once and lands at the
+  end of the pass, that the order is an order, and what a change of place and the dark do.
 - `node scripts/smoke.mjs` — headless 30-day run, save migration, a full
   simulated year run idle, a heart event played end to end through the
   real frame loop from a save seeded at friendship 4, a descent walked, and

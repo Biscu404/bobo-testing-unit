@@ -175,6 +175,49 @@ counter-driven timestamp, plus a seeded `Math.random`, makes all 72 byte
 -identical across runs and turns the comparison into a real oracle. Under
 that harness this change was verified 72/72 byte-identical against HEAD.
 
+## Frame pacing, and what a rebuild is allowed to cost
+
+The report was that the game "is generally just very laggy". It was not one slow thing, it was four:
+
+- **The frame gate threw the remainder away.** It drew when `1/30 s` had gathered, then set the accumulator to zero. On a 60 Hz display two frames of 16.6 ms come to
+  33.2, which misses 33.3 by a hair, so the game ran at an uneven 20-30 fps. The gate is now `0` (draw on every frame the display offers) unless the smoothed cost of a draw
+  says the machine cannot afford it (`drawMs > 13`), and then it holds to 30 *and keeps the remainder*. `drawMs` is only fed by frames that did **not** rebuild the cache: a
+  rebuild is a one-off, and counting it held a fast machine to 30 every time the light moved.
+- **The plots were found by scanning the map.** `drawSoil` is a live pass (the only tile whose picture reads `S.soil`), and it walked every square of the map thirty times a
+  second asking `tileAt`. It walks `soilPts` now, rebuilt only when `S.soil` is replaced or gains or loses a key. (`S.soil` has no map in its keys and `healCoords()` keeps every
+  entry on the farm, so the pass only runs there.)
+- **The geometry was keyed with the light.** `kMap` (the terrain cache key) is `kGeo` (the map, its size, the day, the house, `terrBump`) plus the light key. Shore, water,
+  rock, interior, forest, building, wear and props `prepare()` are functions of `kGeo` only; they were being laid again from scratch at every step of dawn and dusk.
+- **The light moved every game minute.** Every step of the hour is a full rebuild (the hour is baked into the colours). Outdoors, `lighting()` is *latched* for
+  `LIGHT_LATCH_MS` (1100 ms of real time), which is a step of a percent or so between pictures: below what the eye can tell from a smooth fade. A map change, a jump of
+  twelve game minutes (sleeping) or a cave takes the live value at once. And the terrain context is `willReadFrequently`: the lamp pass reads the cache back on every rebuild.
+
+`scripts/check-perf.mjs` is the frame-rate gate. Measure before quoting, and measure warm.
+
+### The fit
+
+`applyScale` fits the 960x540 picture to its pane: whole pixels whenever it fits at least once (`Math.floor`), and below that it shrinks both sides together
+(never less than a quarter), so a narrow desktop, or a window zoomed in, shows a smaller picture and not a cropped or squashed one.
+
+## Water and the plots
+
+- **Rain waters every plot, the morning it falls** (`rainOnPlots()`, called when the day's weather is rolled): every tilled square in the open, planted or bare, is wet
+  for the day. A plot under glass (`S.flag.greenhouse`, `inGreenhouse(x, y)`) is spared. The day's ageing then counts it as watered.
+- **The kanne waters bare tilled soil**; untilled ground is not a plot and says so (SPA DET FØRST / TURN IT FIRST - HOE). Sprinklers and the rest of the day's rollover
+  treat `c.seed || c.till` alike, so a bare plot is never dry in the morning after a sprinkler night.
+
+## Panels longer than the screen
+
+Astrid sells nineteen things and the chest knows twenty-seven recipes in a panel that shows eleven; the rest used to be selectable and not drawn. Every list panel is a
+window onto its list: `fitTop(top, sel, n, rows)` (`menus.js`) keeps the first showing row so that the selected row is always one of the rows you can see, and
+`moreMarks` draws an arrow at the foot or head when there is more that way. The shop (`topB`, `topS`), the workshop (`topA`, `topB`) and the bag (`bagTop`, a row
+at a time, with a ROW n/m counter) all use it. **A new panel with a list in it uses `fitTop` too**; `layout_check.js` still holds the panel's geometry, not the list's length.
+
+## What they say first
+
+`talkTo()` asks `greeting(npc.id, S)` (`greet.js`) *before* it stamps `S.lastTalk[npc.id] = S.day`, and puts what it gets in front of the node or chat entry it chose (`hello.concat(...)`).
+A quest turn-in and a gift have their own words and skip it. The greeting is a pure function of the save: it never rolls. See **Greetings**, `.claude/rules/bekkedal-content.md`.
+
 ## Checks
 
 - `node scripts/smoke.mjs` (a headless 30-day run, save migration, and —

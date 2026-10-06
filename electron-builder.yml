@@ -26,6 +26,7 @@ files:
   - "!apps/bekkedal/*_check*.js"
   - "!apps/bekkedal/CLAUDE.md"
   - "!apps/garage/*_check*.js"
+  - "!apps/magen/*_check*.js"
   - "!apps/standbattle/content_check.js"
   - "!apps/standbattle/headless_harness.js"
 
