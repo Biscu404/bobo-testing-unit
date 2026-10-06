@@ -31,7 +31,8 @@ const FONT = {
   '?': '110001010000010', '#': '101111101111101', '>': '100010001010100', '<': '001010100010001', '/': '001001010100100',
   '(': '010100100100010', ')': '010001001001010', '%': '101001010100101', '+': '000010111010000', '=': '000111000111000',
   ',': '000000000010100', "'": '010010000000000', _: '000000000000111', '[': '110100100100110', ']': '011001001001011',
-  '~': '000011110000000', '$': '011110011101110', '*': '101010111010101', ' ': '000000000000000'
+  '~': '000011110000000', '$': '011110011101110', '*': '101010111010101', ' ': '000000000000000',
+  '@': '111101111100011', '"': '101101000000000', '`': '100010000000000', ';': '000010000010100', '\\': '100100010001001', '|': '010010010010010'
 };
 
 export function pen(g) {
@@ -59,4 +60,33 @@ export function snow(R, t, n, seed, wind, big) {
     const x = (x0 + Math.sin(t * 1.3 + ph) * 6 + (wind || 0) * t) % W, y = (r() * H + sp * t) % H;
     R((x + W) % W, y, sz, sz, r() < 0.75 ? 15 : 7);
   }
+}
+
+/* Two colours woven in a 2x2 tile, for the shades the sixteen cannot make: level 1 is a
+   quarter of `b`, 2 a checkerboard, 3 three quarters. One pattern fill, so it costs a rect. */
+const TILES = new Map();
+export function dith(g, x, y, w, h, a, b, level) {
+  const key = a * 64 + b * 4 + level;
+  let pat = TILES.get(key);
+  if (!pat) {
+    const c = document.createElement('canvas'); c.width = c.height = 2;
+    const q = c.getContext('2d');
+    q.fillStyle = PAL[a]; q.fillRect(0, 0, 2, 2);
+    q.fillStyle = PAL[b];
+    [[0, 0], [1, 1], [1, 0]].slice(0, level === 1 ? 1 : level === 2 ? 2 : 3).forEach(([px, py]) => q.fillRect(px, py, 1, 1));
+    pat = g.createPattern(c, 'repeat'); TILES.set(key, pat);
+  }
+  g.fillStyle = pat; g.fillRect(x, y, w, h);
+}
+
+/* a scene's still parts, drawn once into a canvas of their own: text and furniture cost
+   thousands of rects, and the picture only has to move where something actually moves */
+const LAYERS = {};
+export function layer(id, draw) {
+  if (!LAYERS[id]) {
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const q = c.getContext('2d'); q.imageSmoothingEnabled = false;
+    draw(q); LAYERS[id] = c;
+  }
+  return LAYERS[id];
 }

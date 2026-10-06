@@ -84,8 +84,17 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   the screen in fullscreen suspends it. The page's own zoom stays locked (`electron/main.js`).
 - **Help** is built in (`kernel/help.js`, pages in `help_text.js`, DolDoc): it is not a file on the VFS, so it cannot be deleted.
 - **The Jäger passes out.** `Drunk.drink()` counts measures in the blood (one leaves every 30 s); at ten `kernel/blackout.js`
-  takes the whole window (not just the tube) for ~16 s: ten altered scenes (`blackout_a/b.js`, drawn with the sixteen colours,
-  bent by `blackout_fx.js`), unskippable, calmer and without the harshest effects under `prefers-reduced-motion`.
+  takes the whole window (not just the tube: the overlay is `position:fixed` over the monitor, bezel and chin included) for ~16 s:
+  nine altered scenes (`blackout_a/b.js`, bent by `blackout_fx.js`), unskippable, calmer and without the harshest effects under
+  `prefers-reduced-motion`. **Six of them are photographs** — a snowy bridge in a city, chickens on a park bench, a bouldering wall,
+  a heap of CDs, a baby turtle, a League of Legends match — pressed to the sixteen colours and Floyd-Steinberg dithered, 320 px wide,
+  in `assets/blackout/*.png` (made by `python3 scripts/make-blackout-art.py name=photo.jpg …`; needs Pillow + numpy, the machine never
+  runs it). `kernel/blackout_photo.js` loads them and drifts the 320×180 view up and down inside each (whole rows, never resampled; the
+  pan ranges live there). The other three are drawn: ULTRAKILL, a Discord channel, and a Debian/GNOME desktop with neofetch
+  (`blackout_b.js`, text in the 3×5 font of `blackout_draw.js`; its still parts are cached once with `layer()`, shades the sixteen can't
+  make are 2×2 weaves from `dith()`). A scene's photo is optional: one that fails to load is never dealt. The double exposure is a
+  checkerboard of pixels, not an alpha blend, so every pixel stays one of the sixteen. To add a scene: draw it (or add a photo to `FILES`
+  in `blackout_photo.js`), then list it in `SCENES` in `blackout.js`.
 - **Real instruments.** `kernel/instruments.js` is a sampler over `assets/instruments/` (30 instruments + a drum kit, samples of the
   MIT-licensed FluidR3_GM soundfont, built by `node scripts/make-instruments.mjs`; held instruments carry seamless loop points).
   `kernel/studio.js` is the mixer and scheduler (per-track volume/pan/room/mute/solo, a master that follows the MUS knob and the
