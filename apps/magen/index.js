@@ -3,9 +3,10 @@ import { Snd } from '../../kernel/snd.js';
 import { Cos } from '../../kernel/cos.js';
 import { fs as vfs } from '../../kernel/vfs.js';
 import { MG_SAVE, MG_SCALE, mgFmt, MG_B, MG_TIER_AT, MG_TIER_COST, MG_CLICK, MG_KAV, MG_DIAS,
-         MG_SPEC, MG_ACH, MG_LEG, MG_NEWS, MG_DICT, MG_ARG, MG_HZ, MG_SONGS } from './data.js';
-import { CRT, Vol, musGain } from '../../kernel/hardware.js';
-import { Mixer } from '../../kernel/mixer.js';
+         MG_SPEC, MG_ACH, MG_LEG, MG_NEWS, MG_DICT, MG_ARG } from './data.js';
+import { CRT, Vol } from '../../kernel/hardware.js';
+import { Studio } from '../../kernel/studio.js';
+import { createMagenMusic } from './music.js';
 import { VGA16 } from '../../kernel/god.js';
 import { mgIcon, mgUpIcon, mgTierIcon } from './icons.js';
 import { scopedListeners } from '../lifecycle.js';
@@ -612,152 +613,11 @@ export default {
         ascend(){ [147, 220, 294, 370, 440, 587].forEach((f, i) => Snd.tone(f, 1400, { type: 'triangle', delay: i * 0.13, vol: 0.028 })); }
       };
 
-      /* ---- 32.24 the five tunes ------------------------------------------ */
-      const Song = {
-        on:false, cur:'freygish', forced:null, bus:null, when:0, timer:null, voices:[], g0:-1,
-        swap:null, rotIn:100, FADE:1.2,
-        ensure() {
-          Snd.wake(); if (!Snd.ctx) return false;
-          if (!this.bus) { this.bus = Snd.ctx.createGain(); this.bus.gain.value = 0.0001; this.bus.connect(Snd.ctx.destination); }
-          return true;
-        },
-        voice(f, at, dur, type, vol) {
-          const c = Snd.ctx, o = c.createOscillator(), gn = c.createGain();
-          o.type = type; o.frequency.setValueAtTime(f, at);
-          gn.gain.setValueAtTime(0.0001, at);
-          gn.gain.exponentialRampToValueAtTime(vol, at + 0.04);
-          gn.gain.setValueAtTime(vol, at + dur * 0.55);
-          gn.gain.exponentialRampToValueAtTime(0.0001, at + dur);
-          o.connect(gn); gn.connect(this.bus); o.start(at); o.stop(at + dur + 0.05);
-          this.voices.push(o);
-          o.onended = () => { const i = this.voices.indexOf(o); if (i >= 0) this.voices.splice(i, 1); };
-        },
-        /* heat is 0 when nothing is happening and 3 in the middle of a long
-           chain. It does not change the tune, it adds to it: an octave over
-           the lead, then a driven bass, then the arp at double time. Same
-           key, same bars, more of them — which is how a piece of music gets
-           more urgent without becoming a different piece of music. */
-        heat: 0,
-        bar(t0, sg) {
-          const e = 30 / sg.bpm;
-          const H = this.heat;
-          sg.pad.forEach(n  => this.voice(MG_HZ[n[0]], t0 + n[1] * e, n[2] * e * 0.96, 'triangle', 0.032));
-          sg.bass.forEach(n => {
-            this.voice(MG_HZ[n[0]], t0 + n[1] * e, n[2] * e * 0.9, 'triangle', 0.05);
-            if (H >= 2) this.voice(MG_HZ[n[0]], t0 + n[1] * e, n[2] * e * 0.5, 'square', 0.026);
-          });
-          sg.lead.forEach(n => {
-            this.voice(MG_HZ[n[0]], t0 + n[1] * e, n[2] * e * 0.9, 'square', 0.042 + H * 0.004);
-            if (H >= 1) this.voice(MG_HZ[n[0]] * 2, t0 + n[1] * e, n[2] * e * 0.6, 'square', 0.016 + H * 0.004);
-          });
-          if (sg.arp) sg.arp.forEach(n => {
-            this.voice(MG_HZ[n[0]], t0 + n[1] * e, n[2] * e * 0.75, 'triangle', 0.024 + H * 0.006);
-            if (H >= 3) {
-              this.voice(MG_HZ[n[0]], t0 + (n[1] + 0.5) * e, n[2] * e * 0.35, 'triangle', 0.02);
-              this.voice(MG_HZ[n[0]] * 2, t0 + (n[1] + 0.25) * e, n[2] * e * 0.3, 'square', 0.012);
-            }
-          });
-          /* a floor tom on the beat once it is really going */
-          if (H >= 2) for (let k = 0; k < sg.len; k += 8) {
-            this.voice(58, t0 + k * e, e * 0.5, 'triangle', 0.05);
-          }
-          return sg.len * e;
-        },
-        pool() { return ['freygish', 'nigun', 'misheberach', 'hora']; },
-        want(id) {
-          this.forced = id;
-          const next = id || this.pool()[0];
-          if (next !== this.cur) { if (this.on) this.crossfade(next); else this.cur = next; }
-        },
-        crossfade(next) {
-          if (!Snd.ctx || !this.bus) { this.cur = next; return; }
-          clearTimeout(this.timer); clearTimeout(this.swap);
-          this.on = false;
-          const now = Snd.ctx.currentTime, gn = this.bus.gain, F = this.FADE;
-          gn.cancelScheduledValues(now);
-          gn.setValueAtTime(Math.max(0.0001, gn.value), now);
-          gn.exponentialRampToValueAtTime(0.0001, now + F);
-          this.voices.forEach(o => { try { o.stop(now + F + 0.02); } catch (e) {} });
-          this.voices = [];
-          this.swap = setTimeout(() => {
-            this.swap = null; this.cur = next;
-            if (alive && CRT.on && Vol.mus > 0) this.start();
-          }, F * 1000 + 40);
-        },
-        rot(dt) {
-          if (!this.on || this.swap || this.forced) return;
-          this.rotIn -= dt;
-          if (this.rotIn <= 0) {
-            const p = this.pool().filter(x => x !== this.cur);
-            this.crossfade(p[Math.floor(Math.random() * p.length)]);
-            this.rotIn = 90 + Math.random() * 60;
-          }
-        },
-        level(ramp) {
-          if (!this.bus || !Snd.ctx) return;
-          const want = musGain() * Mixer.get('magen');
-          if (ramp == null && Math.abs(want - this.g0) < 0.0005) return;
-          this.g0 = want;
-          const now = Snd.ctx.currentTime, gn = this.bus.gain;
-          gn.cancelScheduledValues(now);
-          gn.setValueAtTime(Math.max(0.0001, gn.value), now);
-          gn.exponentialRampToValueAtTime(Math.max(0.0002, want * 0.8), now + (ramp || 0.4));
-        },
-        sync() {
-          if (!(alive && CRT.on && Vol.mus > 0)) { this.stop(); return; }
-          if (this.swap) return;
-          if (this.on) this.level(); else this.start();
-        },
-        start() {
-          if (this.on || !this.ensure()) return;
-          this.on = true; this.g0 = -1;
-          this.when = Snd.ctx.currentTime + 0.15; this.level(this.FADE); this.tick();
-        },
-        tick() {
-          if (!this.on || !Snd.ctx) return;
-          const now = Snd.ctx.currentTime;
-          if (this.when < now) this.when = now + 0.05;
-          const len = this.bar(this.when, MG_SONGS[this.cur] || MG_SONGS.freygish);
-          this.when += len;
-          this.timer = setTimeout(() => this.tick(), Math.max(300, len * 1000 - 500));
-        },
-        /* the heat changed mid-bar: duck under the old layer and swell back
-           up into the new one, so a chain landing sounds like the band
-           leaning into it, not a splice to a different recording */
-        recue() {
-          if (!this.on || !Snd.ctx || this.swap) return;
-          const now = Snd.ctx.currentTime;
-          if (this.when - now < 1.2) return;
-          clearTimeout(this.timer);
-          const F = 0.35, dip = F * 0.5;
-          const gn = this.bus.gain, target = Math.max(0.0002, musGain() * Mixer.get('magen') * 0.8);
-          gn.cancelScheduledValues(now);
-          gn.setValueAtTime(Math.max(0.0001, gn.value), now);
-          gn.exponentialRampToValueAtTime(0.0001, now + dip);
-          gn.exponentialRampToValueAtTime(target, now + F);
-          this.g0 = target;
-          this.voices.forEach(o => { try { o.stop(now + dip + 0.02); } catch (e) {} });
-          this.when = now + dip;
-          this.tick();
-        },
-        stop() {
-          clearTimeout(this.swap); this.swap = null;
-          if (!this.on) return;
-          clearTimeout(this.timer); this.on = false;
-          if (!this.bus || !Snd.ctx) { this.voices = []; return; }
-          const now = Snd.ctx.currentTime, gn = this.bus.gain;
-          gn.cancelScheduledValues(now);
-          gn.setValueAtTime(Math.max(0.0001, gn.value), now);
-          gn.exponentialRampToValueAtTime(0.0001, now + 0.7);
-          this.voices.forEach(o => { try { o.stop(now + 0.72); } catch (e) {} });
-          this.voices = [];
-        }
-      };
-      const mixerHandler = ev => {
-        if (!alive) { window.removeEventListener('mixer-changed', mixerHandler); return; }
-        if (ev.detail && ev.detail.channel === 'magen') Song.level(0.2);
-      };
-      winL.on(window, 'mixer-changed', mixerHandler);
+      /* ---- 32.24 the music ------------------------------------------------ */
+      /* Six tunes for the studio's real instruments, and a band that leans in with the chain rather than a recording that is
+         swapped for another one (apps/magen/music.js). It plays on the studio's 'magen' channel, so the MUS knob and the
+         taskbar mixer's MAGEN slider set how loud it is. */
+      const Song = createMagenMusic({ studio: () => Studio, playing: () => alive && CRT.on && Vol.mus > 0 });
 
       /* ---- 32.25 save ---------------------------------------------------- */
       function save() {
@@ -1536,7 +1396,7 @@ export default {
         const step = acc; acc = 0;
         frameStamp++;                 /* drops the economy memo */
         if (!CRT.on) { Song.stop(); return; }
-        Song.sync(); Song.rot(step);
+        Song.sync(); Song.step(step);
 
         const t = ts / 1000;
 
@@ -1578,12 +1438,8 @@ export default {
         /* held button: keeps pressing at a rate a hand could actually manage */
         if (held) { holdT -= step; if (holdT <= 0) { holdT = 0.085; press(null); } }
         comboT += step; if (comboT > 0.9) { combo = 0; comboT = 0; }
-        /* the chain drives how loud the band plays */
-        const wantHeat = combo >= 40 ? 3 : combo >= 22 ? 2 : combo >= 8 ? 1 : 0;
-        if (wantHeat !== Song.heat) {
-          Song.heat = wantHeat;
-          if (wantHeat > 0) Song.recue();
-        }
+        /* the chain is how much of the band is playing: it leans in as the chain grows and sits back when it breaks */
+        Song.chain(combo);
         if (yizT > 0) yizT -= step;
         if (S.litFor > 0 && S.shabT <= 0 && S.shabIn > WARN) S.litFor = 0;
 

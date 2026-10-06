@@ -44,6 +44,7 @@ function slice(ctx, mix, song, b0, b1, t, spb, live) {
     if (solo ? !tr.solo : tr.mute) return;
     const bank = Ins.ready(tr.inst) ? Ins.cached(tr.inst) : null;
     if (!bank) { Ins.load(tr.inst).catch(() => {}); return; }
+    if (tr.lv === 0 && ctx.currentTime > (tr.lvOff || 0)) return;        /* a layer that has faded right out plays nothing at all */
     const dest = mix.bus(tr.id).input;
     const when = s => {
       let w = t + (s - b0) * spb;

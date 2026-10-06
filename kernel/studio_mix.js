@@ -50,7 +50,9 @@ export const DEFAULT_EQ = [0, 0, 0];
 
 /* the settings of one strip, filled in where a song did not say */
 export const strip = t => ({
-  vol: t.vol == null ? 0.8 : t.vol, pan: t.pan || 0, reverb: t.reverb == null ? 0.15 : t.reverb, echo: t.echo || 0,
+  /* `lv` is a level on top of the fader that a game rides while a song plays (kernel/deck.js levels()): 1 is the fader as set,
+     0 is out. `glide` is how long, in seconds, the strip takes to get there. */
+  vol: (t.vol == null ? 0.8 : t.vol) * (t.lv == null ? 1 : t.lv), pan: t.pan || 0, reverb: t.reverb == null ? 0.15 : t.reverb, echo: t.echo || 0,
   eq: t.eq || DEFAULT_EQ, comp: t.comp || 0, drive: t.drive || 0
 });
 
@@ -106,7 +108,7 @@ export function makeMix(ctx, dest, level, o) {
       const key = (on ? 1 : 0) + '|' + s.vol + '|' + s.pan + '|' + s.reverb + '|' + s.echo + '|' + s.eq.join(',') + '|' + s.comp + '|' + s.drive;
       if (key === b.last) return;
       b.last = key;
-      to(b.input.gain, on ? Math.pow(Math.max(0, s.vol), 1.6) * 1.2 : 0, 0.015);
+      to(b.input.gain, on ? Math.pow(Math.max(0, s.vol), 1.6) * 1.2 : 0, t.glide ? Math.max(0.015, t.glide / 3) : 0.015);
       to(b.pan.pan, clamp(s.pan, -1, 1), 0.02);
       to(b.send.gain, Math.max(0, s.reverb) * 0.9, 0.02);
       to(b.esend.gain, Math.max(0, s.echo) * 0.8, 0.02);

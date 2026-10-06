@@ -84,13 +84,17 @@ const r = await page.evaluate(async () => {
   const lb = await Studio.render(long, { level: 1, tail: 2 });
   out.chunked = Math.abs(lb.duration - (160 * 60 / 240 + 2)) < 0.05 && peak(lb).p > 0.02;
   /* the games' scores, and the symphony */
-  const mods = { bekkedal: await import('/apps/bekkedal/score.js'), elephant: await import('/apps/elephant/score.js') };
+  const mods = { bekkedal: await import('/apps/bekkedal/score.js'), elephant: await import('/apps/elephant/score.js'), magen: await import('/apps/magen/score.js') };
   const sb = await import('/apps/standbattle/score.js');
-  const songs = [].concat(mods.bekkedal.IDS.map(i => mods.bekkedal.song(L, i)), mods.elephant.IDS.map(i => mods.elephant.song(L, i)), [sb.song(L)]);
+  const songs = [].concat(mods.bekkedal.IDS.map(i => mods.bekkedal.song(L, i)), mods.elephant.IDS.map(i => mods.elephant.song(L, i)), mods.magen.IDS.map(i => mods.magen.song(L, i)), [sb.song(L)]);
   const badNote = n => !(n[1] > 0 && n[0] >= 0 && n[2] >= 24 && n[2] <= 108 && n[3] > 0 && n[3] <= 1.0001);
   out.scores = songs.map(sg => sg.title + ':' + sg.tracks.filter(t => (t.notes || []).some(badNote)).length).filter(x => !/:0$/.test(x));
   out.scoreCount = songs.length;
   out.layers = [...new Set(sb.song(L).tracks.map(t => t.layer))].sort().join();
+  /* Magen: the bare core is a tune on its own, and the full band with every layer in is loud and does not clip */
+  const mg = mods.magen.song(L, 'freygish'), bare = JSON.parse(JSON.stringify(mg)), full = JSON.parse(JSON.stringify(mg));
+  bare.tracks.forEach(t => { if (t.layer) t.mute = true; });
+  out.magen = { layers: [...new Set(mg.tracks.map(t => t.layer))].filter(Boolean).sort().join(), bare: peak(await Studio.render(bare, { level: 0.9, from: 0, to: 16, tail: 1 })).p, full: peak(await Studio.render(full, { level: 0.9, from: 0, to: 16, tail: 1 })).p };
   const sy = await import('/kernel/symphony.js'), sym = sy.symphony(L), harp = sym.tracks.find(t => t.name === 'HARP').notes;
   out.sym = { bars: sym.bars, secs: sy.SECONDS, tracks: sym.tracks.length, opening: harp.slice(0, 7).map(n => n[2]).join(), badNotes: sym.tracks.reduce((a, t) => a + (t.notes || []).filter(badNote).length, 0) };
   const sb0 = await Studio.render(sym, { level: 0.5, from: 0, to: 32, tail: 1 });
@@ -108,7 +112,8 @@ ok(r.text.notes && r.text.dotted && r.text.chord && r.text.round && r.text.prog,
 ok(r.playerMoves && r.followAfter === 0, 'the real-time player runs, its playhead moves, and it lets go of everything when stopped');
 ok(r.seek && r.fade, 'a player can be sought to a beat while it plays and faded on its own');
 ok(r.chunked, 'a long song is rendered in stretches and comes out the right length');
-ok(r.scoreCount === 11 && !r.scores.length, `the games' eleven songs for real instruments are all valid${r.scores.length ? ': ' + r.scores.join(', ') : ''}`);
+ok(r.scoreCount === 17 && !r.scores.length, `the games' seventeen songs for real instruments are all valid${r.scores.length ? ': ' + r.scores.join(', ') : ''}`);
+ok(r.magen.layers === 'h1,h2,h3' && r.magen.bare > 0.05 && r.magen.full > r.magen.bare * 0.9 && r.magen.full <= 1.0, `Magen's band has three layers; the core alone sounds (${r.magen.bare.toFixed(2)}) and all of it together (${r.magen.full.toFixed(2)}) does not clip`);
 ok(r.layers.includes('combat') && r.layers.includes('explore') && r.layers.includes('tension'), "Stand Battle's score carries its three layers");
 ok(r.sym.bars === 100 && Math.abs(r.sym.secs - 150) < 0.5 && r.sym.tracks >= 12 && r.sym.badNotes === 0, `the symphony is a hundred bars, two and a half minutes, and sound all through (${r.sym.tracks} tracks)`);
 ok(r.sym.opening === '72,76,79,84,88,91,96' && r.symStart > 0.05, 'and it opens on the notes of the delete sound (C E G C E G C) and is audible');
