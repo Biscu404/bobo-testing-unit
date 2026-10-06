@@ -161,32 +161,42 @@ export function createWindow(opts) {
      given the room. A canvas game that draws at a fixed size is instead kept
      at the size it was built for and scaled to fit, so a 960x540 field is
      never a postage stamp in the middle of a big black pane. */
-  let full = false, saved = null;
+  let full = false, saved = null, panX = 0.5, panY = 0.5;
   const fitScaled = () => {
     if (!full || !win.classList.contains('scaled')) return;
-    const room = desk.getBoundingClientRect();
     const th = bar.offsetHeight;
     const aw = desk.clientWidth - 4, ah = desk.clientHeight - th - 4;
-    const k = Math.min(aw / saved.bw, ah / saved.bh);
+    /* the zoom is a multiplier on the fit; past the screen the picture follows the pointer */
+    const k = Math.min(aw / saved.bw, ah / saved.bh) * (zoom ? zoom.get() : 1);
+    const gx = aw - saved.bw * k, gy = ah - saved.bh * k;
     body.style.width = saved.bw + 'px';
     body.style.height = saved.bh + 'px';
-    body.style.transform = 'translate(' + Math.max(0, (aw - saved.bw * k) / 2) + 'px,' +
-      Math.max(0, (ah - saved.bh * k) / 2) + 'px) scale(' + k + ')';
-    void room;
+    body.style.transform = 'translate(' + (gx >= 0 ? gx / 2 : gx * panX) + 'px,' +
+      (gy >= 0 ? gy / 2 : gy * panY) + 'px) scale(' + k + ')';
   };
+  const follow = ev => {
+    if (!full || !win.classList.contains('scaled')) return;
+    const r = body.parentNode.getBoundingClientRect(), th = bar.offsetHeight;
+    panX = Math.max(0, Math.min(1, (ev.clientX - r.left) / Math.max(1, r.width)));
+    panY = Math.max(0, Math.min(1, (ev.clientY - r.top - th) / Math.max(1, r.height - th)));
+    if (zoom && zoom.get() > 1) fitScaled();
+  };
+  win.addEventListener('pointermove', follow, true);
   function setFull(on) {
     if (on === full) return;
     if (win.classList.contains('hidden')) return;
     if (on) {
-      saved = { l: win.style.left, t: win.style.top, w: win.style.width, h: win.style.height,
-                bw: body.clientWidth, bh: body.clientHeight };
       const fluid = body.dataset.fluid === '1';
       const fixedCanvas = !fluid && !!body.querySelector('canvas');
+      /* the browser's zoom comes off first, so the size measured is the window's own */
+      if (fixedCanvas && zoom) zoom.scaled(true);
+      saved = { l: win.style.left, t: win.style.top, w: win.style.width, h: win.style.height,
+                bw: body.clientWidth, bh: body.clientHeight };
       win.classList.add('full');
       if (fixedCanvas) win.classList.add('scaled');
       fbtn.textContent = '[\u25A3]';
       full = true;
-      if (fixedCanvas && zoom) zoom.suspend(true);
+      panX = panY = 0.5;
       fitScaled();
     } else {
       win.classList.remove('full', 'scaled');
@@ -195,7 +205,7 @@ export function createWindow(opts) {
       win.style.width = saved.w; win.style.height = saved.h;
       fbtn.textContent = '[\u25A1]';
       full = false;
-      if (zoom) zoom.suspend(false);
+      if (zoom) zoom.scaled(false);
     }
     raise(win);
     Snd.open();

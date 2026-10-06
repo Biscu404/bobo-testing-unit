@@ -573,6 +573,7 @@ html, body {
    scaled up inside it instead (wm.js sets the transform) */
 .win.full { left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important; }
 .win.full .grip { display: none; }
+.win.full.scaled { overflow: hidden; }
 .win.full.scaled .wbody { position: absolute; left: 0; top: 22px; flex: none; transform-origin: 0 0; overflow: hidden; }
 .win.full.scaled .wbody canvas { image-rendering: pixelated; }
 
