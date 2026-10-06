@@ -82,7 +82,7 @@ function updateBusGain() {
   bus.gain.setTargetAtTime(g, ctxRef.currentTime, 0.15);
 }
 
-window.addEventListener('mixer-changed', ev => {
+if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('mixer-changed', ev => {
   if (ev.detail && ev.detail.channel === 'standbattle') updateBusGain();
 });
 

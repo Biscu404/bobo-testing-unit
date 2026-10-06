@@ -177,12 +177,13 @@ export function createSongs(A) {
     }
   };
   /* the mixer's slider for this app: ride the bus the moment it moves */
-  const onMix = ev => {
-    if (!(ev.detail && ev.detail.channel === 'bekkedal')) return;
-    if (Song.on) Song.level(0.2);
-  };
-  window.removeEventListener('mixer-changed', window.__bekMix || (() => {}));
-  window.__bekMix = onMix;
-  window.addEventListener('mixer-changed', onMix);
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    const onMix = ev => {
+      if (ev.detail && ev.detail.channel === 'bekkedal' && Song.on) Song.level(0.2);
+    };
+    if (window.__bekMix && window.removeEventListener) window.removeEventListener('mixer-changed', window.__bekMix);
+    window.__bekMix = onMix;
+    window.addEventListener('mixer-changed', onMix);
+  }
   return Song;
 }
