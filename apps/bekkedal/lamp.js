@@ -238,16 +238,20 @@ export function createLamp(W, H, matrix, ditherPx) {
       const wy = box.y + j;
       const row = matrix[((wy / ditherPx) | 0) & 3];
       const cell = ((wy / GLOW_CELL) | 0) * CW;
-      let o = j * box.w * 4;
-      for (let i = 0; i < box.w; i++, o += 4) {
-        const wx = box.x + i;
-        if (row[((wx / ditherPx) | 0) & 3] >= field[cell + ((wx / GLOW_CELL) | 0)]) continue;
-        const r = d[o], gr = d[o + 1], b = d[o + 2];
-        const t = P * (0.2126 * r + 0.7152 * gr + 0.0722 * b);
-        d[o] = t + Q * r + D0;
-        d[o + 1] = t + Q * gr + D1;
-        d[o + 2] = t + Q * b + D2;
-        lit++;
+      /* a run of pixels is one cell's strength: a cell nothing lights is skipped whole, which is most of the box */
+      for (let i = 0; i < box.w;) {
+        const wx0 = box.x + i, cx = (wx0 / GLOW_CELL) | 0, str = field[cell + cx];
+        const end = Math.min(box.w, (cx + 1) * GLOW_CELL - box.x);
+        if (str === 0) { i = end; continue; }
+        for (let o = (j * box.w + i) * 4; i < end; i++, o += 4) {
+          if (row[(((box.x + i) / ditherPx) | 0) & 3] >= str) continue;
+          const r = d[o], gr = d[o + 1], b = d[o + 2];
+          const t = P * (0.2126 * r + 0.7152 * gr + 0.0722 * b);
+          d[o] = t + Q * r + D0;
+          d[o + 1] = t + Q * gr + D1;
+          d[o + 2] = t + Q * b + D2;
+          lit++;
+        }
       }
     }
     ctx.putImageData(img, box.x, box.y);

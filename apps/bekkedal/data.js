@@ -326,7 +326,7 @@ export const BEK_ITEMS = {
      of. Carried, never sold, and accepted by the same 'lamp' gate the plain
      lantern is (gateOK() in index.js), so owning it is never owning less. */
   krystallykt:{ name: { no: 'KRYSTALLYKT', en: 'CRYSTAL LAMP' }, icon: 'lamp', col: 11 },
-  ullgenser:  { name: { no: 'ULLGENSER',  en: 'WOOL SWEATER' }, buy: 500, icon: 'shirt', col: 4 },
+  ullgenser:  { name: { no: 'ULLGENSER',  en: 'WOOL SWEATER' }, buy: 500, icon: 'knit',  col: 4 },
   bukett:     { name: { no: 'BUKETT',     en: 'BOUQUET'      }, icon: 'flower', col: 13 }
 };
 
@@ -412,15 +412,17 @@ export const BEK_SEASON_WEATHER = {
   vinter: { regn: 0.15, take: 0.35 }
 };
 
-/* the one seasonal tint, fed through the same dither()/ditherPat() call the
-   weather overlay already draws fog with — no new renderer, just another
-   colour and strength handed to a call that already exists. Strength stays
-   low on purpose: a wash over the picture, not a filter over it. */
+/* The season lies on the *ground*: index.js's seasonWash() lays it into the ground pass of the
+   terrain cache, as the same ordered stipple every other wash is, and never over what stands on
+   the ground (it used to be one stipple over the whole picture, which put the colour of the
+   season across walls, props and the player). `base` is an even dusting everywhere; `patch` is
+   the most a low-frequency field adds on top of it, in drifts and litter. Both are dither
+   strengths out of sixteen. */
 export const BEK_SEASON_TINT = {
-  var:    { col: GRASS[3], n: 1 },
-  sommer: { col: WAR[0],   n: 1 },
-  host:   { col: WAR[2],   n: 2 },
-  vinter: { col: SNO[0],   n: 3 }
+  var:    { col: GRASS[3], base: 0, patch: 3 },
+  sommer: { col: WAR[0],   base: 0, patch: 0 },
+  host:   { col: WAR[2],   base: 1, patch: 5 },
+  vinter: { col: SNO[0],   base: 5, patch: 5 }
 };
 
 /* one small recurring festival per season, on a fixed day-of-season so it

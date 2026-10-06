@@ -203,6 +203,10 @@ export default {
       function applyEQ() {
         N.eq.forEach((f, i) => f.gain.setTargetAtTime(eqGains[i], ctx.currentTime, 0.02));
       }
+      /* A preset picked with 1-9 is the curve the next discs inherit too, unless a disc
+         has an EQ of its own saved with it: otherwise the first track change put the
+         flat curve back and the key looked as if it had done nothing. */
+      const eqFor = t => (t.eq && t.eq.some(v => v)) || !S.preset ? (t.eq || []) : S.preset;
       function applyAll() {
         const t = ctx.currentTime;
         N.pre.gain.setTargetAtTime(Math.pow(10, S.pre / 20), t, 0.02);
@@ -520,7 +524,7 @@ export default {
           });
         }
         S.dur = t.dur; S.seekBase = 0; S.pos = 0;
-        for (let b = 0; b < EQ_BANDS.length; b++) eqGains[b] = t.eq[b] || 0;
+        { const q = eqFor(t); for (let b = 0; b < EQ_BANDS.length; b++) eqGains[b] = q[b] || 0; }
         applyEQ();
         S.disc = 1;                                     /* the lift-and-drop */
         S.marquee = 0;
@@ -1123,7 +1127,7 @@ export default {
           const n = nextIx();
           if (n >= 0 && n !== S.ix && S.list[n].buf) {
             const nt = S.list[n];
-            for (let b2 = 0; b2 < EQ_BANDS.length; b2++) eqGains[b2] = nt.eq[b2] || 0;
+            { const q2 = eqFor(nt); for (let b2 = 0; b2 < EQ_BANDS.length; b2++) eqGains[b2] = q2[b2] || 0; }
             applyEQ();
             const old = curVoice();
             startVoice(nt, 0, XFADE * 0.8);
@@ -1278,6 +1282,21 @@ export default {
       const PRESET_NAME = { 1:'FLAT', 2:'LOUDNESS', 3:'BASS HEAVY', 4:'VOCAL', 5:'V-SHAPE',
                             6:'PRESENCE', 7:'CLUB', 8:'AIR', 9:'WARM TAPE' };
 
+      /* The key is the physical digit (Digit1 / Numpad1), not whatever character the layout makes of it:
+         on a layout where 1-9 need Shift, or with a numpad, ev.key is not a digit and the key did nothing. */
+      const digitOf = ev => {
+        const m = /^(?:Digit|Numpad)([1-9])$/.exec(ev.code || '');
+        return m ? m[1] : (/^[1-9]$/.test(ev.key) ? ev.key : null);
+      };
+      function preset(n) {
+        const pre = EQ_PRESETS[n]; if (!pre) return;
+        S.preset = pre.slice();
+        const wasOut = !S.eqOn;
+        if (wasOut) { S.eqOn = true; routeEQ(); }              /* a preset into a bypassed EQ is silent: put it in circuit */
+        for (let i = 0; i < EQ_BANDS.length; i++) eqGains[i] = pre[i];
+        applyEQ();
+        say('EQ PRESET ' + n + ' — ' + PRESET_NAME[n] + (wasOut ? ' · EQ IN CIRCUIT' : ''));
+      }
       cv.addEventListener('keydown', ev => {
         const k = ev.key;
         /* while the search slot has focus it takes the keys, so a title with
@@ -1304,13 +1323,27 @@ export default {
         if (k === 'm' || k === 'M') { press('mono'); return; }
         if (k === 'l' || k === 'L') { press('loud'); return; }
         if (k === 'v' || k === 'V') { press('style'); return; }
-        if (k >= '1' && k <= '9') {
-          const pre = EQ_PRESETS[k]; if (!pre) return;
-          for (let i = 0; i < EQ_BANDS.length; i++) eqGains[i] = pre[i];
-          applyEQ(); say('EQ PRESET ' + k + ' — ' + PRESET_NAME[k]);
-        }
+        const dg = digitOf(ev);
+        if (dg && !ev.ctrlKey && !ev.metaKey && !ev.altKey) { ev.preventDefault(); preset(dg); }
       });
       cv.addEventListener('keyup', ev => { if (ev.key === ' ') ev.preventDefault(); });
+      /* a click on the title bar, the chin or the taskbar button moves focus off the canvas, and the
+         digits then went to the desktop. When this is the front window and nothing is being typed
+         into, the presets are heard from the document too (the canvas handles its own, so a key is
+         never taken twice). */
+      const isFront = () => {
+        const w = wrap.closest('.win');
+        if (!w || w.classList.contains('hidden')) return false;
+        const z = +w.style.zIndex || 0;
+        return [...document.querySelectorAll('.win:not(.hidden)')].every(o => (+o.style.zIndex || 0) <= z);
+      };
+      winL.on(document, 'keydown', ev => {
+        if (ev.target === cv || S.searching || ev.ctrlKey || ev.metaKey || ev.altKey || !isFront()) return;
+        const tg = ev.target && ev.target.tagName;
+        if (tg === 'INPUT' || tg === 'TEXTAREA' || tg === 'SELECT' || (ev.target && ev.target.isContentEditable)) return;
+        const dg = digitOf(ev);
+        if (dg) { ev.preventDefault(); preset(dg); }
+      });
 
       /* ---- the buttons on the chin ------------------------------------------- */
       bLoad.addEventListener('click', () => { S.trayDir = 1; pick.click(); });

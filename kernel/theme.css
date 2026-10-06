@@ -775,10 +775,18 @@ textarea.editor {
 .appbtn:hover { background: var(--sch-fg, #FFFFFF); }
 .appbtn.on { background: var(--sch-hi, #FFFF55); color: var(--sch-bg, #000000); border-color: var(--sch-hi, #FFFF55); }
 .godword { color: var(--sch-ok, #55FF55); padding-left: 4px; white-space: nowrap; overflow: hidden; }
+/* A pane that holds a picture centres it with auto margins, not with justify/align-center.
+   Centring that overflows is clipped on its near side for good (zoomed in, the left and the top
+   of the picture could never be scrolled to), and a pane only 60% tall left a zoomed-out picture
+   in the top of the window. The pane takes whatever the bar under it leaves, and the picture sits
+   in the middle of that at every zoom, scrolling from its true edges when it outgrows it. */
 .godpane, .vidpane, .gamepane {
-  display: flex; align-items: center; justify-content: center;
+  display: flex; align-items: flex-start; justify-content: flex-start;
   background: var(--sch-bg, #000000); padding: 4px; min-height: 60%;
 }
+.godpane > *, .vidpane > *, .gamepane > * { margin: auto; }
+.wbody:has(> .gamepane), .wbody:has(> .godpane), .wbody:has(> .vidpane) { display: flex; flex-direction: column; }
+.wbody > .gamepane, .wbody > .godpane, .wbody > .vidpane { flex: 1 0 auto; min-height: 0; }
 .godcv, .vidcv, .gamecv {
   image-rendering: pixelated;
   max-width: 100%;
@@ -1549,7 +1557,8 @@ textarea.editor {
   border: 2px solid #e8e2d4; box-shadow: 0 0 0 1px #1a1a1a; border-radius: 50%; pointer-events: none;
 }
 .britecv { image-rendering: pixelated; width: 85px; height: 8px; cursor: pointer; border: 1px solid #1a1a1a; }
-.drawwrap { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.drawwrap { flex: 1 1 auto; display: flex; overflow: auto; }
+.drawwrap > * { margin: auto; flex: 0 0 auto; }
 .drawcv { image-rendering: pixelated; box-shadow: 0 0 0 1px #1a1a1a, 3px 4px 0 rgba(0,0,0,0.5); }
 .thumbwrap { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; align-content: flex-start; }
 .thumb { width: 92px; text-align: center; cursor: pointer; user-select: none; }

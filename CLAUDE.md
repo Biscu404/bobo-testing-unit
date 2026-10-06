@@ -30,7 +30,7 @@ npm run check:listeners # cleanup must not cost behaviour: an open window's list
 npm run check:perf      # frame rate and Bekkedal's day clock
 npm run check:package   # after `npm run pack`: every file the app loads is packaged, no scaffolding is
 node scripts/smoke.mjs  # ~10 min; node scripts/lint-content.mjs; node apps/*/*_check.js (pure Node)
-node scripts/check-drunk.mjs   # the Jäger journey (pure Node): a blackout is minutes away at the very quickest
+node scripts/check-drunk.mjs   # the Jäger journey (pure Node): a blackout is inside one bottle, about two minutes away at the very quickest
 node scripts/check-style.mjs   # the style meter against five kinds of player (pure Node)
 node apps/garage/edit_check.js # the Garage's note, segment and undo logic (pure Node)
 ```
@@ -87,11 +87,12 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   the screen in fullscreen has no layout to redo, so there the zoom multiplies the fit scale instead (`zoom.scaled(true)`, applied by
   `wm.js`'s `fitScaled`) and the picture follows the pointer when it outgrows the screen. The page's own zoom stays locked (`electron/main.js`).
 - **Help** is built in (`kernel/help.js`, pages in `help_text.js`, DolDoc): it is not a file on the VFS, so it cannot be deleted.
-- **The Jäger is a journey.** `kernel/drunk_bac.js` is the arithmetic (pure; `scripts/check-drunk.mjs` holds it to its numbers): a
-  measure sits in the stomach and reaches the blood with a time constant of 30 s, the body clears one per 45 s, and what the screen
-  shows is the blood plus half of what is still on its way. The bottle app lets one measure down about every 13 s at the very
-  quickest (a pour, a drink, a breather in which clicks do nothing; clicks are never queued and never speed anything up), so
-  non-stop drinking is about six and a half minutes and thirty-odd measures to the floor, through seven named stages; one a
+- **The Jäger is a journey, and it fits in one bottle.** `kernel/drunk_bac.js` is the arithmetic (pure; `scripts/check-drunk.mjs` holds it to its numbers): a
+  measure sits in the stomach and reaches the blood with a time constant of 30 s, the body clears one per 60 s, and what the screen
+  shows is the blood plus half of what is still on its way. The bottle app lets one measure down about every 10 s at the very
+  quickest (a 3.5 s pour, a 3.5 s drink, a 2.6 s breather in which clicks do nothing; clicks are never queued and never speed anything up), so
+  non-stop drinking is just under two minutes and thirteen of a bottle's seventeen measures to the floor, through seven named stages; a
+  steady twenty seconds a measure is still out inside the bottle; one a
   minute holds a mild glow for ever. **The drink is first-person**: nobody is drawn drinking. The tumbler is an object
   (`apps/bottle/glass3d.js`, a raycast cylinder with real walls, a floor and liquor that stays level with the room): it is lifted
   toward the screen and tipped toward whoever is at the monitor, and what the near edge cannot hold goes over it.
