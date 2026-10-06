@@ -1,7 +1,7 @@
-/* LEARN: eight tiny lessons, each one a toy. Short sentences, big buttons, real
-   instruments; every lesson ends in a star, and the last one ends in a song.
-   A lesson is { title, inst: [instruments to have ready], build(stage, X) }; X is
-   the little toolbox below. */
+/* THE BASICS: eight short lessons, each one a thing you can poke. Plain sentences, real
+   instruments, a tick for each one you have got, and the last one ends in a track of
+   your own. A lesson is { title, inst: [instruments to have ready], build(stage, X) };
+   X is the little toolbox below. */
 import { el, btn } from './ui.js';
 import { LESSONS_A } from './lessons_a.js';
 import { LESSONS_B } from './lessons_b.js';
@@ -14,7 +14,8 @@ export function openLessons(root, api, hooks) {
   root.appendChild(wrap);
   const head = el('div', 'l-head');
   const close = () => { cleanup(); wrap.remove(); };
-  head.append(el('span', '', 'LEARN MUSIC'), el('span', 'g-flex'), btn('BACK TO THE GARAGE', 'g-go', close));
+  const prog = el('span', 'l-prog', '');
+  head.append(el('span', 'l-brand', 'THE BASICS'), prog, el('span', 'g-flex'), btn('BACK TO THE GARAGE', 'g-go', close));
   const body = el('div', 'l-body'), list = el('div', 'l-list'), stage = el('div', 'l-stage');
   body.append(list, stage);
   wrap.append(head, body);
@@ -29,9 +30,10 @@ export function openLessons(root, api, hooks) {
 
   function drawList() {
     list.replaceChildren();
+    prog.textContent = stars.filter(Boolean).length + ' OF ' + LESSONS.length + ' DONE';
     LESSONS.forEach((l, i) => {
       const it = el('div', 'l-item' + (i === cur ? ' sel' : '') + (stars[i] ? ' done' : ''));
-      it.append(el('span', 'l-n', String(i + 1)), el('span', '', l.title), el('span', 'l-star', stars[i] ? '★' : '☆'));
+      it.append(el('span', 'l-n', String(i + 1).padStart(2, '0')), el('span', 'l-t', l.title), el('span', 'l-star', stars[i] ? '✓' : ''));
       it.addEventListener('mousedown', ev => { if (ev.button === 0) open(i); });
       list.appendChild(it);
     });
@@ -51,7 +53,7 @@ export function openLessons(root, api, hooks) {
       row: () => { const r = el('div', 'l-row'); stage.appendChild(r); return r; },
       pad(parent, label, color, fn, sub) {
         const b = el('button', 'l-pad', label);
-        b.style.background = color;
+        b.style.setProperty('--c', color);
         if (sub) b.appendChild(el('small', '', sub));
         const press = ev => { ev.preventDefault(); b.classList.add('down'); if (window.Snd && window.Snd.press) window.Snd.press(); fn(b, ev); };
         b.addEventListener('pointerdown', press);
@@ -76,23 +78,23 @@ export function openLessons(root, api, hooks) {
       done() {
         if (stageDone) return;
         stageDone = true; stars[i] = 1; save(); drawList();
-        okEl.textContent = '★ WELL DONE! ★';
+        okEl.textContent = '✓ GOT IT';
         if (window.Snd && window.Snd.bell) window.Snd.bell();
         nextB.disabled = false;
-        if (i === LESSONS.length - 1) nextB.textContent = 'ALL DONE!';
+        if (i === LESSONS.length - 1) nextB.textContent = 'ALL DONE';
       },
       rand: n => Math.floor(Math.random() * n),
       pick: a => a[Math.floor(Math.random() * a.length)]
     };
-    stage.appendChild(el('div', 'l-title', (i + 1) + '. ' + lesson.title));
+    stage.appendChild(el('div', 'l-title', lesson.title));
     if (S.knob() === 0) {
       const hint = el('div', 'l-row');
-      hint.append(el('span', 'l-small', 'NO SOUND? THE MUS KNOB IS AT ZERO.'), btn('TURN IT UP FOR ME', 'g-go', () => { S.turnUp(6); hint.remove(); }));
+      hint.append(el('span', 'l-small', 'No sound? The MUS knob is at zero.'), btn('TURN IT UP FOR ME', 'g-go', () => { S.turnUp(6); hint.remove(); }));
       stage.appendChild(hint);
     }
-    const nextB = btn(i === LESSONS.length - 1 ? 'FINISH' : 'NEXT LESSON ▶', 'g-go l-next', () => { if (i < LESSONS.length - 1) open(i + 1); else close(); });
+    const nextB = btn(i === LESSONS.length - 1 ? 'FINISH' : 'NEXT ▶', 'g-go l-next', () => { if (i < LESSONS.length - 1) open(i + 1); else close(); });
     nextB.disabled = !!stars[i];
-    if (stars[i]) okEl.textContent = '★ YOU HAVE DONE THIS ONE ★';
+    if (stars[i]) okEl.textContent = '✓ ALREADY DONE';
     lesson.build(stage, X);
     stage.appendChild(okEl);
     stage.appendChild(nextB);

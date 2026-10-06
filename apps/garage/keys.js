@@ -5,7 +5,9 @@
    the black ones, Z and X move the octave. With MAGIC NOTES on, keys that are
    not in the song's key are greyed out and silent. */
 import { el } from './ui.js';
-import { DRUM_ROWS, HEX, TRACK_COLORS, sortTrack } from './model.js';
+import { DRUM_ROWS } from './model.js';
+import { sortTrack } from './edit.js';
+import { colourOf } from './tracks.js';
 
 const WHITE = [0, 2, 4, 5, 7, 9, 11], BLACK = { 1: 0, 3: 1, 6: 3, 8: 4, 10: 5 };
 const KW = 'asdfghjkl;\'', KB = { w: 1, e: 3, t: 6, y: 8, u: 10, o: 13, p: 15 };
@@ -21,13 +23,14 @@ export function makeKeys(host, api) {
     const G = api.G, tr = G.song.tracks[G.sel];
     if (!tr) return;
     const h = { off: null, start: null, el: wrap.querySelector('[data-k="' + id + '"]') };
-    h.off = api.studio.live(tr.inst, midiOrKey, 0.85, { vol: tr.vol, pan: tr.pan, reverb: tr.reverb });
+    h.off = api.studio.live(tr.inst, midiOrKey, 0.85, api.trackMix(tr));
     if (h.el) h.el.classList.add('down');
     if (G.rec && api.player()) {
-      h.start = Math.round(api.player().beat() * 4) / 4;
+      const st = api.snapStep();
       h.at = api.player().beat();
+      h.start = st > 0 ? Math.round(h.at / st) * st : h.at;
       h.value = midiOrKey;
-      if (tr.inst === 'drums') { (tr.hits = tr.hits || []).push([h.start % (G.song.bars * G.song.beats), midiOrKey, 0.9]); sortTrack(tr); api.changed('edit'); }
+      if (tr.inst === 'drums') { (tr.hits = tr.hits || []).push([((h.start % (G.song.bars * G.song.beats)) + G.song.bars * G.song.beats) % (G.song.bars * G.song.beats), midiOrKey, 0.9]); sortTrack(tr); api.changed('edit'); }
     }
     held.set(id, h);
   }
@@ -40,8 +43,8 @@ export function makeKeys(host, api) {
     const G = api.G, tr = G.song.tracks[G.sel];
     if (G.rec && api.player() && h.start != null && tr && tr.inst !== 'drums') {
       const len = G.song.bars * G.song.beats;
-      const dur = Math.max(0.25, Math.round((api.player().beat() - h.at) * 4) / 4);
-      tr.notes.push([h.start % len, Math.min(dur, 4), h.value, 0.85]);
+      const st = api.snapStep(), raw = api.player().beat() - h.at, dur = Math.max(st > 0 ? st : 0.1, st > 0 ? Math.round(raw / st) * st : raw);
+      tr.notes.push([((h.start % len) + len) % len, Math.min(dur, 8), h.value, 0.85]);
       sortTrack(tr); api.changed('edit');
     }
   }
@@ -50,7 +53,7 @@ export function makeKeys(host, api) {
     const G = api.G, song = G.song, tr = song.tracks[G.sel];
     wrap.replaceChildren();
     if (!tr) return;
-    const col = HEX[TRACK_COLORS[G.sel % TRACK_COLORS.length]];
+    const col = colourOf(song, G.sel);
     if (tr.inst === 'drums') {
       const row = el('div', 'g-pads');
       PADS.forEach(([k, kb]) => {

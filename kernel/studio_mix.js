@@ -138,6 +138,8 @@ export function makeMix(ctx, dest, level, o) {
   return {
     master, bus, apply, meters, setLimit, ctx,
     setLevel(v) { master.gain.setTargetAtTime(Math.max(0.0001, v), ctx.currentTime, 0.04); },
+    /* what a mix does on one speaker: the two sides summed, to hear whether anything cancels */
+    setMono(on) { lim.channelCountMode = on ? 'explicit' : 'max'; lim.channelCount = on ? 1 : 2; },
     /* the analyser on the master, for a spectrum */
     spectrum() { return mL; }
   };

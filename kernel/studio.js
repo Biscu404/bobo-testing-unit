@@ -26,6 +26,7 @@ import * as Ins from './instruments.js';
 import * as Lang from './songtext.js';
 import { makeMix } from './studio_mix.js';
 import { wavBlob } from './wavfile.js';
+import * as Midi from './midi.js';
 
 const SLICE = 0.25, AHEAD = 0.16, TICK = 25;
 
@@ -54,7 +55,7 @@ function slice(ctx, mix, song, b0, b1, t, spb, live) {
 }
 
 export const Studio = {
-  lang: Lang, ins: Ins, user: 1, follow: 0, followT: null, chans: new Map(), lives: new Map(), insert: null,
+  lang: Lang, ins: Ins, midi: Midi, user: 1, follow: 0, followT: null, chans: new Map(), lives: new Map(), insert: null,
 
   /* the level a channel should sit at: the MUS knob, the taskbar mixer's slider for it, and (the Garage) its own slider */
   level(id) {
@@ -133,6 +134,7 @@ export const Studio = {
         marks = [[nextTime, nextBeat]];
       },
       setLoop(on, a, b) { loop = on; loopFrom = a || 0; loopTo = b == null ? null : b; },
+      setMetronome(on) { o.metronome = on; },
       levels() { return mix.meters(); },
       /* ride the whole player's level: `to` is 0..1, over `secs` */
       fade(to, secs) {
