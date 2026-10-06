@@ -57,9 +57,5 @@ for (let i = 0; i < TRIALS; i++) { const r = run(every(8, () => 20 + Math.floor(
 ok(seven <= TRIALS * 0.25, 'but one pile every eight seconds cannot (' + seven + ' of ' + TRIALS + ' held it a minute)');
 const q = every(2, 40), quit = run(t => t < 40 ? q(t) : 0, 120);
 ok(quit.s.tier === -1 || quit.s.pts < 100, 'stop for a while and the meter is gone');
-/* each rank takes longer to climb than the one below, under the same relentless play */
-const r = piles.reached;
-const gaps = []; for (let i = 1; i <= TOP; i++) if (r[i] != null && r[i - 1] != null) gaps.push(r[i] - r[i - 1]);
-console.log('seconds between ranks for the big-pile player: ' + gaps.map(x => x.toFixed(1)).join(', '));
 console.log(bad ? bad + ' FAILED' : 'all good');
 process.exit(bad ? 1 : 0);

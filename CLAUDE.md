@@ -30,6 +30,9 @@ npm run check:listeners # cleanup must not cost behaviour: an open window's list
 npm run check:perf      # frame rate and Bekkedal's day clock
 npm run check:package   # after `npm run pack`: every file the app loads is packaged, no scaffolding is
 node scripts/smoke.mjs  # ~10 min; node scripts/lint-content.mjs; node apps/*/*_check.js (pure Node)
+node scripts/check-drunk.mjs   # the Jäger journey (pure Node): a blackout is minutes away at the very quickest
+node scripts/check-style.mjs   # the style meter against five kinds of player (pure Node)
+node apps/garage/edit_check.js # the Garage's note, segment and undo logic (pure Node)
 ```
 Pixel comparison between two builds: `scripts/bekkedal_shots.mjs` twice per build, then `scripts/pngdiff.mjs`.
 An app that opens its own window (`open()`) is never sent `unmount()`: add its window/document listeners with
@@ -81,9 +84,18 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   still draw its own menu.
 - **Zoom.** Every window has `[Z]` (and Ctrl +/-/0, Ctrl+wheel): `kernel/zoom.js` applies CSS `zoom` to the window body, so the
   app lays itself out again, and remembers the level per app (`templeos.zoom.v1`). A window that is a fixed canvas scaled to fit
-  the screen in fullscreen suspends it. The page's own zoom stays locked (`electron/main.js`).
+  the screen in fullscreen has no layout to redo, so there the zoom multiplies the fit scale instead (`zoom.scaled(true)`, applied by
+  `wm.js`'s `fitScaled`) and the picture follows the pointer when it outgrows the screen. The page's own zoom stays locked (`electron/main.js`).
 - **Help** is built in (`kernel/help.js`, pages in `help_text.js`, DolDoc): it is not a file on the VFS, so it cannot be deleted.
-- **The Jäger passes out.** `Drunk.drink()` counts measures in the blood (one leaves every 30 s); at ten `kernel/blackout.js`
+- **The Jäger is a journey.** `kernel/drunk_bac.js` is the arithmetic (pure; `scripts/check-drunk.mjs` holds it to its numbers): a
+  measure sits in the stomach and reaches the blood with a time constant of 30 s, the body clears one per 45 s, and what the screen
+  shows is the blood plus half of what is still on its way. The bottle app lets one measure down about every 13 s at the very
+  quickest (a pour, a drink, a breather in which clicks do nothing; clicks are never queued and never speed anything up), so
+  non-stop drinking is about six and a half minutes and thirty-odd measures to the floor, through seven named stages; one a
+  minute holds a mild glow for ever. **The drink is first-person**: nobody is drawn drinking. The tumbler is an object
+  (`apps/bottle/glass3d.js`, a raycast cylinder with real walls, a floor and liquor that stays level with the room): it is lifted
+  toward the screen and tipped toward whoever is at the monitor, and what the near edge cannot hold goes over it.
+- **The Jäger passes out.** At the limit (`BAC.LIMIT`) `kernel/blackout.js`
   takes the whole window (not just the tube: the overlay is `position:fixed` over the monitor, bezel and chin included) for ~16 s:
   nine altered scenes (`blackout_a/b.js`, bent by `blackout_fx.js`), unskippable, calmer and without the harshest effects under
   `prefers-reduced-motion`. **Seven of them are photographs** — a snowy bridge in a city, chickens on a park bench, an ULTRAKILL corridor,
@@ -100,6 +112,35 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   `kernel/studio.js` is the mixer and scheduler (per-track volume/pan/room/mute/solo, a master that follows the MUS knob and the
   taskbar mixer's THE GARAGE channel, a limiter): `Studio.play(song)`, `Studio.live()`, `Studio.render(song)` (offline, for WAV
   and for TheStack discs). Apps reach it as `ctx.studio`.
+
+- **The studio's desk and decks.** Every player (`Studio.play`) has a desk of its own (`kernel/studio_mix.js`: per track a drive, a
+  three-band EQ, a compressor, pan, a send to the room and one to an echo synced to the tempo, and a meter; the master has a
+  limiter and a stereo meter) and plays on a *channel* (`'garage'`, `'bekkedal'`, `'style'`...): the MUS knob and the taskbar mixer's
+  slider for that channel set how loud, so a game's music is never at the mercy of the Garage's fader. A game plays its score
+  through `Studio.deck(channel)` (`kernel/deck.js`): `play(song, { fade, layers })` crossfades from the old song, `layers({ combat:
+  true })` switches the tracks tagged with that `layer` on and off while the song plays (that is how Stand Battle's score gets
+  bigger when a fight starts, and how Bekkedal's tunes lose their lead after dark). The deck plays a *copy*, so a score's own data is
+  never muted by what a game does to it. `Studio.play` also takes `loopFrom/loopTo`, `from`, `countIn`, `fadeIn`, and returns a
+  player with `seek`, `setLoop`, `setMetronome`, `fade`, `levels()`. `Studio.render` renders **in stretches of ~20 s** (a long song
+  as one offline graph crawls) and takes `from/to`, `only` (a stem), `sampleRate`, `tail`, `limit`; `kernel/wavfile.js` writes
+  16/24-bit WAVs, `kernel/midi.js` writes and reads standard MIDI files.
+- **The games are scored for real instruments.** `apps/bekkedal/score.js`, `apps/elephant/score.js` and `apps/standbattle/score.js`
+  are studio songs (built with `apps/scorekit.js`'s helpers from the tunes the games always had); `apps/bekkedal/music.js` only
+  chooses which one, and the Stack's folders play the same songs.
+- **The style meter.** `kernel/style_model.js` is its rules (pure; `scripts/check-style.mjs` plays five kinds of player against
+  them): every rank is further than the last, a single file is worth less the higher you are (a pile of twenty to eighty is not
+  marked down, so it is piles that reach the top), the bleed never stops (it runs at 60 % while a chain is alive and in full after
+  the rank's own grace, which shrinks), and the top keeps its give so it does not flicker. `kernel/style.js` is the screen
+  (`kernel/smeter.css`: `data-t` is the rank, and every rank up the meter is bigger, via `--sm-k`, and moves more;
+  `kernel/style_fx.js`: sparks, a frame of light, and confetti at the top; reduced-motion switches all of it off). At the top rank
+  **the symphony plays** (`kernel/symphony*.js`: 100 bars at 160 bpm, 2:30, sixteen real instruments, written in `symphony_a.js`
+  and `symphony_b.js` with the tools in `symphony_kit.js`; it opens in C major on the exact notes of the delete sound at that
+  rank, which are open fifths so as never to fight the orchestra, then turns to C minor; `symphony_play.js` starts it on its own
+  `'style'` channel, ducks the lobby, hushes `kernel/rage.js` (the chiptune layer), and fades it out 1.5 s after the meter leaves
+  the top). The first time the meter reaches it, `templeos.symphony.v1` is set and the Stack gets a STYLE METER folder with the full
+  song. **After a minute at the top the sound glitches** (`kernel/glitch.js`: stutter, bitcrush, tape wobble, gates; on the studio's
+  channels, the SFX bus and the chiptune layer; rare and short at first, frequent and long over the next minute and a half; a pile
+  of twenty or more files deleted while it is going throws a burst on the spot).
 
 ### Writing music (for Claude, and anyone else)
 Music is data, not oscillator code. A song is `{ v, title, bpm, key, scale, bars, beats, swing, tracks: [{ id, name, inst, vol, pan,
@@ -293,11 +334,24 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
 - `folder`: a folder window: BACK / UP / path, select (click, Ctrl, Shift, rubber band), drag and drop to move or Ctrl-copy,
   right-click menus, F2/Del/Ctrl+C/X/V/D/A/Z, Enter opens, Backspace goes up. `trash`: the RecycleBin (put back, delete for good,
   drag things out). `viewer`: pictures and video; BACKGROUND (five fits), SAVE A COPY, DELETE, arrow keys walk the folder.
-- `garage`: `apps/garage/index.js` - THE GARAGE, a band in a box: a track list with an instrument each (30 real instruments +
-  drum kit, `picker.js`), a note grid (`grid.js`; MAGIC NOTES keeps every row inside the key so nothing is wrong), a live keyboard
-  (`keys.js`; computer keys, REC), a mixer per track (`tracks.js`), BAND IN A BOX (drums/bass/chords that fit), undo, SAVE/OPEN to
-  `::/Home/Songs/*.SONG`, EXPORT .WAV. **LEARN** (`lessons*.js`) is the manual for a five-year-old: eight tiny interactive lessons
-  (sounds, high and low, the beat, five magic notes, happy and sad, chords, patterns, make a song), a star each.
+- `garage`: `apps/garage/index.js` - THE GARAGE, a studio for a producer and an audiophile that a beginner can still use.
+  **The roll** (`grid.js`, `grid_draw.js`; one canvas holds the ruler, the notes and the velocity lane): three tools (DRAW: click to
+  put a note down, drag it longer; clicking a note *selects* it so nothing is deleted by accident; on the drum kit DRAW is a step
+  sequencer. SELECT drags a box. ERASE sweeps; the right button erases in any tool), move and resize by dragging, Ctrl-drag copies,
+  Shift adds to the selection, a velocity lane, a minimap, variable snap (bar to 1/32, triplets, off), zoom both ways, MAGIC NOTES
+  (only the key's rows). **Segments**: dragging the ruler picks a stretch of *time* across every track (or just this one), which
+  can be looped, copied, cut, pasted at the yellow cursor (over the song, or pushing the rest later), duplicated, repeated, cleared,
+  removed with the gap closed, or given a gap; the song grows by itself a bar at a time. All of it is `edit.js` (pure; `node
+  apps/garage/edit_check.js`), narrated in the status line by `actions.js`, and undoable (80 steps, redo). **Transport**: play from
+  the cursor, loop (the stretch or the song), count-in, click, tempo (typed or tapped), beats per bar, swing, REC on the keys
+  (`keys.js`, quantized to the snap). **The desk** (`mixer.js`, `meters.js`; TAB or the dock tab): per track fader, pan, three-band
+  EQ, compressor, drive, room and echo, meters; the master has a limiter you can set, a mono check, peak/RMS/gain-reduction and a
+  spectrum. **Files**: SAVE (quietly over the same file), SAVE AS, OPEN (yours, the demos, or IMPORT a .mid), a guard before anything
+  that would lose changes, a draft kept by itself; EXPORT (`export.js`) is a WAV (16 or 24 bit, 44.1/48 kHz, peak-normalised or as
+  mixed, the whole song or the picked stretch, with a report of the peak and loudness), a WAV per track (stems) or a MIDI file.
+  `help.js` (F1) lists every key. **LEARN** (`lessons*.js`) is now THE BASICS: the same eight short interactive lessons (the kit,
+  pitch, the pulse, five safe notes, major and minor, chords, loops, your first track) in a dark control-room theme and plain
+  adult sentences, with a tick for each one you have got.
 - `sweeper`: `apps/sweeper/index.js` - Sweeper, a Hollow-Knight-flavoured minesweeper on one scalable canvas (`gfx.js`
   draws a 960x640 sheet onto whatever size the window is, so fullscreen is bigger, not blurrier). Two ways in: the plain
   game in three sizes, and a **campaign** — an ink-on-vellum *map* of six regions / 18 rooms (`map.js`, data in `data.js`)
@@ -310,21 +364,26 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   respirator round his neck. **That portrait is a third user-requested exception to the 16-colour rule** (a face needs a
   skin tone); nothing else in the app leaves VGA16. On a win he speaks first, in a box that fits what he says, and the
   BATCH COMPLETE panel does not start until he has finished.
-- `bottle`: a Jägermeister bottle and tumbler, each baked once and turned by pixel sampling (`raster.js`) with the liquid poured into
-  the *turned* interior: a surface that stays level with the room (plus a slosh) and is moved until exactly the right number of
-  pixels are under it, so the liquid pools in the neck, runs to the lip and spills over a rim by itself. The pour (`pour.js`) is a
-  feedback loop on the head of liquid above the lip (a weir), the drink (`drink.js`) has a hand, an arm and a face, and the liquor runs
-  over the rim into the mouth. Clicks queue and speed everything up (spam a bottle). Drinking drives `kernel/drunk.js`; ten measures
-  and the window blacks out.
+- `bottle`: a Jägermeister bottle (baked once and turned by pixel sampling, `raster.js`, with the liquid poured into the *turned*
+  interior) and a tumbler that is an object, not a sprite (`glass3d.js`: a thick-walled cylinder with a floor, found pixel by pixel by
+  following a ray out of an eye, with the liquor held level by a plane and the volume solved for it). The pour (`pour.js`) is a
+  feedback loop on the head of liquid above the lip (a weir). **Nobody is drawn drinking** (`drink.js`): the glass is lifted toward the
+  screen and tipped toward the viewer, so the person at the monitor is the one it is tipped to, and what the near edge cannot hold goes
+  over it. Clicks are never queued and never speed anything up: a pour, a drink and a breather each ignore them. Drinking drives
+  `kernel/drunk.js` (the journey: see **The Jäger is a journey**).
 - `hifi` (TheStack): a disc library with **folders** — one for the lobby's four variants and one per app that scores itself
   with music (`apps/hifi/library.js` lifts each app's own score into a disc spec; a disc is pressed the first time it is played).
+  Nothing is pressed when the window opens, and no loose discs ride on the shelf outside the folders. Its face is drawn at the
+  pixels it is shown at (`fit()`: the 480x386 room is scaled to the canvas, rectangles snap to whole screen pixels) in VT323 with the
+  dimmest inks lifted for text, not blown up one and two thirds times. The STYLE METER folder appears once the meter has read
+  HAPPY BIRTHDAY, with the whole symphony.
 - `standbattle`: `apps/standbattle/index.js` - Stand Battle Arena, a JoJo's Bizarre Adventure roguelike combat prototype (see `docs/stand-battle-arena-spec.md`), ported in full from the jojo-roguelike repo's current, far more developed build (replacing this repo's earlier prototype port). Playable Jotaro Kujo/Star Platinum vs. Morioh enemies and boss Yoshikage Kira/Killer Queen, across a 6-node Act 1 (Morioh) map. Zero meta-progression by design; internal 480×270 canvas on a 720×260 belt plane (x, z) with a tracking camera, integer-only upscale.
   **Combat engine:** dodge (Step) is edge-triggered and gated by a 2-charge meter (`fighter.js`, GDD §3.7) with a HUD pip readout. All action inputs are queued in a 9-frame input buffer (`combat.js`) and fire the instant the player returns to idle. Arena world bounds are centralized in `arena_bounds.js`, shared by the sim (`combat.js`) and camera (`render.js`).
   **Simulation core:** the sim steps in whole frames at a fixed 60Hz (`sim_loop.js`'s `createFixedStepLoop`) on a real (x, z) belt plane. `fighter.js` is the entity/component store (`combat.entities = [player, enemy]`). `render_adapter.js` handles depth projection/sorting/camera targeting. Depth movement (`input.js`'s forward/back, W/S by default) is clamped via `arena_bounds.js`; hit detection remains x-only per Phase 1 scope. `headless_harness.js` (`node apps/standbattle/headless_harness.js`) runs the sim with no canvas for reproducible, seeded testing.
   **The combat resolver:** frame data and real AABB hitboxes replace fixed windup/active/recover timers and simple range checks. `moves.js` defines player moves as timelines (`frames`, `hitboxes[]`, `cancels[]`, `armor`); `resolvers.js` holds the five choke points (`resolveMoveFrames`, `resolvePatternFrames`, `resolveDamage`, `applyHit`, `rollCrit`, `resolvePoiseDamage`) — the only place stat arithmetic happens. `hitbox.js` does AABB overlap in (x, z); `poise.js` implements per-enemy poise/Stagger; `resources.js` implements Momentum/Persistence; `defense.js` implements Step/Guard/Clash as three structurally distinct defensive tools (GDD §2.3). `ai.js`'s `PATTERNS` carry `hitbox`/`glyph`/`armor`/`tags` for enemy attacks. `debug_overlay.js` (toggled by a `DEBUG` button) draws hitboxes/hurtboxes/frame state. `fairness_check.js` (`node apps/standbattle/fairness_check.js`) asserts telegraph timing fairness.
   **The pipeline:** `hooks.js` is a flat name→kind hook registry (EVENT/EFFECT/QUERY) with a mutable-context effect dispatcher (`bus.effect`/`dispatcher.runEffect`) and pure-reducer query chains (`bus.query`/`dispatcher.runQuery`) for derived numbers. `stats.js` is a separate layered stat pipeline (base→flat→multiplicative→clamp) wiring Range/Speed/Precision/devPotential into real formulas. `status.js` is the generic status system (`virus`/`frozen` proof entries). `effect_lib.js` is the string-addressable verb vocabulary (`EFFECT_LIB`/`QUERY_LIB`) content authors reference by name — zero buff-specific engine code. `content_registry.js` collects Fragment/Relic/donor data and validates it (`content_check.js`, `node apps/standbattle/content_check.js`) before installing anything onto the dispatcher.
   **Cross-cutting foundations:** `rng.js` is one seeded xorshift128 PRNG per run with named sub-streams (map/rewards/combat/ai) so draws never desync each other; render/particle randomness stays on plain `Math.random()` deliberately. `save.js` is the single choke point over `ctx.save`/`ctx.load` (`'run'` and `'meta'` blobs, each versioned/migratable). `constants.js` re-exports shared numeric constants (arena bounds, `SIM_HZ`/`FRAME_MS`, `GROUND_Y`, `DEATH_ANIM_FRAMES`) so sim and render never drift. `input.js` owns a rebindable keymap persisted via `save.js`'s `meta` blob and classifies every action edge- vs. held-triggered.
-  **Graphics (480×270 internal, rebuilt from scratch):** every pixel comes from a software rasterizer (`draw.js`, axis-aligned 1px rows only, no antialiased fills/rotations) layered with `palette.js` (five-step colour ramps, hue-shifted shadows), `layer.js` (offscreen sprite compositor: silhouette ink outlines, cast shadows, hit flashes, dodge afterimages, squash/stretch), `body.js`/`face.js` (shared humanoid rig, anime-style heads), `anim.js` + `pose_player.js`/`pose_enemy.js` (pose engine with per-pattern enemy telegraphs), `sprite_jotaro.js`/`sprite_star.js`/`sprite_enemy.js`/`sprite_boss.js` (~100-120px characters), `background.js`/`bg_scenes.js`/`bg_props.js` (six-layer parallax across four Morioh locations), and `font.js`/`font_data.js` (5×7 bitmap font). This app is an explicit, user-requested exception to the machine's base 16-colour/no-antialiasing rule below; canvas smoothing stays off and everything still snaps to whole pixels. `fx.js` and `arena.js` drive impact/telegraph/particle effects off the hook dispatcher and combat state respectively; `render.js` handles camera/parallax/sprite stamping/HUD. Sound is a 3-layer SFX design with combo-pitch escalation (`audio.js`) plus an adaptive chiptune engine (`music.js`, its own Web Audio gain bus wired to the machine's MUS knob) with explore/combat/tension intensity layers.
+  **Graphics (480×270 internal, rebuilt from scratch):** every pixel comes from a software rasterizer (`draw.js`, axis-aligned 1px rows only, no antialiased fills/rotations) layered with `palette.js` (five-step colour ramps, hue-shifted shadows), `layer.js` (offscreen sprite compositor: silhouette ink outlines, cast shadows, hit flashes, dodge afterimages, squash/stretch), `body.js`/`face.js` (shared humanoid rig, anime-style heads), `anim.js` + `pose_player.js`/`pose_enemy.js` (pose engine with per-pattern enemy telegraphs), `sprite_jotaro.js`/`sprite_star.js`/`sprite_enemy.js`/`sprite_boss.js` (~100-120px characters), `background.js`/`bg_scenes.js`/`bg_props.js` (six-layer parallax across four Morioh locations), and `font.js`/`font_data.js` (5×7 bitmap font). This app is an explicit, user-requested exception to the machine's base 16-colour/no-antialiasing rule below; canvas smoothing stays off and everything still snaps to whole pixels. `fx.js` and `arena.js` drive impact/telegraph/particle effects off the hook dispatcher and combat state respectively; `render.js` handles camera/parallax/sprite stamping/HUD. Sound is a 3-layer SFX design with combo-pitch escalation (`audio.js`); the music is `score.js`, one eight-bar combat loop for the studio's real instruments with explore/combat/tension layers, played on the game's own channel of the studio (`music.js` only starts it and switches the layers with `musicSetIntensity`).
   **Design documents — read before changing gameplay:** `docs/stand-battle-arena-spec.md` (technical contract), `docs/stand-battle-arena-gdd.md` (game design document), `docs/stand-battle-arena-tech.md` (engine audit/build order). There is no line budget on this app — content stays data-driven, never a new code path.
 
 ## Rules
