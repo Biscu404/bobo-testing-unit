@@ -1,11 +1,14 @@
 /* Passing out.
 
-   Not a filter on the monitor: the whole window goes, case and all. The edges
-   close in, it is black, and then the machine shows you things it should not
-   have: a snowy city, a snowy park, something that runs on blood, a chat that
-   will not stop, a skater, a disc, a tape, a very small turtle, a map with
-   three lanes, a penguin -- each altered on the way out, the colours wrong,
-   the picture cut and sliding, snow on everything. Then the lids come up.
+   Not a filter on the monitor: the whole window goes, case and all (the overlay is
+   fixed to the viewport above everything, the monitor included). The edges close
+   in, it is black, and then the machine shows you things it should not have: a
+   snowy bridge in a city, chickens on a park bench, a corridor that runs on blood,
+   a chat that will not stop, a bouldering wall, a heap of discs, a very small
+   turtle, a map with three lanes, a Debian desktop. The places are real photographs
+   pressed down to the sixteen colours (blackout_photo.js); each is altered on the
+   way out, the colours wrong, the picture cut and sliding, snow on everything.
+   Then the lids come up.
 
    About 16 seconds, and it cannot be skipped: you are not conscious. For
    anyone who has asked their system for less motion it is slower, and leaves
@@ -13,18 +16,27 @@
    times a second either way. */
 import { W, H, seeded } from './blackout_draw.js';
 import { FX, HARSH, NAMES, snowScreen } from './blackout_fx.js';
+import { hasPhoto, loadPhotos } from './blackout_photo.js';
 import * as A from './blackout_a.js';
 import * as B from './blackout_b.js';
 
+/* id, how it is drawn, and the photograph it stands on (if it has one) */
 const SCENES = [
-  ['city', A.city], ['park', A.park], ['ultrakill', A.ultrakill], ['discord', A.discord], ['skate', A.skate],
-  ['cd', B.cd], ['vhs', B.vhs], ['turtle', B.turtle], ['lol', B.lol], ['linux', B.linux]
+  ['city', A.city, 'city'], ['park', A.park, 'park'], ['ultrakill', A.ultrakill, 'ultrakill'], ['discord', A.discord], ['boulder', A.boulder, 'boulder'],
+  ['cd', B.cd, 'cd'], ['turtle', B.turtle, 'turtle'], ['lol', B.lol, 'lol'], ['linux', B.linux]
 ];
 export const SCENE_IDS = SCENES.map(s => s[0]);
 const T_FALL = 1.0, T_DARK = 2.3, T_WAKE = 13.4, T_END = 15.6;
 let running = false;
 
 export const isBlackedOut = () => running;
+
+/* a second exposure laid in as a checkerboard of pixels, so the sixteen colours never blend */
+function interleave(g, og) {
+  const a = g.getImageData(0, 0, W, H), A = new Uint32Array(a.data.buffer), B = new Uint32Array(og.getImageData(0, 0, W, H).data.buffer);
+  for (let y = 0; y < H; y++) for (let x = y & 1; x < W; x += 2) A[y * W + x] = B[y * W + x];
+  g.putImageData(a, 0, 0);
+}
 
 export function runBlackout(done, opts) {
   if (running) return;
@@ -49,15 +61,16 @@ export function runBlackout(done, opts) {
   const g = cv.getContext('2d', { willReadFrequently: true });
   g.imageSmoothingEnabled = false;
   const off = document.createElement('canvas'); off.width = W; off.height = H;
-  const og = off.getContext('2d'); og.imageSmoothingEnabled = false;
+  const og = off.getContext('2d', { willReadFrequently: true }); og.imageSmoothingEnabled = false;
+  loadPhotos();
 
   const block = ev => { ev.preventDefault(); ev.stopPropagation(); };
   ['keydown', 'keyup', 'keypress'].forEach(k => window.addEventListener(k, block, true));
 
-  /* the order the pictures come in: all of them once, shuffled, then again */
+  /* the order the pictures come in: all of them once, shuffled, then again. Dealt when the
+     first one is wanted, so a photograph that did not load is simply never dealt. */
   const order = [];
-  const deal = () => { const a = SCENES.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rnd() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } order.push(...a); };
-  deal(); deal();
+  const deal = () => { const a = SCENES.filter(s => !s[2] || hasPhoto(s[2])); for (let i = a.length - 1; i > 0; i--) { const j = rnd() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } order.push(...a); };
   let seg = null, nextAt = T_DARK, n = 0;
   const pickFx = () => {
     const pool = NAMES.filter(k => !(calm && HARSH.has(k)));
@@ -66,6 +79,7 @@ export function runBlackout(done, opts) {
     return out;
   };
   const newSeg = t => {
+    if (!order.length) { deal(); deal(); }
     const [id, fn] = order[n % order.length]; n++;
     const long = rnd() < 0.55;
     const dur = calm ? 0.55 + rnd() * 0.5 : long ? 0.45 + rnd() * 0.5 : 0.16 + rnd() * 0.12;
@@ -103,7 +117,7 @@ export function runBlackout(done, opts) {
     if (!seg) { g.fillStyle = '#000'; g.fillRect(0, 0, W, H); return; }
     const lt = t - seg.start + seg.t0;
     seg.fn(g, lt);
-    if (seg.second) { og.clearRect(0, 0, W, H); seg.second(og, lt * 1.3); g.globalAlpha = 0.5; g.drawImage(off, 0, 0); g.globalAlpha = 1; }
+    if (seg.second) { og.clearRect(0, 0, W, H); seg.second(og, lt * 1.3); interleave(g, og); }
     seg.fx.forEach(k => FX[k](g, rnd, seg.st, lt));
   }
 
