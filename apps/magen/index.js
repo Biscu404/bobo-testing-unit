@@ -1690,7 +1690,7 @@ export default {
         clearInterval(watch);
         alive = false; Song.stop(); save();
         if (raf) cancelAnimationFrame(raf);
-      }, 900);
+      }, 250);
     }
   });
   }
