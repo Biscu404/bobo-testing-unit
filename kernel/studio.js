@@ -243,5 +243,8 @@ export const Studio = {
   },
   wav
 };
-window.Studio = Studio;
-window.addEventListener('mixer-changed', ev => { if (ev.detail && ev.detail.channel === 'garage') Studio.relevel(); });
+if (typeof window !== 'undefined') {
+  window.Studio = Studio;
+  /* smoke.mjs loads apps under a stub window that cannot listen */
+  if (window.addEventListener) window.addEventListener('mixer-changed', ev => { if (ev.detail && ev.detail.channel === 'garage') Studio.relevel(); });
+}
