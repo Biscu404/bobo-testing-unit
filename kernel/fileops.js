@@ -28,7 +28,7 @@ export function openItem(dir, item) {
   let job;
   if (item.type === 'folder') job = openWindow('folder', { path: p });
   else if (item.type === 'terminal') job = openWindow('terminal');
-  else if (item.type === 'bin') job = openWindow('trash');
+  else if (item.type === 'bin' || item.type === 'binfull') job = openWindow('trash');
   else if (item.type === 'app') job = item.app ? openWindow(item.app) : (toast('NO SUCH APP: ' + item.name), null);
   else if (item.type === 'song') job = openWindow('garage', { path: p });
   else if (['code', 'doc', 'text'].includes(item.type)) job = openWindow('editor', { path: p, type: item.type });
@@ -212,5 +212,9 @@ export function wireActive(deskEnv) {
     if (w) Active.env = w._fileEnv || null;
     else if (t.closest('#desktop')) Active.env = Active.desk;
   }, true);
-  document.addEventListener('keydown', ev => { if (Active.env) fileKey(ev, Active.env); });
+  document.addEventListener('keydown', ev => {
+    /* a folder window that has been closed no longer owns the keys */
+    if (Active.env && Active.env.alive && !Active.env.alive()) Active.env = Active.desk;
+    if (Active.env) fileKey(ev, Active.env);
+  });
 }

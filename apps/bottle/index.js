@@ -256,8 +256,12 @@ export default {
       }
       raf = requestAnimationFrame(frame);
       if (window.__jagTest && window.__jagTest.pause) return;
-      const t = ts / 1000, dt = Math.min(0.05, t - last || 0); last = t;
-      step(dt);
+      /* a slow frame is taken as several short steps, so a pour lasts as long as
+         it should on a machine that draws four frames a second, and the physics
+         never sees a step it was not tuned for */
+      const t = ts / 1000, total = Math.min(0.25, t - last || 0); last = t;
+      const n = Math.max(1, Math.ceil(total / 0.04));
+      for (let i = 0; i < n; i++) step(total / n);
       draw(t);
     }
     raf = requestAnimationFrame(frame);

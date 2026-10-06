@@ -1,5 +1,5 @@
 import { createWindow, raise } from '../../kernel/wm.js';
-import { scopedListeners } from '../lifecycle.js';
+import { scopedListeners, whenGone } from '../lifecycle.js';
 
 const NOTE_KEY = 'templeos.notes.v1';
 const NOTE_SEED = [
@@ -484,11 +484,9 @@ export default {
       applyType();
       show(Math.min(N.cur, N.notes.length - 1));
       setMode('edit');
-      const watch = setInterval(() => {
-        if (document.body.contains(_rootEl)) return;
-        clearInterval(watch);
+      whenGone(_rootEl, () => {
         if (G.raf) cancelAnimationFrame(G.raf);
         try { localStorage.setItem(NOTE_KEY, JSON.stringify(N)); } catch (e) {}
-      }, 900);
+      });
   }
 };

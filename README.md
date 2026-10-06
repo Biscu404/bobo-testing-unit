@@ -80,8 +80,8 @@ saves live under them, and changing one orphans every save.
 
 ### Checking it
 
-`npm run check:paths`, `check:shell`, `check:persist`, `check:apps`, `check:perf`
-and `check:package` are the Electron-side checks (on Linux, run the GUI ones as
+`npm run check:paths`, `check:shell`, `check:persist`, `check:apps`, `check:perf`,
+`check:music` and `check:package` are the Electron-side checks (on Linux, run the GUI ones as
 `xvfb-run -a -s "-screen 0 1920x1080x24" npm run check:shell`). The game-logic
 checks are plain `node apps/bekkedal/*_check.js`, `node scripts/smoke.mjs` and
 `node scripts/lint-content.mjs`. See `CLAUDE.md` for the full list.
@@ -286,10 +286,35 @@ dialogue and not one of them is useful.
 
 **Jaeger** — a bottle, its glass, and a running total you would rather not see.
 700ml, a measure is 40ml, so there are seventeen and a half in there and the half
-is the one that gets you. Click the bottle: it tips and pours exactly one. Click
-again: the glass goes back empty. The level in the bottle is the honest one — it
-only ever goes down, and the button in the corner is the only thing that puts it
-back up.
+is the one that gets you. Click: the bottle is lifted, carried over the glass and
+tipped, and one measure comes out. Click again: the glass is lifted to a mouth and
+drunk. None of the liquid is drawn by hand. The bottle and the tumbler are baked once
+and turned pixel by pixel, and the liquor is poured into the *turned* inside: its
+surface stays level with the room (give or take a slosh), so it pools in the neck as
+the bottle tips, runs to the low edge of a tilted glass and goes over the rim by itself.
+The hand pouring keeps the flow steady by tipping a little further as the bottle
+empties. Keep clicking while it is busy and the clicks queue and everything speeds up:
+a bottle can be got through in under a minute. Ten measures in the blood (one leaves
+every half minute) and the whole window passes out: not the screen, the *window*,
+case and all, for about sixteen seconds, with altered flashes of a snowy city, a
+snowy park, something that runs on blood, a chat that will not stop, a skater, a
+disc, a tape, a very small turtle, a map with three lanes and a penguin. It cannot
+be skipped (you are not conscious), and it is slower, without the hardest flashes,
+if your system asks for reduced motion.
+
+**The Garage** — a band in a window. Thirty real instruments (piano, harp, violin,
+flute, marimba, steel drum, choir, trumpet, a drum kit with fourteen pieces...), each one
+a set of recordings of the real thing from the FluidR3 soundfont, bent between the
+notes it kept and looped where an instrument is held. Tap the grid to put notes in,
+play the keyboard (or the computer keys, with REC to keep what you play), mix every track
+(volume, pan, room, mute, solo), press **BAND IN A BOX** for drums, bass and chords that
+fit your key, save songs to `::/Home/Songs`, bounce a `.wav`. **MAGIC NOTES** keeps every
+row inside the key, so there is no wrong note to tap. Press **LEARN** if you have never made
+music: eight tiny interactive lessons (sounds, high and low, the beat, five magic notes,
+happy and sad, chords, patterns, make a song), each one a toy with big buttons, ending in a
+song of your own. Songs are plain data written in a small text notation (`kernel/songtext.js`),
+so more can be written without touching an oscillator; seven come with it, and they are
+also discs in The Stack.
 
 **Elephant**, **Magen** and **The Cook** — see below.
 
@@ -583,7 +608,7 @@ Four ways in, no editing required:
 - drag files onto the desktop → they land in `::/`
 - drag files onto an open folder window → they land in that folder
 - drag files onto a folder **icon** → they land inside it
-- `File > UPLOAD`, or `Ctrl+V` to paste from the clipboard
+- `File > UPLOAD`, or right-click the desktop or a folder
 
 Images are crushed to the sixteen colours with Bayer dithering on the way in
 (`File > VGA 16-COLOR IMPORT` turns that off for new uploads). Video gets the
@@ -591,12 +616,30 @@ same treatment, live, at 15fps — decoded by the browser, scaled down, and push
 through a 32,768-entry lookup table from 15-bit RGB straight to a palette index.
 Building that table costs half a million comparisons once; after that every pixel
 of every frame is one array read, which is the only reason real-time dithering of
-video is affordable at all. Set a video as wallpaper and it plays behind the
-icons at ten frames a second, because it is a background and the tube has other
+video is affordable at all. Set a picture or a video as the background (from its icon,
+its window, or a Crayon sheet; fill, fit, stretch, centre or tile) and it plays behind
+the icons at ten frames a second, because it is a background and the tube has other
 things to do.
 
-Uploads survive a reload. Right-click an uploaded file to delete it. Stock files
-are locked — `DEL` will tell you so.
+**Folders are folders.** Drag an icon onto a folder, on the desktop or in a window, and
+it goes inside; drag it out onto the desktop or into another window and it comes out.
+Hold Ctrl as you let go to copy instead. Esc changes your mind. Select with a click,
+Ctrl-click, Shift-click or a rubber band; `F2` renames, `Ctrl+C`/`X`/`V` copy, cut and
+paste, `Ctrl+D` duplicates, `Ctrl+A` selects all, `Enter` opens, `Backspace` goes up a
+folder; Properties says what a thing is and whether it came with the machine.
+
+**Nothing is deleted.** `Delete` puts it in the **RecycleBin** on the desktop;
+`Ctrl+Z` takes the last one back. Open the bin to put things back or throw them away for
+good. And whatever was deleted, the machine's own files come back with **RESTORE SYSTEM
+FILES** (desktop menu, File menu, Help menu, or `RESTORE` in the terminal): it writes back
+only what is missing, pulls deleted files out of the bin with your edits intact, leaves
+anything you moved or renamed alone, and never resets the desktop. The Help menu is built
+into the machine, so it still works with every file gone.
+
+Every window zooms (`[Z]` on the title bar, `Ctrl` and `+` / `-` / `0`, or `Ctrl` and the
+wheel) and remembers it per app. Right-click on the bare desktop gives the desktop menu;
+inside a window it gives whatever that app makes of it, and nothing at all for an app that
+has no use for the right button.
 
 ---
 

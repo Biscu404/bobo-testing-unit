@@ -63,6 +63,7 @@ export default {
 
     const env = {
       get dir() { return path; },
+      alive: () => root.isConnected,
       sel: () => selectedEls().map(itemFor).filter(Boolean),
       items: () => selectedEls().map(itemFor).filter(Boolean),
       selectAll: () => iconEls().forEach(n => n.classList.add('sel')),
