@@ -49,6 +49,7 @@ const TERM = {
      "  STACK ......... THE HI-FI, THREE UNITS DEEP",
      "  NOTES ......... PAGES THAT POINT AT EACH OTHER",
      "  BOTTLE ........ ONE MEASURE AT A TIME",
+     "  GARAGE ........ MAKE MUSIC WITH REAL INSTRUMENTS",
      "  ELEPHANT ...... HE HAS SOMETHING TO TELL YOU",
      "  MAGEN ......... PRESS THE STAR",
      "  COOK .......... TEN BATCHES, ONE BENCH",
@@ -170,7 +171,9 @@ const APP_ALIASES = {
   SWEEPER: 'sweeper', SOLITAIRE: 'solitaire', CRAYON: 'crayon',
   DRAWINGS: 'drawings', ABOUT: 'about', DISPLAY: 'display',
   ACCOUNT: 'account', GODDOODLE: 'goddoodle', DOODLE: 'goddoodle',
-  NEOFETCH: 'neofetch', FETCH: 'neofetch'
+  NEOFETCH: 'neofetch', FETCH: 'neofetch',
+  GARAGE: 'garage', MUSIC: 'garage', BAND: 'garage', STUDIO: 'garage',
+  TRASH: 'trash', RECYCLE: 'trash'
 };
 const APP_HELLO = {
   tasks: 'ADAM IS TASK 0. IT DOES NOT EXIT.',
@@ -182,6 +185,8 @@ const APP_HELLO = {
   magen: 'PRESS THE STAR. THAT IS ONE.',
   elephant: 'HE HAS BEEN WAITING TO TELL YOU SOMETHING.',
   bottle: 'ONE MEASURE IS FORTY MILLILITRES.',
+  garage: 'THIRTY INSTRUMENTS AND A DRUM KIT. PRESS LEARN IF YOU ARE NEW.',
+  trash: 'NOTHING IS GONE UNTIL YOU SAY SO.',
   defrag: 'MOVING CLUSTERS.'
 };
 

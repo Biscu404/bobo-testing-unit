@@ -31,6 +31,13 @@
     "app": "hifi"
   },
   {
+    "path": "::/Garage",
+    "content": "",
+    "src": "",
+    "type": "app",
+    "app": "garage"
+  },
+  {
     "path": "::/Notes",
     "content": "",
     "src": "",

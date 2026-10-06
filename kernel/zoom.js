@@ -76,12 +76,19 @@ export function attachZoom(o) {
     if (!suspended) step(ev.deltaY < 0 ? 1 : -1);
   }, { passive: false });
 
+  /* heard twice on purpose: in the window's capture phase, so an app that keeps
+     its keys to itself (a game that stops them at its canvas) cannot hide the
+     shortcut, and at the document, for when nothing in the window has focus */
   const onKey = ev => {
-    if (!(ev.ctrlKey || ev.metaKey) || ev.altKey || !o.isActive() || suspended) return;
-    if (ev.key === '+' || ev.key === '=') { ev.preventDefault(); load(); step(1); }
-    else if (ev.key === '-' || ev.key === '_') { ev.preventDefault(); load(); step(-1); }
-    else if (ev.key === '0') { ev.preventDefault(); load(); set(1); }
+    if (ev.__zoomed || !(ev.ctrlKey || ev.metaKey) || ev.altKey || !o.isActive() || suspended) return;
+    let did = true;
+    if (ev.key === '+' || ev.key === '=') { load(); step(1); }
+    else if (ev.key === '-' || ev.key === '_') { load(); step(-1); }
+    else if (ev.key === '0') { load(); set(1); }
+    else did = false;
+    if (did) { ev.preventDefault(); ev.__zoomed = true; }
   };
+  o.win.addEventListener('keydown', onKey, true);
   document.addEventListener('keydown', onKey);
 
   return {

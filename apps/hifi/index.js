@@ -6,6 +6,7 @@ import { HIFI_DISCS, HFN, HFP, hifiPress, hifiTags } from './discs.js';
 import { stackFolders } from './library.js';
 import { Vault } from '../../kernel/vault.js';
 import { scopedListeners } from '../lifecycle.js';
+import { Studio } from '../../kernel/studio.js';
 
 export default {
   id: 'hifi',
@@ -391,7 +392,7 @@ export default {
         t.decoding = true;
         if (t.spec) {                                   /* a folder disc: press it now */
           try {
-            const buf = await hifiPress(t.spec, ctx.sampleRate);
+            const buf = t.spec.song ? await Studio.render(t.spec.song, { repeat: t.spec.reps }) : await hifiPress(t.spec, ctx.sampleRate);
             if (buf) { t.buf = buf; t.dur = buf.duration; t.peaks = analysePeaks(buf, 480); }
             else t.missing = true;
           } catch (e) { t.missing = true; say('COULD NOT PRESS ' + t.name); }

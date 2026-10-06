@@ -13,6 +13,8 @@ import { CK_SONGS, CK_HZ } from '../cook/data.js';
 import { ELE_SONGS, ELE_HZ } from '../elephant/quotes.js';
 import { SONGS as BEK_SONGS, NOTE as BEK_NOTE } from '../bekkedal/music.js';
 import { BPM as SB_BPM, ROOT as SB_ROOT, BASS as SB_BASS, LEAD as SB_LEAD } from '../standbattle/music.js';
+import * as Lang from '../../kernel/songtext.js';
+import { demoSongs } from '../garage/songs.js';
 
 const TARGET_SECS = 75;                     /* roughly how long a pressed disc plays */
 
@@ -73,6 +75,11 @@ export function stackFolders() {
     [bek[k] || k.toUpperCase(), fromEighths(BEK_SONGS[k], BEK_NOTE, 'green', 'BEKKEDAL')])]);
 
   out.push(['STAND BATTLE', 'red', [['MORIOH (COMBAT LOOP)', standBattle()]]]);
+
+  /* the Garage's own songs: real instruments, bounced by the studio rather than synthesised here */
+  out.push(['THE GARAGE', 'white', demoSongs(Lang).map(sg => [sg.title, {
+    song: sg, bpm: sg.bpm, len: sg.bars * sg.beats * 4, tint: 'white', artist: 'THE GARAGE BAND'
+  }])]);
 
   out.forEach(f => f[2].forEach(d => { d[1].reps = reps(d[1]); }));
   return out;

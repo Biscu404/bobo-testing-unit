@@ -5,6 +5,7 @@ import { Snd } from './snd.js';
 import { lampDip } from './hardware.js';
 import { Cos } from './cos.js';
 import { attachZoom } from './zoom.js';
+import { Studio } from './studio.js';
 
 let zTop = 100;
 let cascadeN = 0;
@@ -351,6 +352,9 @@ export async function openWindow(appId, args = {}) {
       return v ? JSON.parse(v) : null;
     },
     openWindow,
+    studio: Studio,
+    toast,
+    ask: (title, def, cb) => askName(title, def, cb),
     setTitle: t => { made.title.textContent = t; made.btn.textContent = t; },
     close: () => {
       if (app.unmount) app.unmount();

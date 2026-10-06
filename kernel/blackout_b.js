@@ -3,7 +3,6 @@
 import { W, H, K, pen, snow, seeded } from './blackout_draw.js';
 
 const RAINBOW = [K.lred, K.yellow, K.lgreen, K.lcyan, K.lblue, K.lmagenta];
-let discBuf = null;
 function disc(g, cx, cy, r, rot) {
   const { R } = pen(g);
   for (let y = -r; y <= r; y++) {
@@ -29,7 +28,6 @@ export const cd = (g, t) => {
   T('AUDIO', 126, 162, K.white, 2);
   T('74:00', 134, 174, K.lcyan, 1);
   snow(R, t, 80, 21, 6);
-  void discBuf;
 };
 
 export const vhs = (g, t) => {

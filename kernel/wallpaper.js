@@ -39,6 +39,15 @@ export async function setWallpaperFromPath(path, mode) {
   return true;
 }
 
+/* a picture that is not a file (a sheet in the Crayon): hand over its pixels as a data URL */
+export function setWallpaperFromSrc(src, mode) {
+  wallpaper = { src, mode: mode || 'fill', kind: 'image' };
+  applyWallpaper();
+  try { localStorage.setItem(WALL_KEY, JSON.stringify(wallpaper)); } catch (e) { toast('THAT PICTURE IS TOO BIG TO KEEP AS THE BACKGROUND.'); return false; }
+  toast('BACKGROUND SET.');
+  return true;
+}
+
 /* the menu entries every "this is a picture" menu shares */
 export function wallpaperMenu(path, isVideo) {
   return WALL_MODES.filter(m => !isVideo || m.fit).map(m => ({

@@ -100,9 +100,8 @@ export function pourStep(S, dt, fx) {
   } else if (S.sub === 'return') {
     const u = clamp((t - S.tr) / RETURN, 0, 1), e = ease(u);
     B.a = lerp(S.aR, 0, e);
-    const lip = lipWorld(B.c, B.a);
     const c = centreFor([lerp(S.lx, restLip[0], e), lerp(S.ly, restLip[1], e) - 40 * Math.sin(Math.PI * e)], B.a);
-    B.c = c; void lip;
+    B.c = c;
     if (u > 0.82 && !B.capOn) { B.capOn = true; fx.sfx.cap(); }
     S.stream = Math.max(0, S.stream - dt * 6);
     if (u >= 1) return true;
