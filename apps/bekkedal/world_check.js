@@ -24,6 +24,7 @@
 import { BEK_MAPS, BEK_SOLID, BEK_NPCS, BEK_GOATS, BEK_DECOR, BEK_HOUSE, BEK_SCENES,
          BEK_FARM_PLOTS, BEK_BARN_PLOT, BEK_BARN_PLOT2, BEK_BARN_SLOTS,
          BEK_BARN_SLOTS2, mapCols, mapRows } from './data.js';
+import { BEK_WORLD, SEAMS } from './maps.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -89,6 +90,50 @@ ok(pairBad === 0, 'every seam is paired, tile for tile, in both directions', pai
 ok(gateBad === 0, 'no seam is gated on the way back', gateBad + ' gated returns');
 const runs = outdoor.reduce((a, id) => a + exitsOf(id).length, 0);
 pass('the seams', runs + ' exit tiles over ' + outdoor.length + ' outdoor maps');
+
+/* ---- 1b. geography --------------------------------------------------------
+   Seams that each pair up tile for tile can still describe a valley that cannot
+   exist: the forest was west of the farm AND north of the town, and the meadow
+   south of both, which no arrangement of rectangles on a plane allows. maps.js
+   derives where every map stands from the seams (BEK_WORLD); two roads to the
+   same place that disagree about where it is are a conflict, and two maps that
+   would stand on the same ground are an overlap. Neither is allowed. */
+console.log('\n-- geography --');
+ok(BEK_WORLD.conflicts.length === 0, 'every road agrees about where the place at its end is',
+   BEK_WORLD.conflicts.join('; '));
+const rect = id => { const [x, y] = BEK_WORLD.at[id], m = BEK_MAPS[id]; return { id, x0: x, y0: y, x1: x + m.rows[0].length, y1: y + m.rows.length }; };
+const placed = outdoor.filter(id => !/^synk|^mine/.test(id));
+ok(placed.every(id => BEK_WORLD.at[id]), 'every place on the map has somewhere to stand', placed.filter(id => !BEK_WORLD.at[id]).join(', '));
+let overlaps = [];
+for (let i = 0; i < placed.length; i++) for (let j = i + 1; j < placed.length; j++) {
+  if (!BEK_WORLD.at[placed[i]] || !BEK_WORLD.at[placed[j]]) continue;
+  const a = rect(placed[i]), b = rect(placed[j]);
+  if (a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1) overlaps.push(a.id + ' / ' + b.id);
+}
+ok(overlaps.length === 0, 'no two places stand on the same ground', overlaps.join(', '));
+/* a seam has to leave through an opening on the edge it says it is on, and the two runs have to face each other across it */
+let faceBad = [];
+for (const [a, side, aFrom, len, b, bFrom] of SEAMS) {
+  const A = rect(a), B = rect(b);
+  const touch = side === 'E' ? A.x1 === B.x0 : side === 'W' ? B.x1 === A.x0 : side === 'S' ? A.y1 === B.y0 : B.y1 === A.y0;
+  if (!touch) faceBad.push(a + ' ' + side + ' ' + b);
+}
+ok(faceBad.length === 0, 'maps joined by a seam share an edge', faceBad.join(', '));
+/* the road leaves the map where there is an opening in the rim, and nowhere else: an opening that no seam
+   answers is a way out into a treeline that is not there */
+const openRim = (id) => {
+  const m = BEK_MAPS[id], R = m.rows, H = R.length, W = R[0].length, out = [];
+  const isOpen = c => c !== 'T' && c !== 'M' && c !== 'O' && c !== 'Q' && c !== 'W';
+  for (let x = 0; x < W; x++) { if (isOpen(R[0][x])) out.push(x + ',0'); if (isOpen(R[H - 1][x])) out.push(x + ',' + (H - 1)); }
+  for (let y = 0; y < H; y++) { if (isOpen(R[y][0])) out.push('0,' + y); if (isOpen(R[y][W - 1])) out.push((W - 1) + ',' + y); }
+  return out;
+};
+let strayBad = [];
+for (const id of outdoor) {
+  const exits = new Set(exitsOf(id).map(e => e.x + ',' + e.y));
+  for (const k of openRim(id)) if (!exits.has(k)) strayBad.push(id + ' ' + k);
+}
+ok(strayBad.length === 0, 'every opening in a rim is answered by a seam', strayBad.slice(0, 8).join(', '));
 
 /* ---- 2. walking ---------------------------------------------------------- */
 console.log('\n-- walking --');

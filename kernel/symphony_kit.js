@@ -49,3 +49,34 @@ export function drumRoll(out, a, b, step, key, v0, v1) {
   const n = Math.round((b - a) / step);
   for (let i = 0; i < n; i++) out.push([a + i * step, key, v0 + (v1 - v0) * i / Math.max(1, n - 1)]);
 }
+
+/* A riff: one entry per sixteenth of a bar in `steps` (null a rest, a number the semitones above that bar's root, an array a
+   chord of them), over `bars` bars with the root following `roots`. `steps` may be a function of the bar's number, for a riff
+   that changes with the chord. A hit on the beat is a little harder when `accent` is set. */
+export function riff(out, bar, bars, roots, steps, len, vel, accent) {
+  for (let b = 0; b < bars; b++) {
+    const r = Array.isArray(roots) ? roots[b % roots.length] : roots, st = typeof steps === 'function' ? steps(b) : steps;
+    st.forEach((s, i) => {
+      if (s == null) return;
+      (Array.isArray(s) ? s : [s]).forEach(k => out.push([at(bar + b) + i / 4, len, r + k, accent && i % 4 === 0 ? Math.min(1, vel + 0.1) : vel]));
+    });
+  }
+}
+/* An arpeggio: through the notes of each bar's chord (`chords` is one array of midi notes per bar) in the order given by `order`
+   (indices into the chord, cycling; one past the top goes up an octave), one note every `step` beats, getting from v0 to v1. */
+export function arp(out, bar, chords, order, step, len, v0, v1) {
+  const per = Math.round(4 / step), total = chords.length * per; let n = 0;
+  chords.forEach((ch, b) => {
+    for (let i = 0; i < per; i++) {
+      const k = order[i % order.length];
+      out.push([at(bar + b) + i * step, len, ch[k % ch.length] + 12 * Math.floor(k / ch.length), v0 + (v1 - v0) * n++ / Math.max(1, total - 1)]);
+    }
+  });
+}
+/* a chord per bar, held for the whole bar and a little less: `chords` is one array per bar, `vel` runs from v0 to v1 */
+export function pad(out, bar, chords, v0, v1, shift) {
+  chords.forEach((ch, i) => ch.forEach(n => out.push([at(bar + i), 3.9, n + (shift || 0), v0 + (v1 - v0) * i / Math.max(1, chords.length - 1)])));
+}
+/* a one-bar-per-entry list repeated until it covers `bars` bars (the progression of a section that is longer than its chords) */
+export const cycle = (list, bars) => Array.from({ length: bars }, (_, i) => list[i % list.length]);
+

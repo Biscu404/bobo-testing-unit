@@ -326,7 +326,7 @@ export const BEK_ITEMS = {
      of. Carried, never sold, and accepted by the same 'lamp' gate the plain
      lantern is (gateOK() in index.js), so owning it is never owning less. */
   krystallykt:{ name: { no: 'KRYSTALLYKT', en: 'CRYSTAL LAMP' }, icon: 'lamp', col: 11 },
-  ullgenser:  { name: { no: 'ULLGENSER',  en: 'WOOL SWEATER' }, buy: 500, icon: 'shirt', col: 4 },
+  ullgenser:  { name: { no: 'ULLGENSER',  en: 'WOOL SWEATER' }, buy: 500, icon: 'knit',  col: 4 },
   bukett:     { name: { no: 'BUKETT',     en: 'BOUQUET'      }, icon: 'flower', col: 13 }
 };
 
@@ -412,15 +412,17 @@ export const BEK_SEASON_WEATHER = {
   vinter: { regn: 0.15, take: 0.35 }
 };
 
-/* the one seasonal tint, fed through the same dither()/ditherPat() call the
-   weather overlay already draws fog with — no new renderer, just another
-   colour and strength handed to a call that already exists. Strength stays
-   low on purpose: a wash over the picture, not a filter over it. */
+/* The season lies on the *ground*: index.js's seasonWash() lays it into the ground pass of the
+   terrain cache, as the same ordered stipple every other wash is, and never over what stands on
+   the ground (it used to be one stipple over the whole picture, which put the colour of the
+   season across walls, props and the player). `base` is an even dusting everywhere; `patch` is
+   the most a low-frequency field adds on top of it, in drifts and litter. Both are dither
+   strengths out of sixteen. */
 export const BEK_SEASON_TINT = {
-  var:    { col: GRASS[3], n: 1 },
-  sommer: { col: WAR[0],   n: 1 },
-  host:   { col: WAR[2],   n: 2 },
-  vinter: { col: SNO[0],   n: 3 }
+  var:    { col: GRASS[3], base: 0, patch: 3 },
+  sommer: { col: WAR[0],   base: 0, patch: 0 },
+  host:   { col: WAR[2],   base: 1, patch: 5 },
+  vinter: { col: SNO[0],   base: 5, patch: 5 }
 };
 
 /* one small recurring festival per season, on a fixed day-of-season so it
@@ -726,22 +728,29 @@ export const BEK_DECOR = {
      own rows the same way the indoor lists below are: world_check.js's
      decorBad pass. */
   farm: [
+    /* the farmyard, as places that each have a job. Packed earth under every one of them, so what
+       stands on it reads against it, and the three are kept apart by grass and by the path:
+       the doorstep (a pot of flowers one side of the step, the boot scraper the other);
+       the wood yard along the east wall (the stack against the house, the block and axe
+       where it is split); the work yard (the chest that is the workshop, a crate of what it
+       makes, the barrow by the gate into the field); the well yard to the south-west (the well
+       and its bucket, the rain barrel under the eaves, the washing line in the sun). */
+    { x: 7,  y: 7,  kind: 'flowers' },
+    { x: 9,  y: 7,  kind: 'bootscraper' },
     { x: 11, y: 5,  kind: 'woodpile' },
-    { x: 4,  y: 5,  kind: 'waterbutt' },
-    { x: 9,  y: 8,  kind: 'bootscraper' },
-    { x: 13, y: 6,  kind: 'crate' },
-    { x: 14, y: 8,  kind: 'wheelbarrow' },
+    { x: 12, y: 6,  kind: 'chopblock' },
+    { x: 13, y: 7,  kind: 'crate' },
+    { x: 15, y: 8,  kind: 'wheelbarrow' },
+    { x: 5,  y: 5,  kind: 'waterbutt' },
+    { x: 6,  y: 10, kind: 'wellbucket' },
+    { x: 4,  y: 9,  kind: 'washline' },
     { x: 17, y: 5,  kind: 'stonewall' },
     { x: 17, y: 6,  kind: 'stonewall' },
     { x: 17, y: 7,  kind: 'stonewall' },
     { x: 20, y: 10, kind: 'weeds' },
     { x: 25, y: 10, kind: 'weeds' },
     { x: 33, y: 9,  kind: 'brokenfence' },
-    { x: 7,  y: 9,  kind: 'washline' },
-    { x: 25, y: 12, kind: 'weeds' },
-    { x: 6,  y: 10, kind: 'wellbucket' },
-    { x: 12, y: 9,  kind: 'weeds' },
-    { x: 7,  y: 11, kind: 'flowers' }
+    { x: 25, y: 12, kind: 'weeds' }
   ],
   town: [
     { x: 17, y: 12, kind: 'stall' },
@@ -843,16 +852,23 @@ export const BEK_DECOR = {
     { x: 20, y: 4,  kind: 'jars' },
     { x: 16, y: 4,  kind: 'crockery' },
     { x: 17, y: 3,  kind: 'candle' },
-    { x: 15, y: 3,  kind: 'herbs' },
+    { x: 16, y: 3,  kind: 'herbs' },
     { x: 17, y: 5,  kind: 'firewood' },
     { x: 16, y: 5,  kind: 'cat' },
     { x: 10, y: 11, kind: 'boots' },
     { x: 13, y: 11, kind: 'broom' },
     { x: 2,  y: 7,  kind: 'picture' },
     { x: 2,  y: 4,  kind: 'coat' },
-    { x: 4,  y: 9,  kind: 'basket' },
-    { x: 8,  y: 6,  kind: 'loaf' },
-    { x: 19, y: 10, kind: 'flowers' }
+    { x: 4,  y: 8,  kind: 'basket' },
+    { x: 13, y: 5,  kind: 'loaf' },
+    { x: 19, y: 10, kind: 'flowers' },
+    /* the rooms' furniture: the bedroom's chest of drawers and rug, the stue's shelves and two chairs */
+    { x: 6,  y: 2,  kind: 'kommode' },
+    { x: 4,  y: 5,  kind: 'matte' },
+    { x: 10, y: 2,  kind: 'hylle' },
+    { x: 13, y: 2,  kind: 'hylle' },
+    { x: 9,  y: 4,  kind: 'stol' },
+    { x: 14, y: 4,  kind: 'stol' }
   ],
   lakehouse: [
     { x: 18, y: 4,  kind: 'kettle' },
@@ -866,7 +882,11 @@ export const BEK_DECOR = {
     { x: 2,  y: 7,  kind: 'picture' },
     { x: 5,  y: 3,  kind: 'net' },
     { x: 19, y: 10, kind: 'rod' },
-    { x: 8,  y: 6,  kind: 'flowers' }
+    { x: 14, y: 6,  kind: 'flowers' },
+    { x: 6,  y: 2,  kind: 'kommode' },
+    { x: 4,  y: 5,  kind: 'matte' },
+    { x: 11, y: 2,  kind: 'hylle' },
+    { x: 10, y: 4,  kind: 'stol' }
   ],
   /* Act II: the house's own upgrade tier (S.houseTier, index.js's
      hakonTilbygg()) — layered over `lakehouse` above rather than replacing it,
@@ -876,9 +896,9 @@ export const BEK_DECOR = {
      Coordinates checked against BEK_MAPS.lakehouse's own rows and the
      `lakehouse` list above for collisions. */
   lakehouse_t2: [
-    { x: 15, y: 3,  kind: 'herbs' },
+    { x: 16, y: 3,  kind: 'herbs' },
     { x: 2,  y: 4,  kind: 'jars' },
-    { x: 4,  y: 9,  kind: 'coat' }
+    { x: 4,  y: 8,  kind: 'coat' }
   ],
   /* THE LOFT (see BEK_LOFT below): what is in there on the day you first get
      the key — two crates and nothing else, which is what six shut years look

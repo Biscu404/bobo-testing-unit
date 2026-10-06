@@ -14,13 +14,36 @@ function setLayers(song, map) {
   return changed;
 }
 
+/* ride the level of the tracks tagged with each layer: { h1: 0..1, ... }. A level is not a mute: the strip glides to it over
+   `glide` seconds (so a layer comes in and goes out as a swell), and a layer that has been taken right out stops being
+   played at all once it has had time to fade. true if anything changed. */
+function setLevels(song, map, glide, now) {
+  let changed = false;
+  song.tracks.forEach(t => {
+    if (t.layer == null || !(t.layer in map)) return;
+    const v = Math.max(0, Math.min(1, map[t.layer])), was = t.lv == null ? 1 : t.lv;
+    if (Math.abs(v - was) < 0.004) return;
+    t.lv = v; t.glide = glide;
+    t.lvOff = v === 0 ? now + glide + 0.4 : 0;
+    changed = true;
+  });
+  return changed;
+}
+
 export function makeDeck(S, channel) {
   let cur = null, song = null, token = 0;
+  /* a score nobody plays by hand: notes are queued well ahead of the clock, so a long frame cannot make them bunch up */
+  const AHEAD = 0.5;
   const deck = {
     get song() { return song; },
+    get player() { return cur; },
     get playing() { return !!cur; },
+    /* load a song's instruments now, so that playing it later does not wait */
+    preload(s) { return S.preload(s); },
     /* play a copy of `s` (the game's own tune is never touched, whatever layers do to the copy); resolves to the
-       player, or null if a newer request overtook it or there is no sound. o.layers is the set of layers to start with. */
+       player, or null if a newer request overtook it or there is no sound. o.layers is the set of layers to start with.
+       o.at is a time on the audio clock to begin at, and the old song's fade then begins there too;
+       o.fade is how long they cross. */
     async play(s, o) {
       o = o || {};
       const mine = ++token;
@@ -28,12 +51,40 @@ export function makeDeck(S, channel) {
       if (mine !== token) return null;
       const copy = JSON.parse(JSON.stringify(s));
       if (o.layers) setLayers(copy, o.layers);
+      if (o.levels) setLevels(copy, o.levels, 0, 0);
       const fade = o.fade == null ? 1.4 : o.fade, old = cur;
-      const p = S.play(copy, { channel, loop: o.loop !== false, loopFrom: o.loopFrom, loopTo: o.loopTo, from: o.from, fadeIn: old ? fade : (o.fadeIn || 0), limit: o.limit });
+      const p = S.play(copy, { channel, loop: o.loop !== false, loopFrom: o.loopFrom, loopTo: o.loopTo, from: o.from,
+                               fadeIn: old ? (o.fadeIn != null ? o.fadeIn : fade) : (o.fadeIn || 0), limit: o.limit,
+                               startAt: o.at, ahead: o.ahead || AHEAD });
       if (!p) return null;
       cur = p; song = copy;
-      if (old) old.stop(fade);
+      /* o.keepOld: the old song is finishing its own pass (see segue) and must not be stopped from here */
+      if (old && !o.keepOld) old.stop(o.oldFade != null ? o.oldFade : fade, o.at);
       return p;
+    },
+    /* Begin `s` where the song now playing ends: it is let play out its pass (no more looping) and the new one starts on
+       the very next sample after, so a change of tune lands on a downbeat instead of cutting a phrase in half.
+       Falls back to a short crossfade on the bar line when there is not enough of the pass left to arrange that.
+       Resolves to the new player, or null. */
+    async segue(s, o) {
+      o = o || {};
+      const old = cur;
+      if (!old || !S.ensure()) return deck.play(s, o);
+      await S.preload(s);
+      const rest = old.remaining();
+      if (cur !== old) return null;
+      const ctx = S.audioContext();
+      if (rest > 0.9 && !o.now) {
+        old.setLoop(false);
+        return deck.play(s, Object.assign({}, o, { at: ctx.currentTime + rest, fadeIn: 0, keepOld: true }));
+      }
+      return deck.play(s, Object.assign({}, o, { at: ctx.currentTime + old.toBar(), fade: o.fade == null ? 1.2 : o.fade }));
+    },
+    /* ride the layers' levels: { h1: 0.5, h2: 0, ... } over `o.glide` seconds (default 0.6). Tracks with no layer are untouched. */
+    levels(map, o) {
+      if (!cur || !song) return;
+      const g = (o && o.glide != null) ? o.glide : 0.6, ctx = S.audioContext();
+      if (setLevels(song, map, g, ctx ? ctx.currentTime : 0)) cur.refresh();
     },
     /* switch layers: { drums: true, lead: false, ... }. Tracks with no layer are always on. */
     layers(map) { if (cur && song && setLayers(song, map)) cur.refresh(); },

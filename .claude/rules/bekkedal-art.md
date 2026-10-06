@@ -101,7 +101,7 @@ This file carries the full art/rendering doctrine for the siblings above.
   lamplight rather than a house at dusk, so its lines sit on the floor under
   the shelves rather than in a sky (`LOFT_END_TEXT_Y`, `layout.js`). See
   **The loft**, `.claude/rules/bekkedal-content.md`.
-- `music.js` — five tunes and the crossfading scheduler that rotates them.
+- `music.js` — which pool and what the dark does to a tune; the choosing is `apps/director.js` (a tune is heard through, the next follows on the downbeat after its last bar). See `apps/bekkedal/CLAUDE.md`.
 - `ambience.js` — a bed per map, weather and the hour layered over it,
   positional hearth crackle, and material footsteps. See **Ambience** below.
 - `decor.js` — the things in a room. The five pieces of glyph furniture, and
@@ -1552,3 +1552,43 @@ prop there.
 
 It is `tileProp(c, x, y)` now, called from every branch that returns. **A new
 early return in `tileDetail` has to call it too.**
+
+## What stands on the ground, and what the ground says
+
+Three reports were one bug: grass and season texture ran *through* walls, props and the player; there were white dots round many
+textures; and a prop that was wider than its tile had green flecks across it. All of them were the ground's texture being drawn
+after, or over, something that stood on the ground.
+
+- **The season lies on the ground, not over the picture.** `BEK_SEASON_TINT` used to be one full-viewport dither (green in spring, red in
+  summer, orange in autumn, white in winter) laid over everything after the objects, so the player and the buildings were speckled by it.
+  It is now `seasonWash()` in the ground pass of the terrain cache, in patches (`base` an even dusting, `patch` what the low-frequency DUST field adds in
+  drifts and litter), feathered out through the stipple like every other wash. A road holds less of it (0.6) than a field. Nothing that stands on the
+  ground is under it, and a new seasonal effect goes through the same function, never over the playfield.
+- **The ground's marks are their own pass, and it runs first.** `tileMarks()` (the blades, the pebbles, the grain of the boards, the bank, the
+  floor's shade at a wall) runs over the whole region **before** any object does. They were laid tile by tile with the objects, so a thing wider than
+  its own tile (a woodpile, a stall, a wall, a crate) had the next tile's blades drawn across it. The order of a rebuild is: ground, marks, details
+  and props, forest, moon, then the light. **A new early return in `tileDetail` has to leave the marks to `tileMarks`.**
+- **A thing that stands on trodden earth has trodden earth under it.** `onPath(c, x, y)`: a chest, a well or a sign (`K`, `o`, `S`) beside a path tile
+  gets the path's ground and the path's marks, not a square of grass in the middle of the yard.
+- **A flower is a flower.** A lone white pixel on grass read as dirt on a screen. A wildflower is a stem, a leaf and a three-pixel head; the flower beds
+  draw the white blooms properly, so the wild white species is a red one.
+- **A window looks out.** Only an `H` wall with the dead margin behind it has one: a partition inside a house has floor on both sides and is a plain log wall.
+  (`interior.wall(x, y, o, o.win < 2 && outer)`.)
+
+### The knitted sweater
+
+`person()` (`actors.js`) takes a last argument, `knit`, and when the player has an `ullgenser` in the bag it draws the garment over the shirt and under the hands and head,
+so it shows at every angle: falu red, a rolled collar, a cream band across the chest with a row of stitches under it, ribbed cuffs and a ribbed hem. The icon is the same garment
+(`knit`). The game reads the bag, not a flag: lose the sweater and the picture follows. (It used to have a shop icon and nothing on the player at all.)
+
+### Watered and bare plots
+
+A plot is wet or dry whether or not anything is growing in it. `drawSoil` (`crops.js`) draws the wet colour on tilled soil with no seed, and the hover tip for bare
+tilled soil says SPADD JORD / TILLED SOIL and VANNET / TØRR before the seed goes in. The kanne's tier-2 line (`waterLine`, one by three) waters bare tilled soil in the same way.
+
+### Cost, again
+
+Lag was four things: an uneven frame gate, a whole-map `tileAt` scan every frame for the plots, the geometry fields laid again at every step of dawn and dusk, and a
+readback of the cache by the lamp pass in full daylight. See **Frame pacing** in `.claude/rules/bekkedal-engine.md`. The lamp pass (`lamp.js`) skips cells whose strength
+is zero, and `lightSources` no longer reports a pool at all while it is brighter than `dark <= 0.08`.
+

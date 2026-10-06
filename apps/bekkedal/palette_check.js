@@ -254,7 +254,7 @@ console.log('\n-- floors at the darkest hour --');
      pants. The question worth asking is not whether the shirt separates from
      the ground (a blue shirt on a plank pier never will) but whether *any*
      part of the sprite does, which is what the ink outline is for. */
-  const PLAYER = [RAMPS.ATMO[0], RAMPS.TIM[1], RAMPS.SAN[2], RAMPS.WAT[4], RAMPS.ATMO[2]];
+  const PLAYER = [RAMPS.ATMO[0], RAMPS.TIM[1], RAMPS.SAN[2], RAMPS.WAT[4], RAMPS.ATMO[2], RAMPS.WAR[1], RAMPS.SNO[1]];
   const contrast = (a, b) => Math.abs(a - b) / (a + b + 0.05);
 
   let darkMin = 0, darkest = 2;

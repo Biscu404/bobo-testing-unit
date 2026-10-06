@@ -562,71 +562,11 @@ export const MG_ARG = [
     r:'The ban was issued, the ban failed, and both are now standing in the same building complaining about the kiddush.' }
 ];
 
-/* ---- 32.10 five tunes -----------------------------------------------------
-   Four of these are in Ahava Rabbah — the phrygian dominant, the mode with
-   the flattened second and the raised third that makes a scale sound Jewish
-   to anybody who has ever been to a wedding. It is the mode of half the
-   Ashkenazi liturgy and most of klezmer, and it is not a costume: it is what
-   the music is actually in. MI SHEBERACH is the other one, the Ukrainian
-   dorian, which is the mode of the prayer for the sick.
-
-   The fifth is for Shabbat, and it is the only one that does not go anywhere.
+/* ---- 32.10 the music is not here ------------------------------------------
+   The tunes were a table of notes and frequencies in this file, played by
+   oscillators. They are `score.js` now (studio songs for real instruments),
+   and what plays them and decides when is `music.js`.
    ========================================================================== */
-export const MG_HZ = {
-  D2:73.42, Eb2:77.78, E2:82.41, F2:87.31, Fs2:92.50, G2:98.00, Gs2:103.83, A2:110.00, Bb2:116.54, B2:123.47,
-  C3:130.81, D3:146.83, Eb3:155.56, E3:164.81, F3:174.61, Fs3:185.00, G3:196.00, Gs3:207.65,
-  A3:220.00, Bb3:233.08, B3:246.94,
-  C4:261.63, D4:293.66, Eb4:311.13, E4:329.63, F4:349.23, Fs4:369.99, G4:392.00, Gs4:415.30,
-  A4:440.00, Bb4:466.16, B4:493.88,
-  C5:523.25, D5:587.33, Eb5:622.25, E5:659.26, F5:698.46, Fs5:739.99, G5:783.99, Gs5:830.61,
-  A5:880.00, Bb5:932.33, B5:987.77, C6:1046.50, D6:1174.66
-};
-
-export const MG_SONGS = {
-  /* the mode itself, stated plainly, at walking pace */
-  freygish: { bpm: 96, len: 32,
-    lead: [['D4',0,2],['Eb4',2,1],['Fs4',3,1],['G4',4,2],['A4',6,2],['Bb4',8,2],['A4',10,1],['G4',11,1],
-           ['Fs4',12,2],['Eb4',14,2],['D4',16,3],['Fs4',19,1],['A4',20,2],['Bb4',22,2],
-           ['C5',24,2],['Bb4',26,1],['A4',27,1],['G4',28,2],['Fs4',30,2]],
-    bass: [['D3',0,4],['A2',4,4],['Bb2',8,4],['A2',12,4],['D3',16,4],['G2',20,4],['A2',24,4],['D3',28,4]],
-    pad:  [['D4',0,8],['Fs4',0,8],['A3',8,8],['D4',8,8],['D4',16,8],['A4',16,8],['G3',24,8],['Bb3',24,8]],
-    arp:  [['D5',0,1],['A4',2,1],['Fs4',4,1],['A4',6,1],['Bb4',8,1],['Fs4',10,1],['D4',12,1],['Fs4',14,1],
-           ['D5',16,1],['A4',18,1],['Fs4',20,1],['A4',22,1],['C5',24,1],['A4',26,1],['Fs4',28,1],['D4',30,1]] },
-
-  /* a wordless tune. The same four bars, on purpose, because that is the form */
-  nigun: { bpm: 78, len: 32,
-    lead: [['A3',0,4],['Bb3',4,2],['C4',6,2],['D4',8,4],['C4',12,2],['Bb3',14,2],
-           ['A3',16,4],['G3',20,2],['Fs3',22,2],['G3',24,2],['A3',26,2],['D4',28,4]],
-    bass: [['D3',0,8],['G2',8,8],['D3',16,8],['A2',24,8]],
-    pad:  [['D4',0,8],['A3',0,8],['G3',8,8],['Bb3',8,8],['D4',16,8],['Fs4',16,8],['A3',24,8],['Eb4',24,8]],
-    arp:  [['D5',0,2],['A4',4,2],['D5',8,2],['Bb4',12,2],['A4',16,2],['Fs4',20,2],['A4',24,2],['D5',28,2]] },
-
-  /* the prayer for the sick: the other mode, with the raised fourth */
-  misheberach: { bpm: 84, len: 32,
-    lead: [['D4',0,3],['E4',3,1],['F4',4,2],['Gs4',6,2],['A4',8,4],['G4',12,2],['F4',14,2],
-           ['E4',16,2],['F4',18,2],['Gs4',20,2],['A4',22,2],['C5',24,3],['B4',27,1],['A4',28,4]],
-    bass: [['D3',0,8],['A2',8,4],['Gs2',12,4],['D3',16,8],['A2',24,8]],
-    pad:  [['D4',0,8],['F4',0,8],['A3',8,8],['E4',8,8],['D4',16,8],['A4',16,8],['F3',24,8],['C4',24,8]],
-    arp:  [['A4',0,2],['D5',4,2],['F5',8,2],['E5',12,2],['D5',16,2],['A4',20,2],['C5',24,2],['A4',28,2]] },
-
-  /* the one everybody stands up for */
-  hora: { bpm: 126, len: 24,
-    lead: [['D5',0,2],['A4',2,1],['D5',3,1],['Eb5',4,2],['D5',6,1],['C5',7,1],['Bb4',8,2],['A4',10,2],
-           ['D5',12,2],['Fs5',14,2],['G5',16,2],['Fs5',18,1],['Eb5',19,1],['D5',20,4]],
-    bass: [['D3',0,2],['A2',2,1],['D3',4,2],['A2',6,1],['Bb2',8,2],['A2',10,1],['D3',12,2],['A2',14,1],
-           ['G2',16,2],['A2',18,1],['D3',20,2],['A2',22,1]],
-    pad:  [['D4',0,6],['A4',0,6],['Bb3',6,6],['D4',6,6],['D4',12,6],['Fs4',12,6],['G3',18,6],['D4',18,6]],
-    arp:  [['D5',0,1],['Fs5',1,1],['A5',2,1],['Fs5',3,1],['D5',4,1],['Eb5',5,1],['D5',6,1],['C5',7,1],
-           ['Bb4',8,1],['D5',9,1],['A4',10,1],['D5',11,1],['Fs5',12,1],['A5',13,1],['Fs5',14,1],['D5',15,1],
-           ['G5',16,1],['Fs5',17,1],['Eb5',18,1],['D5',19,1],['A4',20,1],['D5',21,1],['Fs5',22,1],['A5',23,1]] },
-
-  /* z'mirot. It does not develop, it does not climb, and it does not end */
-  zmirot: { bpm: 56, len: 32,
-    lead: [['A3',0,6],['Bb3',6,2],['A3',8,6],['G3',14,2],['Fs3',16,8],['G3',24,4],['A3',28,4]],
-    bass: [['D3',0,16],['G2',16,8],['A2',24,8]],
-    pad:  [['D4',0,16],['A3',0,16],['Bb3',16,8],['D4',16,8],['A3',24,8],['Fs4',24,8]],
-    arp:  [['D5',0,4],['A4',8,4],['Fs4',16,4],['A4',24,4]] }
-};
 
 /* ---- 32.11 counting -------------------------------------------------------
    Short scale, three significant figures, the way an idle game has to read.

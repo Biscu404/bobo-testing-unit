@@ -77,6 +77,27 @@ export function createMenus(A, GG, C) {
      rest. `drawEnd` below is untouched. See menus_spine.js. */
   const { drawSpine, drawLoftEnd } = createSpine(A, GG, C, { shelf: shelf });
 
+  /* A list longer than the panel is a window onto it: `top` is the first row showing, and it follows the
+     cursor so the row you are on is always one of the rows you can see. Astrid sells nineteen things and the
+     chest knows twenty-seven recipes in a panel that shows eleven; the rest used to be selectable and not drawn. */
+  const fitTop = (top, sel, n, rows) => {
+    if (n <= rows) return 0;
+    top = Math.max(0, Math.min(n - rows, top || 0));
+    if (sel < top) top = sel;
+    if (sel >= top + rows) top = sel - rows + 1;
+    return Math.max(0, Math.min(n - rows, top));
+  };
+  /* a small arrow, in pixels: up or down, to say there is more that way */
+  function chev(x, y, up, col) {
+    GG().fillStyle = C(col);
+    for (let i = 0; i < 4; i++) { const w = up ? 1 + i * 2 : 7 - i * 2; GG().fillRect(x + ((7 - w) >> 1), y + i, w, 1); }
+  }
+  /* both arrows for a column of `rows` rows that starts at (x, rowY) and is `w` wide */
+  function moreMarks(x, w, rowY, rows, rowH, top, n) {
+    if (n <= rows) return;
+    if (top > 0) chev(x + w - 12, rowY - LINE_SM + 4, true, 14);
+    if (top + rows < n) chev(x + w - 12, rowY + rows * rowH + 1, false, 14);
+  }
   function drawShop() {
       const S = A.S(), fish = A.fish(), dlg = A.dlg(), shop = A.shop(), travel = A.travel(), offer = A.offer();
     counter(SHOP_X, SHOP_Y, SHOP_W, SHOP_H);
@@ -88,21 +109,26 @@ export function createMenus(A, GG, C) {
     text(T(UI.buy), bx, y, shop.side ? 7 : 15, FONT_SM);
     text(T(UI.sell), sx, y, shop.side ? 15 : 7, FONT_SM);
     const rowY = y + LINE_SM;
+    shop.topB = fitTop(shop.topB, shop.side ? 0 : shop.sel, shop.list.length, SHOP_ROWS);
+    moreMarks(bx, SHOP_COL_W - PAD_SM * 2, rowY, SHOP_ROWS, SHOP_ROW, shop.topB, shop.list.length);
     shop.list.forEach((id, i) => {
-      if (i >= SHOP_ROWS) return;
+      if (i < shop.topB || i >= shop.topB + SHOP_ROWS) return;
       const locked = (id === 'jordbarfro' && !S.flag.jordbar) || (id === 'rabarbrafro' && !S.flag.rabarbra) ||
                      (BEK_ITEMS[id].animal && !S.flag.barn);
       const on = !shop.side && shop.sel === i;
-      const ry = rowY + i * SHOP_ROW, tyy = ry + Math.round((ICON_PX - GLYPH_SM) / 2);
+      const ry = rowY + (i - shop.topB) * SHOP_ROW, tyy = ry + Math.round((ICON_PX - GLYPH_SM) / 2);
       icon(id, bx, ry);
       text((on ? '>' : ' ') + iname(id), bx + SHOP_NAME_DX, tyy, locked ? 8 : (on ? 15 : 7), FONT_SM);
       if (!locked) text(price(id) + ' kr', bx + SHOP_PRICE_DX, tyy, on ? 14 : 8, FONT_SM);
     });
     const ids = Object.keys(S.bag).filter(id => S.bag[id] > 0 && BEK_ITEMS[id].sell);
     if (!ids.length) text(T(UI.empty), sx, rowY, 8, FONT_SM);
-    ids.slice(0, SHOP_ROWS).forEach((id, i) => {
+    shop.topS = fitTop(shop.topS, shop.side ? shop.sel % Math.max(1, ids.length) : 0, ids.length, SHOP_ROWS);
+    moreMarks(sx, SHOP_COL_W - PAD_SM * 2, rowY, SHOP_ROWS, SHOP_ROW, shop.topS, ids.length);
+    ids.forEach((id, i) => {
+      if (i < shop.topS || i >= shop.topS + SHOP_ROWS) return;
       const on = shop.side && (shop.sel % Math.max(1, ids.length)) === i;
-      const ry = rowY + i * SHOP_ROW, tyy = ry + Math.round((ICON_PX - GLYPH_SM) / 2);
+      const ry = rowY + (i - shop.topS) * SHOP_ROW, tyy = ry + Math.round((ICON_PX - GLYPH_SM) / 2);
       icon(id, sx, ry);
       text((on ? '>' : ' ') + iname(id) + ' x' + S.bag[id], sx + SHOP_NAME_DX, tyy, on ? 15 : 7, FONT_SM);
       text(BEK_ITEMS[id].sell + ' kr', sx + SHOP_PRICE_DX, tyy, on ? 14 : 8, FONT_SM);
@@ -126,11 +152,14 @@ export function createMenus(A, GG, C) {
     text(T(UI.cook), sx, y, craft.side ? 15 : 7, FONT_SM);
     const rowY = y + LINE_SM;
     [['craft', bx, 0], ['cook', sx, 1]].forEach(([kind, cx, side]) => {
-      BEK_RECIPES[kind].forEach((r, i) => {
-        if (i >= SHOP_ROWS) return;
+      const list = BEK_RECIPES[kind], tk = side ? 'topB' : 'topA';
+      craft[tk] = fitTop(craft[tk], craft.side === side ? craft.sel : 0, list.length, SHOP_ROWS);
+      moreMarks(cx, SHOP_COL_W - PAD_SM * 2, rowY, SHOP_ROWS, SHOP_ROW, craft[tk], list.length);
+      list.forEach((r, i) => {
+        if (i < craft[tk] || i >= craft[tk] + SHOP_ROWS) return;
         const unlocked = recipeUnlocked(r);
         const on = craft.side === side && craft.sel === i;
-        const ry = rowY + i * SHOP_ROW, tyy = ry + Math.round((ICON_PX - GLYPH_SM) / 2);
+        const ry = rowY + (i - craft[tk]) * SHOP_ROW, tyy = ry + Math.round((ICON_PX - GLYPH_SM) / 2);
         icon(r.out, cx, ry);
         text((on ? '>' : ' ') + iname(r.out), cx + SHOP_NAME_DX, tyy, !unlocked ? 8 : (on ? 15 : 7), FONT_SM);
         if (unlocked) text('x' + craftCount(r), cx + SHOP_PRICE_DX, tyy, on ? 14 : 8, FONT_SM);
@@ -141,6 +170,7 @@ export function createMenus(A, GG, C) {
   /* The bag fills nearly the whole picture now: three columns of eight,
      twenty-four lines instead of twelve, so a good day's foraging fits
      on one page and you stop having to guess what fell off the bottom. */
+  let bagTop = 0;
   function drawBag() {
       const S = A.S(), fish = A.fish(), dlg = A.dlg(), shop = A.shop(), travel = A.travel(), offer = A.offer();
       const bagCur = A.bagCur(), giftSel = A.giftSel();
@@ -151,8 +181,13 @@ export function createMenus(A, GG, C) {
     y += LINE_SM;
     const ids = Object.keys(S.bag).filter(id => S.bag[id] > 0);
     if (!ids.length) text(T(UI.empty), bx, y, 8, FONT_SM);
-    ids.slice(0, BAG_CAP).forEach((id, i) => {
-      const col = i % BAG_COLS, row = Math.floor(i / BAG_COLS);
+    /* the grid is a window onto the bag a row at a time, following the cursor (see fitTop) */
+    const bagRows = Math.ceil(ids.length / BAG_COLS);
+    bagTop = fitTop(bagTop, Math.floor((bagCur % Math.max(1, ids.length)) / BAG_COLS), bagRows, BAG_ROWS);
+    moreMarks(bx, BAG_W - PAD_SM * 2, y, BAG_ROWS, BAG_ROW, bagTop, bagRows);
+    ids.forEach((id, i) => {
+      const col = i % BAG_COLS, row = Math.floor(i / BAG_COLS) - bagTop;
+      if (row < 0 || row >= BAG_ROWS) return;
       const cx = bx + col * BAG_CW, cy = y + row * BAG_ROW;
       const tyy = cy + Math.round((ICON_PX - GLYPH_SM) / 2);
       /* GIFTING: the cursor is a highlight bar behind the row — the same
@@ -166,7 +201,7 @@ export function createMenus(A, GG, C) {
       text('x' + S.bag[id], cx + BAG_QTY_DX, tyy, 11, FONT_SM);
     });
     let fy = y + BAG_ROW * BAG_ROWS;
-    if (ids.length > BAG_CAP) text('+' + (ids.length - BAG_CAP) + TX(' TIL', ' MORE'), bx, fy, 8, FONT_SM);
+    if (bagRows > BAG_ROWS) text(TX('SIDE ', 'ROW ') + (Math.floor((bagCur % Math.max(1, ids.length)) / BAG_COLS) + 1) + '/' + bagRows, bx, fy, 8, FONT_SM);
     fy += LINE_SM;
     let planted = 0, ready = 0;
     Object.keys(S.soil).forEach(k => { const c = S.soil[k]; if (c.seed) { planted++; if (c.ready) ready++; } });

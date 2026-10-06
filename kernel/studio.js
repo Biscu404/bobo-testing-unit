@@ -44,6 +44,7 @@ function slice(ctx, mix, song, b0, b1, t, spb, live) {
     if (solo ? !tr.solo : tr.mute) return;
     const bank = Ins.ready(tr.inst) ? Ins.cached(tr.inst) : null;
     if (!bank) { Ins.load(tr.inst).catch(() => {}); return; }
+    if (tr.lv === 0 && ctx.currentTime > (tr.lvOff || 0)) return;        /* a layer that has faded right out plays nothing at all */
     const dest = mix.bus(tr.id).input;
     const when = s => {
       let w = t + (s - b0) * spb;
@@ -79,6 +80,7 @@ export const Studio = {
     Snd.wake();
     return !!Snd.ctx;
   },
+  audioContext() { return Snd.ctx; },
   /* a channel: one gain that everything playing on it goes through */
   channel(id) {
     id = id || 'garage';
@@ -119,7 +121,13 @@ export const Studio = {
     let loop = o.loop !== false, loopFrom = o.loopFrom || 0, loopTo = o.loopTo == null ? null : o.loopTo;
     const len = () => Lang.songLength(song), end = () => loopTo == null ? len() : Math.min(loopTo, len());
     const from = o.from || 0, cin = o.countIn || 0;
-    let nextBeat = from - cin, nextTime = ctx.currentTime + 0.1, done = false, finishAt = 0, stopAt = 0, counting = cin > 0;
+    /* `startAt` is a time on the audio clock: the first note sounds then, and not before (a song can be queued to begin
+       exactly when another one ends). `ahead` is how far in front of the clock notes are put on it: the default is
+       tight enough for a key held down to feel live; a score nobody is playing by hand wants far more, because a
+       stalled page (a cache rebuild, a long frame) that cannot refill the queue in time makes notes bunch up late. */
+    const ahead = o.ahead || AHEAD;
+    let nextBeat = from - cin, nextTime = o.startAt != null ? Math.max(ctx.currentTime + 0.05, o.startAt) : ctx.currentTime + 0.1,
+        done = false, finishAt = 0, stopAt = 0, counting = cin > 0;
     let marks = [[nextTime, nextBeat]];
     const p = {
       playing: true, mix,
@@ -139,19 +147,24 @@ export const Studio = {
       setLoop(on, a, b) { loop = on; loopFrom = a || 0; loopTo = b == null ? null : b; },
       setMetronome(on) { o.metronome = on; },
       levels() { return mix.meters(); },
-      /* ride the whole player's level: `to` is 0..1, over `secs` */
-      fade(to, secs) {
-        const g = mix.master.gain, now = ctx.currentTime;
+      /* ride the whole player's level: `to` is 0..1, over `secs`; `at` (a time on the audio clock) starts the ride later */
+      fade(to, secs, at) {
+        const g = mix.master.gain, now = ctx.currentTime, t0 = Math.max(now, at == null ? now : at);
         g.cancelScheduledValues(now); g.setValueAtTime(Math.max(0.0001, g.value), now);
-        g.linearRampToValueAtTime(Math.max(0.0001, to), now + Math.max(0.01, secs));
+        if (t0 > now) g.setValueAtTime(Math.max(0.0001, g.value), t0);
+        g.linearRampToValueAtTime(Math.max(0.0001, to), t0 + Math.max(0.01, secs));
       },
-      /* stop, optionally after fading out over `secs` */
-      stop(secs) {
+      /* seconds until the song next reaches the end of its loop (or its end), and until its next bar line */
+      remaining() { return Math.max(0, (end() - p.beat()) * (60 / song.bpm)); },
+      toBar() { const per = song.beats || 4, b = p.beat(); return Math.max(0, (Math.ceil(b / per - 1e-6) * per - b) * (60 / song.bpm)); },
+      get bpm() { return song.bpm; },
+      /* stop, optionally after fading out over `secs`, the fade beginning at audio time `at` if one is given */
+      stop(secs, at) {
         if (!p.playing) return;
         p.playing = false;
         clearInterval(timer);
         const finish = () => { live.forEach(h => h.kill()); live.clear(); try { mix.master.disconnect(); } catch (e) {} };
-        if (secs > 0) { p.fade(0, secs); stopAt = setTimeout(finish, secs * 1000 + 80); } else finish();
+        if (secs > 0) { p.fade(0, secs, at); stopAt = setTimeout(finish, (Math.max(0, (at || 0) - ctx.currentTime) + secs) * 1000 + 80); } else finish();
         Studio._follow(false);
       }
     };
@@ -161,8 +174,8 @@ export const Studio = {
     const tick = () => {
       if (!p.playing) return;
       const spb = 60 / song.bpm;
-      if (done) { if (ctx.currentTime > finishAt) { p.stop(); if (o.onEnd) o.onEnd(); } return; }
-      while (nextTime < ctx.currentTime + AHEAD) {
+      if (done) { if (ctx.currentTime > finishAt) { p.stop(1.2); if (o.onEnd) o.onEnd(); } return; }      /* the tail dies away rather than being cut */
+      while (nextTime < ctx.currentTime + ahead) {
         mix.apply(song.tracks, song.bpm);
         if (counting && nextBeat >= from - 1e-6) counting = false;      /* the count-in is clicks only: nothing sounds until the music starts */
         if (!counting) slice(ctx, mix, song, nextBeat, nextBeat + SLICE, nextTime, spb, live);

@@ -421,6 +421,44 @@ rotten ridge beam and resolve in the same scene. A line about somebody else
 gates on what the player has actually seen of them (`S.disc`, `S.fr`,
 `S.q`) rather than being said to anyone at any time.
 
+## Greetings
+
+Eight people who answered every conversation with the next line of a script, every time, as if they had never seen you, was a report: the NPCs should say hello (most of the time)
+the first time you speak on a given day, something like "hello again" if you speak again, and say so if you have not spoken in many days. That is `greet.js`, a layer in front of every
+ordinary conversation, written like `schedule.js` and `scene.js`: pure, a function of the save and the clock.
+
+- **Which hello.** `greetingKind(npcId, S)` is `null` for somebody you have never spoken to (their first words are their own, and `S.lastTalk[npc]` is unset), `'again'` for a later
+  conversation the same day (75 %), `'few'`/`'many'`/`'long'` at 4, 9 and 16 days away (always: an absence is never skipped, and a longer one says more), and otherwise
+  `'first'` (90 %) in the voice of the hour (`dayPart`: morning, day, evening, night), or `'close'` (half the time, from friendship 6) in a warmer one. The percentages are `GREET_*_PCT`.
+- **"Most of the time" is a hash, never a random number**: of the day, the speaker, how often you have spoken and the kind. A reload says the same thing, and `greet_check.js` can
+  run a whole year. A greeting every single time is a recording; a greeting never is a stranger.
+- **The words are `BEK_GREET`** (`talk_greet_a.js`, `talk_greet_b.js`), per NPC: `first.{morning,day,evening,night}`, `close`, `again`, `away.{few,many,long}`. An entry is a line or an array of lines; a
+  line is a string or `{ no, en, m }`. `{n}` is the number of days, and only `away` has one. They are said to the player, from the speaker, in the first person.
+- **The voice of the rest of the dialogue is the same.** The chat pools in `talk_*.js` were rewritten to speak to the player: "you", "I", a question, a thing asked of them. A line
+  about somebody who is not in the room ("Astrid says Håkon is building") is still allowed, but it is something *this* person says to *you*, with an opinion in it, never narration. Two
+  conventions from `.claude/rules/content.md` still hold: no speaker names their own plate, and every mood is a face `portrait.js` has. `scripts/lint-content.mjs` and `layout_check.js`
+  hold both, and `layout_check.js` also holds the glyphs: a character the bitmap font lacks (an `é`) draws a box.
+- `S.lastTalk` is the one save field it adds (`ver` 20).
+
+## The valley is a place, and the places have rooms
+
+**The map.** The valley was eleven rooms joined by seams that could not all be true at once: the forest was west of the farm *and* north of the town, and the meadow south of both. Nothing on
+a plane does that. The seams in `maps.js` are the only statement of how the valley fits, and `BEK_WORLD` is *derived* from them (put the farm at the origin; each seam says where the map
+on its other side stands, by the width of the one it leaves and the difference of the two `from` offsets). Two routes that disagree are recorded in `conflicts`, and `world_check.js`
+fails on any. The lake and the fjord are not a seam but a boat across the water, and the fjord is placed across the lake. **To add a map: add its seam, and run `world_check.js`; to move one, change the
+seam, never a coordinate.**
+
+**The houses have rooms.** The cabin (`farmhouse`) and the lake house are not one box with furniture in it. The cabin is three rooms along the back wall (the bedroom with the bed, a middle room, the room
+with the hearth) opening onto a hall with a rug, and a front room by the door; the lake house is divided the same way on its own plan. The dividers are partitions (`H` walls with floor on both sides, so plain log,
+with no window in them) with doorways, the bedroom has a chest of drawers (`kommode`) and a rug (`matte`), the hearth room shelves (`hylle`) and chairs (`stol`). The rooms are
+`maps_valley.js` rows, and `BEK_DECOR` places the furniture. The player's standing square and the finished-house square (`BEK_HOUSE`) are checked by `world_check.js` against
+the new walls; `scripts/bekkedal_shots.mjs` stands the camera at `[11, 11]` for both.
+
+**The yard has a job for every object.** The farmyard used to be props dropped on grass. It is four places: the doorstep (a pot of flowers, the boot scraper), the wood yard along the east wall
+(the stack, and the chopping block `chopblock` and axe where it is split), the work yard (the chest that is the workshop, a crate of what it makes, the barrow by the gate), and the well yard
+to the south-west (the well and its bucket, the rain barrel under the eaves, the washing line). Packed earth under every one of them (`onPath`), grass between the four. A prop added to a yard answers "what is this for, and
+where would a person stand to use it?" or it does not go in.
+
 ## Chat gating
 
 A `chat[]` entry's `if` predicate is the cheapest content lever in the app

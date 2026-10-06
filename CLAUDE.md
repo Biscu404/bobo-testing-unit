@@ -30,8 +30,11 @@ npm run check:listeners # cleanup must not cost behaviour: an open window's list
 npm run check:perf      # frame rate and Bekkedal's day clock
 npm run check:package   # after `npm run pack`: every file the app loads is packaged, no scaffolding is
 node scripts/smoke.mjs  # ~10 min; node scripts/lint-content.mjs; node apps/*/*_check.js (pure Node)
-node scripts/check-drunk.mjs   # the Jäger journey (pure Node): a blackout is minutes away at the very quickest
+node scripts/check-drunk.mjs   # the Jäger journey (pure Node): a blackout is inside one bottle, about two minutes away at the very quickest
 node scripts/check-style.mjs   # the style meter against five kinds of player (pure Node)
+node scripts/check-symphony.mjs # the symphony's contract, its tune against its chords, its keys and its two silences (pure Node)
+node apps/magen/music_check.js # Magen's score, its band's energy and the seams between tunes (pure Node); apps/bekkedal/music_check.js likewise
+npm run check:music     # instruments, the studio, every game's score, and the symphony rendered whole (its loudness arc as heard)
 node apps/garage/edit_check.js # the Garage's note, segment and undo logic (pure Node)
 ```
 Pixel comparison between two builds: `scripts/bekkedal_shots.mjs` twice per build, then `scripts/pngdiff.mjs`.
@@ -86,12 +89,16 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   app lays itself out again, and remembers the level per app (`templeos.zoom.v1`). A window that is a fixed canvas scaled to fit
   the screen in fullscreen has no layout to redo, so there the zoom multiplies the fit scale instead (`zoom.scaled(true)`, applied by
   `wm.js`'s `fitScaled`) and the picture follows the pointer when it outgrows the screen. The page's own zoom stays locked (`electron/main.js`).
+  **A pane that holds a picture centres it with auto margins, never with `justify/align-items: center`** (`kernel/theme.css`: `.gamepane`, `.godpane`,
+  `.vidpane`, the Garage's `.drawwrap`): centring that overflows is clipped on its near side for good, so zoomed in the left and the top of the picture could
+  never be scrolled to, and zoomed out a short pane left the picture in the top of the window. A new app with a pane that holds a canvas uses one of those classes.
 - **Help** is built in (`kernel/help.js`, pages in `help_text.js`, DolDoc): it is not a file on the VFS, so it cannot be deleted.
-- **The Jäger is a journey.** `kernel/drunk_bac.js` is the arithmetic (pure; `scripts/check-drunk.mjs` holds it to its numbers): a
-  measure sits in the stomach and reaches the blood with a time constant of 30 s, the body clears one per 45 s, and what the screen
-  shows is the blood plus half of what is still on its way. The bottle app lets one measure down about every 13 s at the very
-  quickest (a pour, a drink, a breather in which clicks do nothing; clicks are never queued and never speed anything up), so
-  non-stop drinking is about six and a half minutes and thirty-odd measures to the floor, through seven named stages; one a
+- **The Jäger is a journey, and it fits in one bottle.** `kernel/drunk_bac.js` is the arithmetic (pure; `scripts/check-drunk.mjs` holds it to its numbers): a
+  measure sits in the stomach and reaches the blood with a time constant of 30 s, the body clears one per 60 s, and what the screen
+  shows is the blood plus half of what is still on its way. The bottle app lets one measure down about every 10 s at the very
+  quickest (a 3.5 s pour, a 3.5 s drink, a 2.6 s breather in which clicks do nothing; clicks are never queued and never speed anything up), so
+  non-stop drinking is just under two minutes and thirteen of a bottle's seventeen measures to the floor, through seven named stages; a
+  steady twenty seconds a measure is still out inside the bottle; one a
   minute holds a mild glow for ever. **The drink is first-person**: nobody is drawn drinking. The tumbler is an object
   (`apps/bottle/glass3d.js`, a raycast cylinder with real walls, a floor and liquor that stays level with the room): it is lifted
   toward the screen and tipped toward whoever is at the monitor, and what the near edge cannot hold goes over it.
@@ -117,27 +124,45 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   three-band EQ, a compressor, pan, a send to the room and one to an echo synced to the tempo, and a meter; the master has a
   limiter and a stereo meter) and plays on a *channel* (`'garage'`, `'bekkedal'`, `'style'`...): the MUS knob and the taskbar mixer's
   slider for that channel set how loud, so a game's music is never at the mercy of the Garage's fader. A game plays its score
-  through `Studio.deck(channel)` (`kernel/deck.js`): `play(song, { fade, layers })` crossfades from the old song, `layers({ combat:
+  through `Studio.deck(channel)` (`kernel/deck.js`): `play(song, { fade, layers, levels, at })` crossfades from the old song, `layers({ combat:
   true })` switches the tracks tagged with that `layer` on and off while the song plays (that is how Stand Battle's score gets
-  bigger when a fight starts, and how Bekkedal's tunes lose their lead after dark). The deck plays a *copy*, so a score's own data is
-  never muted by what a game does to it. `Studio.play` also takes `loopFrom/loopTo`, `from`, `countIn`, `fadeIn`, and returns a
+  bigger when a fight starts, and how Bekkedal's tunes lose their lead after dark), and `levels({ h1: 0.4, h2: 0 }, { glide })` *rides* a
+  layer's level instead (the strip glides to it, and a layer taken right out stops being played at all): that is how Magen's band leans in
+  with a chain. `segue(song, { now })` is how one tune follows another: the old one is let play out its pass and the new one starts on the very
+  next sample, or (`now`, or when too little of the pass is left) on the next bar line; `preload` fetches a song's instruments ahead.
+  The player answers `remaining()` (seconds to the end of its pass), `toBar()` (to the next bar line) and `beat()`, so a game can make its
+  changes where the music itself changes. The deck plays a *copy*, so a score's own data is never muted by what a game does to it. `Studio.play` also takes `loopFrom/loopTo`, `from`, `countIn`, `fadeIn`, and returns a
   player with `seek`, `setLoop`, `setMetronome`, `fade`, `levels()`. `Studio.render` renders **in stretches of ~20 s** (a long song
   as one offline graph crawls) and takes `from/to`, `only` (a stem), `sampleRate`, `tail`, `limit`; `kernel/wavfile.js` writes
   16/24-bit WAVs, `kernel/midi.js` writes and reads standard MIDI files.
-- **The games are scored for real instruments.** `apps/bekkedal/score.js`, `apps/elephant/score.js` and `apps/standbattle/score.js`
-  are studio songs (built with `apps/scorekit.js`'s helpers from the tunes the games always had); `apps/bekkedal/music.js` only
-  chooses which one, and the Stack's folders play the same songs.
+- **The games are scored for real instruments.** `apps/bekkedal/score.js`, `apps/elephant/score.js`, `apps/standbattle/score.js` and
+  `apps/magen/score.js` are studio songs (built with `apps/scorekit.js`'s helpers; Magen's is written from scratch in the text notation); the
+  Stack's folders play the same songs. **Which tune and when is `apps/director.js`**, shared (`createDirector`): a tune is heard through
+  `minLoops` times, the next is arranged in the last `PREP` (14) seconds of the pass and starts on the downbeat after it (`deck.segue`),
+  the next tune is the next in the pool (an order, never a dice roll), a change of place takes a bar-aligned crossfade unless the pass is
+  nearly over, and `want(id)` holds one tune (Magen's Shabbat). `apps/bekkedal/music.js` is its pools and what the dark does to a tune
+  (`node apps/bekkedal/music_check.js`); `apps/magen/music.js` is its rotation plus a smooth `energy` (below). A change of tune used to be a
+  timer and a dice roll in a different key; do not bring either back.
 - **The style meter.** `kernel/style_model.js` is its rules (pure; `scripts/check-style.mjs` plays five kinds of player against
   them): every rank is further than the last, a single file is worth less the higher you are (a pile of twenty to eighty is not
   marked down, so it is piles that reach the top), the bleed never stops (it runs at 60 % while a chain is alive and in full after
   the rank's own grace, which shrinks), and the top keeps its give so it does not flicker. `kernel/style.js` is the screen
   (`kernel/smeter.css`: `data-t` is the rank, and every rank up the meter is bigger, via `--sm-k`, and moves more;
   `kernel/style_fx.js`: sparks, a frame of light, and confetti at the top; reduced-motion switches all of it off). At the top rank
-  **the symphony plays** (`kernel/symphony*.js`: 100 bars at 160 bpm, 2:30, sixteen real instruments, written in `symphony_a.js`
-  and `symphony_b.js` with the tools in `symphony_kit.js`; it opens in C major on the exact notes of the delete sound at that
-  rank, which are open fifths so as never to fight the orchestra, then turns to C minor; `symphony_play.js` starts it on its own
-  `'style'` channel, ducks the lobby, hushes `kernel/rage.js` (the chiptune layer), and fades it out 1.5 s after the meter leaves
-  the top). The first time the meter reaches it, `templeos.symphony.v1` is set and the Stack gets a STYLE METER folder with the full
+  **the symphony plays** (`kernel/symphony*.js`: 100 bars at 160 bpm, 2:30, sixteen real instruments). It is a long sad tune over a fast
+  broken beat — C minor, ghost snares, a kick that does not sit on the grid, the tune itself an eight-bar question and answer that
+  does not hurry (`symphony_theme.js`: the chords, the tune, its counter-line and every drum pattern) — shaped as: the unwrapping (bars
+  1-8, C major, **the exact notes of the delete sound at that rank**, which are open fifths so as never to fight the orchestra), the
+  ignition (9-16), the question and the answer (17-32), a breath in half-time (33-40), the lift into E flat major, the one place it is
+  glad (41-48), a climb back down and **a real silence** (49-56), the tune at full cry and then a whole step up (57-72), the last stand
+  (73-92) and the arrival in C major on the harp and the bell it began with (93-100). It is written in `symphony_a.js`, `symphony_b.js`
+  and `symphony_c.js` with the tools in `symphony_kit.js` (`riff`, `arp`, `pad`, `chug`...). **The band is made smaller before the master's
+  limiter, bar by bar (`ARC` in `symphony.js`)**: the raw mix is over twice full scale and the limiter flattens anything loud to one
+  level, so a piece written at one volume is a wall; the quiet places are written quiet, and `STOPS` cut anything that would ring across
+  the beat of silence before bars 57 and 93. `node scripts/check-symphony.mjs` (pure Node) holds the contract, the tune against its
+  chords, the keys and the stops; `scripts/check-music.mjs` renders it whole and holds the arc as the listener hears it. `symphony_play.js`
+  starts it on its own `'style'` channel, ducks the lobby, hushes `kernel/rage.js` (the chiptune layer), and fades it out 1.5 s after the
+  meter leaves the top). The first time the meter reaches it, `templeos.symphony.v1` is set and the Stack gets a STYLE METER folder with the full
   song. **After a minute at the top the sound glitches** (`kernel/glitch.js`: stutter, bitcrush, tape wobble, gates; on the studio's
   channels, the SFX bus and the chiptune layer; rare and short at first, frequent and long over the next minute and a half; a pile
   of twenty or more files deleted while it is going throws a burst on the spot).
@@ -331,6 +356,16 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   exercises directly, with synthetic corridors where the trap is
   constructed rather than merely hoped for, and a sweep of every real map.
   **Palette:** this app is the second explicit, user-requested exception to the machine's base 16-colour rule above — see `apps/bekkedal/CLAUDE.md` and `.claude/rules/bekkedal-art.md` for the full doctrine.
+- `magen`: `apps/magen/index.js` - Magen, an idle game of mitzvot around a clicked star. **Its music is six tunes for the studio's real
+  instruments** (`apps/magen/score.js`: FREYGISH, NIGUN, HORA in 3, MI SHEBERACH, FREYLEKHS, and Shabbat's ZMIROT; all on D so any can follow any
+  on a downbeat, sixteen bars each) **and a band that leans in with the chain**. Every tune is a core (a lead, a nylon guitar, a cello, an
+  upright bass, a squeezebox: a whole tune alone) and three layers — `h1` the fiddle, the off-beat and a shaker; `h2` the kit, a second voice
+  in thirds and oom-pah; `h3` the choir, running fiddle, timpani and a crash every four bars. `apps/magen/music.js` turns the click chain into
+  an `energy` from 0 to 3 (`CHAIN`: 8, 22 and 40 clicks bring each layer fully in) that rises over ~1 s and falls over ~4 s, and rides the
+  layers with `deck.levels`; **a click never restarts, ducks or re-cues the tune**, which is what it did when it was oscillators and a
+  `recue()` on every step of the heat. The rotation is `apps/director.js` (each tune about a minute and a half); Shabbat takes ZMIROT in on the next
+  bar line and `want(null)` goes on from where it left off. It plays on the studio's `'magen'` channel, so MUS and the taskbar slider set
+  how loud. `node apps/magen/music_check.js` (pure Node): bars, notes, the lead on its chords, the energy's steps, the seams.
 - `folder`: a folder window: BACK / UP / path, select (click, Ctrl, Shift, rubber band), drag and drop to move or Ctrl-copy,
   right-click menus, F2/Del/Ctrl+C/X/V/D/A/Z, Enter opens, Backspace goes up. `trash`: the RecycleBin (put back, delete for good,
   drag things out). `viewer`: pictures and video; BACKGROUND (five fits), SAVE A COPY, DELETE, arrow keys walk the folder.
@@ -376,7 +411,10 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   Nothing is pressed when the window opens, and no loose discs ride on the shelf outside the folders. Its face is drawn at the
   pixels it is shown at (`fit()`: the 480x386 room is scaled to the canvas, rectangles snap to whole screen pixels) in VT323 with the
   dimmest inks lifted for text, not blown up one and two thirds times. The STYLE METER folder appears once the meter has read
-  HAPPY BIRTHDAY, with the whole symphony.
+  HAPPY BIRTHDAY, with the whole symphony. **1-9 are EQ presets**, read as the physical digit (`Digit1`/`Numpad1`, so a layout where the digits
+  need Shift still works) and heard from the document whenever TheStack is the front window and nothing is being typed into (a click on the title bar
+  or the taskbar moves focus off the canvas, and the digits used to go to the desktop). A preset puts a bypassed EQ in circuit, and it is the curve the next
+  discs inherit unless a disc has an EQ of its own saved with it, so a track change does not put the flat curve back.
 - `standbattle`: `apps/standbattle/index.js` - Stand Battle Arena, a JoJo's Bizarre Adventure roguelike combat prototype (see `docs/stand-battle-arena-spec.md`), ported in full from the jojo-roguelike repo's current, far more developed build (replacing this repo's earlier prototype port). Playable Jotaro Kujo/Star Platinum vs. Morioh enemies and boss Yoshikage Kira/Killer Queen, across a 6-node Act 1 (Morioh) map. Zero meta-progression by design; internal 480×270 canvas on a 720×260 belt plane (x, z) with a tracking camera, integer-only upscale.
   **Combat engine:** dodge (Step) is edge-triggered and gated by a 2-charge meter (`fighter.js`, GDD §3.7) with a HUD pip readout. All action inputs are queued in a 9-frame input buffer (`combat.js`) and fire the instant the player returns to idle. Arena world bounds are centralized in `arena_bounds.js`, shared by the sim (`combat.js`) and camera (`render.js`).
   **Simulation core:** the sim steps in whole frames at a fixed 60Hz (`sim_loop.js`'s `createFixedStepLoop`) on a real (x, z) belt plane. `fighter.js` is the entity/component store (`combat.entities = [player, enemy]`). `render_adapter.js` handles depth projection/sorting/camera targeting. Depth movement (`input.js`'s forward/back, W/S by default) is clamped via `arena_bounds.js`; hit detection remains x-only per Phase 1 scope. `headless_harness.js` (`node apps/standbattle/headless_harness.js`) runs the sim with no canvas for reproducible, seeded testing.

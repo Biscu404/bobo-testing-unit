@@ -28,6 +28,7 @@ import { createInterior } from './interior.js';
 import { createBuilding } from './building.js';
 import { createForest } from './forest.js';
 import { createWear } from './wear.js';
+import { greeting } from './greet.js';
 import { createFx, TOOL_SWING, swingLen, toolAt, drawHeld } from './fx.js';
 import { createSongs } from './music.js';
 import { createAmbience } from './ambience.js';
@@ -169,9 +170,14 @@ export default {
         const isFS = document.fullscreenElement === wrap;
         const availW = isFS ? window.innerWidth : wrap.clientWidth;
         const availH = isFS ? window.innerHeight : wrap.clientHeight;
-        const scale = Math.max(1, Math.min(Math.floor(availW / BEK_W), Math.floor(availH / BEK_H)));
-        cv.style.width = (BEK_W * scale) + 'px';
-        cv.style.height = (BEK_H * scale) + 'px';
+        /* whole pixels whenever the picture fits at least once; a window smaller than the
+           picture (a narrow desktop, or the window zoomed in) shrinks it to fit instead,
+           both sides together, so it is never squashed and never runs off the pane */
+        const fit = Math.min((availW - (isFS ? 0 : 8)) / BEK_W, (availH - (isFS ? 0 : 8)) / BEK_H);
+        const scale = fit >= 1 ? Math.floor(fit) : Math.max(0.25, fit);
+        cv.style.maxWidth = 'none'; cv.style.maxHeight = 'none';
+        cv.style.width = Math.floor(BEK_W * scale) + 'px';
+        cv.style.height = Math.floor(BEK_H * scale) + 'px';
         wrap.style.backgroundColor = C(0);              /* solid VGA16 letterbox/pillarbox */
       }
       /* Escape exiting fullscreen is the browser's own doing, not ours — it
@@ -216,7 +222,7 @@ export default {
       let S = null;
       const fresh = () => {
         const f = {
-        ver: 19, lang: BEK_LANG, fullscreen: 0,
+        ver: 20, lang: BEK_LANG, fullscreen: 0,
         map: 'farm', px: 8, py: 8, dir: 0, step: 0, walk: 0,
         day: 1, min: BEK_DAY_START, kr: BEK_START_KR, en: BEK_EN_MAX, enMax: BEK_EN_MAX,
         water: 20, waterMax: 20,
@@ -273,7 +279,7 @@ export default {
         /* ver 19: the same marker, for the same reason, over the stamina
            rescale in heal() below — see EN_MAX_WAS. */
         enRescaled: true,
-        chatIx: {}, disc: { farm: 1 }, weather: 'klar',
+        chatIx: {}, lastTalk: {}, disc: { farm: 1 }, weather: 'klar',
         /* the seasonal layer — always recomputed from `day` (seasons.js),
            never incremented on its own, so it cannot drift from it. See
            heal() below for the same recompute on an old save's load. */
@@ -393,7 +399,7 @@ export default {
       /* nested objects a stale save might be missing */
       const heal = s => {
         const f = fresh();
-        ['tools', 'fr', 'soil', 'felled', 'mined', 'picked', 'flag', 'q', 'met', 'seen', 'chatIx', 'disc', 'bag', 'chest', 'xp', 'lvl', 'giftWeek', 'yst', 'xpDay', 'cropGrade', 'presv', 'spine', 'placed'].forEach(k => {
+        ['tools', 'fr', 'soil', 'felled', 'mined', 'picked', 'flag', 'q', 'met', 'seen', 'chatIx', 'lastTalk', 'disc', 'bag', 'chest', 'xp', 'lvl', 'giftWeek', 'yst', 'xpDay', 'cropGrade', 'presv', 'spine', 'placed'].forEach(k => {
           if (typeof s[k] !== 'object' || s[k] === null) s[k] = f[k];
         });
         /* ver 16: a save from before QUALITY has no plot's soil record
@@ -1058,6 +1064,20 @@ export default {
            extra round rather than a second mechanism for it */
         if (S.lvl.forage >= 2 || spineForageBonus(S)) BEK_FORAGE_BONUS.forEach(scatter);
       }
+      /* The rain waters the plots, all of them, the morning it falls: every tilled square in
+         the open (a plot under glass is spared, a sprinkler's square is not a special case)
+         is wet for the day, with or without anything growing in it, and the day's ageing
+         counts it as watered. Called the moment the day's weather is rolled. */
+      function rainOnPlots() {
+        if (S.weather !== 'regn') return;
+        Object.keys(S.soil).forEach(k => {
+          const c = S.soil[k];
+          if (!c.till) return;
+          const [x, y] = k.split(',').map(Number);
+          if (S.flag.greenhouse && inGreenhouse(x, y)) return;
+          c.wet = 1;
+        });
+      }
       function newDay(passedOut) {
         S.day++; S.min = BEK_DAY_START;
         /* yesterday, closed out: the difference between the XP counters now
@@ -1081,7 +1101,8 @@ export default {
         Object.keys(S.soil).forEach(k => {
           const c = S.soil[k];
           if (!c.seed) { c.wet = 0; c.tend = 0; return; }
-          if (rainy) c.wet = 1;                          /* the rain waters for you */
+          /* the rain waters for you, plots under glass excepted (see rainOnPlots) */
+          if (rainy) { const [rx, ry] = k.split(',').map(Number); if (!(S.flag.greenhouse && inGreenhouse(rx, ry))) c.wet = 1; }
           /* QUALITY: c.tend is a streak, not a total — it resets the moment
              a growing day passes unwatered, so `>= spec.days` at harvest
              means every single day was watered, never merely "most days".
@@ -1126,6 +1147,7 @@ export default {
         /* the odds move with the season (BEK_SEASON_WEATHER); the roll
            itself is still one call, still fully random */
         S.weather = rollWeather(S.day);
+        rainOnPlots();
         spawnDrops();
         /* A run does not survive a night. You wake on the farm whichever
            floor the clock caught you on — that is the 02:00 rule the whole
@@ -1248,7 +1270,7 @@ export default {
           if (tileAt(S.map, x, y) !== 'f') return;
           const k = key(x, y);
           const c = S.soil[k] || (S.soil[k] = { till: 0, wet: 0, seed: '', age: 0, ready: 0, fert: 0, tend: 0 });
-          if (c.seed && !c.wet) c.wet = 1;
+          if ((c.seed || c.till) && !c.wet) c.wet = 1;
         });
       }
       /* what bites, by water, weather, season and hour — BEK_FISH_WATERS
@@ -1555,7 +1577,9 @@ export default {
               say(TX('SATTE OPP SPREDER.', 'PLACED SPRINKLER.'));
               return;
             }
-            say(TX('INGENTING PLANTET.', 'NOTHING PLANTED.')); return;
+            /* bare tilled soil takes water too: a plot is wet or dry whether or not
+               anything is growing in it yet. Untilled ground is not a plot. */
+            if (!c.till) { say(TX('SPA DET FØRST.', 'TURN IT FIRST — HOE.')); return; }
           }
           if (c.wet) { say(TX('ALLEREDE VANNET.', 'ALREADY WATERED.')); return; }
           if (S.water <= 0) { say(TX('KANNEN ER TOM.', 'THE CAN IS EMPTY.')); deny(); return; }
@@ -1701,6 +1725,11 @@ export default {
         }
         const book = BEK_TALK[npc.id];
         if (!book) return;
+        /* what they say first (greet.js): hello the first time today, hello again after that, and
+           a remark if it has been days. Worked out before the day is stamped, and only spoken in
+           front of an ordinary conversation: a quest turn-in or a gift has its own words. */
+        const hello = greeting(npc.id, S);
+        S.lastTalk[npc.id] = S.day;
         const q = BEK_QUESTS.filter(q2 => q2.who === npc.id && S.q[q2.id] === 'active')[0];
         if (q && Object.keys(q.need).every(id => has(id, q.need[id]))) {
           Object.keys(q.need).forEach(id => add(id, -q.need[id]));
@@ -1779,7 +1808,7 @@ export default {
           if (node.set) Object.assign(S.flag, node.set);
           if (node.give) Object.keys(node.give).forEach(id => add(id, node.give[id]));
           if (node.open && !S.q[node.open]) S.q[node.open] = 'active';
-          dlg = { lines: node.lines.slice(), i: 0, npc: npc, mood: node.mood, ask: node.ask || null, buy: node.buy || null, node: node };
+          dlg = { lines: hello.concat(node.lines), i: 0, npc: npc, mood: node.mood, ask: node.ask || null, buy: node.buy || null, node: node };
         } else {
           const pool = book.chat.filter(c => !c.if || c.if(S));
           const ix = (S.chatIx[npc.id] = (S.chatIx[npc.id] || 0) + 1);
@@ -1790,7 +1819,7 @@ export default {
              is filtered on `if` every visit, unlike a `nodes` entry (one-shot
              via S.seen), which is what lets the offer keep resurfacing until
              it is actually bought. */
-          dlg = { lines: pick.t.slice(), i: 0, npc: npc, mood: pick.mood, menu: 1, buy: pick.buy || null };
+          dlg = { lines: hello.concat(pick.t), i: 0, npc: npc, mood: pick.mood, menu: 1, buy: pick.buy || null };
         }
         sfx.talk(); mode = 'talk';
       }
@@ -2562,6 +2591,18 @@ export default {
          — is declared there in MARKS / SHADOWS / FEATURES and asserted by
          palette_check.js, so the tables the art reads and the tables the
          check reads are the same tables. */
+      /* The season lies on the ground, in patches: litter and drifts where the low-frequency field
+         says so, feathered out through the stipple like every other wash. It used to be one stipple
+         laid over the whole picture, which put green flecks (spring), red (summer), orange (autumn)
+         and white (winter) over the walls, the props and the player as well, as if the ground's
+         texture ran through everything standing on it. Strength per patch is `n` of the tint table
+         (BEK_SEASON_TINT) times three. */
+      function seasonWash(px, py, x, y, k) {
+        const tint = BEK_SEASON_TINT[BEK_SEASONS[S.season].id];
+        if (!tint) return;
+        const amt = Math.round(tint.base * (k || 1)) + (tint.patch ? pAmt(x, y, PATCH.DUST, tint.patch * (k || 1)) : 0);
+        if (amt > 0) wash(px, py, BEK_T, BEK_T, tint.col, amt);
+      }
       function grassGround(x, y) {
         const px = x * BEK_T, py = y * BEK_T;
         const mp = S.map;
@@ -2592,6 +2633,7 @@ export default {
              rather than derived from the map's own content */
           if (x >= ENGA_MOW_X0 && x < ENGA_MOW_X1) wash(px, py, BEK_T, BEK_T, GRASS[1], 6);
         }
+        seasonWash(px, py, x, y);
       }
 
       /* the floor of a room: boards, never grass */
@@ -2614,6 +2656,7 @@ export default {
         native(() => { g.fillStyle = C(SOI[2]); g.fillRect(px, py, BEK_T, BEK_T); });
         wash(px, py, BEK_T, BEK_T, SOI[1], pAmt(x, y, PATCH.WORN));     /* trodden hard */
         wash(px, py, BEK_T, BEK_T, DRY[1], pAmt(x, y, PATCH.DUST));     /* dry and dusty */
+        if (!ins_() && !isCave(S.map)) seasonWash(px, py, x, y, 0.6);   /* a road holds less of it than a field */
       }
 
       /* ---- ground detail: the second cached pass -------------------------- */
@@ -2649,9 +2692,14 @@ export default {
              every colour everywhere — reusing LOW.VEIN at its own period,
              unused on any grass tile, rather than declaring a new channel. */
           if (meadow && v.c3 < 3) {
+            /* A flower is a flower, not a speck: a small head on a stem with a leaf. A lone
+               white pixel on grass read as dirt on the screen, so the white species is a red
+               one here (white blooms live in the flower beds, which draw them properly). */
             const species = mp === 'enga' ? pLow(x, y, LOW.VEIN, 8, FLOWER.length) : v.c0 % FLOWER.length;
-            g.fillStyle = C(FLOWER[species]);
-            g.fillRect(px + spot(v.x2, BEK_T, 1), py + spot(v.y3, BEK_T, 1), 1, 1);
+            const fx = px + spot(v.x2, BEK_T, 4), fy = py + spot(v.y3, BEK_T, 7);
+            g.fillStyle = C(GRASS[1]); g.fillRect(fx + 1, fy + 3, 1, 4);
+            g.fillStyle = C(GRASS[3]); g.fillRect(fx + 2, fy + 5, 2, 1);
+            g.fillStyle = C(FLOWER[species === 0 ? 2 : species]); g.fillRect(fx, fy, 3, 2); g.fillRect(fx + 1, fy + 2, 1, 1);
           }
         });
       }
@@ -2906,7 +2954,11 @@ export default {
       const snow_ = () => snowy(S.map);
       const rim_ = (x, y) => !ins_() && (x === 0 || y === 0 || x === COLS() - 1 || y === ROWS() - 1);
       /* a tile that lays its own ground has no grass or boards under it */
-      const ownGround = (c, x, y) => 'W~P.MOQHRDLfk '.indexOf(c) >= 0 || (c === 'T' && rim_(x, y));
+      /* A chest, a well or a sign that stands on trodden earth has trodden earth under it: on a grass
+         tile it was a square of green in the middle of the yard, a ring round the thing. */
+      const onPath = (c, x, y) => !ins_() && (c === 'K' || c === 'o' || c === 'S') &&
+        (tileAt(S.map, x - 1, y) === '.' || tileAt(S.map, x + 1, y) === '.' || tileAt(S.map, x, y - 1) === '.' || tileAt(S.map, x, y + 1) === '.');
+      const ownGround = (c, x, y) => 'W~P.MOQHRDLfk '.indexOf(c) >= 0 || (c === 'T' && rim_(x, y)) || onPath(c, x, y);
 
       function tileGround(c, x, y) {
         const px = x * BEK_T_SRC, py = y * BEK_T_SRC;
@@ -2920,7 +2972,7 @@ export default {
            depth ramp, so the two halves of the waterline meet */
         if (c === 'W') { native(() => (shore.maskOf(x, y) ? shore.nearShore(x, y) : water.deep(x, y))); return; }
         if (c === '~') { native(() => shore.ground(x, y)); return; }
-        if (c === '.') { pathGround(x, y); return; }
+        if (c === '.' || onPath(c, x, y)) { pathGround(x, y); return; }
         if (c === 'M' || c === 'O' || c === 'Q') { native(() => rock.ground(c, x, y, snow_())); return; }
         /* the plain fills come straight out of surface.js, so the colour the
            check reasons about at the darkest hour is the colour that is
@@ -2952,16 +3004,26 @@ export default {
         const prp = propMap.get(x + ',' + y);
         if (prp && !PROP_LIVE[prp.kind] && LIVE.indexOf(c) < 0) drawProp(prp, x, y, 0);
       }
+      /* The marks on the ground itself: the blades, the pebbles, the grain of the boards, the bank.
+         They are their own pass, and it runs over the whole region BEFORE any object does. They used
+         to be laid tile by tile with the objects, so a prop, a stall, a woodpile or a wall that is
+         wider than its own tile had the next tile's blades drawn across it (green flecks on the
+         logs, in the well, over the crate). Nothing that stands on the ground may be drawn under
+         the ground's own texture. */
+      function tileMarks(c, x, y) {
+        if (c === ' ' || c === 'W' || c === '~') return;
+        if (onPath(c, x, y)) { pathDetail(x, y); native(() => shore.bank(x, y)); return; }
+        if (!ownGround(c, x, y)) {
+          if (ins_()) native(() => interior.volume(x, y)); else if (isCave(S.map)) caveDetail(x, y); else grassDetail(x, y);
+        }
+        /* the land half of a waterline, on whichever edges face water */
+        if (!ins_()) native(() => shore.bank(x, y));
+      }
       function tileDetail(c, x, y) {
         const px = x * BEK_T_SRC, py = y * BEK_T_SRC;
         const ins = ins_(), snow = snow_(), rim = rim_(x, y);
         if (c === ' ' || c === 'W') return;                  /* nothing static of its own */
         if (c === '~') { native(() => shore.detail(x, y, edgeVar(S.map, x, y))); tileProp(c, x, y); if (rim_(x, y)) edgeMark(px, py, x, y); return; }
-        if (!ownGround(c, x, y)) {
-          if (ins) native(() => interior.volume(x, y)); else if (isCave(S.map)) caveDetail(x, y); else grassDetail(x, y);
-        }
-        /* the land half of a waterline, on whichever edges face water */
-        if (!ins && c !== 'W' && c !== '~') native(() => shore.bank(x, y));
         const o = objVar(c, S.map, x, y);
         if (c === 'P') {
           g.fillStyle = C(TIM[2]); for (let i = 0; i < BEK_T_SRC; i += 5) g.fillRect(px, py + i, BEK_T_SRC, 1);
@@ -2985,9 +3047,12 @@ export default {
              an out-of-band colour with nothing under it is a defect, and the
              same 2x2 sitting on a dark green stalk is a flower. */
           const bloom = (sx, sy, col) => {
-            const bx = px + spot(sx, BEK_T_SRC, 2), by = py + spot(sy, BEK_T_SRC, 5);
-            g.fillStyle = C(GRASS[1]); g.fillRect(bx, by + 2, 1, 3);
-            g.fillStyle = C(col); g.fillRect(bx, by, 2, 2);
+            const bx = px + 1 + spot(sx, BEK_T_SRC - 2, 4), by = py + spot(sy, BEK_T_SRC, 9);
+            g.fillStyle = C(GRASS[1]); g.fillRect(bx + 1, by + 3, 1, 6);                 /* the stem  */
+            g.fillStyle = C(GRASS[3]); g.fillRect(bx + 2, by + 6, 2, 1); g.fillRect(bx - 1, by + 7, 2, 1);   /* two leaves */
+            g.fillStyle = C(col);                                                         /* four petals */
+            g.fillRect(bx + 1, by, 1, 1); g.fillRect(bx, by + 1, 3, 1); g.fillRect(bx + 1, by + 2, 1, 1);
+            g.fillStyle = C(col === WAR[4] ? WAR[2] : WAR[4]); g.fillRect(bx + 1, by + 1, 1, 1);  /* the eye */
           };
           bloom(o.ax, o.ay, FLOWER[o.ac]); bloom(o.bx, o.by, FLOWER[o.bc]); bloom(o.cx, o.cy, FLOWER[o.cc]);
         }
@@ -3036,7 +3101,13 @@ export default {
         if (c === 'H' || c === 'R' || c === 'D') {
           if (!ins) native(() => building.tile(c, x, y));
           else if (c === 'D') native(() => interior.door(x, y));
-          else if (c === 'H') native(() => interior.wall(x, y, o, o.win < 2));
+          else if (c === 'H') {
+            /* a window looks out: only a wall with the dead margin behind it has one. A partition has
+               floor on both sides and is a plain log wall. */
+            const outer = tileAt(S.map, x - 1, y) === ' ' || tileAt(S.map, x + 1, y) === ' ' ||
+                          tileAt(S.map, x, y - 1) === ' ' || tileAt(S.map, x, y + 1) === ' ';
+            native(() => interior.wall(x, y, o, o.win < 2 && outer));
+          }
         }
         if (c === 'o') { g.fillStyle = C(STO[4]); g.fillRect(px + 3, py + 8, 14, 10); g.fillStyle = C(STO[2]); g.fillRect(px + 3, py + 16, 14, 2); g.fillStyle = C(WAT[2]); g.fillRect(px + 5, py + 10, 10, 5); g.fillStyle = C(WAT[4]); g.fillRect(px + 6, py + 11, 3, 1); g.fillStyle = C(TIM[2]); g.fillRect(px + 3, py + 2, 14, 3); g.fillRect(px + 4, py + 2, 2, 8); g.fillRect(px + 14, py + 2, 2, 8); }
         if (c === 'S') { g.fillStyle = C(TIM[2]); g.fillRect(px + 9, py + 8, 3, 11); g.fillStyle = C(SAN[1]); g.fillRect(px + 2, py + 2, 17, 8); g.fillStyle = C(TIM[0]); g.fillRect(px + 4, py + 4, 13, 1); g.fillRect(px + 4, py + 7, 9, 1); }
@@ -3095,9 +3166,13 @@ export default {
          since the rebuild lays down its own transform and clears first — but
          it does drop `tag`, so that is reapplied with the size. */
       terrCv.width = BEK_W; terrCv.height = BEK_H;
-      const terrG = terrCv.getContext('2d');
+      /* willReadFrequently: the lamp pass reads the cache back on every rebuild, and on a GPU-backed
+         canvas that readback stalls the pipeline (the whole queue of fillRects has to be flushed first).
+         A cache that is mostly written and sometimes read belongs in memory. */
+      const terrG = terrCv.getContext('2d', { willReadFrequently: true });
       if (terrG) terrG.tag = 'terrain';
       let terrKey = '', terrLive = [], terrHearths = [];
+      let soilPts = [], soilN = -1, soilRef = null;                    /* the plots' coordinates, rebuilt when a plot is added or lost */
       let terrBump = 0;
       /* `act()` mutating state immediately is the safe design: nothing can
          double-resolve, the player cannot walk away mid-swing, and autoSave
@@ -3122,7 +3197,25 @@ export default {
          hearth is bright because the valley is dark, not because the room is.
          Everything here is a pure function of S.map and S.min, so the cache
          and the frame can both ask and get the same answer. */
+      /* The hour moves the light a little every game minute, and every step of it is a full rebuild of
+         the terrain cache (the hour is baked into the colours). At dawn and dusk that was three or four
+         rebuilds a second, each one a dropped frame: the stutter of the evening. The outdoor light is
+         latched for about a second of real time instead, which is a step of a percent or so between
+         one picture and the next, below what the eye can tell from a smooth fade. A map change, a
+         jump in the clock (sleep) or a cave always takes the live value at once. */
+      const LIGHT_LATCH_MS = 1100;
+      let lightLatch = null, lightLatchAt = 0, lightLatchMap = '', lightLatchMin = 0;
       function lighting() {
+        const cave = isCave(S.map);
+        if (!cave) {
+          const t = now();
+          if (lightLatch && lightLatchMap === S.map && t - lightLatchAt < LIGHT_LATCH_MS && Math.abs(S.min - lightLatchMin) < 12) return lightLatch;
+          lightLatch = lightingNow(); lightLatchAt = t; lightLatchMap = S.map; lightLatchMin = S.min;
+          return lightLatch;
+        }
+        return lightingNow();
+      }
+      function lightingNow() {
         const cave = isCave(S.map), ins = ins_();
         /* A hole in a mountain has no hour, but it does have a depth. The
            adit sits at band 0 (which is CAVE_LIGHT unchanged, so nothing
@@ -3306,7 +3399,9 @@ export default {
          throws every frame the moment an audio context exists. */
       function lightSources(dark, R) {
         const out = [];
-        if (dark <= 0.02) return out;
+        /* In full day there is no pool to see (the two pictures are within a few per cent of each other),
+           and finding out costs a readback of the whole cache. Below this the light is real. */
+        if (dark <= 0.08) return out;
         const ins = ins_();
         if (!R) R = { x0: 0, y0: 0, x1: COLS(), y1: ROWS() };
         const at = (x, y, dy, r, peak, hearth) =>
@@ -3389,7 +3484,11 @@ export default {
         const R = regionOf(cols, rows);
         /* Everything the two static passes read, plus how big the map is and
            which part of it this rebuild is responsible for. */
-        const kMap = S.map + '|' + cols + 'x' + rows + '|' + S.day + '|' + (S.built ? 1 : 0) + '|' + terrBump + '|' + L.key;
+        /* what the map IS (its geometry), and then that plus the light. The distance fields, masks and
+           floorboards below are functions of the first only: they used to be keyed with the light as
+           well, and so were laid again from scratch at every step of dawn and dusk for nothing. */
+        const kGeo = S.map + '|' + cols + 'x' + rows + '|' + S.day + '|' + (S.built ? 1 : 0) + '|' + terrBump;
+        const kMap = kGeo + '|' + L.key;
         const k = kMap + '|' + R.x0 + ',' + R.y0 + ',' + R.x1 + ',' + R.y1;
         if (k === terrKey) return terrCv;
         terrKey = k; terrLive = []; terrHearths = [];
@@ -3413,11 +3512,12 @@ export default {
           /* The distance fields, the boards and the wear are whole-map and
              know nothing about the region, so they are keyed without it —
              walking across a big map must not relay every floorboard. */
-          shore.prepare(kMap); water.prepare(kMap); rock.prepare(kMap); interior.prepare(kMap);
-          forest.prepare(kMap); building.prepare(kMap); wear.prepare(kMap); propsPrepare();
+          shore.prepare(kGeo); water.prepare(kGeo); rock.prepare(kGeo); interior.prepare(kGeo);
+          forest.prepare(kGeo); building.prepare(kGeo); wear.prepare(kGeo); propsPrepare();
           g.save(); g.scale(BEK_ART_SCALE, BEK_ART_SCALE);
           const tA = now();
           for (let y = sy0; y < sy1; y++) for (let x = sx0; x < sx1; x++) tileGround(tileAt(S.map, x, y), x, y);
+          for (let y = sy0; y < sy1; y++) for (let x = sx0; x < sx1; x++) tileMarks(tileAt(S.map, x, y), x, y);
           const tB = now();
           for (let y = sy0; y < sy1; y++) for (let x = sx0; x < sx1; x++) {
             const c = tileAt(S.map, x, y);
@@ -3590,9 +3690,17 @@ export default {
           const lx = terrLive[i], ly = terrLive[i + 1];
           tileLive(tileAt(S.map, lx, ly), lx, ly, t);
         }
-        const sCols = COLS(), sRows = ROWS();
-        for (let y = 0; y < sRows; y++) for (let x = 0; x < sCols; x++)
-          if (tileAt(S.map, x, y) === 'f') drawSoil(x, y);
+        /* The plots are the only squares with soil state, so the live pass walks those (a handful) and not
+           every square of the map thirty times a second, asking tileAt about each. S.soil has no map in its
+           keys and healCoords() keeps every entry on the farm. */
+        if (S.map === 'farm') {
+          let ph = soilPts;
+          if (soilRef !== S.soil || soilN !== Object.keys(S.soil).length) {
+            soilRef = S.soil; soilN = Object.keys(S.soil).length; ph = soilPts = [];
+            Object.keys(S.soil).forEach(k => { const c = k.indexOf(','); soilPts.push([+k.slice(0, c), +k.slice(c + 1)]); });
+          }
+          for (let i = 0; i < ph.length; i++) if (tileAt('farm', ph[i][0], ph[i][1]) === 'f') drawSoil(ph[i][0], ph[i][1]);
+        }
 
         /* The moving half of the light. The pools themselves are in the cache;
            what cannot be is a fire whose reach breathes on the same cycle as
@@ -3641,7 +3749,7 @@ export default {
               ? { kind: kind, u: sw ? Math.min(1, swing.t / swing.len) : 0, dir: S.dir } : null;
             /* two frames of recoil when the answer was no */
             const jx = swing && swing.kind === 'deny' ? ((swing.t * 46) | 0) % 2 ? 2 : -2 : 0;
-            person(S.px * BEK_T_SRC + 4 + jx, S.py * BEK_T_SRC + 2, S.dir, S.step, PLAYER_HAIR, PLAYER_SHIRT, PLAYER_PANTS, held);
+            person(S.px * BEK_T_SRC + 4 + jx, S.py * BEK_T_SRC + 2, S.dir, S.step, PLAYER_HAIR, PLAYER_SHIRT, PLAYER_PANTS, held, (S.bag.ullgenser || 0) > 0);
             return;
           }
           if (a.goat) { goat(a.goat.x * BEK_T_SRC + 1, a.goat.y * BEK_T_SRC + 1, t); return; }
@@ -3720,15 +3828,11 @@ export default {
            draw through the hour's LUT, so fog at midnight is night fog and
            rain at dusk catches the last of the light.
 
-           The season adds one more layer under those two, through the exact
-           same dither() call fog already makes — no new renderer, just
-           another colour and strength (BEK_SEASON_TINT) handed to a call
-           that already exists, and it too draws through the hour's LUT. */
+           The season is not here: it lies on the ground (seasonWash, in the ground pass), so
+           nothing standing on the ground is ever speckled by it. */
         g.save();
         viewClip();
         if (!inside) {
-          const tint = BEK_SEASON_TINT[BEK_SEASONS[S.season].id];
-          if (tint) dither(tint.col, tint.n);
           if (S.weather === 'regn') {
             g.fillStyle = C(WAT[4]);
             for (let i = 0; i < BEK_RAIN_N; i++) {
@@ -3755,6 +3859,12 @@ export default {
             text(cc.ready ? TX('KLAR Å HØSTE', 'READY') : TX('DAG', 'DAY') + ' ' + Math.min(cc.age, spec.days) + '/' + spec.days,
                  tx, ty0 + LINE_SM, cc.ready ? 10 : 11, FONT_SM);
             if (!cc.ready) text(cc.wet ? TX('VANNET', 'WATERED') : TX('TØRR', 'DRY'), tx + TIP_COL2, ty0 + LINE_SM, cc.wet ? 9 : 12, FONT_SM);
+          } else if (cc && cc.till && !cc.seed && tileAt(S.map, f.x, f.y) === 'f') {
+            /* bare tilled soil: whether it is wet is still worth knowing before the seed goes in */
+            panel(TIP_X, TIP_Y, TIP_W, TIP_H, 7);
+            const tx = TIP_X + PAD_SM, ty0 = TIP_Y + PAD_SM;
+            text(TX('SPADD JORD', 'TILLED SOIL'), tx, ty0, 15, FONT_SM);
+            text(cc.wet ? TX('VANNET', 'WATERED') : TX('TØRR', 'DRY'), tx, ty0 + LINE_SM, cc.wet ? 9 : 12, FONT_SM);
           }
         }
 
@@ -4053,12 +4163,20 @@ export default {
         speechTick();
         Song.rotStep(dt); Song.sync();
         Amb.tick(dt);
+        /* Drawn on every frame the display offers. The old gate drew when 1/30 s had gathered and then
+           threw the remainder away, so on a 60 Hz display two frames of 16.6 ms came to 33.2 and missed
+           it by a hair: the game ran at an uneven 20-30 fps, which is what "laggy" looked like. A machine
+           that really cannot afford a draw every frame (the smoothed cost says so) is held to 30 instead,
+           and the remainder is kept this time. */
         acc += dt;
-        if (acc >= 1 / 30) {
-          acc = 0;
-          const t0 = performance.now();
+        const gate = drawMs > 13 ? 1 / 30 - 0.004 : 0;
+        if (acc >= gate) {
+          acc = gate ? Math.min(acc - gate, gate) : 0;
+          const t0 = performance.now(), rb = perf.rebuilds;
           draw(ts / 1000);
-          drawMs = drawMs * 0.9 + (performance.now() - t0) * 0.1;
+          /* what a draw costs, not what a cache rebuild costs: a rebuild is a one-off, and counting it
+             would hold a fast machine to 30 fps every time the light moved */
+          if (perf.rebuilds === rb) drawMs = drawMs * 0.9 + (performance.now() - t0) * 0.1;
         }
       }
       raf = requestAnimationFrame(frame);

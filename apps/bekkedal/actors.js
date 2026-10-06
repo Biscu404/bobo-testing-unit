@@ -49,6 +49,7 @@ export function createActors(GG, C) {
     else if (ic === 'bowl') { R(3, 7, 10, 4, 7); R(4, 5, 8, 3, col); R(6, 5, 1, 1, 15); }
     else if (ic === 'stalk') { R(6, 3, 2, 9, col); R(4, 3, 5, 2, 10); R(8, 5, 3, 2, 10); }
     else if (ic === 'lamp') { R(5, 3, 5, 3, 7); R(4, 6, 7, 6, col); R(6, 8, 3, 3, 15); }
+    else if (ic === 'knit') { R(3, 5, 10, 8, col); R(1, 5, 3, 6, col); R(12, 5, 3, 6, col); R(5, 4, 6, 2, 15); R(3, 8, 10, 1, 15); R(4, 10, 1, 1, 15); R(6, 10, 1, 1, 15); R(8, 10, 1, 1, 15); R(10, 10, 1, 1, 15); R(3, 12, 10, 1, 7); R(1, 10, 3, 1, 7); R(12, 10, 3, 1, 7); }
     else if (ic === 'shirt') { R(3, 5, 10, 7, col); R(2, 5, 3, 3, col); R(11, 5, 3, 3, col); R(5, 5, 5, 2, 15); }
     else if (ic === 'sprinkler') { R(7, 4, 2, 9, col); R(3, 3, 10, 2, 7); R(4, 10, 8, 2, col); R(6, 2, 1, 2, 9); R(9, 2, 1, 2, 9); }
     else if (ic === 'egg') { R(5, 4, 6, 9, col); R(6, 6, 4, 1, 15); }
@@ -60,7 +61,7 @@ export function createActors(GG, C) {
      any part of a person separates from the ground they are standing on
      — which is the question that matters, not whether one garment does. */
   const PERSON_INK = ATMO[0];
-  function person(px, py, dir, step, hair, shirt, pants, held) {
+  function person(px, py, dir, step, hair, shirt, pants, held, knit) {
     const bob = (step === 1 || step === 3) ? 1 : 0, y = py + bob;
     /* the far hand's tool goes behind the body, the near hand's in front */
     const back = held && (held.dir === 1);
@@ -77,11 +78,24 @@ export function createActors(GG, C) {
     GG().fillStyle = C(pants); GG().fillRect(px + 3, y + 13, 3, 5); GG().fillRect(px + 7, y + 13, 3, 5);
     GG().fillStyle = C(TIM[0]);
     if (step === 1) GG().fillRect(px + 3, y + 17, 3, 2); else if (step === 3) GG().fillRect(px + 7, y + 17, 3, 2); else { GG().fillRect(px + 3, y + 17, 3, 2); GG().fillRect(px + 7, y + 17, 3, 2); }
-    GG().fillStyle = C(shirt); GG().fillRect(px + 2, y + 7, 9, 7); GG().fillRect(px, y + 8, 2, 5); GG().fillRect(px + 11, y + 8, 2, 5);
+    GG().fillStyle = C(knit ? WAR[1] : shirt); GG().fillRect(px + 2, y + 7, 9, 7); GG().fillRect(px, y + 8, 2, 5); GG().fillRect(px + 11, y + 8, 2, 5);
     GG().fillStyle = C(SAN[2]); GG().fillRect(px, y + 12, 2, 2); GG().fillRect(px + 11, y + 12, 2, 2); GG().fillRect(px + 3, y + 2, 7, 6);
     GG().fillStyle = C(hair); GG().fillRect(px + 2, y, 9, 3);
     if (dir === 1) GG().fillRect(px + 2, y, 9, 7);
     else { GG().fillStyle = C(TIM[0]); if (dir === 0) { GG().fillRect(px + 4, y + 4, 1, 2); GG().fillRect(px + 8, y + 4, 1, 2); } if (dir === 2) GG().fillRect(px + 3, y + 4, 1, 2); if (dir === 3) GG().fillRect(px + 9, y + 4, 1, 2); }
+    /* the wool sweater (ULLGENSER, bought from Astrid): falu red with a rolled collar, a band of
+       cream across the chest with a row of stitches under it, ribbed cuffs and a ribbed hem.
+       It is drawn over the shirt and under the hands and head, so it is on at every angle. */
+    if (knit) {
+      GG().fillStyle = C(SNO[1]);
+      GG().fillRect(px + 3, y + 8, 7, 1);                                  /* the rolled collar */
+      GG().fillRect(px + 2, y + 10, 9, 1);                                 /* the band */
+      GG().fillStyle = C(SNO[0]);
+      GG().fillRect(px + 3, y + 11, 1, 1); GG().fillRect(px + 5, y + 11, 1, 1);
+      GG().fillRect(px + 7, y + 11, 1, 1); GG().fillRect(px + 9, y + 11, 1, 1);   /* the stitches */
+      GG().fillRect(px + 2, y + 13, 9, 1);                                 /* the ribbed hem */
+      GG().fillRect(px, y + 11, 2, 1); GG().fillRect(px + 11, y + 11, 2, 1);      /* the cuffs */
+    }
     if (held && !back) heldTool(px, y, held);
   }
   /* `person` drew no tool at all, which is why a swing had nothing to be a

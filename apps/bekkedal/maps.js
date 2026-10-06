@@ -9,7 +9,7 @@
  *
  * A seam is not a new mechanism. It is the exits mechanism BEK_MAPS has
  * always had, applied to a whole run of an edge instead of one tile of it:
- * walk west off the farm on any of four rows and you are in the wood, on the
+ * walk east off the farm on any of five rows and you are in the square, on the
  * row that answers it. Because both sides are generated from the same
  * declaration, the two runs are always the same length and always land one
  * tile inside the rim they came through, so there is no row you can leave by
@@ -41,14 +41,13 @@ const LAMP = { need: 'lamp', why: {
   no: 'Beksvart der inne. Lars har lyktene.',
   en: 'Pitch dark in there. Lars keeps the lanterns.' } };
 
-const SEAMS = [
-  ['farm',   'E', 12, 5, 'town',   13],        /* the road east, into the square   */
-  ['farm',   'W',  6, 4, 'forest', 18],        /* the track west, into the wood    */
-  ['farm',   'S', 15, 5, 'enga',    5],        /* down the field track to the hay  */
-  ['town',   'E', 13, 5, 'lake',   13],        /* the road on down to the water    */
-  ['town',   'N', 20, 5, 'forest', 24],        /* the road north out of the square */
-  ['town',   'S', 20, 5, 'enga',   24],        /* and south, past the meadow       */
-  ['forest', 'N',  8, 2, 'setra',   8],        /* the trail up — two tiles wide    */
+export const SEAMS = [
+  ['farm',   'E', 11, 5, 'town',   13],        /* the road east, into the square          */
+  ['farm',   'S', 34, 5, 'enga',    5],        /* down the field track to the hay          */
+  ['town',   'E', 13, 5, 'lake',   13],        /* the road on down to the water            */
+  ['town',   'N', 20, 5, 'forest', 24],        /* the road north out of the square         */
+  ['town',   'S', 20, 5, 'enga',   35],        /* and south, past the meadow               */
+  ['forest', 'N',  8, 2, 'setra',   8],        /* the trail up — two tiles wide            */
   ['setra',  'N',  8, 2, 'vidda',   8, WARM],
   ['setra',  'E', 12, 2, 'gruva',  12, LAMP]
 ];
@@ -76,3 +75,42 @@ for (const [aId, side, aFrom, len, bId, bFrom, gate] of SEAMS) {
     b.exits.push({ x: bx, y: by, to: aId, tx: aix, ty: aiy });
   }
 }
+
+/* ---- where everything is -------------------------------------------------
+   The seams are the only statement of how the valley fits together, so its
+   geography is *derived* from them rather than kept as a second list that
+   could disagree: put the farm at the origin, and every seam says where the
+   map on its other side must stand (the whole width of the one it leaves, and
+   the difference of the two `from` offsets along the edge). If two paths to
+   the same map disagree, that is a loop that cannot exist on a plane, and it
+   is recorded in `conflicts` for world_check.js to fail on. The valley used
+   to have two of them: the forest was west of the farm and north of the town,
+   and the meadow was south of both at once, which no arrangement of
+   rectangles allows. The lake and the fjord are not joined by a seam but by a
+   boat across the water, so the fjord is placed across the lake. */
+export const BEK_WORLD = (() => {
+  const dims = id => size(BEK_MAPS[id]);
+  const at = { farm: [0, 0] }, conflicts = [];
+  const delta = (a, side, aFrom, b, bFrom) => {
+    const [ac, ar] = dims(a), [bc, br] = dims(b);
+    const along = side === 'E' || side === 'W' ? [0, aFrom - bFrom] : [aFrom - bFrom, 0];
+    return side === 'E' ? [ac + along[0], along[1]] : side === 'W' ? [-bc + along[0], along[1]]
+         : side === 'S' ? [along[0], ar] : [along[0], -br];
+  };
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const [a, side, aFrom, , b, bFrom] of SEAMS) {
+      const d = delta(a, side, aFrom, b, bFrom);
+      const known = (id, x, y) => {
+        if (!at[id]) { at[id] = [x, y]; grew = true; }
+        else if (at[id][0] !== x || at[id][1] !== y) conflicts.push(id + ' at ' + at[id] + ' and at ' + [x, y]);
+      };
+      if (at[a]) known(b, at[a][0] + d[0], at[a][1] + d[1]);
+      if (at[b]) known(a, at[b][0] - d[0], at[b][1] - d[1]);
+    }
+  }
+  /* the water between the lake and the fjord: a boat's crossing, not a seam */
+  if (at.lake && BEK_MAPS.fjord) at.fjord = [at.lake[0] + dims('lake')[0] + 8, at.lake[1]];
+  return { at, conflicts: Array.from(new Set(conflicts)) };
+})();

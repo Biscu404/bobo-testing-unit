@@ -20,3 +20,36 @@ export const scale = (notes, k) => notes.map(n => [n[0], n[1], n[2], Math.max(0.
 export const above = (notes, semis, vel) => notes.map(n => [n[0], n[1], n[2] + semis, vel == null ? n[3] * 0.8 : vel]);
 /* a title and the lines of a score, once, however many times it is asked for */
 export function memo(build) { const cache = new Map(); return (L, id) => { if (!cache.has(id)) cache.set(id, build(L, id)); return cache.get(id); }; }
+/* A second voice a number of scale steps from the first (negative is below), in the mode it is in: `pcs` is the mode's pitch
+   classes (D freygish: [2, 3, 6, 7, 9, 10, 0]). A note the mode does not have (a leading tone in a dominant chord) is heard
+   as its nearest neighbour in it, lower on a tie. A voice a fixed number of semitones away is a third only half the time
+   and a wrong note the rest, which is what a second fiddle used to be. */
+export function harmonize(notes, pcs, steps) {
+  const sc = [];
+  for (let n = 24; n <= 108; n++) if (pcs.indexOf(n % 12) >= 0) sc.push(n);
+  return notes.map(n => {
+    let i = sc.indexOf(n[2]);
+    if (i < 0) i = sc.reduce((b, v, j) => Math.abs(v - n[2]) < Math.abs(sc[b] - n[2]) ? j : b, 0);
+    return [n[0], n[1], sc[Math.max(0, Math.min(sc.length - 1, i + steps))], n[3]];
+  });
+}
+/* the part an octave up where there is room for it, and where there is not, as it stands */
+export const octaveUp = (notes, top, vel) => notes.map(n => [n[0], n[1], n[2] + 12 <= top ? n[2] + 12 : n[2], vel == null ? n[3] : vel]);
+/* a bass line from a pattern of [beat, length, 'r'|'5'|'8', velocity?] hits in each bar, on the root of each chord */
+export function bassPattern(L, chords, bpb, pat, low) {
+  const out = [];
+  chords.forEach((c, b) => {
+    const r = L.chordNotes(c, low || 40)[0];
+    pat.forEach(h => out.push([b * bpb + h[0], h[1], h[2] === '5' ? r + 7 : h[2] === '8' ? r + 12 : r, h[3] == null ? 0.8 : h[3]]));
+  });
+  return out;
+}
+/* chords struck on the beats named (0-based, in beats): the "pah" of an oom-pah */
+export function comp(L, chords, bpb, beats, base, len, vel) {
+  const out = [];
+  chords.forEach((c, b) => L.chordNotes(c, base || 57).forEach(n => beats.forEach(k => out.push([b * bpb + k, len || 0.45, n, vel == null ? 0.7 : vel]))));
+  return out;
+}
+/* one hit every `bars` bars, as a drum pattern (patterns repeat to fill the song) */
+export const everyBars = (bars, bpb, ch) => (ch || 'X') + '.'.repeat(bars * bpb * 4 - 1);
+

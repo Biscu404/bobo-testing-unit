@@ -59,7 +59,7 @@ const WHERE = {
   farm: [14, 9], town: [23, 15], lake: [12, 9], forest: [14, 18], enga: [14, 13],
   setra: [14, 12], vidda: [28, 12], gruva: [20, 12], fjord: [9, 12],
   /* stood out of the way of the table, so the props on it are in the shot */
-  farmhouse: [8, 9], lakehouse: [8, 10]
+  farmhouse: [11, 11], lakehouse: [11, 11]
 };
 
 const shots = [];

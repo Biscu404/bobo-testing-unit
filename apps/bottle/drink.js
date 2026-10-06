@@ -11,8 +11,8 @@
 import { REST, NEAR } from './glass3d.js';
 import { clamp, lerp, ease } from './physics.js';
 
-export const DRINK_LEN = 4.6;
-const T_UP = 1.15, T_TIP = 3.35;                 /* lifted by here; tipped back by here; down again at DRINK_LEN */
+export const DRINK_LEN = 3.5;
+const T_UP = 0.85, T_TIP = 2.55;                 /* lifted by here; tipped back by here; down again at DRINK_LEN */
 const TH_UP = 0.5, TH_MAX = 1.9;                 /* how far it is tipped on the way up, and at the most */
 
 export const restPose = () => Object.assign({}, REST);

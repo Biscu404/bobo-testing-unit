@@ -11,8 +11,8 @@ import { BOT, GLS } from './art.js';
 import { rot } from './raster.js';
 import { clamp, lerp, ease, arc, SHOT_FRAC, POURED_FILL, GRAV } from './physics.js';
 
-const KQ = 36;                                   /* flow, px^2 per second, per px of head ^ 1.5 */
-const CARRY = 0.9, RETURN = 0.75;
+const KQ = 46;                                   /* flow, px^2 per second, per px of head ^ 1.5 */
+const CARRY = 0.7, RETURN = 0.6;
 const LIPC = [BOT.lip[0], BOT.lip[1] + BOT.cy];  /* the lower lip, from the bottle's middle */
 const REST_C = [BOT.rest[0], BOT.rest[1] - BOT.cy];
 export const lipWorld = (C, a) => { const r = rot(LIPC[0], LIPC[1], a); return [C[0] + r[0], C[1] + r[1]]; };

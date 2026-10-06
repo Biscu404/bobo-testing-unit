@@ -19,7 +19,7 @@ const JAG_LINES = {
   'HAMMERED': ['PERHAPS SOME WATER.', 'THE FLOOR IS A SUGGESTION.'],
   'ABOUT TO GO': ['DRINK SOME WATER. THIS IS NOT A SUGGESTION.', 'THIS IS THE LAST ONE. IT IS NEVER THE LAST ONE.']
 };
-const BREATHER = 3.5;                       /* seconds after a measure before the next click means anything */
+const BREATHER = 2.6;                       /* seconds after a measure before the next click means anything */
 const REST_C = [BOT.rest[0], BOT.rest[1] - BOT.cy];
 const GCX = GLS.rest[0], FLOOR = GLS.rest[1] - 6;
 

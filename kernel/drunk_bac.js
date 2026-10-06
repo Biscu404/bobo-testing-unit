@@ -2,17 +2,19 @@
 
    A measure is not felt at once, and it is not forgotten at once either. It sits
    in the stomach and arrives in the blood with a time constant of half a minute;
-   the body then clears the blood at a steady rate, one measure every 45 seconds,
-   however much there is. What the screen shows is what is felt: the blood, and
-   half of what is still on its way. At LIMIT the lights go.
+   the body then clears the blood at a steady rate, one measure a minute, however
+   much there is. What the screen shows is what is felt: the blood, and half of
+   what is still on its way. At LIMIT the lights go.
 
-   So the journey has a shape that no amount of clicking can bend. The app lets
-   a measure go down about every thirteen seconds at the very quickest (a pour, a
-   drink and a breather), and at that pace it is about six and a half minutes and
-   thirty-odd measures to the floor, through every stage on the way; one measure a
-   minute holds a mild glow indefinitely; and stopping lets it drain, slowly.
-   (scripts/check-drunk.mjs holds all of that to the numbers.) */
-export const BAC = { LIMIT: 22, ABSORB: 30, CLEAR: 45, GUT_FEEL: 0.5, WAKE: 9 };
+   So the journey has a shape that no amount of clicking can bend, and it fits in
+   one bottle (seventeen measures). The app lets a measure go down about every ten
+   seconds at the very quickest (a pour, a drink and a breather), and at that pace
+   it is a little under two minutes and thirteen measures to the floor, through
+   every stage on the way; anybody who keeps at it, one every twenty seconds or so,
+   is out before the bottle is; one measure a minute holds a mild glow indefinitely;
+   and stopping lets it drain, slowly. (scripts/check-drunk.mjs holds all of that
+   to the numbers.) */
+export const BAC = { LIMIT: 9, ABSORB: 30, CLEAR: 60, GUT_FEEL: 0.5, WAKE: 4 };
 
 /* the stages the app can name, by how much of the limit is felt */
 export const STAGES = [

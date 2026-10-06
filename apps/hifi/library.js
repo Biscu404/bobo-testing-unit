@@ -8,7 +8,7 @@
    time somebody plays it (see ensureBuf in index.js), not when the window
    opens, because forty offline renders at once would stall the whole box. */
 import { VARIANTS, variantSpec } from '../../kernel/music_variants.js';
-import { MG_SONGS, MG_HZ } from '../magen/data.js';
+import * as MG from '../magen/score.js';
 import { CK_SONGS, CK_HZ } from '../cook/data.js';
 import * as ELE from '../elephant/score.js';
 import * as BEK from '../bekkedal/score.js';
@@ -56,8 +56,7 @@ export function stackFolders() {
     return [TITLE[v.id], sp];
   })]);
 
-  const mg = ['freygish', 'nigun', 'misheberach', 'hora', 'zmirot'].filter(k => MG_SONGS[k]);
-  out.push(['MAGEN', 'cyan', mg.map(k => [k.toUpperCase(), fromEighths(MG_SONGS[k], MG_HZ, 'cyan', 'MAGEN BAND')])]);
+  out.push(['MAGEN', 'cyan', MG.IDS.map(k => [MG.NAMES[k], disc(MG.song(Lang, k), 'cyan', 'MAGEN BAND')])]);
 
   out.push(['THE COOK', 'amber', Object.keys(CK_SONGS).map(k =>
     [k.toUpperCase(), fromEighths(CK_SONGS[k], CK_HZ, 'amber', 'THE COOK RADIO')])]);

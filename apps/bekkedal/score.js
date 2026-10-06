@@ -6,7 +6,7 @@
    bell; each tune is now eight bars (the old four, then a second time round that goes somewhere
    else) so that it does not come round so soon. Every part a night does without is tagged with
    a layer, ('lead' and 'arp'), and the game switches those off after dark, as it always did. */
-import { eighths, shifted, scale, above, memo } from '../scorekit.js';
+import { eighths, shifted, scale, memo } from '../scorekit.js';
 
 /* the melodic bones, as they were written: eighth notes against the tempo */
 const T = {
@@ -25,6 +25,16 @@ export const NIGHT = { kveld: true, gruva: true };
 
 const text = (L, s, at, vel) => L.parseNotes(s).map(n => [n[0] + at, n[1], n[2], vel == null ? n[3] : vel]);
 const track = (name, inst, notes, o) => Object.assign({ name, inst, notes }, o);
+/* a second voice a number of scale steps from the first (negative is below), in the key it is in. A second fiddle a fixed number of
+   semitones under the first is a third below only half the time and a wrong note the rest, which is what it was. */
+const inKey = (L, notes, steps, key, scale) => {
+  const sc = L.scaleNotes(key, scale, 24, 108);
+  return notes.map(n => {
+    let i = sc.indexOf(n[2]);
+    if (i < 0) i = sc.reduce((b, v, j) => Math.abs(v - n[2]) < Math.abs(sc[b] - n[2]) ? j : b, 0);
+    return [n[0], n[1], sc[Math.max(0, Math.min(sc.length - 1, i + steps))], n[3]];
+  });
+};
 
 const BUILD = {
   /* the day: D major, a slow walk down a lane */
@@ -85,7 +95,7 @@ const BUILD = {
   folkedans(L) {
     const ch = ['D', 'G', 'A', 'D', 'D', 'G', 'A', 'D'];
     const lead = eighths(T.folkedans.lead, 0.78).concat(shifted(eighths(T.folkedans.lead, 0.78), 12, 0));
-    const second = above(eighths(T.folkedans.lead, 0.6), -3, 0.5).map(n => [n[0] + 12, n[1], n[2], n[3]]);
+    const second = inKey(L, scale(eighths(T.folkedans.lead, 0.6), 0.83), -2, 'D', 'major').map(n => [n[0] + 12, n[1], n[2], n[3]]);
     return L.buildSong({ title: 'FOLKEDANS', bpm: 72, key: 'D', scale: 'major', bars: 8, beats: 3, swing: 0.15, tracks: [
       track('FIDDLE', 'violin', lead, { vol: 0.82, reverb: 0.25 }),
       track('2ND FIDDLE', 'violin', second, { vol: 0.5, reverb: 0.3, pan: 0.35 }),
