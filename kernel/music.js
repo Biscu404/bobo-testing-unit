@@ -146,8 +146,10 @@ export const Music = {
      floor; the desktop obeys both and the mixer's lobby slider */
   target() {
     if (this.inBoot) return Math.max(0.0002, Math.max(musGain(), BOOT_FLOOR));
-    return Math.max(0.0002, musGain() * Mixer.get('lobby'));
+    return Math.max(0.0002, musGain() * Mixer.get('lobby') * (this.ducked ? 0.1 : 1));
   },
+  /* something bigger is playing (the symphony): the lobby goes to the back, and comes up again after */
+  duck(on) { this.ducked = !!on; this.level(); },
   allowed() {
     if (!CRT.on) return false;
     return this.inBoot || (Vol.lobby && Vol.mus > 0);

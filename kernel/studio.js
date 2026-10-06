@@ -221,20 +221,36 @@ export const Studio = {
   },
 
   /* the song, as audio, played into an offline context.
-     o: { repeat, level, from, to (beats: just that part), only: a track id (a stem), tail (seconds), limit (dB or null) } */
+     o: { repeat, level, from, to (beats: just that part), only: a track id (a stem), tail (seconds), limit (dB or null), sampleRate }
+     A long piece is not built as one great graph (every note of it would be a node the whole time, and the
+     render would crawl): it is rendered in stretches of about twenty seconds, each with a few seconds of tail,
+     and the stretches laid end to end with their tails added into whatever follows. */
   async render(song, o) {
     o = o || {};
     await this.preload(song);
-    const sr = o.sampleRate || 44100, spb = 60 / song.bpm, reps = o.repeat || 1;
-    const b0 = o.from || 0, b1 = o.to == null ? Lang.songLength(song) : o.to, span = b1 - b0;
-    const oc = new OfflineAudioContext(2, Math.ceil((span * reps * spb + (o.tail == null ? 3 : o.tail)) * sr), sr);
-    const mix = makeMix(oc, oc.destination, o.level == null ? 0.9 : o.level, { limit: o.limit });
+    const sr = o.sampleRate || 44100, spb = 60 / song.bpm, reps = o.repeat || 1, tailS = o.tail == null ? 3 : o.tail;
+    const b0 = o.from || 0, b1 = o.to == null ? Lang.songLength(song) : o.to, span = b1 - b0, total = span * reps;
     const tracks = o.only ? song.tracks.map(t => Object.assign({}, t, { solo: t.id === o.only, mute: false })) : song.tracks;
     const copy = Object.assign({}, song, { tracks });
-    mix.apply(tracks, song.bpm, true);
-    /* the part (or the song) repeated: shift by whole parts */
-    for (let r = 0; r < reps; r++) slice(oc, mix, copy, b0, b1, r * span * spb, spb, null);
-    return oc.startRendering();
+    const out = new AudioBuffer({ numberOfChannels: 2, length: Math.ceil((total * spb + tailS) * sr), sampleRate: sr });
+    const chunk = Math.max(8, Math.round(20 / spb / 4) * 4), CT = 3.5;
+    for (let t0 = 0; t0 < total - 1e-9; t0 += chunk) {
+      const t1 = Math.min(total, t0 + chunk), last = t1 >= total - 1e-9;
+      const oc = new OfflineAudioContext(2, Math.ceil(((t1 - t0) * spb + (last ? tailS : CT)) * sr), sr);
+      const mix = makeMix(oc, oc.destination, o.level == null ? 0.9 : o.level, { limit: o.limit });
+      mix.apply(tracks, song.bpm, true);
+      /* each repeat of the part that falls inside this stretch, shifted to where it sits in it */
+      for (let r = 0; r < reps; r++) {
+        const lo = Math.max(t0, r * span), hi = Math.min(t1, (r + 1) * span);
+        if (hi > lo) slice(oc, mix, copy, b0 + lo - r * span, b0 + hi - r * span, (lo - t0) * spb, spb, null);
+      }
+      const buf = await oc.startRendering(), at = Math.round(t0 * spb * sr);
+      for (let c = 0; c < 2; c++) {
+        const dst = out.getChannelData(c), src = buf.getChannelData(Math.min(c, buf.numberOfChannels - 1)), n = Math.min(src.length, dst.length - at);
+        for (let i = 0; i < n; i++) dst[at + i] += src[i];
+      }
+    }
+    return out;
   },
   wav(buf, o) { return wavBlob(buf, o); },
   seconds(song) { return Lang.songLength(song) * 60 / song.bpm; }

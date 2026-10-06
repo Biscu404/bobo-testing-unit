@@ -373,7 +373,7 @@ export default {
         t.decoding = true;
         if (t.spec) {                                   /* a folder disc: press it now */
           try {
-            const buf = t.spec.song ? await Studio.render(t.spec.song, { repeat: t.spec.reps }) : await hifiPress(t.spec, ctx.sampleRate);
+            const buf = t.spec.song ? await Studio.render(t.spec.song, { repeat: t.spec.reps, level: t.spec.level, limit: t.spec.limit }) : await hifiPress(t.spec, ctx.sampleRate);
             if (buf) { t.buf = buf; t.dur = buf.duration; t.peaks = analysePeaks(buf, 480); }
             else t.missing = true;
           } catch (e) { t.missing = true; say('COULD NOT PRESS ' + t.name); }

@@ -14,6 +14,7 @@ import * as ELE from '../elephant/score.js';
 import * as BEK from '../bekkedal/score.js';
 import * as SB from '../standbattle/score.js';
 import * as Lang from '../../kernel/songtext.js';
+import { symphony, unlocked, BARS as SYM_BARS, BPM as SYM_BPM } from '../../kernel/symphony.js';
 import { demoSongs } from '../garage/songs.js';
 
 const TARGET_SECS = 75;                     /* roughly how long a pressed disc plays */
@@ -74,6 +75,9 @@ export function stackFolders() {
     song: sg, bpm: sg.bpm, len: sg.bars * sg.beats * 4, tint: 'white', artist: 'THE GARAGE BAND'
   }])]);
 
-  out.forEach(f => f[2].forEach(d => { d[1].reps = reps(d[1]); }));
+  /* the style meter's symphony: here once the meter has read HAPPY BIRTHDAY for the first time, whole, and once through */
+  if (unlocked()) out.push(['STYLE METER', 'white', [['UNWRAPPED', { song: symphony(Lang), bpm: SYM_BPM, len: SYM_BARS * 16, tint: 'white', artist: 'HOLYTRON / THE STYLE METER', once: true, level: 0.5, limit: -6 }]]]);
+
+  out.forEach(f => f[2].forEach(d => { d[1].reps = d[1].once ? 1 : reps(d[1]); }));
   return out;
 }
