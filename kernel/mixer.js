@@ -19,7 +19,8 @@ const CHANNELS = [
   { id: 'garden',     n: 'GARDEN',     app: 'garden' },
   { id: 'elephant',   n: 'ELEPHANT',   app: 'elephant' },
   { id: 'bekkedal',   n: 'BEKKEDAL',   app: 'bekkedal' },
-  { id: 'standbattle', n: 'STAND BATTLE', app: 'standbattle' }
+  { id: 'standbattle', n: 'STAND BATTLE', app: 'standbattle' },
+  { id: 'garage',     n: 'THE GARAGE', app: 'garage' }
 ];
 
 let st = {};

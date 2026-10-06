@@ -552,6 +552,7 @@ html, body {
 }
 .titlebar .t { flex: 1 1 auto; padding: 0 6px; overflow: hidden; white-space: nowrap; }
 .titlebar .th,
+.titlebar .z,
 .titlebar .m,
 .titlebar .f,
 .titlebar .x {
@@ -560,6 +561,7 @@ html, body {
   border-left: 2px solid #000000;
 }
 .titlebar .th:hover,
+.titlebar .z:hover,
 .titlebar .m:hover,
 .titlebar .f:hover,
 .titlebar .x:hover { background: #000000; color: var(--phos); }
@@ -1441,7 +1443,7 @@ textarea.editor {
    ========================================================================== */
 #tube, #tube * { cursor: var(--cur-arrow, default); }
 #tube .icon, #tube .tbtn, #tube .mi, #tube .menuitem, #tube button,
-#tube .ddlink, #tube .ddmacro, #tube .titlebar .x, #tube .titlebar .m, #tube .titlebar .f, #tube .titlebar .th,
+#tube .ddlink, #tube .ddmacro, #tube .titlebar .x, #tube .titlebar .m, #tube .titlebar .f, #tube .titlebar .th, #tube .titlebar .z,
 #tube .shopcard, #tube .nchip { cursor: var(--cur-hand, pointer); }
 #tube .titlebar { cursor: var(--cur-move, move); }
 #tube input, #tube textarea { cursor: var(--cur-text, text); }
@@ -1731,3 +1733,27 @@ textarea.editor {
   display: block;
 }
 
+
+/* ---- dragging files (kernel/dnd.js) ---------------------------------------- */
+#dndghost {
+  position: absolute; z-index: 2147483000; pointer-events: none; opacity: 0.85;
+  width: 84px; text-align: center; color: var(--phos);
+}
+#dndghost svg { width: 36px; height: 36px; display: block; margin: 0 auto 2px auto; }
+#dndghost .lbl { display: inline-block; padding: 0 3px; background: #FFFFFF; color: #000000; max-width: 84px; overflow: hidden; white-space: nowrap; }
+.icon.dndhot { background: #00AA00; outline: 1px dashed #55FF55; outline-offset: -1px; }
+.win-folder.dndhot, #desktop.dndhot { outline: 3px dashed #55FF55; outline-offset: -5px; }
+.win-trash.dndhot { outline: 3px dashed #FF5555; outline-offset: -5px; }
+#icons .icon.dragging { z-index: 2147482000; }
+.popmenu .mi .k { float: right; margin-left: 22px; color: #555555; }
+.popmenu .mi:hover .k { color: #AAAAAA; }
+
+/* ---- zoom button on the title bar (kernel/zoom.js) --------------------------- */
+.titlebar .z.on { background: #000000; color: #FFFF55; }
+
+/* ---- the built-in Help window (kernel/help.js) --------------------------------- */
+.helpnav { flex: 0 0 168px; background: #0000AA; padding: 6px 0; overflow-y: auto; }
+.helptopic { padding: 3px 10px; cursor: pointer; color: #FFFFFF; }
+.helptopic:hover { background: #5555FF; }
+.helptopic.on { background: #FFFF55; color: #000000; }
+.helppane { flex: 1 1 auto; min-width: 0; overflow-y: auto; padding: 8px 12px; }

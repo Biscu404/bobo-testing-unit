@@ -28,6 +28,8 @@ export const registry = {
   bottle: () => import('../apps/bottle/index.js'),
   notes: () => import('../apps/notes/index.js'),
   neofetch: () => import('../apps/neofetch/index.js'),
+  trash: () => import('../apps/trash/index.js'),
+  garage: () => import('../apps/garage/index.js'),
 
 
 };

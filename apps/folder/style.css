@@ -1,2 +1,9 @@
-.win-folder { padding: 8px; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 8px; overflow-y: auto; background: #000000; height: 100%; box-sizing: border-box; position: relative; }
+.win-folder { padding: 8px; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 8px; overflow-y: auto; background: #000000; flex: 1 1 auto; min-height: 0; box-sizing: border-box; position: relative; user-select: none; }
 .win-folder .icon { position: relative; }
+.win-folder .icon.dragging { opacity: 0.5; }
+.fbar { position: static; border-top: 0; border-bottom: 1px solid #555555; flex: none; height: 26px; box-sizing: border-box; display: flex; align-items: center; gap: 6px; padding: 0 6px; }
+.fbar .appbtn:disabled { background: #555555; color: #000000; cursor: default; }
+.fbar .fwhere { flex: 1 1 auto; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.fbar .fcount { color: #000000; padding-left: 6px; white-space: nowrap; }
+.fempty { padding: 16px; color: #AAAAAA; width: 100%; }
+.fband { position: absolute; border: 1px dotted #FFFFFF; background: rgba(85, 255, 255, 0.14); pointer-events: none; }

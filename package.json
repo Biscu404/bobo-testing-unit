@@ -18,7 +18,8 @@
     "dist:win": "electron-builder --win --publish never",
     "dist:linux": "electron-builder --linux --publish never",
     "check:package": "node scripts/check-package.mjs",
-    "check:listeners": "node scripts/check-listeners.mjs"
+    "check:listeners": "node scripts/check-listeners.mjs",
+    "check:music": "node scripts/check-music.mjs"
   },
   "devDependencies": {
     "electron": "^44.5.1",

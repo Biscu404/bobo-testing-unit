@@ -6,7 +6,7 @@ import { CRT, Vol, musGain } from '../../kernel/hardware.js';
 import { Mixer } from '../../kernel/mixer.js';
 import { CK_SAVE, CK_W, CK_H, CK_T, CK_LV, CK_STORY, CK_END, CK_KID, CK_ACH, CK_HZ, CK_SONGS } from './data.js';
 import { VGA16 } from '../../kernel/god.js';
-import { scopedListeners } from '../lifecycle.js';
+import { scopedListeners, whenGone } from '../lifecycle.js';
 import { drawJesse, moodFor } from './jesse.js';
 
 /* ---- the rules -----------------------------------------------------------
@@ -1211,11 +1211,8 @@ export default {
       setTimeout(() => cv.focus(), 60);
       raf = requestAnimationFrame(frame);
 
-      const watch = setInterval(() => {
-        if (document.body.contains(cv)) return;
-        clearInterval(watch); alive = false; Song.stop(); save();
-        if (raf) cancelAnimationFrame(raf);
-      }, 900);
+      /* the window closing is seen the moment it happens, not on the next poll */
+      whenGone(cv, () => { alive = false; Song.stop(); save(); if (raf) cancelAnimationFrame(raf); });
     }
   });
   }

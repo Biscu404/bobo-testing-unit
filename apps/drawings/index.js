@@ -5,6 +5,20 @@ import { fs as vfs } from '../../kernel/vfs.js';
 import { lampDip } from '../../kernel/hardware.js';
 import { Vault, VaultURL } from '../../kernel/vault.js';
 import { showMenu } from '../../kernel/desktop.js';
+import { setWallpaperFromSrc, WALL_MODES } from '../../kernel/wallpaper.js';
+import { changed } from '../../kernel/vfs_ops.js';
+
+/* a sheet's pixels as a data URL, whether it is kept inline or in the vault */
+async function sheetSrc(rec) {
+  let src = rec.data;
+  if (!src && rec.vault) {
+    const url = await VaultURL.url(rec.vault);
+    if (!url) return null;
+    const blob = await (await fetch(url)).blob();
+    src = await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob); });
+  }
+  return src || null;
+}
 
 function openCrayon(rec) { openWindow('crayon', rec).catch(() => {}); }
 
@@ -69,6 +83,16 @@ export default {
               a.download = rec.name + '.png';
               a.href = src;
               a.click();
+            } },
+          { label: 'SET AS BACKGROUND', run: async () => { const src = await sheetSrc(rec); if (src) setWallpaperFromSrc(src, 'fill'); else toast('THAT SHEET IS GONE.'); } },
+          { label: 'BACKGROUND STYLE', sub: WALL_MODES.map(m => ({ label: m.label, run: async () => { const src = await sheetSrc(rec); if (src) setWallpaperFromSrc(src, m.id); } })) },
+          { label: 'SAVE AS A FILE (HOME)', run: async () => {
+              const src = await sheetSrc(rec);
+              if (!src) { toast('THAT SHEET IS GONE.'); return; }
+              const name = await vfs.uniqueName('::/Home', rec.name.replace(/\.png$/i, '') + '.PNG');
+              await vfs.write('::/Home/' + name, { type: 'image', src });
+              changed('::/Home');
+              toast('SAVED: ::/Home/' + name);
             } },
           { sep: true },
           { label: 'THROW AWAY', run: () => {

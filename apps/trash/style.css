@@ -1,0 +1,8 @@
+.win-trash { flex: 1 1 auto; min-height: 0; overflow-y: auto; background: #000000; padding: 4px; user-select: none; }
+.trow { display: flex; align-items: center; gap: 8px; padding: 2px 6px; cursor: pointer; color: #FFFFFF; }
+.trow .tic svg { width: 24px; height: 24px; display: block; }
+.trow .tnm { flex: 0 0 38%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.trow .tfr { flex: 1 1 auto; color: #AAAAAA; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.trow.sel { background: #0000AA; }
+.trow:hover { background: #555555; }
+.trow.sel:hover { background: #0000AA; }

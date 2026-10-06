@@ -243,6 +243,7 @@ export default {
       mk('NEW', newSheet);
       mk('SAVE', save);
       mk('EXPORT PNG', exportPng);
+      mk('BACKGROUND', () => import('../../kernel/wallpaper.js').then(m => m.setWallpaperFromSrc(cv.toDataURL('image/png'), 'fill')));
       mk('DRAWINGS', () => openWindow('drawings').catch(() => {}));
 
       const wrap = document.createElement('div');

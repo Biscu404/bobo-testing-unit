@@ -86,10 +86,11 @@ function createWindow() {
     win.webContents.setZoomFactor(1);
     win.webContents.setVisualZoomLevelLimits(1, 1).catch(() => {});
   });
+  win.webContents.on('zoom-changed', () => { win.webContents.setZoomFactor(1); });
   win.webContents.on('before-input-event', (ev, input) => {
     if (input.type !== 'keyDown') return;
-    const mod = input.control || input.meta;
-    if (mod && ['+', '-', '=', '0', '_'].includes(input.key)) ev.preventDefault();
+    /* Ctrl +/-/0 now reach the page: each window zooms itself (kernel/zoom.js).
+       The browser's own page zoom stays locked, see zoom-changed below. */
     if (input.key === 'F11') { ev.preventDefault(); win.setFullScreen(!win.isFullScreen()); }
     if (!app.isPackaged && input.key === 'F12') win.webContents.toggleDevTools();
   });

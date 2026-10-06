@@ -5,7 +5,8 @@ import { fs as vfs } from '../../kernel/vfs.js';
 import { HIFI_DISCS, HFN, HFP, hifiPress, hifiTags } from './discs.js';
 import { stackFolders } from './library.js';
 import { Vault } from '../../kernel/vault.js';
-import { scopedListeners } from '../lifecycle.js';
+import { scopedListeners, whenGone } from '../lifecycle.js';
+import { Studio } from '../../kernel/studio.js';
 
 export default {
   id: 'hifi',
@@ -391,7 +392,7 @@ export default {
         t.decoding = true;
         if (t.spec) {                                   /* a folder disc: press it now */
           try {
-            const buf = await hifiPress(t.spec, ctx.sampleRate);
+            const buf = t.spec.song ? await Studio.render(t.spec.song, { repeat: t.spec.reps }) : await hifiPress(t.spec, ctx.sampleRate);
             if (buf) { t.buf = buf; t.dur = buf.duration; t.peaks = analysePeaks(buf, 480); }
             else t.missing = true;
           } catch (e) { t.missing = true; say('COULD NOT PRESS ' + t.name); }
@@ -1353,10 +1354,7 @@ export default {
       loadLibrary();
       applyAll();
       raf = requestAnimationFrame(frame);
-      const watch = setInterval(() => {
-        if (document.body.contains(cv)) return;
-        clearInterval(watch); alive = false; teardown();
-      }, 900);
+      whenGone(cv, () => { alive = false; teardown(); });
       info.textContent = 'SPACE · ARROWS · N/P · 1-9 EQ · B BYPASS · DROP FILES ON IT';
   }
 };

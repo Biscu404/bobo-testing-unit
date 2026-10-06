@@ -62,6 +62,47 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   (`templeos_ls`) and restores it before `kernel/boot.js` loads. Chromium's own localStorage flush can lag by more than
   ten seconds, so without it a power cut loses recent saves; `check:persist` measures exactly that.
 
+- **Files are real.** `kernel/vfs.js` is the key-value store; `kernel/vfs_ops.js` hangs `move`, `copy`, `rename`, `mkdir`,
+  `trash`, `trashList`, `trashRestore`, `trashPurge`, `trashEmpty`, `restoreSystem` and `isSystem` on the same `fs` object (apps get
+  them as `ctx.fs.*`) and announces every change with a `vfs-changed` event, which the desktop and every folder window obey.
+  **Delete never destroys:** it moves the thing to `::/.Trash/<id>/` (the RecycleBin icon / `apps/trash`). Names that start with
+  a dot (`.keep`, `.Trash`) are hidden from `list()` unless asked for. `restoreSystem()` writes back only the entries of
+  `assets/seed.json` that are missing (pulling a deleted one out of the bin, leaving moved/renamed/edited ones alone, never
+  resetting the desktop): it is in the desktop menu, File, Help and the terminal (`RESTORE`). `SEED_VERSION` in `vfs.js` must be
+  bumped whenever `seed.json` gains an entry, or existing installs never see it.
+- **Dragging files** is `kernel/dnd.js` (pointer events, one mechanism for every source). A drop zone is any element with
+  `data-drop`: a folder path, `::` (the desktop) or `@trash`. Desktop icons, folder windows and the bin all use it; Ctrl at the
+  drop copies, Esc cancels. The shared commands (copy/cut/paste/duplicate/rename/delete/undo/properties/keys) are
+  `kernel/fileops.js`, the menus `kernel/filemenus.js`; `Active` in `fileops.js` says which list of files owns Delete/F2/Ctrl+C:
+  the desktop or one folder window (set `win._fileEnv`), and none for any other window. The menu bar is `kernel/menubar.js`.
+- **Right-click.** `kernel/ctxguard.js` suppresses the browser menu everywhere and gives text fields a cut/copy/paste menu; the
+  desktop menu opens only on the bare desktop (never from inside a window); `wm.js` keeps the right mouse button away from any
+  app that does not declare `rightClick: true` (Sweeper does). The `contextmenu` event itself is never blocked, so an app can
+  still draw its own menu.
+- **Zoom.** Every window has `[Z]` (and Ctrl +/-/0, Ctrl+wheel): `kernel/zoom.js` applies CSS `zoom` to the window body, so the
+  app lays itself out again, and remembers the level per app (`templeos.zoom.v1`). A window that is a fixed canvas scaled to fit
+  the screen in fullscreen suspends it. The page's own zoom stays locked (`electron/main.js`).
+- **Help** is built in (`kernel/help.js`, pages in `help_text.js`, DolDoc): it is not a file on the VFS, so it cannot be deleted.
+- **The Jäger passes out.** `Drunk.drink()` counts measures in the blood (one leaves every 30 s); at ten `kernel/blackout.js`
+  takes the whole window (not just the tube) for ~16 s: ten altered scenes (`blackout_a/b.js`, drawn with the sixteen colours,
+  bent by `blackout_fx.js`), unskippable, calmer and without the harshest effects under `prefers-reduced-motion`.
+- **Real instruments.** `kernel/instruments.js` is a sampler over `assets/instruments/` (30 instruments + a drum kit, samples of the
+  MIT-licensed FluidR3_GM soundfont, built by `node scripts/make-instruments.mjs`; held instruments carry seamless loop points).
+  `kernel/studio.js` is the mixer and scheduler (per-track volume/pan/room/mute/solo, a master that follows the MUS knob and the
+  taskbar mixer's THE GARAGE channel, a limiter): `Studio.play(song)`, `Studio.live()`, `Studio.render(song)` (offline, for WAV
+  and for TheStack discs). Apps reach it as `ctx.studio`.
+
+### Writing music (for Claude, and anyone else)
+Music is data, not oscillator code. A song is `{ v, title, bpm, key, scale, bars, beats, swing, tracks: [{ id, name, inst, vol, pan,
+reverb, mute, solo, notes: [[startBeat, durBeats, midi, vel0..1]], hits: [[startBeat, 'kick', vel]] }] }`, kept as `.SONG` files
+(`type: 'song'`) and opened by the Garage. Write it in the text notation of `kernel/songtext.js` (read its header comment):
+`buildSong({ title, bpm, key, scale, bars, tracks: [{ name, inst: 'piano', notes: 'C4:q E4 G4:h | C4+E4+G4:w' }, { name, drums: { kick: 'x...x...', snare: '....x...' } }] })`,
+with `bassLine`, `chordLine`, `progression` and `accompany` for a band that fits the key. `apps/garage/songs.js` is a worked example
+of seven songs. Instrument ids: piano epiano harpsichord organ musicbox marimba xylophone vibes glock steeldrum kalimba nylon
+steelgtr eguitar harp pizz bass upright violin cello strings flute clarinet trumpet sax ocarina choir bells timpani woodblock,
+and `drums` (kick snare stick clap hat openhat lotom midtom hitom crash ride cowbell tamb shaker). To add a demo song, add it
+to `demoSongs()`; it shows up in the Garage's OPEN list and as a disc in TheStack's THE GARAGE folder.
+
 ## The App Contract
 Every app is a module with a default export shaped exactly like this:
 
@@ -93,9 +134,14 @@ ctx.fs.list(dir) // -> Promise<string[]>
 ctx.fs.remove(path) // -> Promise<void>
 ctx.save(key, value) // -> Promise<void> app-scoped settings/progress
 ctx.load(key) // -> Promise<any>
-ctx.openWindow(appId) // launch another app
+ctx.openWindow(appId, args) // launch another app
 ctx.close() // close this app's own window
+ctx.setTitle(text) // retitle this window and its taskbar button
+ctx.toast(msg) // the bottom-of-screen message
+ctx.ask(title, default, cb) // an in-glass name box
+ctx.studio // the instruments and the mixer: see "Real instruments"
 ```
+An app module may also say `rightClick: true` (it uses the right mouse button) and `fluid: true` (it lays itself out off its own size).
 
 ## CSS Variables from theme.css
 Not all extracted yet, but typically `#FFFFFF`, `#AAAAAA`, `#555555`, `#FFFF55` etc. (Standard 16-color CGA/VGA palette).
@@ -235,6 +281,14 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   exercises directly, with synthetic corridors where the trap is
   constructed rather than merely hoped for, and a sweep of every real map.
   **Palette:** this app is the second explicit, user-requested exception to the machine's base 16-colour rule above — see `apps/bekkedal/CLAUDE.md` and `.claude/rules/bekkedal-art.md` for the full doctrine.
+- `folder`: a folder window: BACK / UP / path, select (click, Ctrl, Shift, rubber band), drag and drop to move or Ctrl-copy,
+  right-click menus, F2/Del/Ctrl+C/X/V/D/A/Z, Enter opens, Backspace goes up. `trash`: the RecycleBin (put back, delete for good,
+  drag things out). `viewer`: pictures and video; BACKGROUND (five fits), SAVE A COPY, DELETE, arrow keys walk the folder.
+- `garage`: `apps/garage/index.js` - THE GARAGE, a band in a box: a track list with an instrument each (30 real instruments +
+  drum kit, `picker.js`), a note grid (`grid.js`; MAGIC NOTES keeps every row inside the key so nothing is wrong), a live keyboard
+  (`keys.js`; computer keys, REC), a mixer per track (`tracks.js`), BAND IN A BOX (drums/bass/chords that fit), undo, SAVE/OPEN to
+  `::/Home/Songs/*.SONG`, EXPORT .WAV. **LEARN** (`lessons*.js`) is the manual for a five-year-old: eight tiny interactive lessons
+  (sounds, high and low, the beat, five magic notes, happy and sad, chords, patterns, make a song), a star each.
 - `sweeper`: `apps/sweeper/index.js` - Sweeper, a Hollow-Knight-flavoured minesweeper on one scalable canvas (`gfx.js`
   draws a 960x640 sheet onto whatever size the window is, so fullscreen is bigger, not blurrier). Two ways in: the plain
   game in three sizes, and a **campaign** — an ink-on-vellum *map* of six regions / 18 rooms (`map.js`, data in `data.js`)
@@ -247,8 +301,12 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   respirator round his neck. **That portrait is a third user-requested exception to the 16-colour rule** (a face needs a
   skin tone); nothing else in the app leaves VGA16. On a win he speaks first, in a box that fits what he says, and the
   BATCH COMPLETE panel does not start until he has finished.
-- `bottle`: a Jägermeister bottle (green slab, stepped shoulder, orange label, stag with a lit cross), a poured stream that
-  is a real arc aimed at the glass, glugs, ripples and spray, and a drink that tips the glass. Drinking drives `kernel/drunk.js`.
+- `bottle`: a Jägermeister bottle and tumbler, each baked once and turned by pixel sampling (`raster.js`) with the liquid poured into
+  the *turned* interior: a surface that stays level with the room (plus a slosh) and is moved until exactly the right number of
+  pixels are under it, so the liquid pools in the neck, runs to the lip and spills over a rim by itself. The pour (`pour.js`) is a
+  feedback loop on the head of liquid above the lip (a weir), the drink (`drink.js`) has a hand, an arm and a face, and the liquor runs
+  over the rim into the mouth. Clicks queue and speed everything up (spam a bottle). Drinking drives `kernel/drunk.js`; ten measures
+  and the window blacks out.
 - `hifi` (TheStack): a disc library with **folders** — one for the lobby's four variants and one per app that scores itself
   with music (`apps/hifi/library.js` lifts each app's own score into a disc spec; a disc is pressed the first time it is played).
 - `standbattle`: `apps/standbattle/index.js` - Stand Battle Arena, a JoJo's Bizarre Adventure roguelike combat prototype (see `docs/stand-battle-arena-spec.md`), ported in full from the jojo-roguelike repo's current, far more developed build (replacing this repo's earlier prototype port). Playable Jotaro Kujo/Star Platinum vs. Morioh enemies and boss Yoshikage Kira/Killer Queen, across a 6-node Act 1 (Morioh) map. Zero meta-progression by design; internal 480×270 canvas on a 720×260 belt plane (x, z) with a tracking camera, integer-only upscale.

@@ -9,7 +9,12 @@
      too much   the eyelids come down every few seconds, and stay a moment
 
    Every drink also lands as a kick that rides over the level and dies away
-   in a second, so each measure is felt when it goes down. */
+   in a second, so each measure is felt when it goes down.
+
+   And there is a limit. Measures in the blood are counted separately from how
+   drunk it looks: one leaves again every half minute, so a few drinks over an
+   evening are fine and a bottle spammed down in a minute is not. At ten the
+   whole window goes (kernel/blackout.js). */
 const SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute;pointer-events:none" aria-hidden="true">' +
   '<filter id="drunkfx" x="-6%" y="-6%" width="112%" height="112%" color-interpolation-filters="sRGB">' +
   '<feTurbulence id="dfT" type="fractalNoise" baseFrequency="0.005 0.016" numOctaves="1" seed="4" result="n"/>' +
@@ -21,11 +26,37 @@ const SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style=
 
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 
+const BLACKOUT_AT = 10, ONE_GONE_MS = 30000;
+
 export const Drunk = {
   level: 0,
   kick: 0,
   raf: null,
+  bac: 0, bacAt: 0, out: false,
   svg: null, lids: null, fx: {},
+  /* one measure, drunk */
+  drink() {
+    const now = performance.now();
+    this.bac = Math.max(0, this.bac - (now - this.bacAt) / ONE_GONE_MS) + 1;
+    this.bacAt = now;
+    this.add(0.18);
+    if (this.bac >= BLACKOUT_AT && !this.out) this.blackout();
+  },
+  blackedOut() { return this.out; },
+  async blackout() {
+    if (this.out) return;
+    this.out = true;
+    try {
+      const m = await import('./blackout.js');
+      m.runBlackout(() => {
+        this.out = false;
+        this.bac = 3.5;
+        this.level = Math.max(this.level, 0.55);
+        this.kick = 1;
+        this._ensureLoop();
+      });
+    } catch (e) { this.out = false; throw e; }
+  },
   add(n) {
     this.level = Math.min(1, this.level + n);
     this.kick = 1;

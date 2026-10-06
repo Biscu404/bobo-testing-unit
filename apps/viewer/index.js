@@ -1,18 +1,18 @@
 import { VaultURL } from '../../kernel/vault.js';
-import { ditherVGA } from '../../kernel/imaging.js';
-
-const VID = {
-  maxDim: 320,   /* longest edge of the dithered picture */
-  fps: 15        /* the tube is not going to do sixty */
-};
-const MODES = ['RGB', 'VGA16', 'GREEN'];
+import { showMenu } from '../../kernel/menus.js';
+import { wallpaperMenu } from '../../kernel/wallpaper.js';
+import { deletePaths } from '../../kernel/fileops.js';
+import { dirOf, baseName, joinPath } from '../../kernel/vfs_ops.js';
+import { toast } from '../../kernel/wm.js';
+import { whenGone } from '../lifecycle.js';
+import { playVideo } from './video.js';
 
 export default {
   id: 'viewer',
   title: 'VIEWER',
   icon: '',
-  width: 420,
-  height: 350,
+  width: 460,
+  height: 380,
   resizable: true,
 
   async mount(root, ctx, args) {
@@ -20,142 +20,107 @@ export default {
     _style.rel = 'stylesheet';
     _style.href = 'apps/viewer/style.css';
     root.appendChild(_style);
+    root.style.display = 'flex';
+    root.style.flexDirection = 'column';
+    root.tabIndex = 0;
+    root.style.outline = 'none';
 
-    const path = args?.path || '';
-    let src = '';
-    let isVideo = args?.type === 'video';
-
-    if (path) {
-      const file = await ctx.fs.read(path);
-      if (file) {
-        isVideo = file.type === 'video';
-        src = isVideo && file.vault ? (await VaultURL.url(file.vault)) : (file.src || '');
-      }
-    }
+    let path = args?.path || '';
+    let stop = null, siblings = [], isVideo = false, actual = false;
 
     const pane = document.createElement('div');
     pane.className = 'imgpane';
-
-    if (!isVideo) {
-      const img = document.createElement('img');
-      img.src = src;
-      img.alt = path;
-      pane.appendChild(img);
-      root.appendChild(pane);
-      return;
-    }
-
-    if (!src) {
-      pane.textContent = 'THAT VIDEO IS NOT ON THE DISK ANY MORE.';
-      root.appendChild(pane);
-      return;
-    }
-
-    /* the video itself is only ever an offscreen decode source -- what's on
-       screen is a canvas the frames get crushed onto, the same as any other
-       picture on this machine. No native <video> element means no native
-       player chrome either: no browser context menu, no picture-in-picture. */
-    pane.className = 'imgpane vidpane';
-    const cv = document.createElement('canvas');
-    cv.className = 'vidcv';
-    const work = document.createElement('canvas');
-    pane.appendChild(cv);
-
-    const video = document.createElement('video');
-    video.src = src;
-    video.loop = true;
-    video.muted = true;
-    video.playsInline = true;
-    video.setAttribute('playsinline', '');
-
     const bar = document.createElement('div');
-    bar.className = 'appbar';
-    const mk = (label, fn) => {
+    bar.className = 'appbar vbar';
+    root.appendChild(pane);
+    root.appendChild(bar);
+    whenGone(root, () => { if (stop) stop(); stop = null; });
+
+    const mk = (label, title, fn, host) => {
       const b = document.createElement('button');
       b.className = 'appbtn';
       b.textContent = label;
-      b.addEventListener('mousedown', ev => {
-        ev.stopPropagation();
-        if (window.Snd && window.Snd.click) window.Snd.click();
-        fn(b);
-      });
-      bar.appendChild(b);
+      b.title = title;
+      b.addEventListener('mousedown', ev => { ev.stopPropagation(); if (window.Snd) window.Snd.click(); fn(b, ev); });
+      (host || bar).appendChild(b);
       return b;
     };
-    const status = document.createElement('span');
-    status.className = 'godword';
+    const info = document.createElement('span');
+    info.className = 'godword';
 
-    let mode = 1;   /* 0 raw, 1 VGA16 dither, 2 mono phosphor */
-    mk('PAUSE', b => {
-      if (video.paused) { video.play().catch(() => {}); b.textContent = 'PAUSE'; }
-      else { video.pause(); b.textContent = 'PLAY'; }
-    });
-    mk('DITHER: VGA16', b => {
-      mode = (mode + 1) % 3;
-      b.textContent = 'DITHER: ' + MODES[mode];
-    });
-    mk('LOOP', b => { video.loop = !video.loop; b.textContent = video.loop ? 'LOOP' : 'ONCE'; });
-    bar.appendChild(status);
-
-    root.appendChild(pane);
-    root.appendChild(bar);
-
-    let alive = true, raf = null;
-    let sized = false;
-    const size = () => {
-      const W = video.videoWidth || 320, H = video.videoHeight || 240;
-      const s = Math.min(1, VID.maxDim / Math.max(W, H));
-      cv.width = work.width = Math.max(2, Math.round(W * s));
-      cv.height = work.height = Math.max(2, Math.round(H * s));
-      sized = true;
+    /* the other pictures in the same folder, so the arrow keys can walk through them */
+    async function findSiblings() {
+      if (!path) return;
+      const list = await ctx.fs.list(dirOf(path));
+      siblings = list.filter(i => i.type === 'image' || i.type === 'video')
+        .map(i => joinPath(dirOf(path), i.name))
+        .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+    }
+    const step = d => {
+      if (siblings.length < 2) return;
+      const i = siblings.indexOf(path);
+      show(siblings[(i + d + siblings.length) % siblings.length]);
     };
 
-    video.addEventListener('loadedmetadata', () => { size(); video.play().catch(() => {}); });
-    video.addEventListener('error', () => {
-      status.textContent = 'CANNOT DECODE THIS ONE';
-      if (window.Snd && window.Snd.err) window.Snd.err();
-    });
-
-    let last = 0, frames = 0, fpsAt = 0, shown = 0;
-    const tick = ts => {
-      if (!alive || !document.body.contains(cv)) { alive = false; return; }
-      raf = requestAnimationFrame(tick);
-      if (!sized && video.videoWidth) size();
-      if (!sized || video.readyState < 2) return;
-      if (ts - last < 1000 / VID.fps) return;
-      last = ts;
-      const g = work.getContext('2d');
-      const o = cv.getContext('2d');
-      if (!g || !o) return;
-      try { g.drawImage(video, 0, 0, work.width, work.height); }
-      catch (e) { return; }
-      if (mode === 1) {
-        ditherVGA(g, work.width, work.height);
-      } else if (mode === 2) {
-        const id = g.getImageData(0, 0, work.width, work.height);
-        const d = id.data;
-        for (let i = 0; i < d.length; i += 4) {
-          const y = (d[i] * 0.30 + d[i + 1] * 0.59 + d[i + 2] * 0.11);
-          const q = y > 190 ? [85, 255, 85] : y > 120 ? [0, 170, 0] : y > 60 ? [0, 90, 0] : [0, 0, 0];
-          d[i] = q[0]; d[i + 1] = q[1]; d[i + 2] = q[2];
-        }
-        g.putImageData(id, 0, 0);
+    async function show(p) {
+      if (stop) { stop(); stop = null; }
+      path = p;
+      pane.replaceChildren();
+      pane.className = 'imgpane';
+      bar.replaceChildren();
+      const file = p ? await ctx.fs.read(p) : null;
+      if (p) ctx.setTitle(p);
+      if (!file) {
+        pane.textContent = p ? 'THAT PICTURE IS NOT ON THE DISK ANY MORE.' : 'NO PICTURE. OPEN ONE FROM A FOLDER.';
+        return;
       }
-      o.drawImage(work, 0, 0);
-      frames++;
-      if (ts - fpsAt > 1000) { shown = frames; frames = 0; fpsAt = ts; }
-      status.textContent = cv.width + 'x' + cv.height + '  ' + shown + ' FPS';
-    };
-    raf = requestAnimationFrame(tick);
+      isVideo = file.type === 'video';
+      const src = isVideo && file.vault ? (await VaultURL.url(file.vault)) : (file.src || '');
+      if (siblings.length > 1) {
+        mk('<', 'PREVIOUS PICTURE (LEFT ARROW)', () => step(-1));
+        mk('>', 'NEXT PICTURE (RIGHT ARROW)', () => step(1));
+      }
+      if (isVideo) {
+        if (!src) { pane.textContent = 'THAT VIDEO IS NOT ON THE DISK ANY MORE.'; }
+        else stop = playVideo(pane, bar, src);
+      } else {
+        const img = document.createElement('img');
+        img.src = src;
+        img.alt = p;
+        img.title = 'CLICK TO SWITCH BETWEEN FIT AND ACTUAL SIZE';
+        img.addEventListener('load', () => { info.textContent = img.naturalWidth + 'x' + img.naturalHeight; });
+        img.addEventListener('click', () => { actual = !actual; pane.classList.toggle('actual', actual); });
+        pane.classList.toggle('actual', actual);
+        pane.appendChild(img);
+      }
+      mk('BACKGROUND', 'USE THIS AS THE DESKTOP BACKGROUND, IN ONE OF FIVE WAYS', (b) => {
+        const r = b.getBoundingClientRect();
+        showMenu(document.getElementById('ctxmenu'), r.left, r.top - 130, wallpaperMenu(p, isVideo));
+      });
+      mk('SAVE A COPY', 'MAKE A COPY NEXT TO THIS ONE', async () => {
+        try { toast('SAVED A COPY: ' + baseName(await ctx.fs.copy(p, dirOf(p)))); } catch (e) { toast(e.message); }
+      });
+      mk('DELETE', 'PUT THIS IN THE RECYCLE BIN', async () => {
+        const i = siblings.indexOf(p);
+        if (await deletePaths([p])) {
+          siblings = siblings.filter(x => x !== p);
+          if (siblings.length) show(siblings[Math.min(i, siblings.length - 1)]); else ctx.close();
+        }
+      });
+      bar.appendChild(info);
+    }
 
-    this._stopVideo = () => {
-      alive = false;
-      if (raf) cancelAnimationFrame(raf);
-      try { video.pause(); video.src = ''; } catch (e) {}
-    };
+    root.addEventListener('keydown', ev => {
+      if (ev.key === 'ArrowLeft') { ev.preventDefault(); step(-1); }
+      else if (ev.key === 'ArrowRight') { ev.preventDefault(); step(1); }
+      else if (ev.key === 'Delete') { ev.preventDefault(); bar.querySelector('button:last-of-type')?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); }
+    });
+    root.addEventListener('mousedown', () => root.focus());
+
+    await findSiblings();
+    await show(path);
+    setTimeout(() => root.focus(), 50);
   },
 
-  unmount() {
-    if (this._stopVideo) { this._stopVideo(); this._stopVideo = null; }
-  }
+  unmount() {}
 };

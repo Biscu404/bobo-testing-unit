@@ -1,8 +1,11 @@
 import { fs } from './vfs.js';
+import './vfs_ops.js';
 import { registry } from './registry.js';
 import { Snd } from './snd.js';
 import { lampDip } from './hardware.js';
 import { Cos } from './cos.js';
+import { attachZoom } from './zoom.js';
+import { Studio } from './studio.js';
 
 let zTop = 100;
 let cascadeN = 0;
@@ -120,6 +123,7 @@ export function createWindow(opts) {
 
   const body = document.createElement('div');
   body.className = 'wbody';
+  let rec = null;                 /* the window's entry in openWins, below */
 
   if (opts.build) opts.build(body);
 
@@ -182,6 +186,7 @@ export function createWindow(opts) {
       if (fixedCanvas) win.classList.add('scaled');
       fbtn.textContent = '[\u25A3]';
       full = true;
+      if (fixedCanvas && zoom) zoom.suspend(true);
       fitScaled();
     } else {
       win.classList.remove('full', 'scaled');
@@ -190,6 +195,7 @@ export function createWindow(opts) {
       win.style.width = saved.w; win.style.height = saved.h;
       fbtn.textContent = '[\u25A1]';
       full = false;
+      if (zoom) zoom.suspend(false);
     }
     raise(win);
     Snd.open();
@@ -199,10 +205,15 @@ export function createWindow(opts) {
   const toggleFull = () => setFull(!full);
   fbtn.addEventListener('mousedown', ev => { ev.stopPropagation(); toggleFull(); });
   bar.addEventListener('dblclick', ev => {
-    if (ev.target === x || ev.target === mbtn || ev.target === fbtn || ev.target.className === 'th') return;
+    if (ev.target === x || ev.target === mbtn || ev.target === fbtn || ev.target.className === 'th' || ev.target.className === 'z') return;
     toggleFull();
   });
   window.addEventListener('resize', fitScaled);
+  const zoom = opts.zoomable === false ? null : attachZoom({
+    win, body, bar, before: bar.querySelector('.th') || mbtn,
+    key: () => (rec && rec.appId) || opts.appId || null,
+    isActive: () => btn.classList.contains('active') && !win.classList.contains('hidden')
+  });
   const onKey = ev => {
     if (ev.key !== 'F11' || !btn.classList.contains('active') || win.classList.contains('hidden')) return;
     ev.preventDefault();
@@ -217,13 +228,23 @@ export function createWindow(opts) {
     else { raise(win); Snd.select(); }
   });
 
-  const rec = { win: win, btn: btn, title: opts.title, kind: opts.kind || 'text',
-                appId: opts.appId || null, id: nextTaskId(), born: Date.now(), close: null,
-                setFull: setFull, toggleFull: toggleFull };
+  rec = { win: win, btn: btn, title: opts.title, kind: opts.kind || 'text',
+          appId: opts.appId || null, id: nextTaskId(), born: Date.now(), close: null,
+          setFull: setFull, toggleFull: toggleFull, rightClick: !!opts.rightClick };
   openWins.push(rec);
   announceWins();
 
   win.addEventListener('mousedown', () => raise(win));
+  /* An app that does nothing with a right-click must not be clicked by one:
+     the right button never reaches it (the window still comes forward).
+     Apps that use it say so with `rightClick: true`. The contextmenu event
+     itself is left alone, so an app can still make its own menu. */
+  ['mousedown', 'mouseup', 'pointerdown', 'pointerup', 'auxclick'].forEach(type =>
+    win.addEventListener(type, ev => {
+      if (ev.button !== 2 || rec.rightClick) return;
+      ev.stopPropagation();
+      if (type === 'mousedown') raise(win);
+    }, true));
 
   function closeWin() {
     win.remove();
@@ -232,6 +253,9 @@ export function createWindow(opts) {
     if (i >= 0) openWins.splice(i, 1);
     document.removeEventListener('keydown', onKey);
     window.removeEventListener('resize', fitScaled);
+    if (zoom) zoom.dispose();
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
     Snd.close();
     announceWins();
   }
@@ -262,7 +286,7 @@ export function createWindow(opts) {
     Snd.grab();
   });
 
-  document.addEventListener('mousemove', ev => {
+  const onMove = ev => {
     if (dragging) {
       const r = desk.getBoundingClientRect();
       const maxX = desk.clientWidth  - 40;
@@ -277,13 +301,15 @@ export function createWindow(opts) {
       win.style.width  = nw + 'px';
       win.style.height = nh + 'px';
     }
-  });
-
-  document.addEventListener('mouseup', () => {
+  };
+  const onUp = () => {
     if (dragging || sizing) Snd.drop();
     dragging = false;
     sizing = false;
-  });
+  };
+  /* these two used to be added for every window and never taken off again */
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
 
   raise(win);
   Snd.open();
@@ -300,7 +326,7 @@ export async function openWindow(appId, args = {}) {
        so the mixer knows who is running */
     const before = openWins.slice();
     const res = await app.open(args);
-    openWins.forEach(r => { if (before.indexOf(r) < 0 && !r.appId) r.appId = appId; });
+    openWins.forEach(r => { if (before.indexOf(r) < 0 && !r.appId) { r.appId = appId; r.rightClick = r.rightClick || !!app.rightClick; } });
     announceWins();
     return res;
   }
@@ -311,7 +337,8 @@ export async function openWindow(appId, args = {}) {
     w: app.width || 640,
     h: app.height || 480,
     resizable: app.resizable,
-    appId: appId
+    appId: appId,
+    rightClick: !!app.rightClick
   });
   
   if (app.fluid) made.body.dataset.fluid = '1';
@@ -325,6 +352,10 @@ export async function openWindow(appId, args = {}) {
       return v ? JSON.parse(v) : null;
     },
     openWindow,
+    studio: Studio,
+    toast,
+    ask: (title, def, cb) => askName(title, def, cb),
+    setTitle: t => { made.title.textContent = t; made.btn.textContent = t; },
     close: () => {
       if (app.unmount) app.unmount();
       made.close();

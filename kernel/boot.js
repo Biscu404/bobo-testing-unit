@@ -15,6 +15,7 @@ import { SunUI } from './economy.js';
 import { MixerUI } from './mixer.js';
 import { panic } from './panic.js';
 import { runBootSequence, cancelBoot } from './bootseq.js';
+import { wireCtxGuard } from './ctxguard.js';
 window.Music = Music;
 
 /* window.onerror is the closest a browser gets to a machine check */
@@ -193,6 +194,7 @@ window._bootAt = Date.now();
 /* boot.js is loaded by durable.js after a restore, so DOMContentLoaded may be behind us */
 const start = () => {
   initHardware();
+  wireCtxGuard();
   Cos.boot();
   drawWordmark();
   if (CRT.on) {
