@@ -2,7 +2,7 @@ import { createWindow, raise } from '../../kernel/wm.js';
 import { Snd } from '../../kernel/snd.js';
 import { Cos } from '../../kernel/cos.js';
 import { fs as vfs } from '../../kernel/vfs.js';
-import { HIFI_DISCS, HFN, HFP, hifiPress, hifiTags } from './discs.js';
+import { HFN, HFP, hifiPress, hifiTags } from './discs.js';
 import { stackFolders } from './library.js';
 import { Vault } from '../../kernel/vault.js';
 import { scopedListeners, whenGone } from '../lifecycle.js';
@@ -20,7 +20,7 @@ export default {
       wrap.className = 'gamepane hifipane';
       const cv = document.createElement('canvas');
       const winL = scopedListeners(root);
-      cv.width = 480; cv.height = 386;
+      cv.width = 480; cv.height = 386;                /* until the first frame measures what it is shown at */
       cv.className = 'gamecv hificv';
       cv.tabIndex = 0;
       wrap.appendChild(cv);
@@ -188,7 +188,7 @@ export default {
         pos: 0, dur: 0, seekBase: 0, startedAt: 0,
         vol: 0.7, pre: 0, bal: 0, width: 1, speed: 1, room: 0, roomIx: 2,
         eqOn: true, bassBoost: false, loud: false, mono: false,
-        texture: 'off', scan: true, style: 0, repeat: 0, shuffle: false,
+        texture: 'off', scan: false, style: 0, repeat: 0, shuffle: false,
         tray: 0, trayDir: 0, disc: 0, spin: 0, sheen: 0, touched: false,
         vuL: 0, vuR: 0, vuLv: 0, vuRv: 0, peakL: 0, peakR: 0, corr: 0,
         glow: 0, marquee: 0, drag: null, note: '', noteT: 0, loading: 0, xfaded: false,
@@ -289,25 +289,6 @@ export default {
         return t;
       }
 
-      /* the five that come in the box, pressed one after another: five
-         offline renders at once just makes all five of them late */
-      S.loading = HIFI_DISCS.length;
-      (function pressNext(i) {
-        if (i >= HIFI_DISCS.length || !alive) return;
-        const spec = HIFI_DISCS[i];
-        hifiPress(spec, ctx.sampleRate).then(buf => {
-          S.loading--;
-          if (buf) {
-            addTrack({ name: spec.name, artist: spec.artist, buf: buf, builtin: true, sleeve: i,
-                       tint: spec.tint, art: makeArt(spec.name, spec.tint),
-                       peaks: analysePeaks(buf, 480), dur: buf.duration });
-            /* until somebody presses something, the machine sits on disc one */
-            if (!S.touched) { S.ix = 0; loadDisc(0, false); }
-          }
-          setTimeout(() => pressNext(i + 1), 30);
-        }).catch(() => { S.loading--; setTimeout(() => pressNext(i + 1), 30); });
-      })(0);
-
       /* ---- the folders ------------------------------------------------------
          One per app that scores itself, and one for the lobby. They are on the
          shelf at once but pressed only when somebody plays one. */
@@ -392,7 +373,7 @@ export default {
         t.decoding = true;
         if (t.spec) {                                   /* a folder disc: press it now */
           try {
-            const buf = t.spec.song ? await Studio.render(t.spec.song, { repeat: t.spec.reps }) : await hifiPress(t.spec, ctx.sampleRate);
+            const buf = t.spec.song ? await Studio.render(t.spec.song, { repeat: t.spec.reps, level: t.spec.level, limit: t.spec.limit }) : await hifiPress(t.spec, ctx.sampleRate);
             if (buf) { t.buf = buf; t.dur = buf.duration; t.peaks = analysePeaks(buf, 480); }
             else t.missing = true;
           } catch (e) { t.missing = true; say('COULD NOT PRESS ' + t.name); }
@@ -598,12 +579,35 @@ export default {
          only arcs, and the disc steps in twenty-fourths of a turn so it strobes
          like a wheel under a striplight instead of gliding. */
       let hits = [];
-      const R = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x | 0, y | 0, w | 0, h | 0); };
+      /* The face is drawn in a 480 x 386 room of its own, and the canvas is made exactly as
+         many pixels as it is shown at, so a rectangle lands on whole screen pixels and a
+         letter is drawn at the size it is seen, instead of a seven-pixel letter being
+         blown up one and two thirds times into a smear. K is how many screen pixels one
+         of the room's pixels is. */
+      let K = 1;
+      const fit = () => {
+        const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+        if (r.width < 8) return;
+        const w = Math.min(2600, Math.round(r.width * dpr)), h = Math.round(w * 386 / 480);
+        if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; g.imageSmoothingEnabled = false; }
+        K = cv.width / 480;
+        g.setTransform(K, 0, 0, K, 0, 0);
+      };
+      const dv = v => Math.round(v * K) / K;
+      const R = (x, y, w, h, c) => {
+        g.fillStyle = c;
+        const x0 = dv(x | 0), y0 = dv(y | 0);
+        g.fillRect(x0, y0, Math.max(1 / K, dv((x | 0) + (w | 0)) - x0), Math.max(1 / K, dv((y | 0) + (h | 0)) - y0));
+      };
+      /* the dimmest inks are for panels, not for reading: when they are words they are lifted */
+      const LIFT = { [HFP.screw]: '#7d8494', [HFP.lcdDim]: '#4cc088', '#153f2a': '#2f8a5c', [HFP.brush]: '#a3acbc', [HFP.amberDim]: '#c08a30' };
+      const FACE = '"VT323", "Courier New", monospace', FS = 1.7;
       const TXT = (t, x, y, c, size, align) => {
-        g.fillStyle = c; g.font = (size || 8) + 'px monospace';
+        g.fillStyle = LIFT[c] || c; g.font = Math.round((size || 8) * FS) + 'px ' + FACE;
         g.textAlign = align || 'left'; g.textBaseline = 'alphabetic';
         g.fillText(String(t), x | 0, y | 0); g.textAlign = 'left';
       };
+      const MEAS = (t, size) => { g.font = Math.round((size || 8) * FS) + 'px ' + FACE; return g.measureText(String(t)).width; };
       function bevel(x, y, w, h, face, lit, dark) {
         R(x, y, w, h, face);
         R(x, y, w, 1, lit); R(x, y, 1, h, lit);
@@ -879,11 +883,10 @@ export default {
         bevel(x, y, w, h, HFP.lcd, HFP.black, HFP.panelHi);
         R(x + 2, y + 2, w - 4, h - 4, HFP.lcd);
         const t = S.list[S.ix];
-        const title = t ? t.name : (S.loading ? 'PRESSING DISCS...' : 'NO DISC');
+        const title = t ? t.name : (S.loading ? 'READING...' : 'NO DISC');
         /* marquee only when it will not fit, and it pauses at each end */
         g.save(); g.beginPath(); g.rect(x + 4, y + 4, w - 8, 12); g.clip();
-        g.font = '9px monospace';
-        const tw = g.measureText(title).width;
+        const tw = MEAS(title, 9);
         let tx = x + 6;
         if (tw > w - 12) {
           const span = tw - (w - 12) + 16;
@@ -915,7 +918,7 @@ export default {
         bevel(x + 3, sy, w - 42, 11, HFP.lcd, HFP.black, HFP.panelHi);
         const q = S.filter ? S.filter.toUpperCase() : '';
         TXT(q || 'SEARCH', x + 7, sy + 9, q ? HFP.lcdOn : HFP.lcdDim, 7);
-        if (S.searching) R(x + 8 + g.measureText(q).width, sy + 2, 1, 7, HFP.lcdOn);
+        if (S.searching) R(x + 8 + MEAS(q, 7), sy + 2, 1, 7, HFP.lcdOn);
         hits.push({ k: 'btn', id: 'search', x: x + 3, y: sy, w: w - 42, h: 11 });
         button('sort', x + w - 37, sy, 34, 11, SORTS[S.sort], S.sort > 0);
 
@@ -977,6 +980,7 @@ export default {
 
       /* ---- one frame of the whole face -------------------------------------- */
       function draw() {
+        fit();
         hits = [];
         const t = S.list[S.ix];
         const tint = { green: HFP.green, cyan: HFP.cyan, amber: HFP.amber, white: HFP.white, red: HFP.red }[t ? t.tint : 'amber'] || HFP.amber;
@@ -1176,7 +1180,7 @@ export default {
 
       const at = ev => {
         const r = cv.getBoundingClientRect();
-        return { x: (ev.clientX - r.left) * (cv.width / r.width), y: (ev.clientY - r.top) * (cv.height / r.height) };
+        return { x: (ev.clientX - r.left) / r.width * 480, y: (ev.clientY - r.top) / r.height * 386 };
       };
       const hitAt = p => { for (let i = hits.length - 1; i >= 0; i--) { const h = hits[i];
         if (p.x >= h.x && p.x <= h.x + h.w && p.y >= h.y && p.y <= h.y + h.h) return h; } return null; };

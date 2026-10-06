@@ -10,10 +10,11 @@
 import { VARIANTS, variantSpec } from '../../kernel/music_variants.js';
 import { MG_SONGS, MG_HZ } from '../magen/data.js';
 import { CK_SONGS, CK_HZ } from '../cook/data.js';
-import { ELE_SONGS, ELE_HZ } from '../elephant/quotes.js';
-import { SONGS as BEK_SONGS, NOTE as BEK_NOTE } from '../bekkedal/music.js';
-import { BPM as SB_BPM, ROOT as SB_ROOT, BASS as SB_BASS, LEAD as SB_LEAD } from '../standbattle/music.js';
+import * as ELE from '../elephant/score.js';
+import * as BEK from '../bekkedal/score.js';
+import * as SB from '../standbattle/score.js';
 import * as Lang from '../../kernel/songtext.js';
+import { symphony, unlocked, BARS as SYM_BARS, BPM as SYM_BPM } from '../../kernel/symphony.js';
 import { demoSongs } from '../garage/songs.js';
 
 const TARGET_SECS = 75;                     /* roughly how long a pressed disc plays */
@@ -31,18 +32,13 @@ function fromEighths(song, hzTable, tint, artist) {
 }
 const reps = spec => Math.max(3, Math.round(TARGET_SECS / (spec.len * 15 / spec.bpm)));
 
-function standBattle() {
-  const lead = [], bass = [], kick = [], hat = [], snare = [];
-  SB_LEAD.forEach((d, i) => { if (d != null) lead.push([SB_ROOT * Math.pow(2, d / 12), i, 1.35]); });
-  [0, 16].forEach(o => SB_BASS.forEach((d, i) => { if (d != null) bass.push([SB_ROOT * Math.pow(2, d / 12), i + o, 1.8]); }));
-  for (let s = 0; s < 32; s++) {
-    if (s % 8 === 0) kick.push(s);
-    if (s % 2 === 1) hat.push(s);
-    if (s % 16 === 4 || s % 16 === 12) snare.push(s);
-  }
-  return { bpm: SB_BPM, len: 32, tint: 'red', artist: 'STAND BATTLE ARENA', lead, bass, pad: null, arp: null,
-           kick, hat, snare, timbre: { bass: 'triangle' }, rel: { drum: 0.7 } };
-}
+/* a game's own song (a studio song: real instruments), pressed as it is, with every layer on or the ones asked for */
+const pure = (song, layers) => {
+  const c = JSON.parse(JSON.stringify(song));
+  c.tracks.forEach(t => { t.solo = false; t.mute = layers && t.layer != null ? !layers[t.layer] : false; });
+  return c;
+};
+const disc = (song, tint, artist, layers) => { const c = pure(song, layers); return { song: c, bpm: c.bpm, len: c.bars * c.beats * 4, tint, artist }; };
 
 const TITLE = {
   /* lobby */ hymn: 'HYMN', mellow: 'HYMN (MELLOW)', dynamic: 'HYMN (DYNAMIC)', glitch: 'HYMN (GLITCH)'
@@ -66,21 +62,22 @@ export function stackFolders() {
   out.push(['THE COOK', 'amber', Object.keys(CK_SONGS).map(k =>
     [k.toUpperCase(), fromEighths(CK_SONGS[k], CK_HZ, 'amber', 'THE COOK RADIO')])]);
 
-  const names = { first: 'FIRST LIGHT', wide: 'WIDE', carry: 'CARRY', above: 'ABOVE', home: 'HOME' };
-  out.push(['ELEPHANT', 'green', Object.keys(ELE_SONGS).map(k =>
-    [names[k] || k.toUpperCase(), fromEighths(ELE_SONGS[k], ELE_HZ, 'green', 'ELEPHANT')])]);
+  out.push(['ELEPHANT', 'green', ELE.IDS.map(k => [ELE.NAMES[k], disc(ELE.song(Lang, k), 'green', 'ELEPHANT')])]);
 
-  const bek = { dag: 'DAG', kveld: 'KVELD', gruva: 'GRUVA', vidda: 'VIDDA', folkedans: 'FOLKEDANS' };
-  out.push(['BEKKEDAL', 'green', Object.keys(BEK_SONGS).map(k =>
-    [bek[k] || k.toUpperCase(), fromEighths(BEK_SONGS[k], BEK_NOTE, 'green', 'BEKKEDAL')])]);
+  out.push(['BEKKEDAL', 'green', BEK.IDS.map(k => [BEK.NAMES[k], disc(BEK.song(Lang, k), 'green', 'BEKKEDAL')])]);
 
-  out.push(['STAND BATTLE', 'red', [['MORIOH (COMBAT LOOP)', standBattle()]]]);
+  const sb = SB.song(Lang);
+  out.push(['STAND BATTLE', 'red', [['MORIOH (EXPLORE)', SB.layersFor(0)], ['MORIOH (COMBAT)', SB.layersFor(1)], ['MORIOH (TENSION)', SB.layersFor(2)]]
+    .map(([n, lay]) => [n, disc(sb, 'red', 'STAND BATTLE ARENA', lay)])]);
 
   /* the Garage's own songs: real instruments, bounced by the studio rather than synthesised here */
   out.push(['THE GARAGE', 'white', demoSongs(Lang).map(sg => [sg.title, {
     song: sg, bpm: sg.bpm, len: sg.bars * sg.beats * 4, tint: 'white', artist: 'THE GARAGE BAND'
   }])]);
 
-  out.forEach(f => f[2].forEach(d => { d[1].reps = reps(d[1]); }));
+  /* the style meter's symphony: here once the meter has read HAPPY BIRTHDAY for the first time, whole, and once through */
+  if (unlocked()) out.push(['STYLE METER', 'white', [['UNWRAPPED', { song: symphony(Lang), bpm: SYM_BPM, len: SYM_BARS * 16, tint: 'white', artist: 'HOLYTRON / THE STYLE METER', once: true, level: 0.5, limit: -6 }]]]);
+
+  out.forEach(f => f[2].forEach(d => { d[1].reps = d[1].once ? 1 : reps(d[1]); }));
   return out;
 }

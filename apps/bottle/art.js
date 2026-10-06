@@ -1,24 +1,22 @@
-/* The bottle, the glass, the table, the person. Everything is flat rects (the
-   stag is a few of them); the things that turn -- the bottle and the glass --
-   are baked into layers once and turned by sampling (raster.js), so nothing on
-   this table has a soft edge. Coordinates for the bottle and the glass are
-   local: the origin is the middle of the base, y up is negative. */
+/* The bottle and the table. Everything is flat rects (the stag is a few of
+   them); the bottle, which turns, is baked into layers once and turned by
+   sampling (raster.js), so nothing on this table has a soft edge. Its
+   coordinates are local: the origin is the middle of the base, y up is
+   negative. The glass has its own file (glass3d.js), and nobody is drawn
+   here: the person drinking is the one at the monitor. */
 export const BW = 380, BH = 360;
 export const C = {
   glass: '#1f5a28', glassHi: '#46a04e', glassLo: '#0f2f16', glassMid: '#2b7434', edge: '#0a1c0e',
   liquid: '#6e3a14', liquidHi: '#b26a24', liquidLo: '#44220a', foam: '#e9c98a',
   label: '#f08a14', labelHi: '#ffae3c', labelDk: '#b8620c', ink: '#14100a', glow: '#fff3b0',
   cap: '#195226', capHi: '#2f8a42', band: '#e07a10',
-  wood: '#3a2415', woodHi: '#4d3020', shot: '#c9d4dc', shotHi: '#ffffff', white: '#f2f4f7', dim: '#9aa3ad',
-  skin: '#d9a47c', skinLo: '#b57d5a', skinHi: '#f0c4a0', hair: '#2a1a12', hairHi: '#4a3020', lip: '#b8544a', shirt: '#3a4a7a'
+  wood: '#3a2415', woodHi: '#4d3020', shot: '#c9d4dc', shotHi: '#ffffff', white: '#f2f4f7', dim: '#9aa3ad'
 };
 
 /* the bottle: sprite 80 x 246, art origin at (40, 242), turns about its middle */
 export const BOT = { w: 80, h: 246, ox: 40, oy: 242, cx: 40, cy: 121, lip: [13, -224], lipUp: [-13, -224], rest: [70, 246] };
-/* the tumbler: sprite 72 x 74, art origin at (36, 72), turns about its middle */
-export const GLS = { w: 72, h: 74, ox: 36, oy: 72, cx: 36, cy: 37, rim: [[-32, -70], [32, -70]], rest: [328, 292], hw: 28 };
-/* where the stream should land, and where the person's lips are */
-export const LIPS = { x: 258, y: 150 };
+/* the tumbler is an object, not a sprite (glass3d.js); this is where its base sits on the table */
+export const GLS = { rest: [328, 292] };
 
 const mk = (_w, _h, fn) => g => { g.save(); fn(g); g.restore(); };
 const Rf = g => (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), Math.max(1, Math.round(w)), Math.max(1, Math.round(h))); };
@@ -85,35 +83,6 @@ export function makeArt(g) {
     liquid: { base: '#2a180a', mid: '#3c2410', hi: '#8a5a24', edge: '#180e06', foam: '#e9c98a' }
   };
 
-  const glassSpec = {
-    w: GLS.w, h: GLS.h, cx: GLS.cx, cy: GLS.cy,
-    base: mk(0, 0, g2 => {
-      const r = Rf(g2); g2.translate(GLS.ox, GLS.oy);
-      r(-32, -70, 4, 70, C.shot); r(28, -70, 4, 70, C.shot); r(-32, -6, 64, 6, C.shot);
-      r(-28, -8, 56, 2, '#8fa0ac');                                  /* the thick floor, seen from the side */
-    }),
-    inner: mk(0, 0, g2 => { const r = Rf(g2); g2.translate(GLS.ox, GLS.oy); r(-28, -68, 56, 62, '#fff'); }),
-    over: [mk(0, 0, g2 => {
-      const r = Rf(g2); g2.translate(GLS.ox, GLS.oy);
-      g2.globalAlpha = 0.55; r(-26, -64, 2, 52, '#ffffff'); g2.globalAlpha = 0.25; r(-22, -64, 1, 50, '#ffffff');
-      g2.globalAlpha = 1; r(-32, -70, 64, 2, C.shotHi);
-    })],
-    liquid: { base: '#7a3f12', mid: '#a2581c', hi: '#e0903a', edge: '#5c2e0c', foam: '#f0d9a0' }
-  };
-  /* the hand round the tumbler: fingers across the front, thumb on the near side */
-  const handSpec = {
-    w: GLS.w, h: GLS.h, cx: GLS.cx, cy: GLS.cy,
-    base: mk(0, 0, g2 => {
-      const r = Rf(g2); g2.translate(GLS.ox, GLS.oy);
-      [-30, -21, -12].forEach((y, i) => {
-        r(-4 + i, y, 38 - i, 7, C.skin); r(-4 + i, y + 5, 38 - i, 2, C.skinLo); r(-4 + i, y, 38 - i, 1, C.skinHi);
-        r(-6 + i, y + 1, 3, 5, C.skin);
-      });
-      r(-34, -27, 13, 6, C.skin); r(-34, -23, 13, 2, C.skinLo);        /* the thumb */
-    }),
-    inner: null, over: [], liquid: { base: '#000', mid: '#000', hi: '#000', edge: '#000' }
-  };
-
   /* ---- the room --------------------------------------------------------- */
   function table() {
     R(0, 0, BW, BH, C.wood);
@@ -124,51 +93,5 @@ export function makeArt(g) {
   const shadow = (x, y, w) => { g.globalAlpha = 0.35; R(x - w / 2, y, w, 4, '#000'); g.globalAlpha = 1; };
   function capOnBar() { R(104, 238, 18, 8, C.cap); R(104, 238, 18, 2, C.capHi); R(102, 246, 22, 2, '#150f08'); }
 
-  /* ---- the person: a profile, facing right. (hx, hy) is the top-left of the
-     head's box; mouth 0..1 opens, eyes 0 open .. 1 shut, gulp is how far down
-     the neck a swallow has got (-1 for none). */
-  const lerpTab = (tab, y) => {
-    for (let i = 1; i < tab.length; i++) if (y <= tab[i][0]) { const a = tab[i - 1], b = tab[i]; return a[1] + (b[1] - a[1]) * (y - a[0]) / (b[0] - a[0]); }
-    return tab[tab.length - 1][1];
-  };
-  const FRONT = [[0, 30], [6, 41], [14, 47], [24, 50], [32, 49], [36, 52], [40, 49], [46, 52], [51, 58], [56, 62], [59, 58], [62, 56], [65, 57], [68, 54], [71, 54], [74, 56], [77, 53], [82, 54], [88, 52], [93, 47], [97, 40], [102, 36], [140, 36]];
-  const backX = y => y < 98 ? 24 - 24 * Math.sqrt(Math.max(0, 1 - Math.pow((y - 40) / 46, 2))) : 14 + (y - 98) * 0.1;
-  function face(hx, hy, st) {
-    const H = 140;
-    for (let y = 0; y < H; y++) {
-      const xf = lerpTab(FRONT, y), xb = backX(y);
-      R(hx + xb, hy + y, xf - xb, 1, y > 84 ? C.skinLo : C.skin);
-    }
-    for (let y = 98; y < H; y++) R(hx + 14 + (y - 98) * 0.1, hy + y, 8, 1, '#8c5a40');                /* the neck's shadow */
-    R(hx + 18, hy + 128, 40, 12, C.shirt); R(hx + 10, hy + 132, 56, 8, C.shirt);                          /* collar */
-    /* hair: over the top, back along the temple, and down the back of the head */
-    for (let y = 0; y < 72; y++) {
-      const xf = lerpTab(FRONT, y), xb = backX(y);
-      const to = y < 12 ? xf - 1 : y < 46 ? Math.max(xb + 7, xf - 1 - (y - 12) * 1.1) : xb + 4;
-      R(hx + xb - 1, hy + y, Math.max(2, to - xb + 1), 1, y % 5 === 0 ? C.hairHi : C.hair);
-    }
-    R(hx + 24, hy + 48, 8, 14, C.skinLo); R(hx + 26, hy + 51, 4, 8, '#8c5a40');                            /* the ear */
-    /* the face itself */
-    R(hx + 38, hy + 34, 12, 2, C.hair);                                                                /* brow */
-    const eye = st.eyes || 0;
-    if (eye > 0.5) R(hx + 40, hy + 42, 7, 1, C.hair); else { R(hx + 41, hy + 40, 5, 4, '#f2f2f2'); R(hx + 44, hy + 41, 2, 3, '#2a2a3a'); }
-    R(hx + 56, hy + 58, 5, 2, C.skinLo);                                                               /* under the nose */
-    const m = st.mouth || 0;
-    R(hx + 51, hy + 65, 5, 3, C.lip); R(hx + 51, hy + 72 + m * 2, 5, 3, C.lip);                        /* the lips */
-    if (m > 0.05) R(hx + 52, hy + 68, 3 + m * 2, 4 + m * 2, '#3a1010');                                /* open */
-    else R(hx + 51, hy + 69, 5, 1, '#6a2a24');
-    R(hx + 50, hy + 83, 3, 2, C.skinHi);
-    /* a swallow, travelling down the throat */
-    if (st.gulp >= 0) R(hx + 40, hy + 92 + st.gulp * 16, 6, 4, '#8c5a40');
-  }
-
-  /* an arm, from the hand to somewhere off the bottom right */
-  function arm(x, y) {
-    g.fillStyle = C.skin;
-    g.beginPath(); g.moveTo(x - 6, y - 4); g.lineTo(x + 22, y - 8); g.lineTo(x + 140, y + 120); g.lineTo(x + 90, y + 140); g.closePath(); g.fill();
-    g.fillStyle = C.skinLo;
-    g.beginPath(); g.moveTo(x + 22, y - 8); g.lineTo(x + 28, y - 4); g.lineTo(x + 140, y + 130); g.lineTo(x + 130, y + 120); g.closePath(); g.fill();
-  }
-
-  return { R, T, table, shadow, capOnBar, face, arm, bottleSpec, glassSpec, handSpec };
+  return { R, T, table, shadow, capOnBar, bottleSpec };
 }

@@ -3,7 +3,13 @@
    itself: Ctrl and + / - / 0, Ctrl and the mouse wheel, or the [Z] on the
    title bar. It is the browser's own zoom, applied to the window's body only,
    so the app lays itself out again for the room it now has, exactly as a
-   web page does. What you pick is remembered for that app. */
+   web page does. What you pick is remembered for that app.
+
+   A fixed canvas in fullscreen has no layout to redo: wm.js scales it to fit the
+   screen. There the zoom is not the browser's but a multiplier on that fit
+   (scaled(true)): the same keys, the same remembered level, the picture simply
+   comes closer, and wm.js pans it to follow the pointer when it outgrows the
+   screen. */
 import { showMenu } from './menus.js';
 
 const KEY = 'templeos.zoom.v1';
@@ -28,9 +34,9 @@ export function attachZoom(o) {
   btn.title = 'ZOOM. Ctrl and + / - / 0, or Ctrl and the mouse wheel, also work.';
   o.bar.insertBefore(btn, o.before || null);
 
-  let z = 1, suspended = false, loaded = false;
+  let z = 1, scaled = false, loaded = false;
   const apply = () => {
-    o.body.style.zoom = (suspended || z === 1) ? '' : String(z);
+    o.body.style.zoom = (scaled || z === 1) ? '' : String(z);
     btn.textContent = z === 1 ? '[Z]' : '[' + pct(z) + ']';
     btn.classList.toggle('on', z !== 1);
     requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
@@ -73,14 +79,14 @@ export function attachZoom(o) {
     if (!(ev.ctrlKey || ev.metaKey)) return;
     ev.preventDefault();
     load();
-    if (!suspended) step(ev.deltaY < 0 ? 1 : -1);
+    step(ev.deltaY < 0 ? 1 : -1);
   }, { passive: false });
 
   /* heard twice on purpose: in the window's capture phase, so an app that keeps
      its keys to itself (a game that stops them at its canvas) cannot hide the
      shortcut, and at the document, for when nothing in the window has focus */
   const onKey = ev => {
-    if (ev.__zoomed || !(ev.ctrlKey || ev.metaKey) || ev.altKey || !o.isActive() || suspended) return;
+    if (ev.__zoomed || !(ev.ctrlKey || ev.metaKey) || ev.altKey || !o.isActive()) return;
     let did = true;
     if (ev.key === '+' || ev.key === '=') { load(); step(1); }
     else if (ev.key === '-' || ev.key === '_') { load(); step(-1); }
@@ -94,8 +100,8 @@ export function attachZoom(o) {
   return {
     btn,
     get: () => z,
-    /* a fixed canvas that is scaled to fit the screen already has its own scale */
-    suspend(on) { suspended = on; apply(); },
+    /* a fixed canvas scaled to fit the screen: the zoom is a multiplier on the fit, applied by wm.js */
+    scaled(on) { scaled = on; apply(); },
     dispose() { document.removeEventListener('keydown', onKey); }
   };
 }

@@ -1,0 +1,126 @@
+/* ==========================================================================
+   THE STYLE METER
+   Sits in the picture, not on the glass: it is inside #tube, so the lens
+   zooms it with everything else. 8000 clears the shell and the toast and
+   still leaves the degauss flash (9998), the saver (9000) and the glass
+   (9999) on top of it. Palette colours only; every shadow is a hard offset,
+   every animation moves in whole pixels and snaps with steps().
+
+   And it grows. data-t is the rank, 0 (D) to 7 (HAPPY BIRTHDAY): every rank up
+   the whole thing is bigger (--sm-k, set by kernel/style.js), the letter
+   moves more, the colours split, the bar flickers, a frame of light comes up
+   round the screen and, from the middle ranks, the air fills with sparks
+   (kernel/style_fx.js). At the top it is a party.
+   ========================================================================== */
+#smeter {
+  position: absolute;
+  top: 30px;                 /* clears the menubar. Set to 4px to overlap it. */
+  right: calc(10px + (var(--sm-k, 1) - 1) * 8px);
+  z-index: 8000;
+  display: none;
+  pointer-events: none;
+  user-select: none;
+  text-align: right;
+  width: clamp(150px, 26vmin, 330px);
+  font-family: 'VT323', 'Courier New', monospace;
+  line-height: 1;
+  -webkit-font-smoothing: none;
+  image-rendering: pixelated;
+  --sm-col: #AAAAAA;
+  --sm-k: 1;
+  transform-origin: 100% 0;
+  transform: scale(var(--sm-k));
+}
+#smeter.live { display: block; }
+
+#sm-grade {
+  display: inline-block;
+  font-size: clamp(38px, 9.5vmin, 104px);
+  letter-spacing: -0.04em;
+  color: var(--sm-col);
+  text-shadow: 0 0 var(--phos-px, 2px) var(--phos, #FFFFFF);
+  transform-origin: 100% 50%;
+}
+#sm-name {
+  font-size: clamp(13px, 2.3vmin, 26px);
+  letter-spacing: 1px;
+  color: var(--sm-col);
+  text-shadow: 0 0 var(--phos-px, 2px) var(--phos, #FFFFFF);
+  margin-top: -2px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* the drain bar: sixteen blocks, no interpolation, no rounded ends */
+#sm-bar { display: flex; gap: 2px; justify-content: flex-end; margin-top: 5px; }
+#sm-bar b { flex: 1 1 0; height: clamp(6px, 1.3vmin, 13px); background: #000000; border: 1px solid #555555; }
+#sm-bar b.on { background: var(--sm-col); border-color: var(--phos); }
+
+/* the running tally under the bar, newest at the top */
+#sm-log {
+  margin-top: 4px;
+  font-size: clamp(11px, 1.8vmin, 20px);
+  letter-spacing: 1px;
+  color: var(--phos-dim);
+  text-shadow: 0 0 var(--phos-px, 2px) var(--phos, #FFFFFF);
+}
+#sm-log div { animation: sm-fade 1500ms steps(3, end) forwards; }
+#sm-log div.big { color: var(--sm-col); }
+@keyframes sm-fade { 0%, 55% { opacity: 1; } 100% { opacity: 0; } }
+
+/* the hit: one frame of whole-pixel recoil, harder the higher you are */
+#smeter.hit #sm-grade { animation: sm-shake 120ms steps(1, end); }
+@keyframes sm-shake {
+  0%   { transform: translate(-3px, 1px); }
+  33%  { transform: translate(2px, -2px); }
+  66%  { transform: translate(-1px, 0); }
+  100% { transform: translate(0, 0); }
+}
+#smeter[data-t="3"].hit #sm-grade, #smeter[data-t="4"].hit #sm-grade { animation-name: sm-shake2; }
+#smeter[data-t="5"].hit #sm-grade, #smeter[data-t="6"].hit #sm-grade, #smeter[data-t="7"].hit #sm-grade { animation-name: sm-shake3; }
+@keyframes sm-shake2 { 0% { transform: translate(-6px, 2px) scale(1.06); } 33% { transform: translate(5px, -4px); } 66% { transform: translate(-3px, 1px); } 100% { transform: translate(0, 0); } }
+@keyframes sm-shake3 { 0% { transform: translate(-10px, 4px) scale(1.14) rotate(-3deg); } 25% { transform: translate(9px, -6px) rotate(2deg); } 50% { transform: translate(-6px, 3px) scale(1.06); } 75% { transform: translate(4px, -2px); } 100% { transform: translate(0, 0); } }
+
+/* the promotion: a hard three-step pop, never a smooth scale */
+#smeter.up #sm-grade { animation: sm-pop 260ms steps(1, end); }
+#smeter.up #sm-name  { animation: sm-blink 260ms steps(1, end); }
+@keyframes sm-pop { 0% { transform: scale(1.7); } 40% { transform: scale(1.25); } 70% { transform: scale(0.92); } 100% { transform: scale(1); } }
+@keyframes sm-blink { 0%, 60% { color: var(--phos); } 100% { color: var(--sm-col); } }
+
+/* ---- it moves on its own, more and more ------------------------------------------------------ */
+#smeter[data-t="2"] #sm-grade { animation: sm-breathe 1400ms steps(4, end) infinite; }
+#smeter[data-t="3"] #sm-grade { animation: sm-wobble 700ms steps(4, end) infinite; }
+#smeter[data-t="4"] #sm-grade { animation: sm-wobble 520ms steps(4, end) infinite; text-shadow: -2px 0 #FF55FF, 2px 0 #55FFFF; }
+#smeter[data-t="5"] #sm-grade { animation: sm-jitter 260ms steps(1, end) infinite; text-shadow: -3px 0 #FF55FF, 3px 0 #55FFFF, 0 3px #FFFF55; }
+#smeter[data-t="6"] #sm-grade { animation: sm-jitter 180ms steps(1, end) infinite; text-shadow: -4px 0 #FF5555, 4px 0 #55FFFF, 0 4px #FFFF55, 0 -4px #55FF55; }
+#smeter.top #sm-grade { animation: sm-rave 160ms steps(1, end) infinite; text-shadow: -4px 0 #FF55FF, 4px 0 #55FFFF, 0 4px #FFFF55, 0 -4px #55FF55; }
+@keyframes sm-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+@keyframes sm-wobble { 0% { transform: translate(0, 0) rotate(0); } 25% { transform: translate(-2px, 1px) rotate(-1.5deg); } 50% { transform: translate(0, -2px) scale(1.04); } 75% { transform: translate(2px, 1px) rotate(1.5deg); } 100% { transform: translate(0, 0); } }
+@keyframes sm-jitter { 0% { transform: translate(-3px, 1px) rotate(-2deg); } 20% { transform: translate(3px, -3px) rotate(2deg) scale(1.06); } 40% { transform: translate(-2px, 3px); } 60% { transform: translate(4px, 0) rotate(1deg); } 80% { transform: translate(-4px, -2px) scale(1.04); } 100% { transform: translate(1px, 2px) rotate(-1deg); } }
+@keyframes sm-rave { 0% { transform: translate(-4px, 0) scale(1.12) rotate(-5deg); } 25% { transform: translate(4px, -4px) scale(1) rotate(4deg); } 50% { transform: translate(0, 2px) scale(1.15) rotate(-3deg); } 75% { transform: translate(-3px, -2px) scale(1.04) rotate(6deg); } 100% { transform: translate(3px, 3px) scale(1.1) rotate(-2deg); } }
+
+/* the name sweeps a hard highlight across from the middle ranks; the bar's cells flicker in waves */
+#smeter[data-t="4"] #sm-name, #smeter[data-t="5"] #sm-name, #smeter[data-t="6"] #sm-name, #smeter.top #sm-name { animation: sm-name 900ms steps(6, end) infinite; }
+@keyframes sm-name { 0%, 100% { color: var(--sm-col); } 50% { color: var(--phos); } }
+#smeter[data-t="3"] #sm-bar b.on, #smeter[data-t="4"] #sm-bar b.on, #smeter[data-t="5"] #sm-bar b.on, #smeter[data-t="6"] #sm-bar b.on, #smeter.top #sm-bar b.on { animation: sm-cell 640ms steps(2, end) infinite; }
+#smeter #sm-bar b:nth-child(4n+1).on { animation-delay: 0ms; }
+#smeter #sm-bar b:nth-child(4n+2).on { animation-delay: 160ms; }
+#smeter #sm-bar b:nth-child(4n+3).on { animation-delay: 320ms; }
+#smeter #sm-bar b:nth-child(4n).on { animation-delay: 480ms; }
+@keyframes sm-cell { 0%, 100% { background: var(--sm-col); } 50% { background: #FFFFFF; } }
+#smeter.top #sm-bar b { height: clamp(8px, 1.8vmin, 18px); }
+
+/* ---- the light round the screen, and the sparks in the air ------------------------------------ */
+#sm-rim { position: absolute; inset: 0; z-index: 7990; pointer-events: none; display: none; --rim: 0; --sm-col: #AAAAAA;
+  box-shadow: inset 0 0 calc(var(--rim) * 9px) calc(var(--rim) * 2px) var(--sm-col); opacity: 0.55; }
+#sm-rim.live { display: block; }
+#sm-rim.pulse { animation: sm-rim 900ms steps(5, end) infinite; }
+#sm-rim.fast { animation-duration: 360ms; }
+@keyframes sm-rim { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+#sm-fx { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 7995; pointer-events: none; image-rendering: pixelated; display: none; }
+#sm-fx.live { display: block; }
+
+@media (prefers-reduced-motion: reduce) {
+  #smeter #sm-grade, #smeter #sm-name, #smeter #sm-bar b, #sm-rim { animation: none !important; }
+  #sm-fx { display: none !important; }
+}

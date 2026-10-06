@@ -103,7 +103,8 @@ coordinates") lives in `bekkedal-art.md`.
   owed and what each one pays out. Pure, the way `schedule.js` and `scene.js`
   are; `spineDonate()` in `index.js` is the one writer in the app. See **The
   loft**, `.claude/rules/bekkedal-content.md`.
-- `music.js` — five tunes and the crossfading scheduler. See `.claude/rules/bekkedal-art.md`.
+- `score.js` — the five tunes (dag, kveld, gruva, vidda, folkedans), eight bars each, orchestrated for the studio's real instruments (flute, violin, nylon guitar, harp, strings, cello, upright bass...); `lead` and `arp` layers are what the two night tunes drop after dark.
+- `music.js` — which tune and when: the pools by place, hour and season, the rotation, and the night layers. It plays the score on Bekkedal's channel of the studio through `Studio.deck` (`kernel/deck.js`), crossfading. See `.claude/rules/bekkedal-art.md`.
 - `ambience.js` — a bed per map, weather and the hour layered over it, positional hearth crackle, and material footsteps. See `.claude/rules/bekkedal-art.md`.
 - `decor.js` — room prop kinds; authored placement lives in `data.js`'s `BEK_DECOR`. See `.claude/rules/bekkedal-art.md`.
 - `decor_outdoor.js` — the farm/town/lake prop kinds, split out of `decor.js` purely for the 300-line rule and merged back into one `PROP` table there. See `.claude/rules/bekkedal-art.md`.

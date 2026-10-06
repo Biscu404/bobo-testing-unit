@@ -573,6 +573,7 @@ html, body {
    scaled up inside it instead (wm.js sets the transform) */
 .win.full { left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important; }
 .win.full .grip { display: none; }
+.win.full.scaled { overflow: hidden; }
 .win.full.scaled .wbody { position: absolute; left: 0; top: 22px; flex: none; transform-origin: 0 0; overflow: hidden; }
 .win.full.scaled .wbody canvas { image-rendering: pixelated; }
 
@@ -996,31 +997,31 @@ textarea.editor {
    so this one is DOM everywhere except the star itself. Sixteen colours
    still, and every border is one hard pixel. */
 .mgroot { display: flex; flex-direction: column; height: 100%; background: #000000; color: var(--phos-dim);
-          font: 13px 'Courier New', monospace; position: relative; }
+          font: 18px 'VT323', 'Courier New', monospace; position: relative; }
 .mgnews { flex: 0 0 auto; background: #000000; border-bottom: 1px solid #555555; padding: 2px 4px;
-          color: #55FF55; white-space: pre; overflow: hidden; font-size: 12px; }
+          color: #55FF55; white-space: pre; overflow: hidden; font-size: 16px; }
 .mgbody { flex: 1 1 auto; display: flex; min-height: 0; }
 .mgleft { flex: 0 0 306px; display: flex; flex-direction: column; align-items: center;
           border-right: 1px solid #555555; min-height: 0; padding-top: 4px; }
 .mgcount { text-align: center; line-height: 1.1; }
-.mgcount .mgn { color: #FFFF55; font-size: 26px; font-weight: bold; display: block;
+.mgcount .mgn { color: #FFFF55; font-size: 36px; font-weight: bold; display: block;
                 text-shadow: 0 0 var(--phos-px, 2px) var(--phos, #FFFFFF); word-break: break-all; }
-.mgcount .mgu { color: var(--phos-dim); font-size: 12px; }
-.mgrate { color: #55FFFF; font-size: 12px; margin: 1px 0 3px; }
+.mgcount .mgu { color: var(--phos-dim); font-size: 16px; }
+.mgrate { color: #55FFFF; font-size: 16px; margin: 1px 0 3px; }
 .mgstagewrap { flex: 0 0 auto; }
 .mgcv { width: 300px; height: 300px; image-rendering: pixelated; cursor: pointer; display: block; }
 .mgbuffs { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; min-height: 15px;
-           font-size: 11px; padding: 2px 4px; }
+           font-size: 15px; padding: 2px 4px; }
 .mgbuff { text-shadow: 0 0 var(--phos-px, 2px) var(--phos, #FFFFFF); }
-.mgact { font-size: 12px; min-height: 18px; padding: 2px; text-align: center; }
+.mgact { font-size: 16px; min-height: 18px; padding: 2px; text-align: center; }
 .mgshab { color: #FFFF55; }
 .mgshab.lit { background: #AA5500; color: var(--phos); border: 1px solid #FFFF55; padding: 1px 6px; cursor: pointer; }
 .mgshab.lit:hover { background: #FFFF55; color: #000000; }
-.mgsoon { color: #555555; }
+.mgsoon { color: #9A9A9A; }
 
 .mgright { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .mgtabs { flex: 0 0 auto; display: flex; border-bottom: 1px solid #555555; }
-.mgtab { flex: 1 1 auto; font: inherit; font-size: 12px; background: #000000; color: var(--phos-dim);
+.mgtab { flex: 1 1 auto; font: inherit; font-size: 16px; background: #000000; color: var(--phos-dim);
          border: 0; border-right: 1px solid #555555; padding: 3px 2px; cursor: pointer; }
 .mgtab:hover { background: #0000AA; color: var(--phos); }
 .mgtab.on { background: #AAAAAA; color: #000000; }
@@ -1031,48 +1032,48 @@ textarea.editor {
 .mgrow { display: flex; align-items: center; gap: 6px; padding: 3px 6px; cursor: pointer;
          border-bottom: 1px solid #111111; }
 .mgrow:hover { background: #0000AA; }
-.mgrow.poor { color: #555555; }
+.mgrow.poor { color: #9A9A9A; }
 .mgrow.poor:hover { background: #550000; }
-.mgrow.locked { color: #333333; cursor: default; justify-content: center; }
+.mgrow.locked { color: #8A8A8A; cursor: default; justify-content: center; }
 .mgrow.locked:hover { background: #000000; }
 .mgic { width: 26px; height: 26px; flex: 0 0 26px; image-rendering: pixelated; }
 .mgnm { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; line-height: 1.15; }
 .mgnm b { color: var(--phos); font-weight: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mgrow.poor .mgnm b { color: #777777; }
-.mgnm i { color: #FFFF55; font-style: normal; font-size: 11px; }
-.mgrow.poor .mgnm i { color: #AA5500; }
+.mgrow.poor .mgnm b { color: #BBBBBB; }
+.mgnm i { color: #FFFF55; font-style: normal; font-size: 15px; }
+.mgrow.poor .mgnm i { color: #FF5555; }
 /* the legacy rows show what the thing does, so that line is yellow too */
 .mgrow.leg .mgnm i { color: #FFFF55; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mgrow.leg.poor .mgnm i { color: #AA5500; }
 .mgrow.leg.owned .mgnm i { color: #55FF55; }
-.mgown { color: #55FFFF; font-size: 17px; flex: 0 0 auto; min-width: 30px; text-align: right; }
-.mgtag { color: #55FF55; font-size: 10px; flex: 0 0 auto; }
+.mgown { color: #55FFFF; font-size: 23px; flex: 0 0 auto; min-width: 30px; text-align: right; }
+.mgtag { color: #55FF55; font-size: 14px; flex: 0 0 auto; }
 .mgrow.up { border-left: 2px solid #00AA00; }
 .mgrow.leg { border-left: 2px solid #AA00AA; }
 .mgrow.leg.owned { color: #55FF55; cursor: default; }
 .mgrow.leg.owned .mgtag { color: var(--phos); }
-.mgq { color: #333333; }
-.mgempty, .mghead { padding: 8px; color: #55FFFF; font-size: 12px; line-height: 1.4;
+.mgq { color: #8A8A8A; }
+.mgempty, .mghead { padding: 8px; color: #55FFFF; font-size: 16px; line-height: 1.4;
                     border-bottom: 1px solid #555555; }
 .mgach { padding: 3px 8px; border-bottom: 1px solid #111111; line-height: 1.2; }
-.mgach b { color: #333333; font-weight: normal; display: block; }
-.mgach i { color: #222222; font-style: normal; font-size: 11px; }
+.mgach b { color: #8A8A8A; font-weight: normal; display: block; }
+.mgach i { color: #777777; font-style: normal; font-size: 15px; }
 .mgach.on b { color: #FFFF55; }
-.mgach.on i { color: #777777; }
+.mgach.on i { color: #BBBBBB; }
 .mgach.on.zero b { color: #55FFFF; }
 .mgstat div { display: flex; justify-content: space-between; padding: 2px 8px; border-bottom: 1px solid #111111; }
-.mgstat span { color: var(--phos-dim); font-size: 12px; }
+.mgstat span { color: var(--phos-dim); font-size: 16px; }
 .mgstat b { color: #FFFF55; font-weight: normal; }
 .mgasc { padding: 8px; border-bottom: 1px solid #555555; display: flex; align-items: center; gap: 8px;
          flex-wrap: wrap; }
-.mgasc span { color: #55FFFF; font-size: 11px; }
+.mgasc span { color: #55FFFF; font-size: 15px; }
 
 .mgbar { flex: 0 0 auto; display: flex; align-items: center; gap: 5px; padding: 3px 4px;
          background: #000000; border-top: 1px solid #555555; }
 .mgbuy.on { background: #FFFF55; }
-.mghint { color: #555555; font-size: 11px; white-space: nowrap; overflow: hidden; }
+.mghint { color: #9A9A9A; font-size: 15px; white-space: nowrap; overflow: hidden; }
 .mgtip { display: none; position: absolute; z-index: 40; width: 250px; background: #000000;
-         border: 1px solid var(--phos, #FFFFFF); padding: 6px 8px; font-size: 12px; line-height: 1.35;
+         border: 1px solid var(--phos, #FFFFFF); padding: 6px 8px; font-size: 16px; line-height: 1.35;
          pointer-events: none; box-shadow: 3px 3px 0 #000000; }
 .mgtip b { color: #FFFF55; font-weight: normal; }
 .mgtip u { color: #55FFFF; text-decoration: none; float: right; }
@@ -1089,12 +1090,12 @@ textarea.editor {
 .mgrate b { color: #FFFF55; font-weight: normal; }
 .mgrate i { color: #AA5500; font-style: normal; }
 .mgrate u { color: #FF55FF; text-decoration: none; }
-.mgcount .mgn.big { font-size: 22px; }
+.mgcount .mgn.big { font-size: 30px; }
 
 /* the bar that says what is next and how long it is */
-.mggoal { position: relative; width: 288px; height: 15px; background: #000000;
+.mggoal { position: relative; width: 288px; height: 18px; background: #000000;
           border: 1px solid #555555; margin: 1px 0 3px; overflow: hidden; }
-.mggoal span, .mggoal b { position: relative; z-index: 2; font-size: 11px; line-height: 13px; }
+.mggoal span, .mggoal b { position: relative; z-index: 2; font-size: 15px; line-height: 15px; }
 .mggoal span { float: left; padding-left: 4px; color: var(--phos-dim); }
 .mggoal b { float: right; padding-right: 4px; color: #55FFFF; font-weight: normal; }
 .mggoal i { position: absolute; left: 0; top: 0; bottom: 0; z-index: 1; background: #0000AA; }
@@ -1251,120 +1252,7 @@ textarea.editor {
 .mgwipe:hover { background: #FF5555; color: #000000; }
 .jagcv { width: 400px; height: auto; max-height: none; image-rendering: pixelated; cursor: pointer; }
 
-/* ==========================================================================
-   THE STYLE METER
-   Sits in the picture, not on the glass: it is inside #tube, so the lens
-   zooms it with everything else. 8000 clears the shell and the toast and
-   still leaves the degauss flash (9998), the saver (9000) and the glass
-   (9999) on top of it. Palette colours only; every shadow is a hard black
-   offset, every animation moves in whole pixels and snaps with steps().
-   ========================================================================== */
-#smeter {
-  position: absolute;
-  top: 30px;                 /* clears the menubar. Set to 4px to overlap it. */
-  right: 10px;
-  z-index: 8000;
-  display: none;
-  pointer-events: none;
-  user-select: none;
-  text-align: right;
-  width: clamp(150px, 26vmin, 330px);
-  font-family: 'VT323', 'Courier New', monospace;
-  line-height: 1;
-  -webkit-font-smoothing: none;
-  image-rendering: pixelated;
-  --sm-col: #AAAAAA;
-}
-#smeter.live { display: block; }
-
-#sm-grade {
-  font-size: clamp(38px, 9.5vmin, 104px);
-  letter-spacing: -0.04em;
-  color: var(--sm-col);
-  text-shadow: 0 0 var(--phos-px, 2px) var(--phos, #FFFFFF);
-}
-#sm-name {
-  font-size: clamp(13px, 2.3vmin, 26px);
-  letter-spacing: 1px;
-  color: var(--sm-col);
-  text-shadow: 0 0 var(--phos-px, 2px) var(--phos, #FFFFFF);
-  margin-top: -2px;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-/* the drain bar: sixteen blocks, no interpolation, no rounded ends */
-#sm-bar {
-  display: flex;
-  gap: 2px;
-  justify-content: flex-end;
-  margin-top: 5px;
-}
-#sm-bar b {
-  flex: 1 1 0;
-  height: clamp(6px, 1.3vmin, 13px);
-  background: #000000;
-  border: 1px solid #555555;
-}
-#sm-bar b.on {
-  background: var(--sm-col);
-  border-color: var(--phos);
-}
-
-/* the running tally under the bar, newest at the top */
-#sm-log {
-  margin-top: 4px;
-  font-size: clamp(11px, 1.8vmin, 20px);
-  letter-spacing: 1px;
-  color: var(--phos-dim);
-  text-shadow: 0 0 var(--phos-px, 2px) var(--phos, #FFFFFF);
-}
-#sm-log div {
-  animation: sm-fade 1500ms steps(3, end) forwards;
-}
-#sm-log div.big { color: var(--sm-col); }
-@keyframes sm-fade {
-  0%, 55% { opacity: 1; }
-  100%    { opacity: 0; }
-}
-
-/* the hit: one frame of whole-pixel recoil */
-#smeter.hit #sm-grade { animation: sm-shake 120ms steps(1, end); }
-@keyframes sm-shake {
-  0%   { transform: translate(-3px, 1px); }
-  33%  { transform: translate(2px, -2px); }
-  66%  { transform: translate(-1px, 0); }
-  100% { transform: translate(0, 0); }
-}
-
-/* the promotion: a hard three-step pop, never a smooth scale */
-#smeter.up #sm-grade { animation: sm-pop 260ms steps(1, end); }
-#smeter.up #sm-name  { animation: sm-blink 260ms steps(1, end); }
-@keyframes sm-pop {
-  0%   { transform: scale(1.7); }
-  40%  { transform: scale(1.25); }
-  70%  { transform: scale(0.92); }
-  100% { transform: scale(1); }
-}
-@keyframes sm-blink {
-  0%, 60% { color: var(--phos); }
-  100%    { color: var(--sm-col); }
-}
-
-/* the top rank shakes on its own until it starts to drain */
-#smeter.top #sm-grade { animation: sm-rave 180ms steps(1, end) infinite; }
-@keyframes sm-rave {
-  0%   { transform: translate(-2px, 0)  scale(1.06); }
-  50%  { transform: translate(2px, -2px) scale(1); }
-  100% { transform: translate(0, 1px)   scale(1.04); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  #smeter.hit #sm-grade,
-  #smeter.up  #sm-grade,
-  #smeter.up  #sm-name,
-  #smeter.top #sm-grade { animation: none; }
-}
+/* THE STYLE METER lives in kernel/smeter.css */
 
 /* ==========================================================================
    THE COSMETIC LAYER

@@ -19,7 +19,10 @@
     "dist:linux": "electron-builder --linux --publish never",
     "check:package": "node scripts/check-package.mjs",
     "check:listeners": "node scripts/check-listeners.mjs",
-    "check:music": "node scripts/check-music.mjs"
+    "check:music": "node scripts/check-music.mjs",
+    "check:garage": "node scripts/check-garage.mjs",
+    "check:drunk": "node scripts/check-drunk.mjs",
+    "check:style": "node scripts/check-style.mjs"
   },
   "devDependencies": {
     "electron": "^44.5.1",

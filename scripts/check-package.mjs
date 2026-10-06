@@ -38,7 +38,7 @@ const FORBIDDEN = [
   [/(^|\/)temp_/, 'temp files'], [/^server\.js$/, 'the old web server'], [/^(scripts|docs|\.claude|\.git|\.github)\//, 'dev folders'],
   [/^node_modules\//, 'node_modules'], [/\.(md)$/i, 'markdown'], [/(^|\/)(bulk_port|extract_fs|full_extract|manual_fix|patch|patch_menu|analyze)\.c?js$/, 'port scaffolding'],
   [/\.(bat|sh)$/, 'launcher scripts'], [/^package-lock\.json$/, 'lockfile'], [/^playwright/, 'test tooling'],
-  [/^apps\/bekkedal\/[a-z0-9_]*_check[a-z_]*\.js$/, 'Bekkedal check scripts'], [/^apps\/standbattle\/(content_check|headless_harness)\.js$/, 'Stand Battle dev tools'],
+  [/^apps\/bekkedal\/[a-z0-9_]*_check[a-z_]*\.js$/, 'Bekkedal check scripts'], [/^apps\/garage\/[a-z0-9_]*_check[a-z_]*\.js$/, 'Garage check scripts'], [/^apps\/standbattle\/(content_check|headless_harness)\.js$/, 'Stand Battle dev tools'],
 ];
 for (const [re, what] of FORBIDDEN) {
   const hit = files.filter(f => re.test(f));

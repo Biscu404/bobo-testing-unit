@@ -241,7 +241,7 @@ export default {
         : 'CLICK TO CONTINUE';
     }
     raf = requestAnimationFrame(frame);
-    musicStart();
+    musicStart(ctx.studio);
     musicSetIntensity(0);
 
     this._cleanup = () => { cancelAnimationFrame(raf); ro.disconnect(); musicStop(); };

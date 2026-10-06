@@ -1,54 +1,48 @@
 import { Snd } from "./snd.js";
-import { CRT, Vol, musGain } from "./hardware.js";
+import { CRT, Vol } from "./hardware.js";
+import "./style_sfx.js";
+import { Rage } from "./rage.js";
+import * as M from "./style_model.js";
+import { Fx } from "./style_fx.js";
+import { Glitch } from "./glitch.js";
+import { Symphony } from "./symphony_play.js";
+import { unlock } from "./symphony.js";
+export { Rage };
 /* ==========================================================================
    11.3d THE STYLE METER
    Deleting a file is not housekeeping, it is a performance, and the machine
    grades it. Points in, points always bleeding out; the letter follows the
    points. Nothing here is saved — every reload starts you back at nothing.
+   The rules (how far each rank is, how fast it bleeds) are kernel/style_model.js;
+   the look of it is kernel/smeter.css and kernel/style_fx.js; at the top rank the
+   symphony plays (kernel/symphony*.js), and if you keep it there the sound starts
+   to come apart (kernel/glitch.js).
    ========================================================================== */
-const STYLE_CFG = {
-  BASE: 220,          /* points for one file */
-  COMBO_STEP: 40,     /* added per link in the chain */
-  COMBO_MAX: 200,     /* ceiling on that bonus */
-  COMBO_WINDOW: 3.5,  /* seconds before the chain is considered broken */
-  GRACE: 2.2,         /* seconds of quiet before the drain opens */
-  DRAIN: 55,          /* points a second at D */
-  DRAIN_TIER: 22,     /* and again for every rank above it */
-  TOP_HOLD: 8,        /* the birthday rank is frozen this long, once */
-  BULK_CAP: 12        /* most files one bulk action may ever score */
-};
-
-/* at: the running total this rank starts at. col: palette, no exceptions. */
-const STYLE_RANKS = [
-  { key: 'D',   name: 'DESECRATING',          at: 0,    col: '#AAAAAA' },
-  { key: 'C',   name: 'CORRUPTING',           at: 700,  col: '#55FF55' },
-  { key: 'B',   name: 'BLASPHEMOUS',          at: 1500, col: '#55FFFF' },
-  { key: 'A',   name: 'ANNIHILATING',         at: 2500, col: '#FFFF55' },
-  { key: 'S',   name: 'SACRILEGIOUS',         at: 3800, col: '#AA5500' },
-  { key: 'SS',  name: 'SSCORCHED EARTH',      at: 5400, col: '#FF5555' },
-  { key: 'SSS', name: 'SSSTEFAN BOERUSTORM',  at: 7300, col: '#FF55FF' },
-  { key: '!!!', name: 'HAPPY BIRTHDAY',       at: 9500, col: '#FFFFFF' }
-];
-
 /* what the machine calls the act, as it stops being an act of maintenance */
 const STYLE_VERBS = [
   'DELETED', 'SHREDDED', 'PURGED', 'VAPORISED',
   'OBLITERATED', 'UNMADE', 'ERASED FROM THE RECORD', 'UNWRAPPED'
 ];
-
 /* the birthday rank cycles the whole palette, one colour per two frames */
 const STYLE_PARTY = ['#FFFF55', '#55FF55', '#55FFFF', '#FF55FF', '#FF5555', '#FFFFFF'];
+/* how big the meter is at each rank: every rank up it fills more of the screen */
+const SCALE = [1, 1.12, 1.27, 1.45, 1.66, 1.9, 2.18, 2.5];
+const GLITCH_AT = 60, GLITCH_RAMP = 90;       /* a minute at the top, then a minute and a half to the worst of it */
+const LEAVE_GRACE = 1.5, LEAVE_FADE = 3.5;    /* the symphony waits this long for the meter to come back, then fades out over this */
+const MASS = 20;                              /* a pile this big, after the glitch has begun, throws a burst of it */
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 
 export const Style = {
-  pts: 0,
-  tier: -1,        /* -1 is dormant: the meter is not on screen at all */
-  combo: 0,
-  last: 0,         /* performance.now() of the last hit, in seconds */
-  hold: 0,         /* seconds of drain freeze left */
-  crowned: false,  /* the top rank has been reached once this session */
+  run: M.newRun(),
+  shown: -1,       /* the rank on screen: -1 is dormant, the meter is not on screen at all */
+  lost: 0,         /* seconds since the meter was last at the top, while the symphony waits to see if it comes back */
+  sung: false,     /* the birthday fanfare has been used this session */
   raf: null,
   prev: 0,
   el: null,
+  get tier() { return this.run.tier; },
+  get pts() { return this.run.pts; },
+  get combo() { return this.run.combo; },
 
   mount() {
     if (this.el) return true;
@@ -64,6 +58,7 @@ export const Style = {
       cells: Array.prototype.slice.call(bar.children),
       log: document.getElementById('sm-log')
     };
+    Fx.attach(document.getElementById('tube'));
     return true;
   },
 
@@ -75,57 +70,45 @@ export const Style = {
   hit(node, n) {
     if (!CRT.on) return;
     if (!this.mount()) return;
-    let count = Math.max(1, n || 1);
-    const bulk = count > 1;
-    if (bulk) count = Math.min(count, STYLE_CFG.BULK_CAP);
-
-    const t = this.now();
-    if (t - this.last > STYLE_CFG.COMBO_WINDOW) this.combo = 0;
-    this.last = t;
-
-    let gained = 0;
-    for (let i = 0; i < count; i++) {
-      const bonus = Math.min(STYLE_CFG.COMBO_MAX, this.combo * STYLE_CFG.COMBO_STEP);
-      gained += STYLE_CFG.BASE + bonus;
-      this.combo++;
-    }
-    this.pts += gained;
-
-    const tier = this.rankFor(this.pts);
-    this.setTier(tier);
+    const count = Math.max(1, n || 1), bulk = count > 1;
+    Snd.wake();
+    if (Snd.sfx && !this.hooked) { this.hooked = true; Glitch.hook(Snd.sfx); }
+    const r = M.hit(this.run, count, this.now());
+    this.setTier(this.run.tier);
+    const tier = Math.max(0, this.run.tier);
+    if (tier >= 2) Symphony.warm();                /* the orchestra gets its instruments out before it is wanted */
 
     /* the verb, then the chain, then the pile if it was a pile */
-    this.say(STYLE_VERBS[Math.max(0, tier)], true);
+    this.say(STYLE_VERBS[tier], true);
     if (bulk) this.say('MASS DELETION x' + count);
-    else if (this.combo > 2) this.say('CHAIN x' + this.combo);
+    else if (this.run.combo > 2) this.say('CHAIN x' + Math.floor(this.run.combo));
 
     this.el.root.classList.remove('hit');
     void this.el.root.offsetWidth;      /* restart the recoil */
     this.el.root.classList.add('hit');
 
-    Snd.delT(Math.max(0, tier));
-    Rage.sync();
-    this.run();
-  },
-
-  rankFor(p) {
-    if (p <= 0) return -1;      /* nothing on the board: the meter goes away */
-    let t = -1;
-    for (let i = 0; i < STYLE_RANKS.length; i++) if (p >= STYLE_RANKS[i].at) t = i;
-    return t;
+    Snd.delT(tier);
+    Fx.burst(count, tier);
+    if (count >= MASS && this.run.atTop >= GLITCH_AT) Glitch.burst(count);
+    Rage.tier = this.run.tier; Rage.sync();
+    this.runLoop();
+    return r;
   },
 
   setTier(t) {
-    if (t === this.tier) return;
-    const up = t > this.tier;
-    this.tier = t;
+    if (t === this.shown) return;
+    const up = t > this.shown;
+    this.shown = t;
+    Rage.tier = t;
     if (t < 0) { this.hide(); return; }
-    const r = STYLE_RANKS[t];
+    const r = M.RANKS[t], top = t === M.TOP;
     this.el.root.classList.add('live');
     this.el.root.style.setProperty('--sm-col', r.col);
+    this.el.root.style.setProperty('--sm-k', String(SCALE[t]));
+    this.el.root.dataset.t = String(t);
     this.el.key.textContent = r.key;
     this.el.name.textContent = r.name;
-    this.el.root.classList.toggle('top', t === STYLE_RANKS.length - 1);
+    this.el.root.classList.toggle('top', top);
     if (up) {
       this.el.root.classList.remove('up');
       void this.el.root.offsetWidth;
@@ -133,10 +116,9 @@ export const Style = {
       this.say(r.name, true);
       Snd.rankUp(t);
     }
-    if (t === STYLE_RANKS.length - 1 && !this.crowned) {
-      this.crowned = true;
-      this.hold = STYLE_CFG.TOP_HOLD;
-      Snd.fanfare();
+    if (top) {
+      if (!this.sung) { this.sung = true; Snd.birthday(); }
+      unlock();
       this.onTop();
     }
     Rage.sync();
@@ -157,7 +139,7 @@ export const Style = {
   },
 
   /* ---- the bleed ------------------------------------------------------- */
-  run() {
+  runLoop() {
     if (this.raf) return;
     this.prev = this.now();
     const loop = () => {
@@ -173,262 +155,61 @@ export const Style = {
     this.prev = t;
     if (!CRT.on) { this.reset(); return; }
 
-    if (this.hold > 0) {
-      this.hold -= dt;
-    } else if (t - this.last > STYLE_CFG.GRACE) {
-      const rate = STYLE_CFG.DRAIN + STYLE_CFG.DRAIN_TIER * Math.max(0, this.tier);
-      this.pts = Math.max(0, this.pts - rate * dt);
-      const tier = this.rankFor(this.pts);
-      if (tier !== this.tier) this.setTier(tier);
-      if (this.pts <= 0 && this.tier < 0) { this.stop(); return; }
+    M.frame(this.run, dt, t);
+    if (this.run.tier !== this.shown) this.setTier(this.run.tier);
+    if (this.run.tier < 0 && this.run.pts <= 0) { this.stop(); return; }
+
+    /* the symphony plays for as long as the meter is at the top, and is let go (faded) a moment after it leaves */
+    const wantTop = this.run.tier === M.TOP && Vol.mus > 0;
+    if (wantTop) { this.lost = 0; if (!Symphony.on) { Symphony.start(); Rage.hushed = true; Rage.sync(); } }
+    else if (Symphony.on) {
+      this.lost += dt;
+      if (this.lost > LEAVE_GRACE) { Symphony.fadeOut(LEAVE_FADE); Rage.hushed = false; Rage.sync(); }
     }
-    this.render();
+    /* a minute at the top, and the sound starts to go */
+    Glitch.setLevel(clamp((this.run.atTop - GLITCH_AT) / GLITCH_RAMP, 0, 1));
+    this.render(dt);
   },
 
-  render() {
-    if (this.tier < 0) return;
-    const r = STYLE_RANKS[this.tier];
-    const next = STYLE_RANKS[this.tier + 1];
+  render(dt) {
+    if (this.shown < 0) return;
+    const r = M.RANKS[this.shown], top = this.shown === M.TOP;
+    const next = M.RANKS[this.shown + 1];
     const span = next ? next.at - r.at : 1;
-    const frac = next ? (this.pts - r.at) / span : 1;
-    const lit = Math.max(0, Math.min(16, Math.round(frac * 16)));
+    const frac = next ? (this.run.pts - r.at) / span : 1;
+    const lit = clamp(Math.round(frac * 16), 0, 16);
     for (let i = 0; i < 16; i++) this.el.cells[i].classList.toggle('on', i < lit);
-    if (!next) {
-      const c = STYLE_PARTY[Math.floor(this.now() * 12) % STYLE_PARTY.length];
-      this.el.root.style.setProperty('--sm-col', c);
+    let col = r.col;
+    if (top) {
+      col = STYLE_PARTY[Math.floor(this.now() * 12) % STYLE_PARTY.length];
+      this.el.root.style.setProperty('--sm-col', col);
     }
+    Fx.frame(dt || 0.016, this.shown, top, col);
   },
 
   hide() {
     if (!this.el) return;
     this.el.root.classList.remove('live', 'top', 'up', 'hit');
+    delete this.el.root.dataset.t;
     this.el.log.innerHTML = '';
+    Fx.clear();
   },
 
   stop() {
     if (this.raf) cancelAnimationFrame(this.raf);
     this.raf = null;
     this.hide();
-    Rage.sync();
+    this.shown = -1;
+    Symphony.fadeOut(2.5); Rage.hushed = false;
+    Glitch.setLevel(0);
+    Rage.tier = -1; Rage.sync();
   },
 
   /* power cycle, or anything else that should wipe the run */
   reset() {
-    this.pts = 0;
-    this.combo = 0;
-    this.tier = -1;
-    this.hold = 0;
+    this.run = M.newRun();
+    this.lost = 0;
+    Symphony.stop(); Rage.hushed = false;
     this.stop();
-  }
-};
-
-/* ---- 11.3e the sound of a file dying, by rank ----------------------------
-   Bolted onto Snd rather than written into it, so the speaker above stays
-   the speaker it was. Every two ranks the delete gets a bigger gun.
-   ========================================================================== */
-Object.assign(Snd, {
-  delT(tier) {
-    if (tier < 2) {              /* D–C: the stock sound, a file giving up */
-      this.del();
-    } else if (tier < 4) {       /* B–A: it is being taken apart */
-      this.noise(120, { freq: 1500, q: 1.4, vol: 0.07 });
-      this.tone(620, 130, { type: 'sawtooth', to: 90, vol: 0.05 });
-      this.tone(310, 90, { type: 'square', to: 60, vol: 0.035, delay: 0.03 });
-    } else if (tier < 6) {       /* S–SS: a shotgun in a server room */
-      this.noise(200, { freq: 420, q: 0.6, vol: 0.11 });
-      this.noise(60, { freq: 3400, q: 2.0, vol: 0.06 });
-      this.tone(180, 220, { type: 'sawtooth', to: 40, vol: 0.07 });
-      this.tone(880, 70, { type: 'square', to: 220, vol: 0.03, delay: 0.02 });
-    } else {                     /* SSS and above: it is a party favour */
-      this.noise(240, { freq: 300, q: 0.5, vol: 0.12 });
-      [1046, 1318, 1568, 2093].forEach((f, i) =>
-        this.tone(f, 130, { type: 'square', delay: i * 0.028, vol: 0.045 }));
-      this.tone(140, 260, { type: 'sawtooth', to: 35, vol: 0.07 });
-    }
-  },
-  /* the promotion sting: a rising fifth, higher every rank */
-  rankUp(tier) {
-    const base = 330 * Math.pow(1.12, tier);
-    [1, 1.5, 2].forEach((m, i) =>
-      this.tone(base * m, 130, { type: 'square', delay: i * 0.05, vol: 0.05 }));
-    this.noise(70, { freq: 2600, q: 1.6, vol: 0.05 });
-  },
-  /* reserved for the birthday, and used exactly once */
-  fanfare() {
-    [523, 659, 784, 1046, 1318, 1568, 2093].forEach((f, i) =>
-      this.tone(f, 300, { type: 'square', delay: i * 0.075, vol: 0.055 }));
-    [523, 784, 1046].forEach(f =>
-      this.tone(f, 900, { type: 'triangle', delay: 0.55, vol: 0.04 }));
-  }
-});
-
-/* ---- 11.3f the layer over the hymn ---------------------------------------
-   D minor, same key as the boot hymn, at twice its tempo, on its own bus
-   under the MUS pot. One instrument joins per rank and a lowpass opens as
-   you climb, so the track does not change — it stops being held back.
-   ========================================================================== */
-const RZ = {
-  D1: 36.71, A1: 55.00, D2: 73.42, F2: 87.31, A2: 110.00, Bb2: 116.54, C3: 130.81,
-  D3: 146.83, F3: 174.61, G3: 196.00, A3: 220.00, Bb3: 233.08, C4: 261.63,
-  D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.00, A4: 440.00, Bb4: 466.16,
-  C5: 523.25, D5: 587.33, F5: 698.46, A5: 880.00
-};
-
-export const Rage = {
-  on: false,
-  bus: null,
-  filt: null,
-  when: 0,
-  timer: null,
-  voices: [],
-  bpm: (typeof HYMN !== 'undefined' ? HYMN.bpm : 92) * 2,
-  step() { return 15 / this.bpm; },              /* one sixteenth, in seconds */
-
-  ensure() {
-    Snd.wake();
-    if (!Snd.ctx) return false;
-    if (!this.bus) {
-      this.filt = Snd.ctx.createBiquadFilter();
-      this.filt.type = 'lowpass';
-      this.filt.frequency.value = 800;
-      this.filt.Q.value = 0.6;
-      this.bus = Snd.ctx.createGain();
-      this.bus.gain.value = 0.0001;
-      this.filt.connect(this.bus);
-      this.bus.connect(Snd.ctx.destination);
-    }
-    return true;
-  },
-
-  keep(o) {
-    this.voices.push(o);
-    o.onended = () => {
-      const i = this.voices.indexOf(o);
-      if (i >= 0) this.voices.splice(i, 1);
-    };
-  },
-
-  note(f, at, dur, type, vol, to) {
-    const c = Snd.ctx;
-    const o = c.createOscillator();
-    const g = c.createGain();
-    o.type = type;
-    o.frequency.setValueAtTime(f, at);
-    if (to) o.frequency.exponentialRampToValueAtTime(to, at + dur);
-    g.gain.setValueAtTime(0.0001, at);
-    g.gain.exponentialRampToValueAtTime(vol, at + 0.008);
-    g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
-    o.connect(g); g.connect(this.filt);
-    o.start(at); o.stop(at + dur + 0.04);
-    this.keep(o);
-  },
-
-  drum(at, ms, freq, q, vol) {
-    const c = Snd.ctx;
-    const n = Math.max(1, Math.floor(c.sampleRate * ms / 1000));
-    let buf;
-    try { buf = c.createBuffer(1, n, c.sampleRate); } catch (e) { return; }
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
-    const s = c.createBufferSource();
-    s.buffer = buf;
-    const f = c.createBiquadFilter();
-    f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q;
-    const g = c.createGain();
-    g.gain.value = vol;
-    s.connect(f); f.connect(g); g.connect(this.filt);
-    s.start(at);
-  },
-
-  kick(at)  { this.note(130, at, 0.16, 'sine', 0.30, 42); },
-  snare(at) { this.drum(at, 130, 1900, 0.8, 0.16); this.note(190, at, 0.09, 'triangle', 0.09, 90); },
-  hat(at, v){ this.drum(at, 26, 8000, 1.6, v); },
-
-  /* one bar of sixteen sixteenths, drawn according to how high we are */
-  bar(t0, tier) {
-    const s = this.step();
-    const at = i => t0 + i * s;
-
-    for (let i = 0; i < 16; i += (tier >= 5 ? 1 : 2)) this.hat(at(i), tier >= 5 ? 0.05 : 0.07);
-    if (tier >= 1) [0, 4, 7, 10, 12].forEach(i => this.kick(at(i)));
-    if (tier >= 6) [4, 12].forEach(i => this.snare(at(i)));
-
-    if (tier >= 2) {
-      const riff = ['D2','D2','D2','F2','D2','D2','C3','D2','D2','D2','Bb2','D2','A2','A2','C3','D2'];
-      riff.forEach((n, i) => this.note(RZ[n], at(i), s * 0.85, 'square', 0.11));
-    }
-    if (tier >= 3) {
-      [2, 6, 9, 14].forEach(i => {
-        ['D3','F3','A3'].forEach(n => this.note(RZ[n], at(i), s * 1.6, 'sawtooth', 0.045));
-      });
-    }
-    if (tier >= 4) {
-      const lead = [['D4',0,2],['F4',2,2],['A4',4,2],['G4',6,1],['F4',7,1],
-                    ['E4',8,2],['D4',10,1],['F4',11,1],['A4',12,2],['D5',14,2]];
-      lead.forEach(n => {
-        this.note(RZ[n[0]], at(n[1]), s * n[2] * 0.9, 'square', 0.075);
-        if (tier >= 5) this.note(RZ[n[0]] * 2, at(n[1]), s * n[2] * 0.9, 'square', 0.03);
-      });
-    }
-    if (tier >= 6) {
-      this.note(RZ.A4, t0, s * 16, 'sawtooth', 0.028, RZ.A5);
-    }
-    if (tier >= 7) {
-      [['D5',0,3],['D5',3,1],['E4',4,4],['D5',8,4],['A5',12,4]].forEach(n =>
-        this.note(RZ[n[0]], at(n[1]), s * n[2] * 0.9, 'square', 0.07));
-    }
-    return 16 * s;
-  },
-
-  level() {
-    if (!this.bus || !Snd.ctx) return;
-    const t = Math.max(0, Style.tier);
-    const now = Snd.ctx.currentTime;
-    const target = Math.max(0.0002, musGain() * (0.30 + 0.085 * t));
-    const g = this.bus.gain;
-    g.cancelScheduledValues(now);
-    g.setValueAtTime(Math.max(0.0001, g.value), now);
-    g.exponentialRampToValueAtTime(target, now + 0.25);
-    const cut = 700 * Math.pow(1.48, t);          /* 700 Hz at D, wide open at the top */
-    this.filt.frequency.cancelScheduledValues(now);
-    this.filt.frequency.setValueAtTime(this.filt.frequency.value, now);
-    this.filt.frequency.linearRampToValueAtTime(Math.min(15000, cut), now + 0.45);
-  },
-
-  /* the one place that decides whether the layer is playing */
-  sync() {
-    if (!(CRT.on && Vol.mus > 0 && Style.tier >= 0)) { this.stop(); return; }
-    if (this.on) this.level(); else this.start();
-  },
-
-  start() {
-    if (this.on || !this.ensure()) return;
-    this.on = true;
-    this.when = Snd.ctx.currentTime + 0.12;
-    this.level();
-    this.tick();
-  },
-
-  tick() {
-    if (!this.on || !Snd.ctx) return;
-    const now = Snd.ctx.currentTime;
-    if (this.when < now) this.when = now + 0.05;
-    const len = this.bar(this.when, Math.max(0, Style.tier));
-    this.when += len;
-    this.timer = setTimeout(() => this.tick(), Math.max(120, len * 1000 - 300));
-  },
-
-  stop() {
-    if (!this.on) return;
-    this.on = false;
-    clearTimeout(this.timer);
-    if (!this.bus || !Snd.ctx) { this.voices = []; return; }
-    const now = Snd.ctx.currentTime;
-    const g = this.bus.gain;
-    g.cancelScheduledValues(now);
-    g.setValueAtTime(Math.max(0.0001, g.value), now);
-    g.exponentialRampToValueAtTime(0.0001, now + 0.45);
-    this.voices.forEach(o => { try { o.stop(now + 0.47); } catch (e) {} });
-    this.voices = [];
   }
 };

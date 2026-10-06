@@ -71,6 +71,30 @@ const r = await page.evaluate(async () => {
   out.playerMoves = p.beat() > b1;
   p.stop();
   out.followAfter = Studio.follow;
+
+  /* the studio's newer parts: a player that can be sought, looped and faded, and a long render in stretches */
+  const q = Studio.play(song, { channel: 'check', loop: true, loopFrom: 1, loopTo: 3, from: 2 });
+  await new Promise(r => setTimeout(r, 300));
+  q.seek(1); await new Promise(r => setTimeout(r, 250));
+  out.seek = q.beat() >= 0.9 && q.beat() < 3.2;
+  q.fade(0.3, 0.2); await new Promise(r => setTimeout(r, 350));
+  out.fade = Math.abs(q.mix.master.gain.value - 0.3) < 0.08;
+  q.stop(0.1);
+  const long = L.buildSong({ title: 'L', bpm: 240, key: 'C', scale: 'major', bars: 40, tracks: [{ name: 'M', inst: 'piano', notes: 'C4:q E4 G4 C5', reverb: 0.1 }] });
+  const lb = await Studio.render(long, { level: 1, tail: 2 });
+  out.chunked = Math.abs(lb.duration - (160 * 60 / 240 + 2)) < 0.05 && peak(lb).p > 0.02;
+  /* the games' scores, and the symphony */
+  const mods = { bekkedal: await import('/apps/bekkedal/score.js'), elephant: await import('/apps/elephant/score.js') };
+  const sb = await import('/apps/standbattle/score.js');
+  const songs = [].concat(mods.bekkedal.IDS.map(i => mods.bekkedal.song(L, i)), mods.elephant.IDS.map(i => mods.elephant.song(L, i)), [sb.song(L)]);
+  const badNote = n => !(n[1] > 0 && n[0] >= 0 && n[2] >= 24 && n[2] <= 108 && n[3] > 0 && n[3] <= 1.0001);
+  out.scores = songs.map(sg => sg.title + ':' + sg.tracks.filter(t => (t.notes || []).some(badNote)).length).filter(x => !/:0$/.test(x));
+  out.scoreCount = songs.length;
+  out.layers = [...new Set(sb.song(L).tracks.map(t => t.layer))].sort().join();
+  const sy = await import('/kernel/symphony.js'), sym = sy.symphony(L), harp = sym.tracks.find(t => t.name === 'HARP').notes;
+  out.sym = { bars: sym.bars, secs: sy.SECONDS, tracks: sym.tracks.length, opening: harp.slice(0, 7).map(n => n[2]).join(), badNotes: sym.tracks.reduce((a, t) => a + (t.notes || []).filter(badNote).length, 0) };
+  const sb0 = await Studio.render(sym, { level: 0.5, from: 0, to: 32, tail: 1 });
+  out.symStart = peak(sb0).p;
   return out;
 });
 ok(r.count >= 20, `at least twenty real instruments (${r.count}) and a drum kit of ${r.kit.length} pieces`);
@@ -82,6 +106,12 @@ ok(!r.noloop.length, 'every held instrument has a usable loop' + (r.noloop.lengt
 ok(r.songs.length >= 5 && r.songs.every(s => s[1] > 0.05), `the bundled songs all render (${r.songs.map(s => s[0]).join(', ')})`);
 ok(r.text.notes && r.text.dotted && r.text.chord && r.text.round && r.text.prog, 'the song notation parses, chords and progressions are right, songs round-trip');
 ok(r.playerMoves && r.followAfter === 0, 'the real-time player runs, its playhead moves, and it lets go of everything when stopped');
+ok(r.seek && r.fade, 'a player can be sought to a beat while it plays and faded on its own');
+ok(r.chunked, 'a long song is rendered in stretches and comes out the right length');
+ok(r.scoreCount === 11 && !r.scores.length, `the games' eleven songs for real instruments are all valid${r.scores.length ? ': ' + r.scores.join(', ') : ''}`);
+ok(r.layers.includes('combat') && r.layers.includes('explore') && r.layers.includes('tension'), "Stand Battle's score carries its three layers");
+ok(r.sym.bars === 100 && Math.abs(r.sym.secs - 150) < 0.5 && r.sym.tracks >= 12 && r.sym.badNotes === 0, `the symphony is a hundred bars, two and a half minutes, and sound all through (${r.sym.tracks} tracks)`);
+ok(r.sym.opening === '72,76,79,84,88,91,96' && r.symStart > 0.05, 'and it opens on the notes of the delete sound (C E G C E G C) and is audible');
 
 /* the app */
 await page.evaluate(async () => { const wm = await import('/kernel/wm.js'); await wm.openWindow('garage'); });

@@ -8,13 +8,14 @@
      a lot      double vision, the room tilting, the edges closing in
      too much   the eyelids come down every few seconds, and stay a moment
 
-   Every drink also lands as a kick that rides over the level and dies away
+   Every swallow also lands as a kick that rides over the level and dies away
    in a second, so each measure is felt when it goes down.
 
-   And there is a limit. Measures in the blood are counted separately from how
-   drunk it looks: one leaves again every half minute, so a few drinks over an
-   evening are fine and a bottle spammed down in a minute is not. At ten the
-   whole window goes (kernel/blackout.js). */
+   How drunk that is comes from kernel/drunk_bac.js: a measure takes half a
+   minute to arrive and the body clears one every 45 seconds, so the way to the
+   floor is a journey of minutes and nothing that is clicked can hurry it. At the
+   limit the whole window goes (kernel/blackout.js). */
+import { newBlood, swallow, step, over, levelOf, stageOf, wake } from './drunk_bac.js';
 const SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute;pointer-events:none" aria-hidden="true">' +
   '<filter id="drunkfx" x="-6%" y="-6%" width="112%" height="112%" color-interpolation-filters="sRGB">' +
   '<feTurbulence id="dfT" type="fractalNoise" baseFrequency="0.005 0.016" numOctaves="1" seed="4" result="n"/>' +
@@ -26,22 +27,21 @@ const SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style=
 
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 
-const BLACKOUT_AT = 10, ONE_GONE_MS = 30000;
-
 export const Drunk = {
   level: 0,
   kick: 0,
   raf: null,
-  bac: 0, bacAt: 0, out: false,
+  blood: newBlood(), out: false,
   svg: null, lids: null, fx: {},
   /* one measure, drunk */
   drink() {
-    const now = performance.now();
-    this.bac = Math.max(0, this.bac - (now - this.bacAt) / ONE_GONE_MS) + 1;
-    this.bacAt = now;
-    this.add(0.18);
-    if (this.bac >= BLACKOUT_AT && !this.out) this.blackout();
+    swallow(this.blood);
+    this.kick = 1;
+    this._ensureLoop();
   },
+  /* a swallow on the way down: the screen gives a small lurch */
+  gulp() { this.kick = Math.max(this.kick, 0.4); this._ensureLoop(); },
+  stage() { return stageOf(this.blood); },
   blackedOut() { return this.out; },
   async blackout() {
     if (this.out) return;
@@ -50,17 +50,12 @@ export const Drunk = {
       const m = await import('./blackout.js');
       m.runBlackout(() => {
         this.out = false;
-        this.bac = 3.5;
-        this.level = Math.max(this.level, 0.55);
+        wake(this.blood);
+        this.level = levelOf(this.blood);
         this.kick = 1;
         this._ensureLoop();
       });
     } catch (e) { this.out = false; throw e; }
-  },
-  add(n) {
-    this.level = Math.min(1, this.level + n);
-    this.kick = 1;
-    this._ensureLoop();
   },
   _build() {
     if (this.svg) return;
@@ -89,10 +84,12 @@ export const Drunk = {
     const tick = now => {
       const dt = Math.min(0.25, (now - last) / 1000);
       last = now;
-      this.level = Math.max(0, this.level - dt * 0.006);
+      step(this.blood, dt);
+      this.level = levelOf(this.blood);
       this.kick = Math.max(0, this.kick - dt * 1.6);
+      if (over(this.blood) && !this.out) this.blackout();
       this._apply(now);
-      if (this.level > 0.001) this.raf = requestAnimationFrame(tick);
+      if (this.level > 0.001 || this.out) this.raf = requestAnimationFrame(tick);
       else { this.raf = null; this._clear(); }
     };
     this.raf = requestAnimationFrame(tick);
