@@ -28,6 +28,7 @@ import { createInterior } from './interior.js';
 import { createBuilding } from './building.js';
 import { createForest } from './forest.js';
 import { createWear } from './wear.js';
+import { greeting } from './greet.js';
 import { createFx, TOOL_SWING, swingLen, toolAt, drawHeld } from './fx.js';
 import { createSongs } from './music.js';
 import { createAmbience } from './ambience.js';
@@ -221,7 +222,7 @@ export default {
       let S = null;
       const fresh = () => {
         const f = {
-        ver: 19, lang: BEK_LANG, fullscreen: 0,
+        ver: 20, lang: BEK_LANG, fullscreen: 0,
         map: 'farm', px: 8, py: 8, dir: 0, step: 0, walk: 0,
         day: 1, min: BEK_DAY_START, kr: BEK_START_KR, en: BEK_EN_MAX, enMax: BEK_EN_MAX,
         water: 20, waterMax: 20,
@@ -278,7 +279,7 @@ export default {
         /* ver 19: the same marker, for the same reason, over the stamina
            rescale in heal() below — see EN_MAX_WAS. */
         enRescaled: true,
-        chatIx: {}, disc: { farm: 1 }, weather: 'klar',
+        chatIx: {}, lastTalk: {}, disc: { farm: 1 }, weather: 'klar',
         /* the seasonal layer — always recomputed from `day` (seasons.js),
            never incremented on its own, so it cannot drift from it. See
            heal() below for the same recompute on an old save's load. */
@@ -398,7 +399,7 @@ export default {
       /* nested objects a stale save might be missing */
       const heal = s => {
         const f = fresh();
-        ['tools', 'fr', 'soil', 'felled', 'mined', 'picked', 'flag', 'q', 'met', 'seen', 'chatIx', 'disc', 'bag', 'chest', 'xp', 'lvl', 'giftWeek', 'yst', 'xpDay', 'cropGrade', 'presv', 'spine', 'placed'].forEach(k => {
+        ['tools', 'fr', 'soil', 'felled', 'mined', 'picked', 'flag', 'q', 'met', 'seen', 'chatIx', 'lastTalk', 'disc', 'bag', 'chest', 'xp', 'lvl', 'giftWeek', 'yst', 'xpDay', 'cropGrade', 'presv', 'spine', 'placed'].forEach(k => {
           if (typeof s[k] !== 'object' || s[k] === null) s[k] = f[k];
         });
         /* ver 16: a save from before QUALITY has no plot's soil record
@@ -1724,6 +1725,11 @@ export default {
         }
         const book = BEK_TALK[npc.id];
         if (!book) return;
+        /* what they say first (greet.js): hello the first time today, hello again after that, and
+           a remark if it has been days. Worked out before the day is stamped, and only spoken in
+           front of an ordinary conversation: a quest turn-in or a gift has its own words. */
+        const hello = greeting(npc.id, S);
+        S.lastTalk[npc.id] = S.day;
         const q = BEK_QUESTS.filter(q2 => q2.who === npc.id && S.q[q2.id] === 'active')[0];
         if (q && Object.keys(q.need).every(id => has(id, q.need[id]))) {
           Object.keys(q.need).forEach(id => add(id, -q.need[id]));
@@ -1802,7 +1808,7 @@ export default {
           if (node.set) Object.assign(S.flag, node.set);
           if (node.give) Object.keys(node.give).forEach(id => add(id, node.give[id]));
           if (node.open && !S.q[node.open]) S.q[node.open] = 'active';
-          dlg = { lines: node.lines.slice(), i: 0, npc: npc, mood: node.mood, ask: node.ask || null, buy: node.buy || null, node: node };
+          dlg = { lines: hello.concat(node.lines), i: 0, npc: npc, mood: node.mood, ask: node.ask || null, buy: node.buy || null, node: node };
         } else {
           const pool = book.chat.filter(c => !c.if || c.if(S));
           const ix = (S.chatIx[npc.id] = (S.chatIx[npc.id] || 0) + 1);
@@ -1813,7 +1819,7 @@ export default {
              is filtered on `if` every visit, unlike a `nodes` entry (one-shot
              via S.seen), which is what lets the offer keep resurfacing until
              it is actually bought. */
-          dlg = { lines: pick.t.slice(), i: 0, npc: npc, mood: pick.mood, menu: 1, buy: pick.buy || null };
+          dlg = { lines: hello.concat(pick.t), i: 0, npc: npc, mood: pick.mood, menu: 1, buy: pick.buy || null };
         }
         sfx.talk(); mode = 'talk';
       }
@@ -2948,7 +2954,11 @@ export default {
       const snow_ = () => snowy(S.map);
       const rim_ = (x, y) => !ins_() && (x === 0 || y === 0 || x === COLS() - 1 || y === ROWS() - 1);
       /* a tile that lays its own ground has no grass or boards under it */
-      const ownGround = (c, x, y) => 'W~P.MOQHRDLfk '.indexOf(c) >= 0 || (c === 'T' && rim_(x, y));
+      /* A chest, a well or a sign that stands on trodden earth has trodden earth under it: on a grass
+         tile it was a square of green in the middle of the yard, a ring round the thing. */
+      const onPath = (c, x, y) => !ins_() && (c === 'K' || c === 'o' || c === 'S') &&
+        (tileAt(S.map, x - 1, y) === '.' || tileAt(S.map, x + 1, y) === '.' || tileAt(S.map, x, y - 1) === '.' || tileAt(S.map, x, y + 1) === '.');
+      const ownGround = (c, x, y) => 'W~P.MOQHRDLfk '.indexOf(c) >= 0 || (c === 'T' && rim_(x, y)) || onPath(c, x, y);
 
       function tileGround(c, x, y) {
         const px = x * BEK_T_SRC, py = y * BEK_T_SRC;
@@ -2962,7 +2972,7 @@ export default {
            depth ramp, so the two halves of the waterline meet */
         if (c === 'W') { native(() => (shore.maskOf(x, y) ? shore.nearShore(x, y) : water.deep(x, y))); return; }
         if (c === '~') { native(() => shore.ground(x, y)); return; }
-        if (c === '.') { pathGround(x, y); return; }
+        if (c === '.' || onPath(c, x, y)) { pathGround(x, y); return; }
         if (c === 'M' || c === 'O' || c === 'Q') { native(() => rock.ground(c, x, y, snow_())); return; }
         /* the plain fills come straight out of surface.js, so the colour the
            check reasons about at the darkest hour is the colour that is
@@ -3002,6 +3012,7 @@ export default {
          the ground's own texture. */
       function tileMarks(c, x, y) {
         if (c === ' ' || c === 'W' || c === '~') return;
+        if (onPath(c, x, y)) { pathDetail(x, y); native(() => shore.bank(x, y)); return; }
         if (!ownGround(c, x, y)) {
           if (ins_()) native(() => interior.volume(x, y)); else if (isCave(S.map)) caveDetail(x, y); else grassDetail(x, y);
         }
@@ -3090,7 +3101,13 @@ export default {
         if (c === 'H' || c === 'R' || c === 'D') {
           if (!ins) native(() => building.tile(c, x, y));
           else if (c === 'D') native(() => interior.door(x, y));
-          else if (c === 'H') native(() => interior.wall(x, y, o, o.win < 2));
+          else if (c === 'H') {
+            /* a window looks out: only a wall with the dead margin behind it has one. A partition has
+               floor on both sides and is a plain log wall. */
+            const outer = tileAt(S.map, x - 1, y) === ' ' || tileAt(S.map, x + 1, y) === ' ' ||
+                          tileAt(S.map, x, y - 1) === ' ' || tileAt(S.map, x, y + 1) === ' ';
+            native(() => interior.wall(x, y, o, o.win < 2 && outer));
+          }
         }
         if (c === 'o') { g.fillStyle = C(STO[4]); g.fillRect(px + 3, py + 8, 14, 10); g.fillStyle = C(STO[2]); g.fillRect(px + 3, py + 16, 14, 2); g.fillStyle = C(WAT[2]); g.fillRect(px + 5, py + 10, 10, 5); g.fillStyle = C(WAT[4]); g.fillRect(px + 6, py + 11, 3, 1); g.fillStyle = C(TIM[2]); g.fillRect(px + 3, py + 2, 14, 3); g.fillRect(px + 4, py + 2, 2, 8); g.fillRect(px + 14, py + 2, 2, 8); }
         if (c === 'S') { g.fillStyle = C(TIM[2]); g.fillRect(px + 9, py + 8, 3, 11); g.fillStyle = C(SAN[1]); g.fillRect(px + 2, py + 2, 17, 8); g.fillStyle = C(TIM[0]); g.fillRect(px + 4, py + 4, 13, 1); g.fillRect(px + 4, py + 7, 9, 1); }

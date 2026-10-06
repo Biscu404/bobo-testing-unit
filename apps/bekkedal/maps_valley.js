@@ -38,30 +38,30 @@ export const VALLEY = {
     rows: [
       'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
       'TggggggggggggggggggggggggggggggggggggggggggT',
-      'TgggggggFgggggggg,gggggggggggggggggYgggggggT',
-      'Tggggggggggg,FggggggggggggggggYggggGggggTggT',
+      'Tgggggggggggggggg,gggggggggggggggggYgggggggT',
+      'Tggggggggggg,gggggggggggggggggYggggGggggTggT',
       'TgggggRRRRRgggggggggggggg,ggggggggYggggY,TgT',
       'TgggggHHHHHgg,ggggffffffffffg,gggggY,,,Y,,gT',
-      'ggggggHHDHHgggggggffffffffffggggg,,YYY,,Y,gT',
-      'gggggggg.gggKgggggffffffffffggggg,,G,T,,,T,T',
-      '.........,ggggggggffffffffffggggggY,,,,T,,,T',
-      'gggggggg.gggggggggffffffffffggg,gggY,,,,,YgT',
-      'Tggggogg.gggggggg,gggggggggggggggggYG,,,,,gT',
-      'Tggggggg.ggggggggggggggggg,ggggggggYggY,,,gT',
+      'TgggggHHDHH.....ggffffffffffggggg,,YYY,,Y,gT',
+      'Tggggggg....K...ggffffffffffggggg,,G,T,,,T,T',
+      'T...............ggffffffffffggggggY,,,,T,,,T',
+      'Tgg......gggggggggffffffffffggg,gggY,,,,,YgT',
+      'Tgg..o...gFFFFggg,gggggggggggggggggYG,,,,,gT',
+      'Tgg......gFFFFgggggggggggg,ggggggggYggY,,,gg',
       'Tggggggg.gggggggggggggggggggggggggggggg,,ggg',
       'Tgggg,gg....................................',
-      'Tgggggggggggggggg.gggggg,,,ggggggggggYgggggg',
-      'Tggggggggggggg,gg.gggggggggggggggggYgggggGgg',
-      'TggggYggggggggggg.,gggggggggggggggYYgggggggg',
-      'Tgggggggggggggggg.gggggggggggggggggGgYg,,ggT',
-      'Tgggggggggggggggg.ggggggFgggggg,,,,YgY,,Y,gT',
-      'Tgggggggggggggggg.ggggggggggggg,,,,YY,,,,,gT',
-      'Tgggggggggggggggg.,gg,ggggggg,,,,,,Y,,,,,,gT',
-      'TggGggggggggggggg.ggggggggggg,,,,,,G,,,,,,gT',
-      'TggFggggggggggggg.gggggggFggg,,,,,YY,,,,G,gT',
-      'Tgggggggggggggggg.ggggggggggggg,,,,Y,g,,gggT',
-      'Tgggggggggggggggg.ggggggggggggg,,,gGgggggggT',
-      'TTTTTTTTTTTTTTTgg.ggTTTTTTTTTTTTTTTTTTTTTTTT'
+      'Tggggggggggggggggggggggg,,,ggggggggg.ggggggg',
+      'Tggggggggggggg,ggggggggggggggggggggg.ggggGgg',
+      'TggggYgggggggggggg,gggggggggggggggYg.ggggggT',
+      'Tggggggggggggggggggggggggggggggggggg.gg,,ggT',
+      'TgggggggggggggggggggggggFgggggg,,,,g.g,,Y,gT',
+      'Tgggggggggggggggggggggggggggggg,,,,g.,,,,,gT',
+      'Tggggggggggggggggg,gg,ggggggg,,,,,,g.,,,,,gT',
+      'TggGggggggggggggggggggggggggg,,,,,,g.,,,,,gT',
+      'TggFgggggggggggggggggggggFggg,,,,,Yg.,,,G,gT',
+      'Tgggggggggggggggggggggggggggggg,,,,g.g,,gggT',
+      'Tgggggggggggggggggggggggggggggg,,,gg.ggggggT',
+      'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTgg.ggTTTTT'
     ],
     exits: [],
     door: { x: 8, y: 6, to: 'farmhouse', tx: 11, ty: 12 }
@@ -145,20 +145,20 @@ export const VALLEY = {
   enga: {
     title: { no: 'ENGA', en: 'THE MEADOW' },
     rows: [
-      'TTTTTgg.ggTTTTTTTTTTTTTTgg.ggTTTTTTTTTTTTTTT',
-      'Tgggggg.gggggggggggggggggg.ggggggggggggggggT',
-      'Tgppggg.ggggpggggggggggggg.gggggggFggggggggT',
-      'TgggggF.ggggggggFgggggggpg.ggFg,gggFgggggGgT',
-      'TgGgggg.gggggggggggg,,gggg.gg,p,,,,,,ggggggT',
-      'Tgggggg.pggRRRRRRgg,,,,,,,.gg,,,p,,,,,,ggggT',
-      'Tgggggg.gpgHHHHHH,,,,,,,,p.,,,,,,,,,,,,ggggT',
-      'Tgggggg.ggFHHDHHH,,,,,,,p,.,g,,,,,,,,,,ggggT',
-      'Tgggggp.gggggggg,,,,,,,,,,.,gg,,,,,,,,gggggT',
-      'Tgggggg.gggggggg,,,,,,,,p,.,,ggg,g,ggggggggT',
-      'Tggppgg.ggFgggggg,p,p,,,,,.ggggggggggggggpgT',
-      'Tggggpg.gggggpgpgg,g,,,,,,.ggggggggggggggFgT',
-      'Tgggpgg.pgggggggggggJg,,Fg.ggggggggggggggggT',
-      'TggggF,....................ggggggggggggggggT',
+      'TTTTTgg.ggTTTTTTTTTTTTTTTTTTTTTTTTTgg.ggTTTT',
+      'Tgggggg.ggggggggggggggggggggggggggggg.gggggT',
+      'Tgppggg.ggggpgggggggggggggggggggggFgg.gggggT',
+      'TgggggF.ggggggggFgggggggpggggFg,gggFg.gggGgT',
+      'TgGgggg.gggggggggggg,,ggggggg,p,,,,,,.gggggT',
+      'Tgggggg.pggRRRRRRgg,,,,,,,ggg,,,p,,,,.,ggggT',
+      'Tgggggg.gpgHHHHHH,,,,,,,,pg,,,,,,,,,,.,ggggT',
+      'Tgggggg.ggFHHDHHH,,,,,,,p,g,g,,,,,,,,.,ggggT',
+      'Tgggggp.gggggggg,,,,,,,,,,g,gg,,,,,,,.gggggT',
+      'Tgggggg.gggggggg,,,,,,,,p,g,,ggg,g,gg.gggggT',
+      'Tggppgg.ggFgggggg,p,p,,,,,ggggggggggg.gggpgT',
+      'Tggggpg.gggggpgpgg,g,,,,,,ggggggggggg.gggFgT',
+      'Tgggpgg.pgggggggggggJg,,Fgggggggggggg.gggggT',
+      'TggggF,...............................gggggT',
       'Tgpg,,,,,,,,,ggggggggggggggggggggg,gggpggggT',
       'Tggg,,,,,,,,,,gggggggggggggggg,,,,,,p,,gpggT',
       'Tg,,,,,,,,,,,,gggggggggggggggg,,,,,,,,,ggggT',
@@ -177,27 +177,30 @@ export const VALLEY = {
   /* The two rooms are small on purpose and stay that way. They still float in
      a black margin — that is P7's problem, not this pass's. */
   /* Both rooms grew from a 12x8 / 14x9 island in a 24x15 map to a 22x13
-     room in the same 24x15 map — the map was already one full screen
-     (BEK_MIN_COLS x BEK_MIN_ROWS), it was only ever the room inside it that
-     was small, so filling the void meant widening the walls, not drawing
-     an exterior (see the interiors section of decor's brief). Both share
-     one floor plan — bed top-left, hearth/cupboard top-right, a crate by
-     the cupboard, table and rug centred — because the two houses were
-     always differentiated by BEK_DECOR's content, not by their glyphs. */
+     room in the same 24x15 map, and a 22x13 room with nothing in it but a
+     table is a hall, not a house. They are cut into rooms now, on one plan:
+     a bedroom on the west side (the bed, the coat, the picture), the kitchen
+     on the east (the hearth, the cupboard, the kettle), the stue between them
+     with the rag rug and the table, and the entry across the foot of all
+     three with the door in the middle. The two side rooms open onto the stue
+     through a two-tile doorway each, and nothing else is a door: a partition
+     is a wall (`H`), and a wall with nothing but floor either side of it has
+     no window (see tileDetail). The two houses are still told apart by what
+     BEK_DECOR puts in them, not by their glyphs. */
   farmhouse: {
     title: { no: 'HYTTA', en: 'THE CABIN' },
     inside: true,
     rows: [
       '                        ',
       ' HHHHHHHHHHHHHHHHHHHHHH ',
-      ' HbiiiiiiiiiiiiiiiivvuH ',
-      ' HiiiiiiiiiiiiiiiiiciiH ',
-      ' HiiiiiiiiiiiiiiiiiiiiH ',
+      ' HbiiiiiHiiiiiiHiiivvuH ',
+      ' HiiiiiiHiiiiiiHiiiciiH ',
+      ' HiiiiiiHiiiiiiHiiiiiiH ',
       ' HiiiiiiizzzzzziiiiiiiH ',
       ' HiiiiiiizznnzziiiiiiiH ',
-      ' HiiiiiiizzzzzziiiiiiiH ',
-      ' HiiiiiiiiiiiiiiiiiiiiH ',
-      ' HiiiiiiiiiiiiiiiiiiiiH ',
+      ' HiiiiiiHzzzzzzHiiiiiiH ',
+      ' HiiiiiiHiiiiiiHiiiiiiH ',
+      ' HHHHHHHHiiiiiiHHHHHHHH ',
       ' HiiiiiiiiiiiiiiiiiiiiH ',
       ' HiiiiiiiiiiiiiiiiiiiiH ',
       ' HiiiiiiiiiiiiiiiiiiiiH ',
@@ -212,14 +215,14 @@ export const VALLEY = {
     rows: [
       '                        ',
       ' HHHHHHHHHHHHHHHHHHHHHH ',
-      ' HbiiiiiiiiiiiiiiiivvuH ',
-      ' HiiiiiiiiiiiiiiiiiciiH ',
-      ' HiiiiiiiiiiiiiiiiiiiiH ',
+      ' HbiiiiiHiiiiiiHiiivvuH ',
+      ' HiiiiiiHiiiiiiHiiiciiH ',
+      ' HiiiiiiHiiiiiiHiiiiiiH ',
       ' HiiiiiiizzzzzziiiiiiiH ',
       ' HiiiiiiizznnzziiiiiiiH ',
-      ' HiiiiiiizzzzzziiiiiiiH ',
-      ' HiiiiiiiiiiiiiiiiiiiiH ',
-      ' HiiiiiiiiiiiiiiiiiiiiH ',
+      ' HiiiiiiHzzzzzzHiiiiiiH ',
+      ' HiiiiiiHiiiiiiHiiiiiiH ',
+      ' HHHHHHHHiiiiiiHHHHHHHH ',
       ' HiiiiiiiiiiiiiiiiiiiiH ',
       ' HiiiiiiiiiiiiiiiiiiiiH ',
       ' HiiiiiiiiiiiiiiiiiiiiH ',

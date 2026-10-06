@@ -81,6 +81,23 @@ export const PROP_OUTDOOR = {
     }
     A.fill(DRY[2], px + 10 + v, py + 14, 1, 1); A.fill(DRY[2], px + 22, py + 12, 1, 1);
   },
+  /* where the wood is split: a stump with the axe left standing in it and the chips round its foot.
+     A different shape from everything else in the yard (round, low, one pale top) so it is
+     read at a glance as the thing you chop on. */
+  chopblock(A, px, py, v) {
+    A.fill(ATMO[0], px + 8, py + 31, 26, 4);                      /* its shadow on the earth */
+    A.fill(ATMO[0], px + 7, py + 14, 26, 19);                     /* ink round the stump     */
+    A.fill(TIM[1], px + 9, py + 20, 22, 12);                      /* the bark                */
+    A.fill(TIM[0], px + 9, py + 28, 22, 4);
+    A.fill(TIM[4], px + 9, py + 15, 22, 7);                       /* the sawn top            */
+    A.fill(TIM[3], px + 12, py + 17, 16, 3);                      /* its rings               */
+    A.fill(ATMO[0], px + 24, py + 3, 5, 15);                      /* the axe: ink, helve, blade */
+    A.fill(TIM[2], px + 25, py + 5, 3, 12);
+    A.fill(ATMO[0], px + 19, py + 4, 11, 7);
+    A.fill(STO[4], px + 20, py + 5, 8, 5);
+    A.fill(STO[2], px + 20, py + 9, 8, 1);
+    A.fill(TIM[4], px + 4 + v, py + 33, 3, 2); A.fill(TIM[4], px + 33, py + 30, 3, 2); A.fill(TIM[3], px + 14, py + 35, 2, 2);  /* chips */
+  },
   stonewall(A, px, py, v) {
     /* one run segment, placed repeatedly — a dry-stone course, not mortar */
     A.fill(ATMO[0], px + 2, py + 14, 36, 20);

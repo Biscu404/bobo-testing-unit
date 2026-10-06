@@ -27,6 +27,7 @@ const ROOT = path.resolve(import.meta.dirname, '..');
 const data = await import(pathToFileURL(path.join(ROOT, 'apps/bekkedal/data.js')));
 const { BEK_ITEMS, BEK_MAPS, BEK_TALK, BEK_NPCS, BEK_QUESTS, BEK_QUEST_TEMPLATES } = data;
 const { PORT_MOODS } = await import(pathToFileURL(path.join(ROOT, 'apps/bekkedal/portrait.js')));
+const { BEK_GREET } = await import(pathToFileURL(path.join(ROOT, 'apps/bekkedal/greet.js')));
 
 const failures = [];
 function fail(check, id, where) { failures.push({ check, id, where }); }
@@ -128,6 +129,14 @@ function checkSpeakersAndMoods() {
     Object.entries(o).forEach(([k, v]) => walk(v, where + '.' + k));
   };
   Object.entries(BEK_TALK).forEach(([id, book]) => walk(book, 'BEK_TALK.' + id));
+  /* the greetings (greet.js) are spoken out of the same box: arrays of lines, a line being a string or { no, en, m } */
+  const greetWalk = (e, where) => {
+    if (Array.isArray(e)) return e.forEach(x => greetWalk(x, where));
+    if (e && typeof e === 'object' && !(e.no || e.en)) return Object.entries(e).forEach(([k, v]) => greetWalk(v, where + '.' + k));
+    if (e && e.m) moods.push(e.m);
+    both(e).forEach(str => { if (names.some(n => str.startsWith(n + ': '))) fail('speaker prefix', JSON.stringify(str.slice(0, 46)), where); });
+  };
+  Object.entries(BEK_GREET).forEach(([id, g]) => greetWalk(g, 'BEK_GREET.' + id));
   [...new Set(moods)].forEach(m => {
     if (!PORT_MOODS.includes(m)) fail('dialogue mood', m, 'not one of ' + PORT_MOODS.join('/'));
   });

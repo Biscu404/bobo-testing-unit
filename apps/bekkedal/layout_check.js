@@ -17,6 +17,7 @@ import * as D from './data.js';
 import * as F from './font.js';
 import * as L from './layout.js';
 import * as Q from './quests.js';
+import { BEK_GREET } from './greet.js';
 import { mineTitle, MINE_MAX, MINE_STATION } from './mine.js';
 import { canPlace, connectivityOK, PLACE_BLOCKS } from './placement.js';
 import { readFileSync, readdirSync } from 'fs';
@@ -268,13 +269,19 @@ const talkLineCount = dlgLines.length;
    the longest string the content tables can produce is as likely to be in a
    scene as in a chat line. */
 walk(D.BEK_SCENES);
+const sceneEnd = dlgLines.length;
+/* what they say first (greet.js): every greeting is drawn in the same box, and {n} stands for a
+   day count that can run to three figures */
+const eachGreet = e => Array.isArray(e) ? e.forEach(eachGreet) : e && typeof e === 'object' && !(e.no || e.en) ? Object.values(e).forEach(eachGreet)
+  : dlgLines.push(...both(e).map(x => x.replace(/\{n\}/g, '000')));
+Object.values(BEK_GREET).forEach(eachGreet);
 const worstWrap = dlgLines.reduce((a, l) => Math.max(a, wrapLines(l, L.DLG_TW, F.FONT_LG).length), 0);
 ok(worstWrap <= L.DLG_BODY_LINES, 'every dialogue line wraps inside the box',
    'worst is ' + worstWrap + ' of ' + L.DLG_BODY_LINES + ' rows (' + cols(L.DLG_TW, F.FONT_LG) + ' chars/row)');
 const worstLine = widest(dlgLines);
 pass('dialogue and scene lines measured', dlgLines.length + ' strings (' + talkLineCount +
-     ' spoken in conversation, ' + (dlgLines.length - talkLineCount) + ' in heart events), longest ' +
-     worstLine.length + ' chars');
+     ' spoken in conversation, ' + (sceneEnd - talkLineCount) + ' in heart events, ' + (dlgLines.length - sceneEnd) +
+     ' greetings), longest ' + worstLine.length + ' chars');
 
 /* GIFTING: a gift reaction is drawn through the same dialogue box (dlg.lines)
    as a BEK_TALK node, but lives in BEK_NPCS[].gift.reactions instead — the
