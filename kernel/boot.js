@@ -54,24 +54,42 @@ let vfsReady = false;
    A launch after eight hours away gets the long boot, and it cannot be
    skipped. "Last used" is a heartbeat, not a launch time: a machine left
    running for a week and closed a minute ago is not a cold one. */
-const SEEN_KEY = 'templeos.lastseen.v1';
 const COLD_MS = 8 * 60 * 60 * 1000;
-function readSeen() {
-  try { return Number(localStorage.getItem(SEEN_KEY)) || 0; } catch (e) { return 0; }
+/* Kept in IndexedDB, not localStorage: Chromium commits the first localStorage
+   write of a session quickly and throttles the next, so a stamp written at
+   launch makes the *next* real save (a game's, a setting's) wait much longer
+   to reach the disk. IndexedDB has no such queue. */
+function seenDB() {
+  return new Promise((res, rej) => {
+    const q = indexedDB.open('templeos_meta', 1);
+    q.onupgradeneeded = () => q.result.createObjectStore('kv');
+    q.onsuccess = () => res(q.result);
+    q.onerror = () => rej(q.error);
+  });
+}
+async function readSeen() {
+  try {
+    const db = await seenDB();
+    return await new Promise(res => {
+      const g = db.transaction('kv').objectStore('kv').get('lastseen');
+      g.onsuccess = () => res(Number(g.result) || 0);
+      g.onerror = () => res(0);
+    });
+  } catch (e) { return 0; }
 }
 function stampSeen() {
-  try { localStorage.setItem(SEEN_KEY, String(Date.now())); } catch (e) {}
+  seenDB().then(db => { db.transaction('kv', 'readwrite').objectStore('kv').put(Date.now(), 'lastseen'); }).catch(() => {});
 }
 /* the machine has been away if nothing was ever recorded, or the last mark
    is eight hours old. A mark from the future (a clock set back) is not away. */
-let owesLongBoot = (() => {
-  const seen = readSeen(), now = Date.now();
-  return !seen || (seen <= now && now - seen >= COLD_MS);
-})();
-stampSeen();
-setInterval(stampSeen, 30000);
+let owesLongBoot = true;
+const seenReady = readSeen().then(seen => {
+  const now = Date.now();
+  owesLongBoot = !seen || (seen <= now && now - seen >= COLD_MS);
+  stampSeen();
+});
+setInterval(stampSeen, 5 * 60 * 1000);
 window.addEventListener('pagehide', stampSeen);
-window.addEventListener('beforeunload', stampSeen);
 
 /* ~ is the way in, and nothing else: a stray click or a held key on the way
    to somewhere else must not throw the splash away. */
@@ -93,7 +111,6 @@ function runBootLines() {
     if (mode === 'long') owesLongBoot = false;      /* only a boot that finished counts */
     bootDone = true;
     booting = false;
-    stampSeen();
     document.addEventListener('keydown', onEnterKey, true);
   });
 }
@@ -101,6 +118,7 @@ function runBootLines() {
 window.runBoot = async function() {
   if (bootDone || booting) return;
   if (!vfsReady) { await initVFS(); vfsReady = true; }
+  await seenReady;
   runBootLines();
 };
 
@@ -172,7 +190,8 @@ function dismissSplash() {
 
 window._bootAt = Date.now();
 
-document.addEventListener('DOMContentLoaded', () => {
+/* boot.js is loaded by durable.js after a restore, so DOMContentLoaded may be behind us */
+const start = () => {
   initHardware();
   Cos.boot();
   drawWordmark();
@@ -182,4 +201,5 @@ document.addEventListener('DOMContentLoaded', () => {
     if (lamp) lamp.classList.add('on');
     window.runBoot();
   }
-});
+};
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();

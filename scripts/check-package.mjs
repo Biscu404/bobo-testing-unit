@@ -29,7 +29,7 @@ const need = reachable(ROOT);
 for (const id of Object.keys((await import('../kernel/registry.js')).registry)) need.add(`apps/${id}/index.js`);
 const missing = [...need].filter(f => !packed.has(f));
 ok(missing.length === 0, `all ${need.size} reachable files are packaged${missing.length ? ' - MISSING: ' + missing.join(', ') : ''}`);
-for (const f of ['index.html', 'kernel/boot.js', 'kernel/fonts.css', 'assets/seed.json', 'vendor/fonts/VT323-latin.woff2', 'electron/main.js', 'electron/preload.cjs', 'package.json'])
+for (const f of ['index.html', 'kernel/boot.js', 'kernel/durable.js', 'kernel/fonts.css', 'assets/seed.json', 'vendor/fonts/VT323-latin.woff2', 'electron/main.js', 'electron/preload.cjs', 'package.json'])
   ok(packed.has(f), `ships ${f}`);
 
 /* 2. clean */

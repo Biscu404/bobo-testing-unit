@@ -38,8 +38,8 @@ An app that opens its own window (`open()`) is never sent `unmount()`: add its w
 CI (`.github/workflows/build.yml`) builds and tests both installers. Record of the move: `docs/electron-migration-plan.md`.
 
 ## The machine's own behaviour (kernel)
-- **Boot.** `kernel/boot.js` decides, `kernel/bootseq.js` performs. A launch after **eight hours** away (a 30 s
-  heartbeat in `templeos.lastseen.v1`, not the launch time) gets the *long boot*: ten seconds, unskippable — seven of a
+- **Boot.** `kernel/boot.js` decides, `kernel/bootseq.js` performs. A launch after **eight hours** away (a 5 min
+  heartbeat in IndexedDB `templeos_meta`, not the launch time) gets the *long boot*: ten seconds, unskippable — seven of a
   PC in trouble (dying fan, bad block, drive timeout, a progress bar that goes backwards, a freeze, the song coming
   through a wall), then three of crawling text. **The text is `kernel/boot_text.js`: edit that file, nothing else.**
   Every other power-on is the quick boot. Both end on `PRESS [~] TO ENTER` and only `~` (`` ` ``/Backquote) enters:
@@ -57,6 +57,10 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   with a canvas is kept at its built size and scaled to fit; plain DOM windows just fill the desktop.
 - **Drunk.** `kernel/drunk.js` (the bottle app) acts on `#tube` through an inline filter/transform. Never give `#tube` a
   fill-forwards animation: an animated value beats an inline style, which is what silently killed this effect before.
+
+- **Durable storage.** `index.html` loads `kernel/durable.js`, which mirrors every `localStorage` write into IndexedDB
+  (`templeos_ls`) and restores it before `kernel/boot.js` loads. Chromium's own localStorage flush can lag by more than
+  ten seconds, so without it a power cut loses recent saves; `check:persist` measures exactly that.
 
 ## The App Contract
 Every app is a module with a default export shaped exactly like this:

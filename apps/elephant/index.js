@@ -847,7 +847,7 @@ export default {
          ========================================================================== */
       let raf = null, last = 0, acc = 0;
       function frame(ts) {
-        if (!alive || !document.body.contains(cv)) { alive = false; Song.stop(); return; }
+        if (!alive || !document.body.contains(cv)) { alive = false; window.removeEventListener("mixer-changed", eleMix); Song.stop(); return; }
         raf = requestAnimationFrame(frame);
         if (!last) last = ts;
         let dt = (ts - last) / 1000;
@@ -901,7 +901,7 @@ export default {
       const watch = setInterval(() => {
         if (document.body.contains(cv)) return;
         clearInterval(watch);
-        alive = false;
+        alive = false; window.removeEventListener("mixer-changed", eleMix);
         Song.stop();
         if (raf) cancelAnimationFrame(raf);
       }, 900);
