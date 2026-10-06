@@ -10,6 +10,9 @@ import { VGA16 } from '../../kernel/god.js';
 import { mgIcon, mgUpIcon, mgTierIcon } from './icons.js';
 import { scopedListeners } from '../lifecycle.js';
 
+/* the machine's own pixel face for everything the star's canvas has to say */
+const MGF = "'VT323', 'Courier New', monospace";
+
 export default {
   open() {
   createWindow({
@@ -1314,7 +1317,7 @@ export default {
 
         /* the chain, in the middle of the star, once it is worth watching */
         if (combo >= 5) {
-          g.font = 'bold ' + (13 + Math.min(14, combo)) + 'px monospace';
+          g.font = (19 + Math.min(18, combo)) + 'px ' + MGF;
           g.textAlign = 'center'; g.textBaseline = 'middle';
           const col = combo >= 50 ? 15 : combo >= 25 ? 13 : combo >= 10 ? 12 : 11;
           g.fillStyle = C(0); g.fillText('x' + combo, CX + 2, CY + 46 + 2);
@@ -1397,7 +1400,7 @@ export default {
           f.t += dt; f.y -= (f.big ? 20 : 34) * dt; f.x += f.vx * dt;
           if (f.t > 1.4) { floats.splice(i, 1); continue; }
           const gr = f.big ? Math.min(1, f.t * 8) : 1;
-          g.font = (f.big ? 'bold ' : '') + Math.round((f.big ? 20 : 12) * gr) + 'px monospace';
+          g.font = Math.round((f.big ? 30 : 18) * gr) + 'px ' + MGF;
           g.textAlign = 'center';
           /* a black ring all the way round, because a one-pixel shadow does
              not survive a sky and a city and forty sparks behind it */
@@ -1414,14 +1417,14 @@ export default {
           wash(0, 0, 300, 300, 0, 11);
           R(8, 58, 284, 156, 0); R(10, 60, 280, 152, 7); R(12, 62, 276, 148, 0);
           R(10, 60, 280, 2, 15); R(10, 60, 2, 152, 15);
-          g.font = '11px monospace'; g.textBaseline = 'top';
-          wrapText(arg.q.q, 250).forEach((l, i) => { g.fillStyle = C(15); g.fillText(l, 20, 70 + i * 14); });
+          g.font = '17px ' + MGF; g.textBaseline = 'top';
+          wrapText(arg.q.q, 250).forEach((l, i) => { g.fillStyle = C(15); g.fillText(l, 20, 70 + i * 19); });
           if (!arg.picked) {
-            g.fillStyle = C(11); g.fillText('◄ ' + arg.q.a, 20, 150);
-            g.fillStyle = C(10); g.fillText('► ' + arg.q.b, 20, 172);
-            g.fillStyle = C(8);  g.fillText('pick a side. both are the words of the living God.', 20, 194);
+            g.fillStyle = C(11); g.fillText('◄ ' + arg.q.a, 20, 160);
+            g.fillStyle = C(10); g.fillText('► ' + arg.q.b, 20, 184);
+            g.fillStyle = C(8);  g.fillText('pick a side. both are the words of the living God.', 20, 208);
           } else {
-            wrapText(arg.q.r, 250).forEach((l, i) => { g.fillStyle = C(14); g.fillText(l, 20, 150 + i * 14); });
+            wrapText(arg.q.r, 250).forEach((l, i) => { g.fillStyle = C(14); g.fillText(l, 20, 160 + i * 19); });
           }
           g.textBaseline = 'alphabetic';
         }
@@ -1438,7 +1441,7 @@ export default {
         } else {
           R(275, 264, 2, 5, 8);
         }
-        g.font = '10px monospace'; g.textBaseline = 'top';
+        g.font = '15px ' + MGF; g.textBaseline = 'top';
         g.fillStyle = C(8); g.fillText('yahrzeit', 252, 292);
         g.textBaseline = 'alphabetic';
 
@@ -1465,11 +1468,11 @@ export default {
             }
             R(x + 40, y + 6, 220, 34, 0);
             g.textAlign = 'center';
-            g.font = 'bold 17px monospace';
+            g.font = '25px ' + MGF;
             g.fillStyle = C(0); g.fillText(b.txt, x + 151, y + 24);
             g.fillStyle = C(b.col); g.fillText(b.txt, x + 150, y + 23);
             if (b.sub) {
-              g.font = '11px monospace';
+              g.font = '17px ' + MGF;
               g.fillStyle = C(15); g.fillText(b.sub, x + 150, y + 38);
             }
             g.textAlign = 'left';
