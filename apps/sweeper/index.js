@@ -36,7 +36,7 @@ export default {
     let cv, G, scene = null, kind = 'title', run = null, raf = null, dripT = null;
 
     const made = createWindow({
-      kind: 'app', title: 'SWEEPER.EXE', w: 1000, h: 700, appId: 'sweeper',
+      kind: 'app', title: 'SWEEPER.EXE', w: 1000, h: 700, appId: 'sweeper', rightClick: true,
       build: body => {
         body.dataset.fluid = '1';
         body.style.overflow = 'hidden';

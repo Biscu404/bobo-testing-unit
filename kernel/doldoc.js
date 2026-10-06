@@ -75,8 +75,11 @@ export function ddRenderLine(line, host, state, onLink, onMacro) {
         break;
       }
       case 'TX': {
-        row.style.textAlign = /CX/i.test(body) ? 'center' : 'left';
-        if (args.q[0]) span.appendChild(document.createTextNode(args.q[0]));
+        /* $TX+CX,"text"$: the +CX is a flag (centred), not part of the text */
+        const fm = body.match(/^TX((?:\+\w+)*)\s*,/i);
+        const text = fm ? ddArgs(body.slice(fm[0].length)).q[0] : args.q[0];
+        row.style.textAlign = fm && /CX/i.test(fm[1]) ? 'center' : 'left';
+        if (text) span.appendChild(document.createTextNode(text));
         break;
       }
       case 'LK': {

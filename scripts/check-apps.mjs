@@ -81,6 +81,7 @@ async function cycle(id) {
   const opened = await page.evaluate(async ([id, args]) => {
     const wm = await import('/kernel/wm.js');
     const had = new Set(document.querySelectorAll('.win'));
+    window.__had = had;
     try { await wm.openWindow(id, args); } catch (e) { return { error: String(e) }; }
     return { n: [...document.querySelectorAll('.win')].filter(w => !had.has(w)).length };
   }, [id, ARGS[id] || {}]);
@@ -97,11 +98,15 @@ async function cycle(id) {
     for (const k of ['ArrowRight', 'Space', 'ArrowDown', 'Enter']) { await page.keyboard.press(k); await page.waitForTimeout(60); }
     await page.waitForTimeout(300);
   }
-  /* close through the real X button of the newest window */
+  /* close through the real X button of every window this cycle opened, newest
+     first: poking a folder with Enter opens whatever is selected, and that is
+     not a leak of the folder */
   await page.evaluate(() => {
-    const ws = [...document.querySelectorAll('.win')], w = ws[ws.length - 1];
-    const x = w && w.querySelector('.x');
-    if (x) x.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    const ws = [...document.querySelectorAll('.win')].filter(w => !window.__had.has(w)).reverse();
+    ws.forEach(w => {
+      const x = w.querySelector('.x');
+      if (x) x.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    });
   });
   await page.waitForTimeout(500);
   const after = await snapshot();

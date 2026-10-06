@@ -1,0 +1,216 @@
+/* The things you do to files, the same everywhere: on the desktop, in a folder
+   window, from the Edit menu, from the keyboard. Nothing here knows which of
+   those it was called from -- callers hand over paths, and get a toast back. */
+import { fs } from './vfs.js';
+import { openWindow, createWindow, toast, askName } from './wm.js';
+import { baseName, dirOf, joinPath, changed } from './vfs_ops.js';
+
+export const Clip = { mode: null, paths: [] };
+const undo = [];                                   /* ids of what was last put in the bin */
+
+export const TYPE_NAMES = { folder: 'FOLDER', app: 'PROGRAM', terminal: 'PROGRAM', bin: 'RECYCLE BIN', image: 'PICTURE',
+  video: 'VIDEO', text: 'TEXT FILE', doc: 'DOCUMENT', code: 'HOLYC SOURCE', song: 'SONG', file: 'FILE' };
+
+/* the kind a new file gets from its name */
+export function typeForName(name) {
+  if (/\.HC$/i.test(name)) return 'code';
+  if (/\.DD$/i.test(name)) return 'doc';
+  if (/\.SONG$/i.test(name)) return 'song';
+  return 'text';
+}
+
+const say = (msg, bad) => { toast(msg); if (bad && window.Snd) window.Snd.err(); };
+const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 'S');
+
+/* ---- opening ---------------------------------------------------------------- */
+export function openItem(dir, item) {
+  const p = item.path || joinPath(dir, item.name);
+  let job;
+  if (item.type === 'folder') job = openWindow('folder', { path: p });
+  else if (item.type === 'terminal') job = openWindow('terminal');
+  else if (item.type === 'bin') job = openWindow('trash');
+  else if (item.type === 'app') job = item.app ? openWindow(item.app) : (toast('NO SUCH APP: ' + item.name), null);
+  else if (item.type === 'song') job = openWindow('garage', { path: p });
+  else if (['code', 'doc', 'text'].includes(item.type)) job = openWindow('editor', { path: p, type: item.type });
+  else job = openWindow('viewer', { path: p, type: item.type });
+  if (job && job.catch) job.catch(console.error);
+}
+export const openAsText = item => openWindow('editor', { path: item.path, type: 'text' }).catch(console.error);
+
+/* ---- copy / cut / paste ------------------------------------------------------ */
+export function copyPaths(paths, cut) {
+  if (!paths.length) return;
+  Clip.mode = cut ? 'cut' : 'copy';
+  Clip.paths = paths.slice();
+  say((cut ? 'CUT ' : 'COPIED ') + plural(paths.length, 'ITEM') + '. PASTE IT WHERE YOU WANT IT.');
+}
+
+export async function pasteInto(dir) {
+  if (!Clip.paths.length) { say('NOTHING TO PASTE.', true); return []; }
+  const cut = Clip.mode === 'cut', made = [], bad = [];
+  for (const p of Clip.paths) {
+    try { made.push(cut ? await fs.move(p, dir) : await fs.copy(p, dir)); }
+    catch (e) { bad.push(e.message); }
+  }
+  if (cut) { Clip.mode = null; Clip.paths = []; }
+  say(bad.length ? bad[0] : (cut ? 'MOVED ' : 'PASTED ') + plural(made.length, 'ITEM') + '.', !!bad.length);
+  return made;
+}
+
+export async function duplicate(paths) {
+  const made = [];
+  for (const p of paths) {
+    try { made.push(await fs.copy(p, dirOf(p))); } catch (e) { say(e.message, true); }
+  }
+  if (made.length) say('DUPLICATED ' + plural(made.length, 'ITEM') + '.');
+  return made;
+}
+
+/* ---- delete and undo ---------------------------------------------------------- */
+export async function deletePaths(paths) {
+  let n = 0;
+  for (const p of paths) {
+    try { const r = await fs.trash(p); undo.push(r.id); n++; } catch (e) { say(e.message, true); }
+  }
+  if (n) say(n > 1 ? n + ' ITEMS IN THE RECYCLE BIN.' : baseName(paths[0]) + ' IS IN THE RECYCLE BIN.');
+  return n;
+}
+export async function undoDelete() {
+  while (undo.length) {
+    const id = undo.pop();
+    try { const p = await fs.trashRestore(id); say('PUT BACK: ' + baseName(p)); return p; } catch (e) { /* already gone: try the one before */ }
+  }
+  say('NOTHING TO UNDO.', true);
+  return null;
+}
+
+/* ---- naming ------------------------------------------------------------------- */
+export function renamePrompt(path, done) {
+  askName('RENAME', baseName(path), async name => {
+    try {
+      const to = await fs.rename(path, name);
+      say('RENAMED TO ' + baseName(to) + '.');
+      if (done) done(to);
+    } catch (e) { say(e.message, true); }
+  });
+}
+
+export function newFolderPrompt(dir, done) {
+  dir = dir || '::';
+  askName('NEW FOLDER', 'New Folder', async name => {
+    name = (name || '').trim();
+    if (!name) return;
+    try {
+      const final = await fs.uniqueName(dir, name);
+      await fs.mkdir(joinPath(dir, final));
+      say('FOLDER CREATED: ' + final);
+      if (done) done(joinPath(dir, final));
+    } catch (e) { say('COULD NOT CREATE THE FOLDER.', true); }
+  });
+}
+
+export function newFilePrompt(dir, done) {
+  dir = dir || '::';
+  askName('NEW TEXT FILE', 'Untitled.TXT', async name => {
+    name = (name || '').trim();
+    if (!name) return;
+    try {
+      const final = await fs.uniqueName(dir, name);
+      const p = joinPath(dir, final);
+      await fs.write(p, { type: typeForName(final), content: '' });
+      changed(dir);
+      if (done) done(p);
+      openWindow('editor', { path: p, type: typeForName(final) }).catch(console.error);
+    } catch (e) { say('COULD NOT CREATE THE FILE.', true); }
+  });
+}
+
+/* ---- properties --------------------------------------------------------------- */
+async function measure(path) {
+  const ents = await fs.entries(path);
+  let bytes = 0, files = 0;
+  ents.forEach(([k, v]) => {
+    if (baseName(k) === '.keep') return;
+    files++;
+    if (v && v.content) bytes += v.content.length;
+    else if (v && v.src) bytes += Math.round(v.src.length * 0.75);
+  });
+  return { bytes, files };
+}
+const KB = n => n < 1024 ? n + ' BYTES' : (n / 1024).toFixed(1) + ' KB';
+
+export async function showProps(path) {
+  const kind = await fs.stat(path);
+  if (!kind) { say('THAT IS NOT THERE ANY MORE.', true); return; }
+  const rec = kind === 'file' ? await fs.read(path) : null;
+  const type = kind === 'folder' ? 'folder' : (rec && rec.type) || 'file';
+  const m = await measure(path);
+  const sys = fs.isSystem ? await fs.isSystem(path) : false;
+  const rows = [['NAME', baseName(path)], ['KIND', TYPE_NAMES[type] || 'FILE'], ['WHERE', dirOf(path)],
+    ['SIZE', type === 'app' ? '-' : kind === 'folder' ? plural(m.files, 'FILE') + ', ' + KB(m.bytes) : KB(m.bytes)],
+    ['SYSTEM FILE', sys ? 'YES. RESTORE SYSTEM FILES BRINGS IT BACK.' : 'NO']];
+  if (rec && rec.app) rows.splice(2, 0, ['RUNS', rec.app.toUpperCase()]);
+  createWindow({
+    kind: 'text', title: 'PROPERTIES', w: 440, h: 60 + rows.length * 22, zoomable: false,
+    build: body => {
+      const box = document.createElement('div');
+      box.className = 'dlgpane';
+      rows.forEach(([a, b]) => {
+        const d = document.createElement('div');
+        d.style.cssText = 'display:flex;gap:10px;padding:2px 0';
+        const l = document.createElement('span'); l.style.cssText = 'width:96px;color:#FFFF55'; l.textContent = a;
+        const v = document.createElement('span'); v.style.cssText = 'color:#FFFFFF;flex:1'; v.textContent = b;
+        d.appendChild(l); d.appendChild(v); box.appendChild(d);
+      });
+      body.appendChild(box);
+    }
+  });
+}
+
+/* ---- the keyboard, for anything that shows files ------------------------------
+   env: { dir, sel() -> [{name,type,app,path}], selectAll(), up?(), open(item) } */
+export function fileKey(ev, env) {
+  if (ev.target && /input|textarea/i.test(ev.target.tagName)) return false;
+  const mod = ev.ctrlKey || ev.metaKey, k = ev.key.length === 1 ? ev.key.toLowerCase() : ev.key;
+  const sel = env.sel(), paths = sel.map(i => i.path).filter(Boolean);
+  let handled = true;
+  if (k === 'Delete' && paths.length) deletePaths(paths);
+  else if (k === 'F2' && sel.length === 1) renamePrompt(paths[0]);
+  else if (k === 'Enter' && sel.length) sel.forEach(i => env.open(i));
+  else if (k === 'Backspace' && env.up) env.up();
+  else if (mod && k === 'a') env.selectAll();
+  else if (mod && k === 'c' && paths.length) copyPaths(paths, false);
+  else if (mod && k === 'x' && paths.length) copyPaths(paths, true);
+  else if (mod && k === 'v') pasteInto(env.dir);
+  else if (mod && k === 'd' && paths.length) duplicate(paths);
+  else if (mod && k === 'z') undoDelete();
+  else handled = false;
+  if (handled) ev.preventDefault();
+  return handled;
+}
+
+/* ---- bring back the machine's own files ---------------------------------------- */
+export async function restoreSystemFiles() {
+  let names = [];
+  try { names = await fs.restoreSystem(); } catch (e) { say('COULD NOT RESTORE: ' + e.message, true); return []; }
+  if (names.length) { say('SYSTEM FILES BACK: ' + names.join(', ').slice(0, 110)); if (window.Snd) window.Snd.chime && window.Snd.chime(); }
+  else say('EVERY SYSTEM FILE IS ALREADY HERE.');
+  return names;
+}
+
+/* ---- whose keys are they? -------------------------------------------------------
+   Delete, F2, Ctrl+C... belong to whichever list of files you last clicked in:
+   the desktop or one folder window. Clicking in any other window means none
+   of them do, so Delete in a game can never reach the desktop behind it. */
+export const Active = { env: null, desk: null };
+export function wireActive(deskEnv) {
+  Active.desk = Active.env = deskEnv;
+  document.addEventListener('mousedown', ev => {
+    const t = ev.target;
+    if (!t || !t.closest) return;
+    const w = t.closest('.win');
+    if (w) Active.env = w._fileEnv || null;
+    else if (t.closest('#desktop')) Active.env = Active.desk;
+  }, true);
+  document.addEventListener('keydown', ev => { if (Active.env) fileKey(ev, Active.env); });
+}

@@ -47,24 +47,24 @@ export function makeSfx(Snd) {
       o.start(t); o.stop(t + 0.18);
     },
     drip() { Snd.tone(900 + Math.random() * 400, 40, { type: 'sine', to: 500, vol: 0.05 }); },
-    drink() {
+    /* the glass meeting a lip */
+    sip() { Snd.tone(2600, 50, { type: 'sine', to: 2300, vol: 0.03 }); Snd.noise(40, { freq: 1200, q: 1.5, vol: 0.03 }); },
+    /* one swallow, each a little lower than the last */
+    gulp(n) {
       Snd.wake(); if (!Snd.ctx) return;
-      const c = Snd.ctx;
-      /* three swallows, each a little lower than the last */
-      [0.15, 0.50, 0.85].forEach((at, i) => {
-        const o = c.createOscillator(), gn = c.createGain();
-        o.type = 'sine';
-        o.frequency.setValueAtTime(190 - i * 34, c.currentTime + at);
-        o.frequency.exponentialRampToValueAtTime(78 - i * 12, c.currentTime + at + 0.13);
-        gn.gain.setValueAtTime(0.0001, c.currentTime + at);
-        gn.gain.exponentialRampToValueAtTime(0.16, c.currentTime + at + 0.02);
-        gn.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + at + 0.15);
-        o.connect(gn); gn.connect(bus(c));
-        o.start(c.currentTime + at); o.stop(c.currentTime + at + 0.2);
-      });
-      Snd.noise(90, { freq: 700, q: 1.1, vol: 0.05, delay: 1.25 });
-      Snd.tone(150, 90, { type: 'triangle', to: 70, vol: 0.07, delay: 1.45 });   /* glass down */
+      const c = Snd.ctx, t = c.currentTime, o = c.createOscillator(), gn = c.createGain(), i = Math.max(0, (n || 1) - 1);
+      o.type = 'sine';
+      o.frequency.setValueAtTime(190 - i * 34, t);
+      o.frequency.exponentialRampToValueAtTime(78 - i * 12, t + 0.13);
+      gn.gain.setValueAtTime(0.0001, t);
+      gn.gain.exponentialRampToValueAtTime(0.16, t + 0.02);
+      gn.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
+      o.connect(gn); gn.connect(bus(c));
+      o.start(t); o.stop(t + 0.2);
     },
+    /* the breath out, and the glass going down */
+    ahh() { Snd.noise(260, { freq: 700, q: 0.8, vol: 0.04 }); },
+    down() { Snd.tone(150, 90, { type: 'triangle', to: 70, vol: 0.07 }); Snd.noise(40, { freq: 900, q: 1.5, vol: 0.03 }); },
     cork() { Snd.tone(300, 60, { type: 'sine', to: 900, vol: 0.10 }); Snd.noise(50, { freq: 2200, q: 2, vol: 0.05, delay: 0.05 }); },
     cap()  { Snd.tone(420, 40, { type: 'square', to: 300, vol: 0.05 }); Snd.noise(30, { freq: 3000, q: 2, vol: 0.04 }); },
     clink() { Snd.tone(2400, 90, { type: 'sine', to: 2100, vol: 0.05 }); Snd.tone(3300, 60, { type: 'sine', vol: 0.025 }); },

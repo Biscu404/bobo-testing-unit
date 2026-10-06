@@ -27,7 +27,11 @@ const TERM = {
      "  TYPE FILE ..... PRINT A TEXT FILE",
      "  OPEN FILE ..... OPEN IT IN A WINDOW",
      "  MD NAME ....... MAKE A DIRECTORY",
-     "  DEL FILE ...... DELETE YOUR OWN FILES",
+     "  DEL FILE ...... INTO THE RECYCLE BIN",
+     "  MOVE A TO DIR . MOVE   COPY A TO DIR . COPY",
+     "  REN FILE NAME . RENAME   BIN . WHAT IS IN THE BIN",
+     "  UNDELETE [NAME]  PUT IT BACK",
+     "  RESTORE ....... BRING BACK THE SYSTEM FILES",
      "  TREE .......... EVERYTHING BELOW HERE",
      "THE MACHINE:",
      "  COMPILE [FILE]  BUILD IT",
@@ -373,18 +377,19 @@ export default {
     async function doDel(arg) {
       const target = resolvePath(arg);
       if (!arg) return print(['MISSING PATH.'], 'l-err');
-      await ctx.fs.remove(target);
+      if (!(await ctx.fs.stat(target))) return print(['NOT FOUND: ' + arg], 'l-err');
+      await ctx.fs.trash(target);
       if (cwd === target || cwd.startsWith(target + '/')) {
         cwd = target.slice(0, target.lastIndexOf('/')) || '::';
         setPrompt();
       }
-      print(['DELETED ' + target.split('/').pop() + '.'], 'l-ok');
+      print(['DELETED ' + target.split('/').pop() + '. IT IS IN THE RECYCLE BIN (UNDELETE).'], 'l-ok');
     }
 
     async function doMd(arg) {
       if (!arg) return print(['MD NEEDS A NAME.'], 'l-err');
       const target = resolvePath(arg);
-      await ctx.fs.write(target + '/.keep', { type: 'text', content: '' });
+      try { await ctx.fs.mkdir(target); } catch (e) { return print([e.message], 'l-err'); }
       print(['CREATED ' + arg + ' IN ' + cwd + '.'], 'l-ok');
     }
 
@@ -553,7 +558,9 @@ export default {
         case 'MD': case 'MKDIR':        await doMd(arg); break;
         case 'TOUCH': {
           if (!arg) { print(['MISSING PATH.'], 'l-err'); break; }
-          await ctx.fs.write(resolvePath(arg), { type: 'text', content: '' });
+          const made = resolvePath(arg);
+          await ctx.fs.write(made, { type: 'text', content: '' });
+          window.dispatchEvent(new CustomEvent('vfs-changed', { detail: { dir: made.slice(0, made.lastIndexOf('/')) || '::' } }));
           print(['FILE CREATED.'], 'l-ok');
           break;
         }
@@ -567,6 +574,37 @@ export default {
           else ctx.openWindow('viewer', { path: target, type: file.type }).catch(console.error);
           print(['OPENED ' + target.split('/').pop() + '.'], 'l-ok');
           verdict = null;
+          break;
+        }
+        case 'MOVE': case 'MV': case 'COPY': case 'CP': case 'REN': case 'RENAME': {
+          const parts = arg.split(/\s+/).filter(Boolean);
+          if (parts.length !== 2) { print(['USAGE: ' + cmd + ' FROM ' + (/^R/.test(cmd) ? 'NEWNAME' : 'TOFOLDER')], 'l-err'); break; }
+          try {
+            const from = resolvePath(parts[0]);
+            if (/^R/.test(cmd)) print(['RENAMED TO ' + (await ctx.fs.rename(from, parts[1])).split('/').pop() + '.'], 'l-ok');
+            else {
+              const to = resolvePath(parts[1]);
+              const dst = /^(MO|MV)/.test(cmd) ? await ctx.fs.move(from, to) : await ctx.fs.copy(from, to);
+              print([(/^(MO|MV)/.test(cmd) ? 'MOVED TO ' : 'COPIED TO ') + dst], 'l-ok');
+            }
+          } catch (e) { print([e.message], 'l-err'); }
+          break;
+        }
+        case 'RESTORE': {
+          const back = await ctx.fs.restoreSystem();
+          print(back.length ? ['SYSTEM FILES BACK: ' + back.join(', ')] : ['EVERY SYSTEM FILE IS ALREADY HERE.'], 'l-ok');
+          break;
+        }
+        case 'BIN': {
+          const bin = await ctx.fs.trashList();
+          print(bin.length ? bin.map(b => ' ' + b.name.padEnd(20) + 'FROM ' + b.from) : ['THE RECYCLE BIN IS EMPTY.'], 'l-ok');
+          break;
+        }
+        case 'UNDELETE': {
+          const bin = await ctx.fs.trashList();
+          const hit = arg ? bin.find(b => b.name.toLowerCase() === arg.toLowerCase()) : bin[0];
+          if (!hit) { print(['NOTHING TO UNDELETE.'], 'l-err'); break; }
+          print(['PUT BACK: ' + await ctx.fs.trashRestore(hit.id)], 'l-ok');
           break;
         }
         case 'TREE':                    print(await doTree(cwd, 0), 'l-ok'); break;

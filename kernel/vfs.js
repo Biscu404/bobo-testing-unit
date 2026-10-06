@@ -103,7 +103,8 @@ async function write(path, data) {
    every value (images, video vault keys, note bodies, everything) out of
    the whole store on every single call -- that full-store round trip is
    what made opening folders, `tree`, and any add/delete feel so heavy. */
-async function list(dir) {
+async function list(dir, opts) {
+  const showAll = !!(opts && opts.all);
   const db = await getDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readonly');
@@ -122,6 +123,9 @@ async function list(dir) {
       const name = parts[0];
       const isDir = parts.length > 1;
 
+      /* .keep (what makes an empty folder exist) and .Trash are plumbing,
+         not things anybody put there */
+      if (!showAll && name.charAt(0) === '.') { cursor.continue(); return; }
       if (!results.has(name)) {
         if (isDir) {
           results.set(name, { name, type: 'folder' });
@@ -171,5 +175,76 @@ async function remove(path) {
   });
 }
 
-export const fs = { read, write, list, remove };
+/* 'file' | 'folder' | null. A folder is any prefix something lives under. */
+async function stat(path) {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const store = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME);
+    const g = store.get(path);
+    g.onsuccess = () => {
+      if (g.result !== undefined) { resolve('file'); return; }
+      const prefix = path + '/';
+      const c = store.openKeyCursor(IDBKeyRange.bound(prefix, prefix + '\uFFFF', true, false));
+      c.onsuccess = () => resolve(c.result ? 'folder' : null);
+      c.onerror = () => reject(c.error);
+    };
+    g.onerror = () => reject(g.error);
+  });
+}
+
+/* every record at or under a path, as [key, value] pairs -- what a move or a
+   copy of a folder has to carry */
+async function entries(path) {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const store = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME);
+    const out = [];
+    const g = store.get(path);
+    g.onsuccess = () => {
+      if (g.result !== undefined) out.push([path, g.result]);
+      const prefix = path + '/';
+      const c = store.openCursor(IDBKeyRange.bound(prefix, prefix + '\uFFFF', true, false));
+      c.onsuccess = () => {
+        const cur = c.result;
+        if (!cur) { resolve(out); return; }
+        out.push([cur.key, cur.value]);
+        cur.continue();
+      };
+      c.onerror = () => reject(c.error);
+    };
+    g.onerror = () => reject(g.error);
+  });
+}
+
+/* many writes in one transaction: all of them land or none does */
+async function putMany(pairs) {
+  if (!pairs.length) return;
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    pairs.forEach(([k, v]) => store.put(v, k));
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
+}
+
+/* remove() fires the Style meter, because deleting is a performance. Moving
+   a file into a folder is not, so moves use this quiet twin. */
+async function removeQuiet(path) {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    store.delete(path);
+    const prefix = path + '/';
+    const c = store.openCursor(IDBKeyRange.bound(prefix, prefix + '\uFFFF', true, false));
+    c.onsuccess = () => { const cur = c.result; if (cur) { cur.delete(); cur.continue(); } };
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+export const fs = { read, write, list, remove, stat, entries, putMany, removeQuiet };
 export { initVFS };
