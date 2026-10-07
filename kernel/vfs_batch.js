@@ -44,11 +44,11 @@ async function duplicateMany(srcs) {
   return { made, bad };
 }
 
-/* into the bin, as one pile: the meter is hit once, with the number of files that died, because a pile deleted at
-   once is worth more than the same files one by one (kernel/style_model.js) and because two hundred separate hits
-   each did their own sound, their own burst of sparks and their own redraw */
-async function trashMany(paths) {
-  const puts = [], gone = [], pairs = [], ids = [], bad = [], used = new Set(), seen = new Set();
+/* Into the bin takes two steps so that kernel/fileops.js can pace it (kernel/delete_reel.js): `gatherTrash` reads
+   everything the pile is made of once, and `commitTrash` moves any part of it, in one transaction, and says what
+   changed. `trashMany` is both at once, for anything that wants the whole pile gone in a moment. */
+async function gatherTrash(paths) {
+  const items = [], bad = [], used = new Set(), seen = new Set();
   let files = 0;
   for (const path of paths) {
     if (seen.has(path)) continue;
@@ -59,17 +59,38 @@ async function trashMany(paths) {
     let id;
     do { id = Date.now().toString(36) + Math.random().toString(36).slice(2, 5); } while (used.has(id));
     used.add(id);
+    const n = ents.filter(e => baseName(e[0]) !== '.keep').length;
+    files += n;
+    items.push({ path, id, ents, files: n });
+  }
+  return { items, bad, files };
+}
+
+/* the meter is hit once, with the number of files that died, because a pile deleted at once is worth more than the
+   same files one by one (kernel/style_model.js) and because two hundred separate hits each did their own sound,
+   their own burst of sparks and their own redraw */
+function hitPile(first, files) {
+  try { Style.hit({ name: baseName(first) }, Math.max(1, files)); } catch (e) {}
+}
+
+async function commitTrash(items) {
+  const puts = [], gone = [], pairs = [];
+  for (const { path, id, ents } of items) {
     const dst = TRASH + '/' + id + '/' + baseName(path);
     puts.push([TRASH + '/' + id + '/.from', { type: 'text', content: path }]);
-    ents.forEach(([k, v]) => { puts.push([dst + k.slice(path.length), v]); if (baseName(k) !== '.keep') files++; });
-    gone.push(path); pairs.push([path, dst]); ids.push(id);
+    ents.forEach(([k, v]) => puts.push([dst + k.slice(path.length), v]));
+    gone.push(path); pairs.push([path, dst]);
   }
   await fs.putMany(puts);
   await fs.removeManyQuiet(gone);
   if (pairs.length) await trackMany(pairs);
-  if (ids.length) { try { Style.hit({ name: baseName(gone[0]) }, Math.max(1, files)); } catch (e) {} }
   changed(TRASH, ...gone.map(dirOf));
-  return { ids, bad };
+}
+
+async function trashMany(paths) {
+  const g = await gatherTrash(paths);
+  if (g.items.length) { await commitTrash(g.items); hitPile(g.items[0].path, g.files); }
+  return { ids: g.items.map(i => i.id), bad: g.bad };
 }
 
 /* put a group back where each came from */
@@ -100,4 +121,4 @@ async function purgeMany(ids) {
 }
 
 Object.assign(fs, { moveMany, copyMany, duplicateMany, trashMany, restoreMany, purgeMany });
-export { moveMany, copyMany, duplicateMany, trashMany, restoreMany, purgeMany };
+export { moveMany, copyMany, duplicateMany, trashMany, restoreMany, purgeMany, gatherTrash, commitTrash, hitPile };

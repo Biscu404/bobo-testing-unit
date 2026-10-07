@@ -25,7 +25,8 @@
     "check:style": "node scripts/check-style.mjs",
     "check:styletrack": "node scripts/check-styletrack.mjs",
     "check:desk": "node scripts/check-desk.mjs",
-    "check:bulk": "node scripts/check-bulk.mjs"
+    "check:bulk": "node scripts/check-bulk.mjs",
+    "check:delete": "node scripts/check-delete.mjs"
   },
   "devDependencies": {
     "electron": "^44.5.1",
