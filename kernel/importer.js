@@ -100,7 +100,7 @@ async function importVideo(path, file) {
   await vfs.write(path, { type: 'video', vault: key, mime: file.type || 'video/mp4' });
 }
 
-async function importFiles(fileList, kind, dir) {
+export async function importFiles(fileList, kind, dir) {
   const files = Array.from(fileList || []);
   if (!files.length) return;
   dir = dir || uploadTarget || '::';

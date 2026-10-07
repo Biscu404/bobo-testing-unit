@@ -172,7 +172,7 @@ export const SHOP_PRICE_DX = SHOP_COL_W - CELL_SM * 9;
 export const BAG_COLS = 3, BAG_ROWS = 8, BAG_CAP = BAG_COLS * BAG_ROWS;
 export const BAG_ROW = ICON_PX + BEK_ART_SCALE * 2;
 export const BAG_W = BEK_W - CELL_SM * 4;
-export const BAG_H = PAD_SM * 2 + LINE_SM * 2 + BAG_ROW * BAG_ROWS + LINE_SM * 2;
+export const BAG_H = PAD_SM * 2 + LINE_SM * 2 + BAG_ROW * BAG_ROWS + LINE_SM * 3;      /* the last line says what SPACE will do */
 export const BAG_X = Math.round((BEK_W - BAG_W) / 2);
 export const BAG_Y = Math.round((BEK_H - BAG_H) / 2);
 export const BAG_CW = Math.floor((BAG_W - PAD_SM * 2) / BAG_COLS);

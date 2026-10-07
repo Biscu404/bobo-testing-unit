@@ -31,7 +31,7 @@ import { PAL, PAL_N, VGA16, RAMPS, lum, sameRampNeighbour, RAMP_STEP_MAX,
 import { MARKS, SHADOWS, FEATURES } from './palette_marks.js';
 import { lightAt, lutAt, lutOf, LIGHT_ANCHORS, lightKey, CAVE_LIGHT, MINE_LIGHT,
          mineLight, DAY_LUT, lumOf, shelter } from './light.js';
-import { lampState, relightCoef } from './lamp.js';
+import { lampState, relightCoef, bandStates, STEPS } from './lamp.js';
 import { BEK_MAPS, mapCols, mapRows, BEK_SOLID } from './data.js';
 import { groundOf, solidOf, inside as insideMap, isCave } from './surface.js';
 import { mineFloor, mineBand, MINE_BANDS } from './mine.js';
@@ -165,6 +165,12 @@ console.log('\n-- light --');
     states.push(lutAt(min, false), lutAt(min, true));
     lamps.push(lutOf(lampState(out, dark)), lutOf(lampState(ins, dark)));
   }
+  /* the bands between the hour and the lit state: a pool is cut into STEPS of them, and each is a table in its own right */
+  for (let min = 0; min < 24 * 60; min += 10) {
+    const out = lightAt(min), ins = shelter(out, 0.5), dark = 1 - out.k;
+    for (const f of [out, ins]) bandStates(f, lampState(f, dark)).forEach(b => lamps.push(lutOf(b)));
+  }
+  bandStates(CAVE_LIGHT, lampState(CAVE_LIGHT, 1 - CAVE_LIGHT.k)).forEach(b => lamps.push(lutOf(b)));
   states.push(lutOf(CAVE_LIGHT));
   lamps.push(lutOf(lampState(CAVE_LIGHT, 1 - CAVE_LIGHT.k)));
   states.push(...lamps);
@@ -206,6 +212,24 @@ console.log('\n-- light --');
   }
   ok(derr <= 8, 'a pool lands on the daylight palette, not near it',
      'largest channel error ' + derr + (derrAt ? ' (' + derrAt + ')' : '') + ' of 255');
+
+  /* and a live pool lights a pixel a static one has already half lit by going from the band it is in to the band it
+     should be in, not from the hour: that has to land on the table of the band it goes to, for every pair */
+  let berr = 0, bAt = '';
+  for (let min = 0; min < 24 * 60; min += 30) {
+    const from = lightAt(min), st = bandStates(from, lampState(from, 1 - from.k)), T = st.map(lutOf);
+    for (let a = 0; a < STEPS; a++) for (let b = a + 1; b <= STEPS; b++) {
+      const co = relightCoef(st[a], st[b]);
+      for (let i = 0; i < PAL_N; i++) {
+        const p = T[a][i], l = 0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2];
+        for (let ch = 0; ch < 3; ch++) {
+          const got = Math.max(0, Math.min(255, Math.round(co.P * l + co.Q * p[ch] + co.D[ch]))), d = Math.abs(got - T[b][i][ch]);
+          if (d > berr) { berr = d; bAt = 'band ' + a + ' to ' + b + ', index ' + i + ' at ' + (min / 60 | 0) + ':00'; }
+        }
+      }
+    }
+  }
+  ok(berr <= 10, 'a band lands on the next band\'s palette, from any band', 'largest channel error ' + berr + (bAt ? ' (' + bAt + ')' : '') + ' of 255');
 
   /* and it is a curve, not two if-statements. The state is quantised so the
      terrain cache is not rebuilt every frame, so there *are* steps — the

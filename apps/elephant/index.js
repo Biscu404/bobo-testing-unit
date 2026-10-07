@@ -1,4 +1,4 @@
-import { createWindow, raise, sysDialog } from '../../kernel/wm.js';
+import { createWindow, raise, sysDialog, toast, openWindow } from '../../kernel/wm.js';
 import { Snd } from '../../kernel/snd.js';
 import { Cos } from '../../kernel/cos.js';
 import { fs as vfs } from '../../kernel/vfs.js';
@@ -7,6 +7,10 @@ import { song as eleSong } from './score.js';
 import { Studio } from '../../kernel/studio.js';
 import { phosLevel, CRT, Vol } from '../../kernel/hardware.js';
 import { VGA16 } from '../../kernel/god.js';
+import { Pet } from '../../kernel/pet.js';
+import { ELEPHANT } from '../../kernel/cos_data.js';
+import { drawWear } from './wear.js';
+import { scopedListeners, whenGone } from '../lifecycle.js';
 
 export default {
   open() {
@@ -25,8 +29,10 @@ export default {
       bar.className = 'appbar';
       const bTalk  = document.createElement('button'); bTalk.className  = 'appbtn'; bTalk.textContent  = 'TALK';
       const bPlace = document.createElement('button'); bPlace.className = 'appbtn'; bPlace.textContent = 'PLACE';
+      const bWear  = document.createElement('button'); bWear.className  = 'appbtn'; bWear.textContent  = 'WARDROBE';
+      const bOut   = document.createElement('button'); bOut.className   = 'appbtn';
       const info   = document.createElement('span');   info.className   = 'godword';
-      bar.appendChild(bTalk); bar.appendChild(bPlace); bar.appendChild(info);
+      bar.appendChild(bTalk); bar.appendChild(bPlace); bar.appendChild(bWear); bar.appendChild(bOut); bar.appendChild(info);
       body.appendChild(wrap); body.appendChild(bar);
 
       const g = cv.getContext('2d');
@@ -98,6 +104,11 @@ export default {
         }
       }
       const disc = (cx, cy, r, c) => oval(cx, cy, r, r, c);
+
+      /* what he has on (kernel/pet.js keeps it, so the elephant on the desktop wears the same), and whether he is out of the window */
+      let wear = Pet.wear();
+      const kit = { R, B, oval };
+      const HAT_LIFT = { partyhat: 54, tophat: 46, wizard: 62, crown: 40 };
 
       /* the same dither, poured into an ellipse rather than a box, because a
          square halo around a round sun is a square halo around a round sun */
@@ -487,6 +498,8 @@ export default {
         limb(214, 268, 16, 7, 8);
         limb(266, 268, 16, 7, 8);
 
+        drawWear('back', wear, kit, { br });
+
         /* the body */
         limb(240, 206 + br, 70, 44, 7, 15, 8);
 
@@ -496,6 +509,8 @@ export default {
           limb(x, 267, 21, 8, 8);
           R(x - 15, 263, 7, 5, 15); R(x - 4, 262, 8, 6, 15); R(x + 8, 263, 7, 5, 15);
         });
+        drawWear('feet', wear, kit, { br });
+        drawWear('body', wear, kit, { br });
 
         /* The ears are the biggest thing about him and they never stop. Drawn
            before the head so the head sits over the join, and kept mostly
@@ -547,6 +562,15 @@ export default {
             R(x - 4, 147 + br + look, 3, 3, 15);
           }
         });
+        drawWear('front', wear, kit, { br });
+      }
+
+      /* he is out on the desktop: the place is empty, and says where he went */
+      function awayNote() {
+        g.font = '12px monospace';
+        const txt = 'HE IS OUTSIDE. LOOK ON THE DESKTOP.', w = Math.ceil(g.measureText(txt).width) + 30;
+        B(240 - w / 2 + 4, 124, w, 34, 0, 8); B(240 - w / 2, 120, w, 34, 15, 8);
+        g.fillStyle = C(0); g.fillText(txt, 240 - w / 2 + 15, 142);
       }
 
       /* ---- 31.9 the bubble -----------------------------------------------
@@ -600,12 +624,14 @@ export default {
         const lines = lay.lines, tw = lay.tw;
         const lh = 17;
         const fw = Math.ceil(tw) + 30, fh = lines.length * lh + 20;
-        const fx = Math.round(240 - fw / 2), fy = 104 - fh;
+        /* the bubble sits over his head, so over his hat: it rises by the height of whatever he has on (and never off the top of the picture) */
+        const top = Math.max(fh + 4, 104 - (HAT_LIFT[wear.head] || 0));
+        const fx = Math.round(240 - fw / 2), fy = top - fh;
 
         /* the four steps it opens in */
         const k = [0.28, 0.6, 0.86, 1][Math.min(3, step)];
         const w = Math.round(fw * k), h = Math.round(fh * k);
-        const x = Math.round(240 - w / 2), y = Math.round(104 - h);
+        const x = Math.round(240 - w / 2), y = Math.round(top - h);
 
         /* the phosphor knob reaches the canvas too: on P4 and P7 a lit thing
            carries a halo, and the bubble is the brightest thing on screen */
@@ -662,7 +688,7 @@ export default {
         const n = Math.min(3, Math.floor(think / 0.55) + 1);
         for (let i = 0; i < n; i++) {
           const x = 214 + i * 22, bob = Math.round(Math.sin(think * 4 - i) * 2);
-          limb(x, 74 + bob, 8, 8, 15);
+          limb(x, 74 - (HAT_LIFT[wear.head] ? Math.round(HAT_LIFT[wear.head] * 0.5) : 0) + bob, 8, 8, 15);
         }
       }
 
@@ -763,6 +789,61 @@ export default {
         if (ev.key === 'Tab') { ev.preventDefault(); goPlace(place + 1); }
       });
 
+      /* ---- the wardrobe, and the door ----------------------------------------------------------------------------------
+         What Dave sells for him goes on here, one of each kind at a time; the pet on the desktop wears the same. And once
+         FREE RANGE is bought there is a way out of the window. */
+      wrap.style.position = 'relative';
+      const SLOTS = [['head', 'HEAD'], ['face', 'FACE'], ['neck', 'NECK'], ['body', 'BODY'], ['feet', 'FEET']];
+      const wardrobe = document.createElement('div');
+      wardrobe.className = 'gbench'; wardrobe.style.display = 'none'; wardrobe.style.top = '16px'; wardrobe.style.width = '640px';
+      wardrobe.addEventListener('mousedown', ev => ev.stopPropagation());
+      wrap.appendChild(wardrobe);
+      const has = id => window.Cos.has('elephant', id);
+      const chip = (label, on, fn, locked, title) => {
+        const b = document.createElement('button');
+        b.className = 'appbtn' + (on ? ' on' : ''); b.style.margin = '0 3px 3px 0'; if (locked) b.style.opacity = '0.55';
+        b.textContent = label; if (title) b.title = title;
+        b.addEventListener('mousedown', ev => { ev.stopPropagation(); Snd.click(); fn(); });
+        return b;
+      };
+      const toDave = it => { toast('DAVE SELLS THE ' + it.name + ' FOR ' + it.price + ' SUN.'); openWindow('shop', { tab: 'elephant' }).catch(() => {}); };
+      function paintWardrobe() {
+        wardrobe.innerHTML = '';
+        const hd = document.createElement('div'); hd.className = 'gbh'; hd.textContent = 'THE WARDROBE  --  HE WEARS IT HERE AND ON THE DESKTOP';
+        wardrobe.appendChild(hd);
+        SLOTS.forEach(([slot, label]) => {
+          const row = document.createElement('div'); row.className = 'gbrow'; row.style.flexWrap = 'wrap';
+          const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = label; nm.style.minWidth = '54px'; row.appendChild(nm);
+          row.appendChild(chip('NOTHING', !wear[slot], () => Pet.setWear(slot, null)));
+          ELEPHANT.filter(i => i.slot === slot).forEach(it => {
+            const own = has(it.id);
+            row.appendChild(chip(it.name + (own ? '' : '  ' + it.price), wear[slot] === it.id, () => own ? Pet.setWear(slot, it.id) : toDave(it), !own, it.blurb));
+          });
+          wardrobe.appendChild(row);
+        });
+        const c = document.createElement('button'); c.className = 'appbtn'; c.textContent = 'CLOSE';
+        c.addEventListener('mousedown', ev => { ev.stopPropagation(); wardrobe.style.display = 'none'; bWear.classList.remove('on'); });
+        wardrobe.appendChild(c);
+      }
+      bWear.addEventListener('mousedown', ev => {
+        ev.stopPropagation(); Snd.click();
+        const open = wardrobe.style.display === 'none';
+        if (open) paintWardrobe();
+        wardrobe.style.display = open ? '' : 'none'; bWear.classList.toggle('on', open);
+      });
+      function syncOut() { bOut.textContent = !has('pet') ? 'GO OUTSIDE ($)' : Pet.isOut() ? 'CALL HIM IN' : 'GO OUTSIDE'; bOut.classList.toggle('on', Pet.isOut()); }
+      bOut.addEventListener('mousedown', ev => {
+        ev.stopPropagation(); Snd.click();
+        if (!has('pet')) { toDave(ELEPHANT.find(i => i.id === 'pet')); return; }
+        if (Pet.isOut()) Pet.home(); else Pet.out();
+        syncOut();
+      });
+      syncOut();
+      const unsubPet = Pet.onChange(() => { wear = Pet.wear(); syncOut(); if (wardrobe.style.display !== 'none') paintWardrobe(); });
+      const onBought = () => { syncOut(); if (wardrobe.style.display !== 'none') paintWardrobe(); };
+      scopedListeners(wrap).on(window, 'cos-changed', onBought);
+      whenGone(wrap, unsubPet);
+
       goPlace(0);
       sfx.think();
 
@@ -812,13 +893,14 @@ export default {
           }
         }
 
+        const away = Pet.isOut();
         stepMotes(step);
         (PLACE_FN[P.id] || placeSun)(t);
-        drawEle(t, phase);
+        if (!away) drawEle(t, phase);
         drawMotes(P.mote);
         overlay(P.id, t);
-        if (phase === 'think') dots(pT);
-        if (phase === 'speak') bubble(msg, shown, openStep);
+        if (away) awayNote();
+        else { if (phase === 'think') dots(pT); if (phase === 'speak') bubble(msg, shown, openStep); }
       }
       raf = requestAnimationFrame(frame);
 

@@ -467,10 +467,11 @@ function caseStaleCoordinates() {
    real frame loop — sceneWatch() is what decides, so nothing here reaches
    past the front door. Then presses SPACE the way a player does until the
    scene is spent, and asserts every beat had a speaker and a line, that the
-   clock did not move while it played, that the player is back on the square
-   they were standing on, and that the scene is marked one-shot. */
+   clock did not move while it played, that the player was never moved from
+   the square they were standing on (the cast walks to *them*, a heart event
+   no longer begins with a jump cut), and that the scene is marked one-shot. */
 function caseHeartEvent() {
-  const NAME = 'a heart event fires, plays out and restores the world';
+  const NAME = 'a heart event fires, plays out, and nobody is teleported';
   clearSave();
   let seedHandle;
   try { seedHandle = mountApp(); } catch (e) { report(NAME, false, 'seed mount() threw: ' + (e && e.stack || e)); return; }
@@ -503,6 +504,8 @@ function caseHeartEvent() {
     else {
       if (st.id !== 'astrid4') problems.push('the wrong scene fired: ' + st.id);
       const startMin = st.min;
+      if (st.px !== START[0] || st.py !== START[1]) problems.push('the player was moved to start the scene: ' + st.px + ',' + st.py);
+      if (st.phase !== 'talk') problems.push('the box opened before the cast had arrived: phase ' + st.phase);
       const space = { key: ' ', preventDefault: () => {} };
       for (let i = 0; i < 60 && st.id; i++) {
         if (!st.line) problems.push('beat ' + st.beat + ' of ' + st.id + ' has no line');
@@ -521,7 +524,7 @@ function caseHeartEvent() {
   handle.bSave.click();
   const after = JSON.parse(globalThis.localStorage.getItem(BEK_SAVE));
   if (after.px !== START[0] || after.py !== START[1])
-    problems.push('the player was not put back where they were: ' + after.px + ',' + after.py);
+    problems.push('the player is not where they were: ' + after.px + ',' + after.py);
   if (!after.seen['sc:astrid4']) problems.push('the scene was not marked one-shot');
   if (after.fr.astrid !== 5) problems.push('the scene did not pay its friendship: ' + after.fr.astrid);
 
@@ -661,7 +664,7 @@ function caseDescent() {
        S.enRescaled — the marker over heal()'s one-shot stamina raise, since
        a save carrying the old 120-point bar into the retuned economy is not
        a save of the old game but an unwinnable version of the new one. */
-    if (out.ver !== 19) problems.push('a fresh save is ver ' + out.ver);
+    if (out.ver !== 21) problems.push('a fresh save is ver ' + out.ver);
     if (out.enRescaled !== true) problems.push('the stamina rescale marker is missing');
   } catch (e) { report(NAME, false, 'threw driving the descent: ' + (e && e.stack || e)); return; }
 

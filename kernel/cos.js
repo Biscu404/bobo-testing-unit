@@ -1,12 +1,20 @@
-import { FRAMES, LOGOS, CURSORS, SCHEMES, POTS, SPECIES, DECO_SVG, CUR_HANDMASK } from './cos_data.js';
+import { FRAMES, LOGOS, CURSORS, SCHEMES, POTS, SPECIES, WALLS, CRAYON, GARAGE, DRINKS, ELEPHANT, DECO_SVG, CUR_HANDMASK } from './cos_data.js';
 
+/* `kind`: what owning one of these means. 'look' goes on the machine and is worn one at a time (frame, logo, pointer, scheme);
+   'stock' is what the garden grows with (pots, seeds); 'wall' is a picture, set as the background; 'unlock' is something an app
+   was given and `app` is the registry id of the app that has it (the shop opens it from the card). */
 export const COS_CATS = {
-  frame:   { list: FRAMES,   label: 'FRAMES' },
-  logo:    { list: LOGOS,    label: 'LOGOS' },
-  cursor:  { list: CURSORS,  label: 'POINTERS' },
-  scheme:  { list: SCHEMES,  label: 'SCHEMES' },
-  pot:     { list: POTS,     label: 'POTS' },
-  seed:    { list: SPECIES,  label: 'SEEDS' }
+  frame:   { list: FRAMES,   label: 'FRAMES',    kind: 'look' },
+  logo:    { list: LOGOS,    label: 'LOGOS',     kind: 'look' },
+  cursor:  { list: CURSORS,  label: 'POINTERS',  kind: 'look' },
+  scheme:  { list: SCHEMES,  label: 'SCHEMES',   kind: 'look' },
+  pot:     { list: POTS,     label: 'POTS',      kind: 'stock', app: 'garden', appName: 'THE GARDEN' },
+  seed:    { list: SPECIES,  label: 'SEEDS',     kind: 'stock', app: 'garden', appName: 'THE GARDEN' },
+  wall:    { list: WALLS,    label: 'BACKDROPS', kind: 'wall' },
+  crayon:  { list: CRAYON,   label: 'CRAYON',    kind: 'unlock', app: 'crayon',   appName: 'THE CRAYON' },
+  garage:  { list: GARAGE,   label: 'GARAGE',    kind: 'unlock', app: 'garage',   appName: 'THE GARAGE' },
+  drink:   { list: DRINKS,   label: 'DRINKS',    kind: 'unlock', app: 'bottle',   appName: 'THE BOTTLE' },
+  elephant:{ list: ELEPHANT, label: 'ELEPHANT',  kind: 'unlock', app: 'elephant', appName: 'THE ELEPHANT' }
 };
 
 
@@ -42,7 +50,8 @@ const Cos = {
 
   boot() {
     const def = {
-      owned: { frame: ['beige'], logo: ['temple'], cursor: ['stock'], scheme: ['vga'], pot: ['terra'], seed: ['sunshoot'] },
+      owned: { frame: ['beige'], logo: ['temple'], cursor: ['stock'], scheme: ['vga'], pot: ['terra'], seed: ['sunshoot'],
+               wall: [], crayon: [], garage: [], drink: ['jager'], elephant: [] },
       eq:    { frame: 'beige', logo: 'temple', cursor: 'stock', scheme: 'vga', pot: 'terra' }
     };
     const got = { ...def, ...(JSON.parse(localStorage.getItem('templeos.cosm')) || {}) };
@@ -53,7 +62,7 @@ const Cos = {
     for (const cat in def.owned) {
       if (!Array.isArray(got.owned[cat])) got.owned[cat] = def.owned[cat].slice();
       def.owned[cat].forEach(id => { if (got.owned[cat].indexOf(id) < 0) got.owned[cat].push(id); });
-      if (!this.find(cat, got.eq[cat]) || !this.has(cat, got.eq[cat], got)) got.eq[cat] = def.eq[cat];
+      if (cat in def.eq && (!this.find(cat, got.eq[cat]) || !this.has(cat, got.eq[cat], got))) got.eq[cat] = def.eq[cat];
     }
     this.st = got;
     LOGOS[0].svg = (document.getElementById('logo') || { innerHTML: '' }).innerHTML;
@@ -80,15 +89,36 @@ const Cos = {
     if (!window.Economy.spend(it.price, 'DAVE: ' + it.name)) return false;
     this.st.owned[cat].push(id);
     this.save();
+    if (COS_CATS[cat].kind === 'wall') this.shelve(it);
+    this.tell(cat, id);
     return true;
+  },
+  /* an app that is open hears about a purchase the moment it is made */
+  tell(cat, id) {
+    this.subs.forEach(f => { try { f(cat, id); } catch (e) {} });
+    try { window.dispatchEvent(new CustomEvent('cos-changed', { detail: { cat, id } })); } catch (e) {}
+  },
+  /* a backdrop is also a picture you own: it goes into ::/Home/Backdrops as a file */
+  async shelve(it) {
+    try {
+      const { fs } = await import('./vfs.js');
+      const path = '::/Home/Backdrops/' + it.name.replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '') + '.PNG';
+      await fs.write(path, { type: 'image', content: '', src: it.src });
+      window.dispatchEvent(new CustomEvent('vfs-changed', { detail: { dir: '::/Home/Backdrops' } }));
+      window.dispatchEvent(new CustomEvent('vfs-changed', { detail: { dir: '::/Home' } }));
+    } catch (e) {}
   },
   equip(cat, id) {
     if (!this.has(cat, id)) return false;
-    if (cat === 'seed') return false;                /* seeds are stock, not a look */
+    const kind = COS_CATS[cat].kind;
+    if (cat === 'seed' || kind === 'unlock') return false;         /* seeds and the apps' gifts are used where they live, not worn; a pot is the garden's default */
     this.st.eq[cat] = id;
     this.save();
-    this.applyAll();
-    this.subs.forEach(f => { try { f(); } catch (e) {} });
+    if (kind === 'wall') {
+      const it = this.find('wall', id);
+      import('./wallpaper.js').then(m => m.setWallpaperFromSrc(it.src, 'fill')).catch(() => {});
+    } else this.applyAll();
+    this.subs.forEach(f => { try { f(cat, id); } catch (e) {} });
     return true;
   },
   onChange(f) { this.subs.push(f); },

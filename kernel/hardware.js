@@ -450,3 +450,13 @@ function wirePot(id, lblId, name, write) {
     if (ev.key === 'ArrowLeft' || ev.key === 'ArrowDown') { ev.preventDefault(); commit(pos - 1); }
   });
 }
+
+/* the glass breathes: three per cent over seven seconds, set a few times a second rather than animated (see #glass in theme.css) */
+(function hum() {
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const t0 = performance.now();
+  setInterval(() => {
+    const g = document.getElementById('glass');
+    if (g) g.style.setProperty('--hum', (0.985 + 0.015 * Math.sin((performance.now() - t0) / 7000 * Math.PI * 2)).toFixed(3));
+  }, 400);
+})();

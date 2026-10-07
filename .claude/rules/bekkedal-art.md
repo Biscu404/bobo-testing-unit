@@ -53,8 +53,10 @@ This file carries the full art/rendering doctrine for the siblings above.
   applied to already-rendered pixels (`relightCoef`), and the falloff a
   source is painted with. See **Light and the hour** below.
 - `lamp.js` — the local-light pass itself: one strength field composed from
-  every source, and the per-pixel ordered dither between the picture at this
-  hour and the picture in daylight. See **Local light is a palette too**.
+  every source, cut into four hard bands of the picture between this hour's and
+  daylight's (it used to be an ordered dither; see **Banded light** below, which
+  supersedes what **Local light is a palette too** says about the dither).
+  `lamp_bands.js` holds its constants, `lampState`, `relightCoef` and the band states.
 - `surface.js` — what a tile is made of: which glyph reads as which palette
   entry, on which map. The ground pass fills from it and `palette_check.js`
   walks every map through it, which is the point — one table, two readers.
@@ -423,6 +425,8 @@ screen does. Sixty-four indices multiply that cache; keep an eye on it.
 `wash()` is the patch-shaped case of the same thing — `ditherPat` clipped to
 a rect — and it must be called *outside* a `native()` block, never inside
 one, because it opens its own.
+
+> **Superseded.** `lamp.js` no longer dithers at all (see **Banded light**); the paragraph below describes what it used to do and why a stipple was thought allowed.
 
 `lamp.js` is the one blend that does not go through `ditherPat`, and it is
 inside this rule rather than an exception to it. What it blends between is two
@@ -1365,6 +1369,8 @@ invisible exactly where you were standing. The hearth was worse because it
 `round(5*dark)` landed on the same pixels, each clamped to 16 on its own, and
 composited to something effectively opaque.
 
+> **Superseded in one respect.** The pool is no longer an ordered dither between two pictures; it is four hard bands (**Banded light**, below). Everything else in this section stands: the pool resolves toward daylight rather than painting orange, stacking is unexpressible, it costs nothing in daylight, and the four constants.
+
 The answer is the answer the hour already had. **A pool does not paint the
 ground orange; it resolves the ground toward the palette daylight would have
 drawn it in**, plus a warm tint for temperature. The blend is still an ordered
@@ -1592,3 +1598,29 @@ Lag was four things: an uneven frame gate, a whole-map `tileAt` scan every frame
 readback of the cache by the lamp pass in full daylight. See **Frame pacing** in `.claude/rules/bekkedal-engine.md`. The lamp pass (`lamp.js`) skips cells whose strength
 is zero, and `lightSources` no longer reports a pool at all while it is brighter than `dark <= 0.08`.
 
+## Banded light (replaces the dither in the lamp pass)
+
+The ordered dither was the one thing in the light that did not work. A 4x4 matrix at half strength is a checkerboard, and a
+checkerboard laid over a lit window, a roof, a wall and a stretch of grass is what it looked like: a lit window in a chequer of two colours,
+a row of isolated bright dots along a roof ridge where the matrix landed on the capping, a lattice of warm specks (the veil that was added for
+a colour temperature). People who played it said it hurt to look at, and they were right. **There is no dither in a pool of light, and no veil.**
+
+- **The strength field is cut into `STEPS` (4) bands with hard edges**, the way a lamp is drawn in pixel art. The field is the same
+  flat-topped, steep-rimmed falloff, interpolated between half-tile cells so a contour is an ellipse and not a staircase of squares. Band `b` is where the
+  strength reaches `b/STEPS` of the way to 16, and every pixel in a band is relit the same way: from the hour's state toward the lamp's state in `b/STEPS` equal parts
+  (`bandStates`, all through `quantState`, so the ordering guarantee holds for each, and `palette_check.js` holds it to that). A band is decided per `BLOCK` (2 device
+  pixels, one art pixel), so a contour moves in whole art pixels.
+- **Stacking is still impossible**: a pixel's band is the maximum over every source and the target of a band is a fixed state. **Nothing is alpha** except the mask a
+  live pool is cut out with (a pixel is in it or it is not).
+- **Static pools are baked into the terrain cache; live pools (the lantern you carry, a hearth that breathes) are cut from the CPU copy of the cache**
+  (`willReadFrequently`), not read back from the screen. Reading a canvas the graphics card owns stalls the whole pipeline until everything queued is drawn, every frame:
+  that was what made caves slow. What `live()` returns is a small patch laid over the picture and `bandAt(x, y)` for the sprites drawn over it.
+- **The moon is not stippled either.** `moonKey`/`moonRim` give tops and left edges of solid tiles at dusk and night a solid blue rim, where it used to be a stippled
+  near-white one: those were the "white dots for directionality" that showed on rock and walls.
+
+## A rebuild must never be a frame
+
+A light step or a region change used to rasterise the terrain cache in one go (10-60 ms), a dropped frame each time. The rebuild is **double-buffered and time-sliced**
+(`makeBuf`/`bufs`/`startJob`/`runJob` in `index.js`): the next cache is drawn into the back buffer a slice of a frame at a time (each buffer keeps its own band map),
+the front buffer keeps being drawn until the back one is complete, and then they swap. `terrain(force)` is what the frame loop calls; `__bekDebug.rects` wraps both buffers.
+Measured walking at dusk, same machine: p50 17 ms, worst frame 50 ms, none over 60 ms (the old tree: worst 100 ms, two over 60).

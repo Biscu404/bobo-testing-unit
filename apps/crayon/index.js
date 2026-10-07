@@ -5,6 +5,9 @@ import { fs as vfs } from '../../kernel/vfs.js';
 import { lampDip } from '../../kernel/hardware.js';
 import { Vault, VaultURL } from '../../kernel/vault.js';
 import { scopedListeners } from '../lifecycle.js';
+import { BRUSHES } from './brushes.js';
+import { createLayers, MAX_LAYERS } from './layers.js';
+import { CRAYON } from '../../kernel/cos_data.js';
 
 
 const DRAW_KEY = 'templeos.draw';
@@ -78,6 +81,9 @@ export default {
   let drawing = false, lastX = 0, lastY = 0, lastT = 0, lastW = SIZES[1];
   let undo = [], scratchT = 0;
   let current = null;         /* the saved record this canvas came from */
+  let layers = null, strokeState = {}, lockEls = [], layerEls = [];
+  const owns = id => Cos.has('crayon', id);
+  const toDave = what => { Snd.deny(); toast('DAVE SELLS ' + what + '.'); openWindow('shop', { tab: 'crayon' }).catch(() => {}); };
 
   const made = createWindow({
     kind: 'app', title: 'DRAW.EXE', w: 800, h: 600, appId: 'crayon',
@@ -214,6 +220,56 @@ export default {
         toolBtns.push(b);
         tools.appendChild(b);
       });
+      /* what Dave sells: shown for everybody, so it can be found; dim until it is bought, and then it is a tool like the others */
+      CRAYON.filter(c => c.kind === 'brush').forEach(c => {
+        const b = document.createElement('button');
+        b.className = 'tl';
+        b.textContent = c.name;
+        b.dataset.tool = c.id;
+        b.title = c.blurb;
+        b.addEventListener('mousedown', ev => {
+          ev.stopPropagation();
+          if (!owns(c.id)) { toDave('THE ' + c.name + ' FOR ' + c.price + ' SUN'); return; }
+          setTool(c.id); Snd.click();
+        });
+        toolBtns.push(b); lockEls.push([b, c]);
+        tools.appendChild(b);
+      });
+
+      hd('LAYERS');
+      const layerBox = document.createElement('div');
+      layerBox.className = 'drawlayers';
+      for (let i = 0; i < MAX_LAYERS; i++) {
+        const row = document.createElement('div');
+        row.className = 'lyrow';
+        const pick = document.createElement('button'); pick.className = 'tl lypick';
+        const eye = document.createElement('button'); eye.className = 'tl lyeye'; eye.textContent = 'ON';
+        pick.addEventListener('mousedown', ev => {
+          ev.stopPropagation();
+          const c = CRAYON.find(x => x.id === 'layer' + (i + 1));
+          if (i > 0 && !owns(c.id)) { toDave('LAYER ' + (i + 1) + ' FOR ' + c.price + ' SUN'); return; }
+          g = layers.setActive(i); refreshLayers(); Snd.click();
+        });
+        eye.addEventListener('mousedown', ev => {
+          ev.stopPropagation();
+          if (i === 0 || !owns('layer' + (i + 1))) return;
+          layers.toggle(i); layers.redraw(); refreshLayers(); Snd.click();
+        });
+        row.appendChild(pick); if (i > 0) row.appendChild(eye);
+        layerBox.appendChild(row); layerEls.push({ pick, eye, row });
+      }
+      tools.appendChild(layerBox);
+      const lyBtn = (label, fn) => { const b = document.createElement('button'); b.className = 'tl'; b.textContent = label; b.addEventListener('mousedown', ev => { ev.stopPropagation(); fn(); }); tools.appendChild(b); return b; };
+      lyBtn('CLEAR LAYER', () => {
+        const i = layers.active;
+        if (i === 0) { toast('THE SHEET HAS NEW. THIS ONE IS THE PAPER.'); return; }
+        push(); layers.clear(i); layers.redraw(); Snd.page();
+      });
+      lyBtn('MERGE DOWN', () => {
+        const i = layers.active;
+        if (i === 0) { toast('NOTHING UNDER THE PAPER.'); return; }
+        push(); layers.mergeDown(i); g = layers.setActive(i - 1); layers.redraw(); refreshLayers(); Snd.page();
+      });
 
       hd('SIZE');
       ['SMALL', 'MEDIUM', 'LARGE'].forEach((n, i) => {
@@ -259,8 +315,27 @@ export default {
     }
   });
   drawWin = made;
-  g = cv.getContext('2d', { willReadFrequently: true });
-  if (!g) return;
+  const cg = cv.getContext('2d', { willReadFrequently: true });
+  if (!cg) return;
+  layers = createLayers(DRAW_W, DRAW_H, cg);
+  g = layers.ctx();
+
+  /* which tools and layers are Dave's and not yet yours */
+  function refreshLayers() {
+    lockEls.forEach(([b, c]) => { const have = owns(c.id); b.classList.toggle('locked', !have); b.title = have ? c.blurb : c.blurb + '  --  ' + c.price + ' SUN AT DAVE\'S'; });
+    layerEls.forEach((e, i) => {
+      const c = CRAYON.find(x => x.id === 'layer' + (i + 1)), have = i === 0 || owns(c.id);
+      e.pick.textContent = i === 0 ? 'SHEET' : 'LAYER ' + (i + 1);
+      e.pick.title = have ? '' : c.blurb + '  --  ' + c.price + ' SUN AT DAVE\'S';
+      e.pick.classList.toggle('locked', !have);
+      e.pick.classList.toggle('on', have && layers.active === i);
+      e.eye.textContent = layers.visible(i) ? 'ON' : 'OFF';
+      e.eye.classList.toggle('locked', !have);
+    });
+  }
+  refreshLayers();
+  const L0 = scopedListeners(made.win);
+  L0.on(window, 'cos-changed', () => { if (!document.body.contains(cv)) return; refreshLayers(); });
 
   function setTool(t) {
     tool = t;
@@ -268,20 +343,26 @@ export default {
   }
 
   function newSheet() {
+    layers.reset();
+    g = layers.ctx();
     g.drawImage(makePaper(), 0, 0);
+    layers.redraw();
+    refreshLayers();
     undo = [];
     current = null;
     made.title.textContent = 'DRAW.EXE';
   }
 
   function push() {
-    try { undo.push(g.getImageData(0, 0, DRAW_W, DRAW_H)); } catch (e) { return; }
+    try { undo.push({ li: layers.active, img: g.getImageData(0, 0, DRAW_W, DRAW_H) }); } catch (e) { return; }
     if (undo.length > 24) undo.shift();
   }
   function doUndo() {
     const s = undo.pop();
     if (!s) { toast('NOTHING LEFT TO TAKE BACK.'); return; }
-    g.putImageData(s, 0, 0);
+    g = layers.setActive(s.li);
+    g.putImageData(s.img, 0, 0);
+    layers.redraw(); refreshLayers();
   }
 
   /* ---- the stroke -------------------------------------------------------
@@ -313,6 +394,12 @@ export default {
     const dx = x1 - x0, dy = y1 - y0;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
+    if (BRUSHES[tool]) {
+      BRUSHES[tool](g, { x0, y0, x1, y1, dist, fast, base, col: colorHex, s: strokeState });
+      lastW = base;
+      return;
+    }
+
     if (tool === 'eraser') {
       const w = Math.max(3, base * (1 - fast * 0.45));
       const stepN = Math.max(1, Math.ceil(dist / Math.max(1, w * 0.3)));
@@ -327,7 +414,8 @@ export default {
           const a = Math.random() * Math.PI * 2;
           const r = Math.sqrt(Math.random()) * (w / 2);
           const ex = (px + Math.cos(a) * r) | 0, ey = (py + Math.sin(a) * r) | 0;
-          g.drawImage(makePaper(), ex, ey, 2, 2, ex, ey, 2, 2);
+          if (layers.active === 0) g.drawImage(makePaper(), ex, ey, 2, 2, ex, ey, 2, 2);
+          else { g.globalCompositeOperation = 'destination-out'; g.fillRect(ex, ey, 2, 2); g.globalCompositeOperation = 'source-over'; }
         }
       }
       lastW = w;
@@ -403,15 +491,15 @@ export default {
     const d = img.data;
     const at = (x, y) => (y * DRAW_W + x) * 4;
     const s = at(sx, sy);
-    const t = [d[s], d[s + 1], d[s + 2]];
+    const t = [d[s], d[s + 1], d[s + 2]], ta = d[s + 3];
     const hex = colorHex;
     const nc = [parseInt(hex.substr(1, 2), 16), parseInt(hex.substr(3, 2), 16), parseInt(hex.substr(5, 2), 16)];
-    if (Math.abs(t[0] - nc[0]) + Math.abs(t[1] - nc[1]) + Math.abs(t[2] - nc[2]) < 12) return;
+    if (ta === 255 && Math.abs(t[0] - nc[0]) + Math.abs(t[1] - nc[1]) + Math.abs(t[2] - nc[2]) < 12) return;
     /* the tolerance itself is jittered, so the frontier stops unevenly and
        the boundary comes out hand-coloured rather than machine-cut. Jitter
        the FRONTIER, never the interior: a random skip inside the region
        leaves unfilled speckles, which is a bug and not a texture. */
-    const near = i => Math.abs(d[i] - t[0]) + Math.abs(d[i + 1] - t[1]) + Math.abs(d[i + 2] - t[2])
+    const near = i => Math.abs(d[i] - t[0]) + Math.abs(d[i + 1] - t[1]) + Math.abs(d[i + 2] - t[2]) + Math.abs(d[i + 3] - ta) * 2
       < 46 + (Math.random() * 22 - 11);
     const seen = new Uint8Array(DRAW_W * DRAW_H);
     const q = [sy * DRAW_W + sx];
@@ -425,6 +513,7 @@ export default {
       d[i] = Math.max(0, Math.min(255, nc[0] + jit));
       d[i + 1] = Math.max(0, Math.min(255, nc[1] + jit));
       d[i + 2] = Math.max(0, Math.min(255, nc[2] + jit));
+      d[i + 3] = 255;
       const push = (nx, ny) => {
         if (nx < 0 || ny < 0 || nx >= DRAW_W || ny >= DRAW_H) return;
         const np = ny * DRAW_W + nx;
@@ -451,10 +540,12 @@ export default {
     if (ev.button !== 0) return;
     const p = pos(ev);
     push();
-    if (tool === 'fill') { fill(p.x | 0, p.y | 0); Snd.page(); return; }
+    if (tool === 'fill') { fill(p.x | 0, p.y | 0); layers.redraw(); Snd.page(); return; }
     drawing = true;
+    strokeState = {};
     lastX = p.x; lastY = p.y; lastT = performance.now();
     seg(p.x, p.y, p.x + 0.01, p.y, 0);
+    layers.redraw();
   });
   const L = scopedListeners(made.win);
   L.on(window, 'mousemove', ev => {
@@ -465,6 +556,7 @@ export default {
     const dist = Math.hypot(p.x - lastX, p.y - lastY);
     const speed = dist / dt;
     seg(lastX, lastY, p.x, p.y, speed);
+    layers.redraw();
     lastX = p.x; lastY = p.y; lastT = now;
     if (now - scratchT > 55) { scratchT = now; Snd.scratch(speed); }
   });
@@ -542,8 +634,10 @@ export default {
     const img = new Image();
     img.onload = () => {
       push();
+      layers.reset(); g = layers.ctx();
       g.drawImage(makePaper(), 0, 0);
       g.drawImage(img, 0, 0, DRAW_W, DRAW_H);
+      layers.redraw(); refreshLayers();
       current = rec;
       made.title.textContent = 'DRAW.EXE  --  ' + rec.name;
     };

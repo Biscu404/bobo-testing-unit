@@ -30,8 +30,8 @@
 import { BEK_MAPS, BEK_SOLID, mapCols, mapRows } from './data.js';
 import { seasonOf, isFestivalDay } from './seasons.js';
 
-const DAY_MIN = 24 * 60;
-const clampMin = m => ((Math.floor(m) % DAY_MIN) + DAY_MIN) % DAY_MIN;
+export const DAY_MIN = 24 * 60;
+export const clampMin = m => ((Math.floor(m) % DAY_MIN) + DAY_MIN) % DAY_MIN;
 
 /* whichever of the four conditions a post carries, or null for a default —
    also GROUPS' own iteration order, festival first */
@@ -78,12 +78,12 @@ export function activePost(npc, day, minute, ctx) {
    npc/post-pair, since a pair of posts never moves — there is no reason to
    re-walk the same corridor every frame it is asked about. */
 const pathCache = new Map();
-function walkable(mp, x, y) {
+export function walkable(mp, x, y) {
   if (x < 0 || y < 0 || x >= mapCols(mp) || y >= mapRows(mp)) return false;
   const c = BEK_MAPS[mp].rows[y].charAt(x);
   return c !== 'D' && BEK_SOLID.indexOf(c) < 0;
 }
-function bfsPath(mp, fx, fy, tx, ty) {
+export function bfsPath(mp, fx, fy, tx, ty) {
   if (fx === tx && fy === ty) return [[fx, fy]];
   const seen = new Set([fx + ',' + fy]);
   const prev = new Map();
@@ -115,8 +115,8 @@ function pathBetween(mp, from, to) {
   return p;
 }
 
-const MIN_PER_TILE = 2;                              /* game-minutes to cross one tile, on foot     */
-const MAX_WALK_MIN = 24;                             /* a longer corridor still arrives inside this */
+export const MIN_PER_TILE = 2;                              /* game-minutes to cross one tile, on foot     */
+export const MAX_WALK_MIN = 24;                             /* a longer corridor still arrives inside this */
 
 /* the current post's own predecessor — the post that was active one minute
    before this one's window opened, under the *same* day/ctx (weather and

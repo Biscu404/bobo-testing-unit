@@ -172,6 +172,7 @@ export default {
       grid.redraw(); prefsSoon();
     }
     api.setDock = setDock;
+    api.openShop = tab => ctx.openWindow('shop', { tab }).catch(() => {});
     api.selectTrack = (i, force) => { if (!force && G.sel === i) return; G.sel = i; G.items.clear(); tracks.render(); keys.render(); mixer.render(); grid.centreOn(); changed('sel'); };
     api.clearSel = () => { G.items.clear(); changed('sel'); };
     api.pickInstrument = i => openPicker(root, api, G.song.tracks[i].inst, id => {

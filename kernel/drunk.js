@@ -33,9 +33,10 @@ export const Drunk = {
   raf: null,
   blood: newBlood(), out: false,
   svg: null, lids: null, fx: {},
-  /* one measure, drunk */
-  drink() {
-    swallow(this.blood);
+  /* one measure, drunk; `units` is what it is worth against the Jägermeister the machine was calibrated on (1), 0 for something with nothing in it */
+  drink(units = 1) {
+    if (units <= 0) { this.kick = Math.max(this.kick, 0.15); this._ensureLoop(); return; }
+    swallow(this.blood, units);
     this.kick = 1;
     this._ensureLoop();
   },

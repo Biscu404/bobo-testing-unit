@@ -26,6 +26,11 @@
  *   A.onStart(id)   (optional) a tune has begun: whatever the game had told the old one about, the new one has not been told
  *   A.first         (optional) the tune to begin with
  *   A.prep, A.urgentRest, A.fade, A.segueFade
+ *   A.overlap       (optional) seconds a natural change of tune is laid over the end of the old one (0: the old one plays out, the new one begins)
+ *   A.allow()       (optional) the ids that may go on playing here though the pool would not choose them: only a tune outside it is
+ *                   taken away when the place changes, the rest wait for the end of their pass. Defaults to the pool.
+ *   A.preferFirst   (optional) a cold start (sound switched on) begins with the first tune of the pool for here, even if the one that was last playing is allowed here too
+ *   A.glide         (optional) seconds a layer takes to come in or go out when `A.layers` changes under a tune
  *
  * What it hands back is the object a game drives: `sync()` when the sound may have been switched on or off, `rotStep()`
  * every frame, `want(id)` to hold one tune (a rest day) and `want(null)` to let go of it, `pickNext(force)` to move on now.
@@ -82,7 +87,7 @@ export function createDirector(A) {
       try {
         const sg = A.score(S.lang, id), o = { layers, levels };
         p = (how === 'start' || !D.playing) ? await D.play(sg, Object.assign(o, { fade: A.fade || 1.8 }))
-          : await D.segue(sg, Object.assign(o, { now: how === 'now', fade: A.segueFade || 1.4 }));
+          : await D.segue(sg, Object.assign(o, { now: how === 'now', fade: A.segueFade || 1.4, overlap: how === 'now' ? 0 : (A.overlap || 0) }));
       } catch (e) { p = null; }
       if (this.loading === id) this.loading = null;
       if (p) { this.layerSet = layers || null; this.heard = 0; this.lastBeat = 0; this.queued = null; this.layers(); this.warm(); if (A.onStart) A.onStart(id); }
@@ -95,7 +100,9 @@ export function createDirector(A) {
       const m = A.layers(this.cur);
       if (same(m, this.layerSet)) return;
       this.layerSet = m;
-      D.layers(m);
+      /* with `glide`, a layer going out or coming in is a swell over that many seconds, not a switch */
+      if (A.glide) D.levels(Object.keys(m).reduce((r, k) => { r[k] = m[k] ? 1 : 0; return r; }, {}), { glide: A.glide });
+      else D.layers(m);
     },
     /* load the next tune's instruments now, in the background, so that its segue is never waiting for them */
     warm() {
@@ -113,8 +120,9 @@ export function createDirector(A) {
       this.lastBeat = b;
       if (this.queued) return;
       const pool = this.pool(), rest = p.remaining();
-      /* the place changed under the music: this tune does not belong here */
-      if (pool.indexOf(this.cur) < 0) {
+      /* the place changed under the music: this tune does not belong here (a tune the pool does not *choose* may still be one
+         that is allowed to go on, which is what `A.allow` is for) */
+      if ((A.allow ? A.allow() : pool).indexOf(this.cur) < 0) {
         this.queued = true;
         this.cur = pool[0];
         this.play(rest > urgent ? 'now' : 'segue');
@@ -132,7 +140,7 @@ export function createDirector(A) {
       if (!this.on) {
         this.on = true;
         const p = this.pool();
-        if (p.indexOf(this.cur) < 0) this.cur = p[0];           /* the pool for where you are standing, not always the same one */
+        if (p.indexOf(this.cur) < 0 || (A.preferFirst && !this.forced)) this.cur = p[0];   /* the pool for where you are standing, not always the same one */
         this.play('start');
         return;
       }

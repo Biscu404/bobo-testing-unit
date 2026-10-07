@@ -25,7 +25,8 @@ export const STAGES = [
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 
 export const newBlood = () => ({ gut: 0, blood: 0 });
-export const swallow = b => { b.gut += 1; };
+/* one measure of Jägermeister; `units` is how many measures of it a drink is worth (a gentler bottle counts for less, a stronger for more, water for none) */
+export const swallow = (b, units = 1) => { b.gut += units; };
 export function step(b, dt) {
   const a = b.gut * (1 - Math.exp(-dt / BAC.ABSORB));
   b.gut -= a;

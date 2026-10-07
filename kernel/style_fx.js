@@ -18,8 +18,16 @@ export const Fx = {
     tube.appendChild(this.rim); tube.appendChild(this.cv);
     this.g = this.cv.getContext('2d');
   },
+  /* the canvas follows the tube's size. It is read once and then only when the tube is resized: asking the page
+     for a size every frame makes it lay itself out every frame, which with two hundred icons on the desktop is
+     the most expensive thing the meter did. */
   size() {
-    const w = Math.max(80, Math.round(this.tube.clientWidth / this.K)), h = Math.max(60, Math.round(this.tube.clientHeight / this.K));
+    if (!this.watch) {
+      this.watch = true;
+      if (window.ResizeObserver) { this.ro = new ResizeObserver(() => { this.cw = 0; }); this.ro.observe(this.tube); }
+    }
+    if (!this.cw || !this.ro) { this.cw = this.tube.clientWidth; this.ch = this.tube.clientHeight; }
+    const w = Math.max(80, Math.round(this.cw / this.K)), h = Math.max(60, Math.round(this.ch / this.K));
     if (w !== this.W || h !== this.H) { this.W = this.cv.width = w; this.H = this.cv.height = h; }
   },
   spawn(p) { if (this.parts.length < CAP) this.parts.push(p); },

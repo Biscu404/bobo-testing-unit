@@ -76,6 +76,16 @@ export function makeDeck(S, channel) {
       const ctx = S.audioContext();
       if (rest > 0.9 && !o.now) {
         old.setLoop(false);
+        /* `overlap`: the new tune comes in over the last `overlap` seconds of the old one, which goes out under it, instead
+           of the one stopping where the other starts. A change of tune is a change of key and of speed, and what makes it
+           noticeable is the edge; two slow swells over each other have none. The old one is faded from the player's own
+           master and left to finish its pass silently, so that nothing is cut off in the middle of a note. */
+        const ov = o.overlap ? Math.min(o.overlap, rest - 0.4) : 0;
+        if (ov > 0.8) {
+          const at = ctx.currentTime + rest - ov;
+          old.fade(0, ov, at);
+          return deck.play(s, Object.assign({}, o, { at, fadeIn: ov, keepOld: true }));
+        }
         return deck.play(s, Object.assign({}, o, { at: ctx.currentTime + rest, fadeIn: 0, keepOld: true }));
       }
       return deck.play(s, Object.assign({}, o, { at: ctx.currentTime + old.toBar(), fade: o.fade == null ? 1.2 : o.fade }));

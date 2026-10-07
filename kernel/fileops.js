@@ -2,11 +2,12 @@
    window, from the Edit menu, from the keyboard. Nothing here knows which of
    those it was called from -- callers hand over paths, and get a toast back. */
 import { fs } from './vfs.js';
+import './vfs_batch.js';
 import { openWindow, createWindow, toast, askName } from './wm.js';
 import { baseName, dirOf, joinPath, changed } from './vfs_ops.js';
 
 export const Clip = { mode: null, paths: [] };
-const undo = [];                                   /* ids of what was last put in the bin */
+const undo = [];                                   /* what was put in the bin, newest last: one entry (a list of ids) per delete */
 
 export const TYPE_NAMES = { folder: 'FOLDER', app: 'PROGRAM', terminal: 'PROGRAM', bin: 'RECYCLE BIN', image: 'PICTURE',
   video: 'VIDEO', text: 'TEXT FILE', doc: 'DOCUMENT', code: 'HOLYC SOURCE', song: 'SONG', file: 'FILE' };
@@ -47,38 +48,41 @@ export function copyPaths(paths, cut) {
 
 export async function pasteInto(dir) {
   if (!Clip.paths.length) { say('NOTHING TO PASTE.', true); return []; }
-  const cut = Clip.mode === 'cut', made = [], bad = [];
-  for (const p of Clip.paths) {
-    try { made.push(cut ? await fs.move(p, dir) : await fs.copy(p, dir)); }
-    catch (e) { bad.push(e.message); }
-  }
+  const cut = Clip.mode === 'cut';
+  const r = await (cut ? fs.moveMany : fs.copyMany)(Clip.paths, dir);
   if (cut) { Clip.mode = null; Clip.paths = []; }
-  say(bad.length ? bad[0] : (cut ? 'MOVED ' : 'PASTED ') + plural(made.length, 'ITEM') + '.', !!bad.length);
-  return made;
+  say(r.bad.length ? r.bad[0] : (cut ? 'MOVED ' : 'PASTED ') + plural(r.made.length, 'ITEM') + '.', !!r.bad.length);
+  return r.made;
 }
 
 export async function duplicate(paths) {
-  const made = [];
-  for (const p of paths) {
-    try { made.push(await fs.copy(p, dirOf(p))); } catch (e) { say(e.message, true); }
-  }
-  if (made.length) say('DUPLICATED ' + plural(made.length, 'ITEM') + '.');
-  return made;
+  const r = await fs.duplicateMany(paths);
+  if (r.bad.length) say(r.bad[0], true);
+  if (r.made.length) say('DUPLICATED ' + plural(r.made.length, 'ITEM') + '.');
+  return r.made;
+}
+
+/* drop a selection into a folder (or the desktop): moved, or copied with Ctrl. Returns how many went. */
+export async function dropInto(paths, dir, copyIt) {
+  const r = await (copyIt ? fs.copyMany : fs.moveMany)(paths, dir);
+  if (r.bad.length) say(r.bad[0], true);
+  return r.made.length;
 }
 
 /* ---- delete and undo ---------------------------------------------------------- */
 export async function deletePaths(paths) {
-  let n = 0;
-  for (const p of paths) {
-    try { const r = await fs.trash(p); undo.push(r.id); n++; } catch (e) { say(e.message, true); }
-  }
-  if (n) say(n > 1 ? n + ' ITEMS IN THE RECYCLE BIN.' : baseName(paths[0]) + ' IS IN THE RECYCLE BIN.');
+  const r = await fs.trashMany(paths);
+  if (r.bad.length) say(r.bad[0], true);
+  const n = r.ids.length;
+  if (n) { undo.push(r.ids); say(n > 1 ? n + ' ITEMS IN THE RECYCLE BIN.' : baseName(paths[0]) + ' IS IN THE RECYCLE BIN.'); }
   return n;
 }
 export async function undoDelete() {
   while (undo.length) {
-    const id = undo.pop();
-    try { const p = await fs.trashRestore(id); say('PUT BACK: ' + baseName(p)); return p; } catch (e) { /* already gone: try the one before */ }
+    const ids = undo.pop();
+    const r = await fs.restoreMany(ids);
+    if (r.made.length) { say(r.made.length > 1 ? 'PUT BACK: ' + plural(r.made.length, 'ITEM') : 'PUT BACK: ' + baseName(r.made[0])); return r.made[0]; }
+    /* already gone: try the one before */
   }
   say('NOTHING TO UNDO.', true);
   return null;

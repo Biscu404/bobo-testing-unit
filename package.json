@@ -23,7 +23,9 @@
     "check:garage": "node scripts/check-garage.mjs",
     "check:drunk": "node scripts/check-drunk.mjs",
     "check:style": "node scripts/check-style.mjs",
-    "check:symphony": "node scripts/check-symphony.mjs"
+    "check:styletrack": "node scripts/check-styletrack.mjs",
+    "check:desk": "node scripts/check-desk.mjs",
+    "check:bulk": "node scripts/check-bulk.mjs"
   },
   "devDependencies": {
     "electron": "^44.5.1",

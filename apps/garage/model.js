@@ -11,7 +11,7 @@ export const DRUM_ROWS = [['crash', 'CRASH'], ['ride', 'RIDE'], ['openhat', 'OPE
 /* the groups the instrument picker shows, with a short line on each */
 export const FAMILIES = [
   ['KEYS', 'PIANOS & ORGANS'], ['MALLETS', 'TUNED PERCUSSION'], ['GUITARS', 'PLUCKED STRINGS'], ['BASS', 'LOW END'],
-  ['STRINGS', 'BOWED STRINGS'], ['WINDS', 'BLOWN'], ['VOICES', 'CHOIR'], ['FUN', 'BELLS & DRUMS'], ['DRUMS', 'THE DRUM KIT']
+  ['STRINGS', 'BOWED STRINGS'], ['WINDS', 'BLOWN'], ['SYNTH', 'ELECTRONIC'], ['VOICES', 'CHOIR'], ['FUN', 'BELLS & DRUMS'], ['DRUMS', 'THE DRUM KIT']
 ];
 export const BLURB = {
   piano: 'CONCERT GRAND', epiano: 'WARM TINES', harpsichord: 'BAROQUE PLUCK', organ: 'CHURCH PIPES', musicbox: 'LULLABY COMB', marimba: 'WOODEN BARS',
@@ -19,7 +19,11 @@ export const BLURB = {
   nylon: 'SOFT CLASSICAL', steelgtr: 'ACOUSTIC STRUM', eguitar: 'CLEAN ELECTRIC', harp: 'GLISSANDO', pizz: 'PLUCKED STRINGS',
   bass: 'ELECTRIC FINGER BASS', upright: 'JAZZ STANDUP', violin: 'LEAD STRING', cello: 'DEEP BOWED', strings: 'FULL SECTION',
   flute: 'AIRY', clarinet: 'WOODY AND ROUND', trumpet: 'BRASS LEAD', sax: 'SMOKY', ocarina: 'BREATHY WHISTLE',
-  choir: 'AAH VOWEL', bells: 'TUBULAR BELLS', timpani: 'ORCHESTRAL DRUM', woodblock: 'DRY CLICK', drums: 'THE STUDIO KIT'
+  choir: 'AAH VOWEL', bells: 'TUBULAR BELLS', timpani: 'ORCHESTRAL DRUM', woodblock: 'DRY CLICK', drums: 'THE STUDIO KIT',
+  accordion: 'WEDDING BELLOWS', harmonica: 'BLUES HARP', banjo: 'BRIGHT TWANG', sitar: 'BUZZING DRONE STRINGS', koto: 'JAPANESE ZITHER', panflute: 'ANDEAN BREATH', shamisen: 'SHARP AND DRY',
+  viola: 'MIDDLE OF THE QUARTET', oboe: 'REEDY AND NASAL', frenchhorn: 'ROUND AND DISTANT', trombone: 'SLIDING BRASS', tuba: 'THE BOTTOM OF THE BAND',
+  synthlead: 'SAWTOOTH SOLO', synthpad: 'SLOW WARM CLOUD', synthbass: 'SQUARE LOW END', distgtr: 'TURNED UP TOO FAR',
+  celesta: 'SNOWFALL', voiceoohs: 'ROUND VOWEL', tinklebell: 'A VERY SMALL BELL'
 };
 
 export const MAX_TRACKS = 16, UNDO_MAX = 80;

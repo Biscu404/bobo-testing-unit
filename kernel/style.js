@@ -5,8 +5,7 @@ import { Rage } from "./rage.js";
 import * as M from "./style_model.js";
 import { Fx } from "./style_fx.js";
 import { Glitch } from "./glitch.js";
-import { Symphony } from "./symphony_play.js";
-import { unlock } from "./symphony.js";
+import { StyleTrack, unlock } from "./style_track.js";
 export { Rage };
 /* ==========================================================================
    11.3d THE STYLE METER
@@ -15,7 +14,7 @@ export { Rage };
    points. Nothing here is saved — every reload starts you back at nothing.
    The rules (how far each rank is, how fast it bleeds) are kernel/style_model.js;
    the look of it is kernel/smeter.css and kernel/style_fx.js; at the top rank the
-   symphony plays (kernel/symphony*.js), and if you keep it there the sound starts
+   song plays (kernel/style_track.js), and if you keep it there the sound starts
    to come apart (kernel/glitch.js).
    ========================================================================== */
 /* what the machine calls the act, as it stops being an act of maintenance */
@@ -28,14 +27,14 @@ const STYLE_PARTY = ['#FFFF55', '#55FF55', '#55FFFF', '#FF55FF', '#FF5555', '#FF
 /* how big the meter is at each rank: every rank up it fills more of the screen */
 const SCALE = [1, 1.12, 1.27, 1.45, 1.66, 1.9, 2.18, 2.5];
 const GLITCH_AT = 60, GLITCH_RAMP = 90;       /* a minute at the top, then a minute and a half to the worst of it */
-const LEAVE_GRACE = 1.5, LEAVE_FADE = 3.5;    /* the symphony waits this long for the meter to come back, then fades out over this */
+const LEAVE_GRACE = 1.5, LEAVE_FADE = 3.5;    /* the song waits this long for the meter to come back, then fades out over this */
 const MASS = 20;                              /* a pile this big, after the glitch has begun, throws a burst of it */
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 
 export const Style = {
   run: M.newRun(),
   shown: -1,       /* the rank on screen: -1 is dormant, the meter is not on screen at all */
-  lost: 0,         /* seconds since the meter was last at the top, while the symphony waits to see if it comes back */
+  lost: 0,         /* seconds since the meter was last at the top, while the song waits to see if it comes back */
   sung: false,     /* the birthday fanfare has been used this session */
   raf: null,
   prev: 0,
@@ -76,7 +75,7 @@ export const Style = {
     const r = M.hit(this.run, count, this.now());
     this.setTier(this.run.tier);
     const tier = Math.max(0, this.run.tier);
-    if (tier >= 2) Symphony.warm();                /* the orchestra gets its instruments out before it is wanted */
+    if (tier >= 2) StyleTrack.warm();              /* the song is fetched and decoded before it is wanted */
 
     /* the verb, then the chain, then the pile if it was a pile */
     this.say(STYLE_VERBS[tier], true);
@@ -159,12 +158,15 @@ export const Style = {
     if (this.run.tier !== this.shown) this.setTier(this.run.tier);
     if (this.run.tier < 0 && this.run.pts <= 0) { this.stop(); return; }
 
-    /* the symphony plays for as long as the meter is at the top, and is let go (faded) a moment after it leaves */
+    /* the song plays for as long as the meter is at the top, and is let go (faded) a moment after it leaves */
     const wantTop = this.run.tier === M.TOP && Vol.mus > 0;
-    if (wantTop) { this.lost = 0; if (!Symphony.on) { Symphony.start(); Rage.hushed = true; Rage.sync(); } }
-    else if (Symphony.on) {
+    if (wantTop) {
+      this.lost = 0;
+      if (!StyleTrack.on && !StyleTrack.failed) { StyleTrack.start(); Rage.hushed = true; Rage.sync(); }
+      else if (StyleTrack.failed && Rage.hushed) { Rage.hushed = false; Rage.sync(); }      /* no song on this machine: the chiptune stays */
+    } else if (StyleTrack.on) {
       this.lost += dt;
-      if (this.lost > LEAVE_GRACE) { Symphony.fadeOut(LEAVE_FADE); Rage.hushed = false; Rage.sync(); }
+      if (this.lost > LEAVE_GRACE) { StyleTrack.fadeOut(LEAVE_FADE); Rage.hushed = false; Rage.sync(); }
     }
     /* a minute at the top, and the sound starts to go */
     Glitch.setLevel(clamp((this.run.atTop - GLITCH_AT) / GLITCH_RAMP, 0, 1));
@@ -200,7 +202,7 @@ export const Style = {
     this.raf = null;
     this.hide();
     this.shown = -1;
-    Symphony.fadeOut(2.5); Rage.hushed = false;
+    StyleTrack.fadeOut(2.5); Rage.hushed = false;
     Glitch.setLevel(0);
     Rage.tier = -1; Rage.sync();
   },
@@ -209,7 +211,7 @@ export const Style = {
   reset() {
     this.run = M.newRun();
     this.lost = 0;
-    Symphony.stop(); Rage.hushed = false;
+    StyleTrack.stop(); Rage.hushed = false;
     this.stop();
   }
 };

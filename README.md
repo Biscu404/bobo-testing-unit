@@ -219,7 +219,11 @@ document really is executable.
 Each one is a window, a child of Seth, and obeys the palette.
 
 **AfterEgypt** — Terry's demo game. Fly the craft down the colonnade, don't hit a
-pillar, reach the third temple.
+pillar, reach the third temple. There are five ways across: PILGRIM is the game as it
+always was, and clearing each opens the next — SCRIBE (gaps that wander, a ship that
+takes a moment to arrive), PRIEST (locusts), PHARAOH (wind off the dunes, a sky that
+closes in), and THE THIRD TEMPLE (all of it, for two minutes). Coins and ankhs (a second
+chance) are on the way; a first clear and a clear with no hit both pay a bonus.
 
 **GodDoodle** / **GodWord** / **GodSong** — God's random. Terry seeded from
 `RDTSC` and treated what came out as God speaking. A browser can't read the
@@ -254,13 +258,19 @@ draggable by hand or shakeable into place by a spring layout that runs while you
 watch. Written to `localStorage` on a half-second debounce, so closing the
 window, the tab or the machine loses nothing.
 
-**Zen Garden** — twelve pots, eight species, a twenty-minute day. Plants grow
+**Zen Garden** — twelve pots, eleven species, five rooms, a twenty-minute day. Plants grow
 off wall-clock timestamps, so they keep growing while the window is shut and
 while the machine is off; SUN tokens pile up on the shelf, capped at twenty, and
 wait for you. Un-watered plants stop producing and never die. Nothing in this app
 can be lost, which is the whole of its design. Each species is tuned to a
 different note of a pentatonic scale, so poking them in any order is a tune.
 After dark the fireflies come out and the nightpea starts paying.
+
+What grows where matters: a plant likes a room (HOME), a pot (KIN), the room standing
+in its own pot (SET), neighbours of its own kind (BED) and a species that is its mate;
+hover a plant and it says what is helping it. Late in the game the work comes out of it:
+drag to sweep a rack, `TEND` (space) waters every room and picks every plant, and the
+bench sells drip lines, bigger baskets and a gatherer that empties a full room for you.
 
 **Hollow Sweeper** — Minesweeper, ruleset untouched: chording, flood fill, first
 click always safe. Everything else is a dug-out hive in cross-section. Revealed
@@ -274,13 +284,19 @@ and one champion per lane wearing three faces. Pays `max(40, 300 - moves × 2)`,
 with the move counter on screen so you can watch the money go. The bouncing
 cascade at the end is not optional.
 
-**Crayon** — seven colours, no picker. The stroke is a noisy nib stamped along
+**Crayon** — seven colours and a wheel. The stroke is a noisy nib stamped along
 the path with jitter, thinning and fading as the hand speeds up, so a slow line
 is dense and a flick is a scratch. Drawings go in `MY DRAWINGS` as real files
 with thumbnails, and come back editable. Export to PNG when you want to keep one.
+Dave sells eight more brushes (chalk, charcoal, ink pen, stars, watercolour, a paint
+brush, rainbow wax, neon) and clear layers to draw on over the sheet.
 
 **Crazy Dave's Shop** — the only place SUN goes. Frames, boot logos, pointers,
-terminal schemes, pots and seeds. Hovering a frame, a pointer or a scheme puts it
+terminal schemes, pots and seeds, and now pictures for the desktop (the photographs
+already in the machine), brushes and layers for the Crayon, packs of instruments for the
+Garage, other bottles for the Jaeger, and things for the Elephant to wear — and, for
+a great deal of SUN, the means to let him out of his window to walk about the desktop,
+lie down and sleep, say things, and move your icons when he thinks they are in the way. Hovering a frame, a pointer or a scheme puts it
 on the whole machine while the mouse is there, free. He has thirty lines of
 dialogue and not one of them is useful.
 
@@ -563,6 +579,10 @@ on the boot splash; pointers are PNGs minted at boot from pixel arrays; schemes
 recolour every terminal and dialog in the build. All four are CSS custom
 properties on `#room` set by `Cos`, which is why the apps written before any of
 it existed inherit all of it without one of them being edited.
+
+That is the rule for those four, and it still holds. The other shelves are different on purpose: a pot, a seed, a brush, a layer, a pack of
+instruments, a bottle or a hat is something an app was *given*, and the app reads it from `Cos.has()` (and hears of a purchase made while it is
+open from the `cos-changed` event). The backdrops are pictures: buying one writes a real file to `::/Home/Backdrops` and sets the desktop.
 
 Everything is written to `localStorage` under the same `templeos.*` namespace the
 rest of the machine already used — one key per subsystem, debounced half a

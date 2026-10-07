@@ -2,15 +2,26 @@ import { Style } from "./style.js";
 const DB_NAME = 'TempleOS_VFS';
 const STORE_NAME = 'files';
 
+/* one connection for the whole session: opening a database is the slowest thing a file operation did, and every
+   read, write, list and stat used to open (and never close) its own, so a desktop of two hundred icons paid for
+   thousands of them. It is dropped and opened again only if the browser closes it under us. */
+let dbp = null;
 function getDB() {
-  return new Promise((resolve, reject) => {
+  if (dbp) return dbp;
+  dbp = new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, 1);
     request.onupgradeneeded = (e) => {
       e.target.result.createObjectStore(STORE_NAME);
     };
-    request.onsuccess = (e) => resolve(e.target.result);
-    request.onerror = () => reject(request.error);
+    request.onsuccess = (e) => {
+      const db = e.target.result;
+      db.onclose = () => { dbp = null; };
+      db.onversionchange = () => { db.close(); dbp = null; };
+      resolve(db);
+    };
+    request.onerror = () => { dbp = null; reject(request.error); };
   });
+  return dbp;
 }
 
 /* bump this whenever assets/seed.json's shape changes (new fields, new
@@ -246,5 +257,61 @@ async function removeQuiet(path) {
   });
 }
 
-export const fs = { read, write, list, remove, stat, entries, putMany, removeQuiet };
+/* every name directly under a folder, dot names too, from the keys alone (no values are read): what a
+   paste needs to pick "Name (2)" without asking the store about one candidate at a time */
+async function names(dir) {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const store = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME);
+    const prefix = dir.endsWith('/') ? dir : dir + '/';
+    const out = new Set();
+    const c = store.openKeyCursor(IDBKeyRange.bound(prefix, prefix + '\uFFFF', true, false));
+    c.onsuccess = () => {
+      const cur = c.result;
+      if (!cur) { resolve(out); return; }
+      const rest = cur.key.substring(prefix.length), i = rest.indexOf('/');
+      const name = i < 0 ? rest : rest.slice(0, i);
+      out.add(name);
+      /* the rest of this folder's keys cannot add a name: jump past them */
+      if (i >= 0) cur.continue(prefix + name + '0'); else cur.continue();
+    };
+    c.onerror = () => reject(c.error);
+  });
+}
+
+/* removeQuiet for a whole list, in one transaction */
+async function removeManyQuiet(paths) {
+  if (!paths.length) return;
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    paths.forEach(path => {
+      store.delete(path);
+      const prefix = path + '/';
+      const c = store.openCursor(IDBKeyRange.bound(prefix, prefix + '\uFFFF', true, false));
+      c.onsuccess = () => { const cur = c.result; if (cur) { cur.delete(); cur.continue(); } };
+    });
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
+}
+
+/* several records by key in one transaction, in the order asked (null where there is none) */
+async function readMany(paths) {
+  if (!paths.length) return [];
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    const out = new Array(paths.length).fill(null);
+    paths.forEach((p, i) => { const q = store.get(p); q.onsuccess = () => { out[i] = q.result || null; }; });
+    tx.oncomplete = () => resolve(out);
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
+}
+
+export const fs = { read, write, list, remove, stat, entries, putMany, removeQuiet, names, removeManyQuiet, readMany };
 export { initVFS };

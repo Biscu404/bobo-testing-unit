@@ -53,7 +53,12 @@ import { mask4 } from './autotile.js';
 import { PAL_CSS, ATMO, GRASS, DRY, CON, TIM, STO, SOI, WAT, SAN, SNO, WAR, ORE } from './palette.js';
 import { MARKS, SHADOWS, FEATURES } from './palette_marks.js';
 import { lightAt, shelter, keyOf, cssFor, DAY_CSS, mineLight } from './light.js';
-import { glow, GLOW_CELL, lampState, createLamp } from './lamp.js';
+import { lampState, createLamp, bandStates } from './lamp.js';
+import { hintFor, holdingLine } from './hint.js';
+import { lifeFor } from './life.js';
+import { ACT_TOOL, CALLS, LOOKS } from './life_data.js';
+import { noteGift, lookNow, wearsKnit } from './looks.js';
+import { makeWalker, sendTo, stepWalker, distance, beside, comesIn, nearestOut, callFor, MEET_R, FAR, RUN } from './walkers.js';
 import { inside as insideMap, isCave, snowy, groundOf, solidOf, defaultGround } from './surface.js';
 import { FONT_SM, FONT_LG } from './font.js';
 import { createText } from './text.js';
@@ -222,7 +227,7 @@ export default {
       let S = null;
       const fresh = () => {
         const f = {
-        ver: 20, lang: BEK_LANG, fullscreen: 0,
+        ver: 21, lang: BEK_LANG, fullscreen: 0,
         map: 'farm', px: 8, py: 8, dir: 0, step: 0, walk: 0,
         day: 1, min: BEK_DAY_START, kr: BEK_START_KR, en: BEK_EN_MAX, enMax: BEK_EN_MAX,
         water: 20, waterMax: 20,
@@ -279,7 +284,7 @@ export default {
         /* ver 19: the same marker, for the same reason, over the stamina
            rescale in heal() below — see EN_MAX_WAS. */
         enRescaled: true,
-        chatIx: {}, lastTalk: {}, disc: { farm: 1 }, weather: 'klar',
+        chatIx: {}, lastTalk: {}, look: {}, disc: { farm: 1 }, weather: 'klar',
         /* the seasonal layer — always recomputed from `day` (seasons.js),
            never incremented on its own, so it cannot drift from it. See
            heal() below for the same recompute on an old save's load. */
@@ -399,7 +404,7 @@ export default {
       /* nested objects a stale save might be missing */
       const heal = s => {
         const f = fresh();
-        ['tools', 'fr', 'soil', 'felled', 'mined', 'picked', 'flag', 'q', 'met', 'seen', 'chatIx', 'lastTalk', 'disc', 'bag', 'chest', 'xp', 'lvl', 'giftWeek', 'yst', 'xpDay', 'cropGrade', 'presv', 'spine', 'placed'].forEach(k => {
+        ['tools', 'fr', 'soil', 'felled', 'mined', 'picked', 'flag', 'q', 'met', 'seen', 'chatIx', 'lastTalk', 'look', 'disc', 'bag', 'chest', 'xp', 'lvl', 'giftWeek', 'yst', 'xpDay', 'cropGrade', 'presv', 'spine', 'placed'].forEach(k => {
           if (typeof s[k] !== 'object' || s[k] === null) s[k] = f[k];
         });
         /* ver 16: a save from before QUALITY has no plot's soil record
@@ -620,6 +625,10 @@ export default {
          through the same `dlg` box every conversation uses; this is only
          what says which beat is showing and who is standing where. */
       let scene = null;
+      /* People a heart event has sent home, still on their way (id -> walker), and the words hanging over somebody's head:
+         transient, like the scene itself, and for the same reason. */
+      const leaving = new Map();
+      let bubbles = [], sceneCool = 0;
       /* the quest board's scroll offset — transient UI state, reset each time
          the board opens, never saved (see qScroll's use in menus.js) */
       let qScroll = 0;
@@ -799,16 +808,38 @@ export default {
          puts them, never also standing at the post the clock would give
          them. That is what lets a scene stand Håkon at the stave church, or
          Lars at his sister's dairy, without touching either man's posts. */
+      /* Where everybody is, through `life.js` (a day's posts, the chores between them, asleep, off on an errand: an NPC who is
+         not on any map is not in this list at all). Somebody a heart event is moving (`scene.walk`) or sending home
+         (`leaving`) is where their walker is, at a real-time pace, which is why `x`/`y` are the tile they are on, for everything
+         that asks which square somebody stands on, and `fx`/`fy` where they are drawn. */
+      const dirToward = (n, tx, ty) => { const dx = tx - n.x, dy = ty - n.y; return Math.abs(dx) >= Math.abs(dy) ? (dx < 0 ? 2 : 3) : (dy < 0 ? 1 : 0); };
+      /* where everybody is, worked out once a game minute (life.js is a function of the whole minute, and several things ask
+         every frame): the key is what the answer depends on */
+      let lifeKey = '', lifeAt = new Map();
+      const lifeOf = n => {
+        const k = S.day + '|' + Math.floor(S.min) + '|' + S.weather + '|' + (S.flag.barn ? 1 : 0) + (S.act2Unlocked ? 1 : 0);
+        if (k !== lifeKey) { lifeKey = k; lifeAt = new Map(); }
+        let L = lifeAt.get(n.id);
+        if (!L) { L = n.posts ? lifeFor(n, S.day, S.min, npcCtx()) : { map: n.map, x: n.x, y: n.y, walking: false, dir: 0, act: null }; lifeAt.set(n.id, L); }
+        return L;
+      };
       const npcsHere = () => {
-        const cast = scene ? sceneCast(scene) : null;
-        return BEK_NPCS
-          .filter(n => !n.from || S.day >= n.from)
-          .map(n => {
-            const c = cast && cast.filter(x => x.id === n.id)[0];
-            if (c) return Object.assign({}, n, { map: scene.def.map, x: c.x, y: c.y, walking: false, dir: c.dir || 0 });
-            return Object.assign({}, n, n.posts ? positionFor(n, S.day, S.min, npcCtx()) : { map: n.map, x: n.x, y: n.y, walking: false, dir: 0 });
-          })
-          .filter(n => n.map === S.map);
+        const walk = scene && scene.walk, out = [];
+        BEK_NPCS.forEach(n => {
+          if (n.from && S.day < n.from) return;
+          const w = (walk && walk.get(n.id)) || leaving.get(n.id);
+          if (w) {
+            if (w.map === S.map) out.push(Object.assign({}, n, { map: w.map, x: Math.round(w.x), y: Math.round(w.y), fx: w.x, fy: w.y, walking: w.moving, dir: w.dir, act: null }));
+            return;
+          }
+          const L = lifeOf(n);
+          if (!L.map || L.map !== S.map) return;
+          const m = Object.assign({}, n, L);
+          /* whoever you are talking to turns to you and puts down what they were doing */
+          if (dlg && dlg.npc && dlg.npc.id === n.id && !dlg.scene) { m.dir = dirToward(m, S.px, S.py); m.act = null; m.walking = false; }
+          out.push(m);
+        });
+        return out;
       };
       /* Håkon's build and annex lines are spoken by him but reached through
          the lot sign and the menu funnel rather than through talkTo(), so
@@ -1673,24 +1704,119 @@ export default {
 
       /* ---- heart events --------------------------------------------------
          The three gates a scene has to pass are scene.js's; what lives here
-         is the two writes it is not allowed to make itself. Starting one
-         stands the player on the scene's own square (so the tableau composes
-         instead of hoping nobody is on the tile an actor wants) and freezes
-         the clock — see tickClock(); ending one hands both back and applies
-         the effects as a patch, the same way a dialogue node's `set` is
-         applied. Checked every frame the player is not in a menu, which is
-         what makes walking up to a place the trigger rather than only the
-         doorway of it. */
+         is how one *begins*, which used to be a jump cut. Starting a scene
+         stood the player on a square of its own and the cast on theirs, so you
+         were somewhere and then you were somewhere else, with people who had
+         not been there. Now nobody is moved but the people who have
+         something to say: whoever is a long way off calls out where they stand
+         (the bubble over their head, and a blip in their own voice), then they
+         come over, at a run, along the ground, to the square beside you; the
+         ones who are not on this map at all come in by their own front door
+         or by the way on to the map furthest from you. When they are beside
+         you the box opens where *you* are standing, and when it is over they
+         walk away again, home, or off the map by the nearest way out.
+
+         The clock is held from the moment it starts (tickClock) and nothing is
+         marked as seen until the last beat has been read, so a scene the
+         player walks out of, or that cannot find its way to them, simply
+         stands down and tries again a little later. Checked every frame the
+         player is not in a menu, which is what makes walking up to a place the
+         trigger rather than only the doorway of it. */
       function sceneWatch() {
-        if (mode || dlg || fish || swing || S.ending) return;
+        if (mode || dlg || fish || swing || S.ending || scene || sceneCool > 0) return;
         const def = sceneFor(BEK_SCENES, S);
         if (def) sceneStart(def);
       }
+      /* where somebody is on this map at this minute if they are on it at all, else where they would come in from */
+      function sceneStartTile(id) {
+        const n = BEK_NPCS.filter(q => q.id === id)[0];
+        const here = n && npcsHere().filter(q => q.id === id)[0];
+        if (here) return { x: here.x, y: here.y };
+        const home = n && n.posts ? n.posts.filter(q => q.id === 'home')[0] : null;
+        return comesIn(S.map, home, { x: S.px, y: S.py });
+      }
       function sceneStart(def) {
-        scene = beginScene(def, S);
-        const p = scenePlace(scene);
-        S.px = p.px; S.py = p.py; S.dir = p.dir;
-        mode = 'talk'; sceneStep(); sfx.talk();
+        const run = beginScene(def, S);
+        run.walk = new Map(); run.t = 0; run.phase = 'walk'; run.retarget = 0;
+        const ids = sceneCast(run).map(c => c.id);
+        const lead = (def.beats[0] && def.beats[0].who) || def.npc;
+        if (ids.indexOf(lead) < 0) ids.unshift(lead);
+        const taken = new Set([S.px + ',' + S.py]);
+        let ok = true;
+        const first = {};
+        ids.forEach(id => {
+          const at = sceneStartTile(id);
+          if (!at) { ok = false; return; }
+          first[id] = at;
+          run.walk.set(id, makeWalker(id, S.map, at.x, at.y));
+        });
+        if (!ok) { sceneCool = 20; return; }
+        /* the lead stops beside you, the rest beside the lead */
+        const spot = beside(S.map, S.px, S.py, first[lead], taken);
+        if (!spot) { sceneCool = 20; return; }
+        taken.add(spot.x + ',' + spot.y);
+        run.spot = spot; run.lead = lead;
+        if (!sendTo(run.walk.get(lead), spot.x, spot.y)) { sceneCool = 20; return; }
+        ids.forEach(id => {
+          if (id === lead) return;
+          const s2 = beside(S.map, spot.x, spot.y, first[id], taken);
+          if (!s2) { run.walk.delete(id); return; }
+          taken.add(s2.x + ',' + s2.y);
+          if (!sendTo(run.walk.get(id), s2.x, s2.y)) run.walk.delete(id);
+        });
+        scene = run;
+        /* a long way off, they call before they come */
+        if (distance(run.walk.get(lead), S.px, S.py) > FAR) {
+          const n = npcById(lead), call = callFor(CALLS, def.id);
+          bubbles.push({ id: lead, text: call, t: 0 });
+          if (n) sfx.blip(voiceOf(n), 6, def.id.length % 5);
+        }
+      }
+      /* once a frame while the cast is on its way */
+      function sceneTick(dt) {
+        const run = scene;
+        if (!run || run.phase !== 'walk') return;
+        run.t += dt;
+        if (S.map !== run.def.map || run.t > 16) { sceneStandDown(); return; }
+        run.walk.forEach(w => stepWalker(w, dt, RUN));
+        /* you may keep walking: the one who is coming follows */
+        run.retarget -= dt;
+        const lead = run.walk.get(run.lead);
+        if (run.retarget <= 0 && lead) {
+          run.retarget = 0.5;
+          if (Math.hypot(run.spot.x - S.px, run.spot.y - S.py) > 1.9) {
+            const taken = new Set([S.px + ',' + S.py]);
+            const sp = beside(S.map, S.px, S.py, { x: Math.round(lead.x), y: Math.round(lead.y) }, taken);
+            if (sp) { run.spot = sp; sendTo(lead, sp.x, sp.y); }
+          }
+        }
+        const ready = lead && distance(lead, S.px, S.py) <= MEET_R && lead.done;
+        const company = [...run.walk.values()].every(w => w.done || distance(w, S.px, S.py) < 4.5);
+        if (ready && company && !mode) {
+          run.phase = 'talk';
+          /* face one another: they to you, you to them */
+          lead.dir = dirToward({ x: lead.x, y: lead.y }, S.px, S.py);
+          S.dir = dirToward({ x: S.px, y: S.py }, lead.x, lead.y);
+          bubbles = bubbles.filter(b => b.id !== run.lead);
+          mode = 'talk'; sceneStep(); sfx.talk();
+        }
+      }
+      /* it could not get to you in time, or you left: stand down and try again in a little while */
+      function sceneStandDown() {
+        if (!scene) return;
+        sendHome(scene);
+        scene = null; sceneCool = 30;
+      }
+      /* the cast walks away: to where the day has them if that is on this map, else off it by the nearest way out */
+      function sendHome(run) {
+        if (!run || !run.walk) return;
+        const here = npcsHere();
+        run.walk.forEach((w, id) => {
+          const mine = BEK_NPCS.filter(q => q.id === id)[0];
+          const L = mine && mine.posts ? lifeFor(mine, S.day, S.min, npcCtx()) : null;
+          const dest = L && L.map === w.map ? { x: L.x, y: L.y } : nearestOut(w.map, { x: Math.round(w.x), y: Math.round(w.y) });
+          if (dest && w.map === S.map && sendTo(w, dest.x, dest.y)) { w.leaving = !(L && L.map === w.map); leaving.set(id, w); }
+        });
       }
       function sceneStep() {
         const b = sceneBeat(scene);
@@ -1698,12 +1824,22 @@ export default {
                 mood: b.mood, scene: 1 };
       }
       function sceneEnd() {
-        const eff = sceneEffects(scene), back = sceneRestore(scene);
+        const eff = sceneEffects(scene);
         S.seen[eff.seen] = 1;
         if (eff.flag) Object.assign(S.flag, eff.flag);
         if (eff.fr) S.fr[eff.npc] = Math.min(FR_MAX, (S.fr[eff.npc] || 0) + eff.fr);
-        S.px = back.px; S.py = back.py; S.dir = back.dir;
+        sendHome(scene);
         scene = null; dlg = null; mode = '';
+      }
+      /* the people who are walking home: step them, and let go of the ones who have arrived (or left the map) */
+      function leavingTick(dt) {
+        leaving.forEach((w, id) => { stepWalker(w, dt, 2.4); if (w.done) leaving.delete(id); });
+      }
+      /* words over a head: they last about two seconds and are drawn once the playfield is, in screen pixels */
+      function bubblesTick(dt) {
+        if (!bubbles.length) return;
+        bubbles.forEach(b => { b.t += dt; });
+        bubbles = bubbles.filter(b => b.t < 2.4);
       }
 
       /* ---- talking ------------------------------------------------------ */
@@ -1792,9 +1928,17 @@ export default {
             const delta = BEK_GIFT_FR[tier] + qBonus;
             add(giftSel, -1);
             S.giftWeek[npc.id] = given + 1;
+            S.flag.gifted = 1;
+            /* what they have been given is seen on them afterwards (looks.js), unless they did not want it */
+            const worn = noteGift(S.look[npc.id], giftSel, tier);
+            const shown = !!(worn && LOOKS[giftSel] && tier !== 'disliked');
+            if (shown) S.look[npc.id] = worn;
             S.fr[npc.id] = Math.max(0, Math.min(FR_MAX, S.fr[npc.id] + delta));
             sfx.talk();
-            dlg = { lines: g.reactions[tier].slice(), i: 0, npc: npc,
+            const after = !shown ? [] : [LOOKS[giftSel].wear
+              ? { no: 'Tar den på seg med en gang.', en: 'Puts it on at once.' }
+              : { no: 'Holder den litt for seg selv.', en: 'Keeps it close.' }];
+            dlg = { lines: g.reactions[tier].slice().concat(after), i: 0, npc: npc,
                      mood: tier === 'loved' ? 'warm' : tier === 'disliked' ? 'troubled' : undefined };
             mode = 'talk';
             giftSel = null;
@@ -2360,7 +2504,7 @@ export default {
           S = heal(Object.assign(fresh(), JSON.parse(raw)));
           terrDirty();                                    /* a loaded save brings its own felled/mined/picked */
           BEK_LANG = S.lang || BEK_LANG; refreshBar();
-          mode = ''; dlg = null; shop = null; craft = null; fish = null; travel = null; offer = null; loft = null; scene = null;
+          mode = ''; dlg = null; shop = null; craft = null; fish = null; travel = null; offer = null; loft = null; scene = null; leaving.clear(); bubbles = [];
           say(T(UI.loaded) + ' DAG ' + S.day + '.'); sfx.coin();
         } catch (e) { say(TX('LAGRINGEN ER ØDELAGT.', 'SAVE IS UNREADABLE.')); }
         cv.focus();
@@ -3156,22 +3300,33 @@ export default {
          tables, and — see `regionOf` below — which part of the map this
          rebuild is responsible for.
          `terrLive` is the list the frame still has to draw itself. */
-      const terrCv = document.createElement('canvas');
-      /* Sized to the *current* map, not to one fixed world: `terrain()` sets
-         it before every rebuild, so walking from a 24x15 map onto a bigger
-         one grows the cache with it. The dimensions are part of the cache key
-         as well, which costs a few characters and means a map whose rows
-         changed under us can never be blitted out of a canvas cut for the old
-         size. Setting .width/.height resets the context — harmless here,
-         since the rebuild lays down its own transform and clears first — but
-         it does drop `tag`, so that is reapplied with the size. */
-      terrCv.width = BEK_W; terrCv.height = BEK_H;
-      /* willReadFrequently: the lamp pass reads the cache back on every rebuild, and on a GPU-backed
-         canvas that readback stalls the pipeline (the whole queue of fillRects has to be flushed first).
-         A cache that is mostly written and sometimes read belongs in memory. */
-      const terrG = terrCv.getContext('2d', { willReadFrequently: true });
-      if (terrG) terrG.tag = 'terrain';
-      let terrKey = '', terrLive = [], terrHearths = [];
+      /* Two caches, not one: the picture on screen is never the one being painted. A rebuild is ten to fifty
+         milliseconds of fillRects, and done in one go it was a frame that took three, every time the light turned
+         over (at dawn and dusk about once a second) and every few tiles walked. It is now cut into pieces of a couple
+         of milliseconds, a few a frame, painted into the *other* canvas while this one goes on being shown, and the
+         two swap when the last piece is done. What is on screen is a few frames behind the hour for it, which is
+         invisible; what is never behind is anything that changes what is *there* (a tree felled, a plot dug): that
+         bumps `terrBump`, which is part of the geometry key, and a change of geometry is painted at once, whole, as it
+         always was. Each canvas has its own band map for the local light (lamp.js), since the bands belong to the
+         pixels they were worked into. */
+      /* Sized to the *current* map, not to one fixed world: the rebuild sets it before it paints, so walking from a
+         24x15 map onto a bigger one grows the cache with it. The dimensions are part of the cache key as well, which
+         costs a few characters and means a map whose rows changed under us can never be blitted out of a canvas cut
+         for the old size. Setting .width/.height resets the context — harmless here, since the rebuild lays down its
+         own transform and clears first — but it does drop `tag`, so that is reapplied with the size.
+         willReadFrequently: the lamp pass reads the cache back on every rebuild (and a live pool reads it every
+         frame), and on a GPU-backed canvas that readback stalls the pipeline (the whole queue of fillRects has to be
+         flushed first). A cache that is mostly written and sometimes read belongs in memory. */
+      const makeBuf = tag => {
+        const cv = document.createElement('canvas');
+        cv.width = BEK_W; cv.height = BEK_H;
+        const gg = cv.getContext('2d', { willReadFrequently: true });
+        if (gg) gg.tag = tag;
+        return { cv, g: gg, tag, lamp: null, lw: 0, lh: 0, key: '', kGeo: '', mw: 0, R: null, live: [], hearths: [] };
+      };
+      const bufs = [makeBuf('terrain'), makeBuf('terrain2')];
+      let fi = 0, job = null;                                           /* which one is on screen; the rebuild in progress, if any */
+      const front = () => bufs[fi];
       let soilPts = [], soilN = -1, soilRef = null;                    /* the plots' coordinates, rebuilt when a plot is added or lost */
       let terrBump = 0;
       /* `act()` mutating state immediately is the safe design: nothing can
@@ -3235,92 +3390,30 @@ export default {
          The lighting curve is what makes night comfortable; this is what
          makes it inviting, and they are different things.
 
-         The pool itself lives in `lamp.js` and is an ordered dither between
-         the picture at this hour and the picture in daylight — read that file
-         before changing anything here. A source no longer paints the ground
-         warm; it resolves the ground toward the colours daylight would have
-         given it. At full strength that is the daylight picture, so full
-         strength is maximum legibility rather than none, and two sources over
-         one pixel compose as a maximum instead of stacking toward opaque.
+         The pool itself lives in `lamp.js` and is a set of bands of the
+         picture daylight would have — read that file before changing
+         anything here. A source does not paint the ground warm; it resolves
+         the ground toward the colours daylight would have given it, in four
+         hard-edged steps. At full strength that is the daylight picture, so
+         full strength is maximum legibility rather than none, and two
+         sources over one pixel compose as a maximum instead of stacking.
+         There is no dither in it and no paint over it: the warmth is in the
+         states the bands go through.
 
-         Static sources are painted into the terrain cache, because the light
-         key is already part of the cache key — so a lit window costs nothing
-         per frame. Only what moves or flickers is redrawn live.
-
-         What is left in this file is the warm veil that goes *over* a pool.
-         The old two-pass structure took its colour temperature from painting
-         the rim in a deeper entry than the core; with the core no longer
-         painted at all, the temperature has to come from somewhere, and a
-         fire's light does have to read as amber or it reads as a hole in a
-         blue valley. The stipple is taken in *daylight* colours (`ditherPat`'s
-         `day` flag): a fire is as bright at midnight as at noon, which is the
-         whole reason for lighting one.
-
-         Thin is the specification, and `VEIL` is the number that says so: at
-         two sixteenths this is a cast over the picture and not a lid on it,
-         and it is the one part of the light pass that is still paint. Two of
-         16 is also exactly the strength `glow` drops, which is what gives the
-         ring its outer edge — `jitter` carries a cell over the line or not,
-         so the veil *dissolves* over the last third of its reach instead of
-         stopping on a contour. Do not raise it looking for a brighter light.
-         A stronger stipple with no pool under it is the spray of loose orange
-         squares over the grass that the falloff in `lamp.js` is shaped to
-         avoid, and it would put paint back over the picture at the one place
-         this whole rework exists to clear. Raise the source's peak instead,
-         which brightens by revealing rather than by covering. */
-      const GLOW_HALO = 1.35;
-      /* The veil fades out with the hour on its own account. It is paint, and
-         paint does not know that the pool under it has converged on the hour's
-         own palette and stopped showing — so without this a lit window keeps a
-         ring of orange stipple around it at eight in the morning. `glow` drops
-         anything under strength 2, so the fade is to nothing rather than to a
-         sparse speckle, which is the failure mode to avoid here. */
-      const VEIL = 2, VEIL_HOLE = 0.7, VEIL_DARK = 0.35;
-      const veilPeak = dark => VEIL * Math.min(1, dark / VEIL_DARK);
-      /* One native() for the whole veil, not one per cell. `wash` opens its
-         own, and a pool is several hundred cells — that was several hundred
-         save/scale/restore triples per source and most of the rebuild. */
-      function veil(sources, dark) {
-        const peak = veilPeak(dark);
-        if (peak < 2) return 0;
-        let n = 0;
-        native(() => {
-          for (let i = 0; i < sources.length; i++) {
-            const sc = sources[i], hole = sc.r * VEIL_HOLE, h2 = hole * hole;
-            glow((gx, gy, w, h, sN) => {
-              /* Hollow, and this is the point of the whole shape. In the
-                 middle of a pool the warmth is already in the palette the
-                 pixels were resolved to, and a stipple there is paint over
-                 the one place the picture most needs to be legible — the
-                 mine floor under the lamp is exactly what the report was
-                 about. Out at the fringe the coverage is low, so most pixels
-                 there are still the hour's and the warmth has nowhere else
-                 to come from. Same y-squash as `glow`'s, or the ring would
-                 not sit inside the pool it belongs to. */
-              const dx = gx + w / 2 - sc.px, dy = (gy + h / 2 - sc.py) * 1.15;
-              if (dx * dx + dy * dy < h2) return;
-              g.fillStyle = ditherPat(WAR[2], sN, true); g.fillRect(gx, gy, w, h); n++;
-            }, sc.px, sc.py, sc.r * GLOW_HALO, peak);
-          }
-        });
-        return n;
-      }
+         Static sources (a lit window, a lamp on a post) are worked into the
+         terrain cache, because the light key is already part of the cache
+         key — so a lit window costs nothing per frame. What moves or
+         breathes (the lantern you carry, a hearth) is a live pool, worked out
+         each frame from the cache and laid over it as a small patch. */
       /* One field per canvas the pass runs on: the map-sized terrain cache,
-         and the screen, which is the only place a light that walks can be
-         applied after the things it ought to be lighting are on it. */
-      /* `createLamp` sizes its strength field at construction, so the
-         map-sized one is built per size rather than once — one live instance,
-         rebuilt only when you walk onto a map of a different shape. The
-         screen-sized one never changes, because the canvas never does. */
-      let lampT = null, lampTW = 0, lampTH = 0;
-      const lampFor = (w, h) => {
-        if (!lampT || lampTW !== w || lampTH !== h) {
-          lampT = createLamp(w, h, DITHER, BEK_DITHER_PX); lampTW = w; lampTH = h;
-        }
-        return lampT;
+         which is also where the live pools are cut from. `createLamp` sizes
+         its fields at construction, so it is built per size rather than once
+         — one live instance, rebuilt only when you walk onto a map of a
+         different shape. */
+      const lampOf = (b, w, h) => {
+        if (!b.lamp || b.lw !== w || b.lh !== h) { b.lamp = createLamp(w, h); b.lw = w; b.lh = h; }
+        return b.lamp;
       };
-      const lampV = createLamp(BEK_W, BEK_H, DITHER, BEK_DITHER_PX);
-      const VIEW_RECT = { x: BEK_VIEW_X, y: BEK_VIEW_Y, w: BEK_VIEW_W, h: BEK_VIEW_H };
       /* Two lanterns, and the second one is the far end of the loop the mine
          opens: the crystal is only found deep (mine.js's MINE_GEM_FLOOR), and
          what it makes is the thing you are short of when you are deep, which
@@ -3335,13 +3428,102 @@ export default {
         { r: 3.6 * BEK_T, peak: 16 }];
       const lampTier = () => has('krystallykt') ? 2 : has('lykt') ? 1 : 0;
 
+      /* ---- the pools that move -------------------------------------------
+         A hearth that breathes and the lantern you carry. They are worked
+         out each frame from the terrain cache (a canvas in memory, so reading
+         it is a copy) and not from the screen, which the graphics card owns:
+         reading *that* back every frame stalled the whole pipeline until
+         everything queued had been drawn, and it was the cost of every cave.
+         What comes out is a small patch, laid over the cache's picture
+         before anything is drawn on it, and the bands it left, so a sprite
+         standing in the light is drawn in the lit palette. */
+      let poolCv = null, poolG = null;
+      let litKey = '', litStates = null, litCss = [];
+      function litLuts(L) {
+        const k = L.tag + '|' + L.dark.toFixed(3);
+        if (k !== litKey) {
+          litKey = k; litStates = bandStates(L.st, lampState(L.st, L.dark));
+          litCss = litStates.map(st => cssFor(st));
+        }
+        return litCss;
+      }
+      function livePools(L, t) {
+        const srcs = [];
+        const F = front();
+        if (L.dark > 0.02 && F.hearths.length) {
+          /* the fire breathes by a few per cent of its reach: the rings move by a band now and then, not all the time */
+          const fl = 1 + 0.045 * Math.sin(t * 5.1) + 0.025 * Math.sin(t * 11.7);
+          for (let i = 0; i < F.hearths.length; i += 3)
+            srcs.push({ px: F.hearths[i], py: F.hearths[i + 1], r: 2.7 * BEK_T * fl, peak: F.hearths[i + 2] });
+        }
+        const tier = isCave(S.map) ? lampTier() : 0;
+        if (tier) srcs.push({ px: S.px * BEK_T + BEK_T / 2, py: S.py * BEK_T + BEK_T / 2, r: LANTERN[tier].r, peak: LANTERN[tier].peak });
+        const lamp = lampOf(F, COLS() * BEK_T, ROWS() * BEK_T);
+        if (!srcs.length && !lampLive) return;
+        lampLive = srcs.length > 0;
+        const patch = lamp.live(F.g, srcs, L.st, lampState(L.st, L.dark),
+                                { x: camX, y: camY, w: BEK_VIEW_W, h: BEK_VIEW_H });
+        if (!patch) return;
+        const w = patch.w, h = patch.h;
+        if (!poolCv) { poolCv = document.createElement('canvas'); poolG = poolCv.getContext('2d'); }
+        if (poolCv.width !== patch.img.width || poolCv.height < h) { poolCv.width = patch.img.width; poolCv.height = patch.img.height; }
+        poolG.putImageData(patch.img, 0, 0, 0, 0, w, h);
+        g.drawImage(poolCv, 0, 0, w, h, patch.x, patch.y, w, h);
+      }
+      let lampLive = false;
+      /* ---- what SPACE would do (hint.js) ------------------------------------
+         Worked out once a frame from the square in front of you and shown in the bottom band whenever nothing else is
+         being said there. `act()` stays the one place that does anything: this only asks the same questions. */
+      let hudHint = null;
+      function interactHint(npcs) {
+        if (mode || swing || fish || dlg || S.ending || scene) return null;
+        const f = facing(), t = tileAt(S.map, f.x, f.y);
+        const who = npcs.filter(n => n.x === f.x && n.y === f.y)[0] || null;
+        const d = M().door;
+        const doorOK = !!(d && d.x === f.x && d.y === f.y && (!d.need || gateOK(d.need))) ||
+                       !!((M().exits || []).filter(e => e.x === f.x && e.y === f.y && (!e.need || gateOK(e.need)))[0]) ||
+                       (S.map === 'lake' && S.built && f.x === 5 && f.y === 4);
+        const pk = rkey(S.map, f.x, f.y), cell = S.soil[key(f.x, f.y)];
+        const giving = giftSel && has(giftSel, 1) ? giftSel : null;
+        return hintFor({
+          tile: t, map: S.map, tool: BEK_TOOLS[S.tool].id, who: who, giftSel: giving,
+          giftName: giving ? { no: iname(giving), en: iname(giving) } : null,
+          canGive: !S.flag.gifted && Object.keys(S.bag).some(id => S.bag[id] > 0 && !BEK_ITEMS[id].place),
+          animal: S.map === 'farm' && S.animals.some(a => a.x === f.x && a.y === f.y),
+          placed: !!S.placed[pk], ready: t === 'p' && (S.picked[pk] || 0) <= S.day,
+          soil: cell ? { till: cell.till, seed: cell.seed, ready: cell.ready, wet: cell.wet } : null,
+          hasSeed: !!curSeed(), door: doorOK
+        });
+      }
+
+      /* run `fn` with the playfield's colours resolved through the palette of the light a point stands in: the
+         player in his own lantern, a person at a lit window, a hearth's company. `x` and `y` are tile coordinates. */
+      function inLight(L, x, y, fn) {
+        const lp = front().lamp, b = lp ? lp.bandAt(Math.round((x + 0.5) * BEK_T), Math.round((y + 0.5) * BEK_T)) : 0;
+        if (!b) { fn(); return; }
+        const css = litLuts(L)[b], was = LUT_CSS, tag = LUT_TAG;
+        useLut(css, tag + '~b' + b);
+        fn();
+        useLut(was, tag);
+      }
+
       /* ---- the moon ------------------------------------------------------
          One cool key light, from above and a little to the left, put on as a
-         two-pixel rim along the top of anything solid and a one-pixel lick
-         down its left side. It costs a wash per solid tile in a pass that is
+         solid rim along the top of anything solid: one art pixel, in a cool
+         blue, unbroken. It costs a fill per solid tile in a pass that is
          cached, and it is what stops a night reading as one flat sheet of
          dark: without it every silhouette has the same value all the way
          round and the scene has no direction in it at all.
+
+         It used to be a *stipple* of near-white (`ditherPat(SNO[1], ...)`, a
+         third coverage along the top and an eighth down the left side), which
+         is to say a line of isolated white dots along every roof ridge, wall
+         top and rock edge at dusk and night: the picture's only highlights,
+         scattered, and the thing most often reported as white dots on the
+         textures. A rim is an edge, so it is drawn as one: continuous, and
+         a blue the night table brings down to something that outlines a
+         shape instead of sparkling on it. There is no left-hand lick: a
+         second stippled edge was half of the dots.
 
          Drawn through the hour's own table rather than in daylight, because
          moonlight is the ambient — it is not a lamp somebody lit. */
@@ -3350,31 +3532,16 @@ export default {
            the top of every wall from inside reads as a dotted line ruled
            around the picture rather than as anything lighting anything. */
         if (dark < 0.25 || ins_()) return;
-        const top = Math.round(5 * dark), side = Math.round(2.5 * dark);
-        if (top < 2) return;
-        native(() => moonRim(top, side, R));
+        native(() => moonRim(R));
       }
-      function moonRim(top, side, R) {
-        const put = (px, py, w, h, str) => {
-          if (str <= 0) return;
-          g.fillStyle = ditherPat(SNO[1], str > 16 ? 16 : str); g.fillRect(px, py, w, h);
-        };
+      function moonRim(R) {
+        g.fillStyle = C(WAT[4]);
         for (let y = R.y0; y < R.y1; y++) for (let x = R.x0; x < R.x1; x++) {
           const c = tileAt(S.map, x, y);
           if (c === ' ' || c === 'W' || c === '~' || BEK_SOLID.indexOf(c) < 0) continue;
-          /* Never on the border ring. A whole row of it lit at one strength
-             is not moonlight, it is a dotted line ruled across the picture —
-             and the border is a wall of the same glyph all the way along, so
-             that is exactly what it would be. */
+          /* Never on the border ring: a whole row of it is not moonlight, it is a line ruled across the picture. */
           if (rim_(x, y)) continue;
-          /* and one step of jitter per tile off a channel that is already
-             declared and tested, so a long run of wall does not come out as
-             one drawn edge either. groundVar is free here: the tiles this
-             touches are solid, so nothing else on them reads from it. */
-          const j = groundVar(S.map, x, y).c1 & 1;
-          const px = x * BEK_T, py = y * BEK_T;
-          if (BEK_SOLID.indexOf(tileAt(S.map, x, y - 1)) < 0) put(px, py, BEK_T, 2 * BEK_ART_SCALE, top - j);
-          if (BEK_SOLID.indexOf(tileAt(S.map, x - 1, y)) < 0) put(px, py, BEK_ART_SCALE, BEK_T, side - j);
+          if (BEK_SOLID.indexOf(tileAt(S.map, x, y - 1)) < 0) g.fillRect(x * BEK_T, y * BEK_T, BEK_T, BEK_ART_SCALE);
         }
       }
 
@@ -3478,96 +3645,136 @@ export default {
         return { x0: lo(vx), y0: lo(vy), x1: hi(vx + vw, cols), y1: hi(vy + vh, rows) };
       }
 
-      function terrain() {
-        const L = lighting();
-        const cols = COLS(), rows = ROWS(), mw = cols * BEK_T, mh = rows * BEK_T;
-        const R = regionOf(cols, rows);
-        /* Everything the two static passes read, plus how big the map is and
-           which part of it this rebuild is responsible for. */
-        /* what the map IS (its geometry), and then that plus the light. The distance fields, masks and
-           floorboards below are functions of the first only: they used to be keyed with the light as
-           well, and so were laid again from scratch at every step of dawn and dusk for nothing. */
-        const kGeo = S.map + '|' + cols + 'x' + rows + '|' + S.day + '|' + (S.built ? 1 : 0) + '|' + terrBump;
-        const kMap = kGeo + '|' + L.key;
-        const k = kMap + '|' + R.x0 + ',' + R.y0 + ',' + R.x1 + ',' + R.y1;
-        if (k === terrKey) return terrCv;
-        terrKey = k; terrLive = []; terrHearths = [];
-        const t0 = now();
-        let rects = 0;
-        const prev = g;
-        if (terrCv.width !== mw || terrCv.height !== mh) {
-          terrCv.width = mw; terrCv.height = mh;
-          if (terrG) terrG.tag = 'terrain';
-        }
-        /* The skirt: one tile past the region on every side, clamped to the
-           map. A detail is allowed to hang over into the next tile, so the
-           tiles just outside the region have to be laid down too or the
-           region's own border loses what should have reached into it. */
+      /* How much of a rebuild a frame will pay for, in milliseconds. A rebuild is nothing but fillRects, so this is only ever a
+         question of how many frames it takes to land, and four or five of them at a few milliseconds each is not a thing the
+         eye can find where one at forty is. */
+      const REBUILD_BUDGET_MS = 4.5, ROWS_PER_STEP = 3;
+
+      /* the tiles the viewport can show, with one to spare for the strike-frame shake and the half tile at each edge */
+      const viewTiles = () => ({ x0: Math.floor(camX / BEK_T) - 1, y0: Math.floor(camY / BEK_T) - 1,
+                                  x1: Math.ceil((camX + BEK_VIEW_W) / BEK_T) + 1, y1: Math.ceil((camY + BEK_VIEW_H) / BEK_T) + 1 });
+      const covers = (F, v) => !!F.R && v.x0 >= F.R.x0 && v.y0 >= F.R.y0 && v.x1 <= F.R.x1 && v.y1 <= F.R.y1;
+
+      /* the pieces of one rebuild, as closures run a few at a time (runJob): each paints into the canvas that is not on
+         screen, in the colours of the hour it was begun for, and is a pure continuation of the one before it */
+      function startJob(k, kGeo, L, R, cols, rows, mw, mh) {
+        const b = bufs[fi ^ 1];
+        const j = { k, kGeo, R, b, mw, steps: [], i: 0, live: [], hearths: [], css: cssFor(L.st), tag: L.tag,
+                    t: { ground: 0, detail: 0, forest: 0, pool: 0, lit: 0, all: 0 } };
+        /* The skirt: one tile past the region on every side, clamped to the map. A detail is allowed to hang over into
+           the next tile, so the tiles just outside the region have to be laid down too or the region's own border
+           loses what should have reached into it. */
         const sx0 = Math.max(0, R.x0 - 1), sx1 = Math.min(cols, R.x1 + 1);
         const sy0 = Math.max(0, R.y0 - 1), sy1 = Math.min(rows, R.y1 + 1);
-        g = terrG;
-        try {
+        const clip = { x: R.x0 * BEK_T, y: R.y0 * BEK_T, w: (R.x1 - R.x0) * BEK_T, h: (R.y1 - R.y0) * BEK_T };
+        const lamp = lampOf(b, mw, mh);
+        const timed = (key, fn) => () => { const t0 = now(); fn(); j.t[key] += now() - t0; };
+        const rowsOf = fn => {
+          for (let y = sy0; y < sy1; y += ROWS_PER_STEP) { const y1 = Math.min(sy1, y + ROWS_PER_STEP); j.steps.push(() => { for (let yy = y; yy < y1; yy++) for (let x = sx0; x < sx1; x++) fn(x, yy); }); }
+        };
+        j.steps.push(timed('ground', () => {
+          if (b.cv.width !== mw || b.cv.height !== mh) { b.cv.width = mw; b.cv.height = mh; if (b.g) b.g.tag = b.tag; }
           g.setTransform(1, 0, 0, 1, 0, 0);
           g.fillStyle = C(0); g.fillRect(R.x0 * BEK_T, R.y0 * BEK_T, (R.x1 - R.x0) * BEK_T, (R.y1 - R.y0) * BEK_T);
-          /* The distance fields, the boards and the wear are whole-map and
-             know nothing about the region, so they are keyed without it —
-             walking across a big map must not relay every floorboard. */
+          /* The distance fields, the boards and the wear are whole-map and know nothing about the region, so they are
+             keyed without it — walking across a big map must not relay every floorboard. */
           shore.prepare(kGeo); water.prepare(kGeo); rock.prepare(kGeo); interior.prepare(kGeo);
           forest.prepare(kGeo); building.prepare(kGeo); wear.prepare(kGeo); propsPrepare();
           g.save(); g.scale(BEK_ART_SCALE, BEK_ART_SCALE);
-          const tA = now();
-          for (let y = sy0; y < sy1; y++) for (let x = sx0; x < sx1; x++) tileGround(tileAt(S.map, x, y), x, y);
-          for (let y = sy0; y < sy1; y++) for (let x = sx0; x < sx1; x++) tileMarks(tileAt(S.map, x, y), x, y);
-          const tB = now();
-          for (let y = sy0; y < sy1; y++) for (let x = sx0; x < sx1; x++) {
-            const c = tileAt(S.map, x, y);
-            tileDetail(c, x, y);
-            /* the live list is the region's, not the skirt's: a tile outside
-               the region is outside the viewport and has nothing to animate
-               at */
-            if (LIVE.indexOf(c) >= 0 && x >= R.x0 && x < R.x1 && y >= R.y0 && y < R.y1) terrLive.push(x, y);
-          }
-          const tC = now();
-          perf.ground = tB - tA; perf.detail = tC - tB;
-          const tD = now();
+          lamp.clear(clip);
+        }));
+        /* the order of a rebuild is the order of the doctrine: ground, marks, details and props, forest, moon, then the light */
+        rowsOf((x, y) => { const t0 = now(); tileGround(tileAt(S.map, x, y), x, y); j.t.ground += now() - t0; });
+        rowsOf((x, y) => { const t0 = now(); tileMarks(tileAt(S.map, x, y), x, y); j.t.ground += now() - t0; });
+        rowsOf((x, y) => {
+          const t0 = now(), c = tileAt(S.map, x, y);
+          tileDetail(c, x, y);
+          /* the live list is the region's, not the skirt's: a tile outside the region is outside the viewport and has
+             nothing to animate at */
+          if (LIVE.indexOf(c) >= 0 && x >= R.x0 && x < R.x1 && y >= R.y0 && y < R.y1) j.live.push(x, y);
+          j.t.detail += now() - t0;
+        });
+        j.steps.push(timed('forest', () => {
           if (!ins_()) native(() => forest.draw(snow_(), R));
-          perf.forest = now() - tD;
           moonKey(L.dark, R);
-          /* The pool resolves what is already on the canvas, so it has to run
-             after everything static is on it — and the warm veil has to run
-             after the pool, or the pool would resolve the warmth straight back
-             out of the pixels it had just been painted onto.
+        }));
+        /* The pool resolves what is already on the canvas, so it has to run after everything static is on it.
 
-             It is clipped to the region for a reason beyond cost: the
-             transform it applies is affine on the pixels it finds, so running
-             it twice over the same pixels would resolve them twice. Outside
-             the region those pixels are a previous rebuild's, already
-             resolved. */
-          const srcs = lightSources(L.dark, R);
-          if (srcs.length) {
-            const tP = now();
-            const clip = { x: R.x0 * BEK_T, y: R.y0 * BEK_T, w: (R.x1 - R.x0) * BEK_T, h: (R.y1 - R.y0) * BEK_T };
-            perf.lit = lampFor(mw, mh).apply(terrG, srcs, L.st, lampState(L.st, L.dark), clip);
-            const tQ = now();
-            rects += veil(srcs, L.dark);
-            perf.pool = tQ - tP; perf.veil = now() - tQ;
-            for (let i = 0; i < srcs.length; i++)
-              if (srcs[i].hearth) terrHearths.push(srcs[i].px, srcs[i].py);
-          } else { perf.lit = 0; perf.pool = 0; perf.veil = 0; }
-          /* Light does not spill into the void. The margin outside a room's
-             walls is deliberate dead black and a warm pool creeping out over
-             it reads as the room leaking, so it is painted back afterwards
-             rather than the glow being clipped to a shape. */
+           It is clipped to the region for a reason beyond cost: the transform it applies is affine on the pixels it
+           finds, so running it twice over the same pixels would resolve them twice. Outside the region those pixels are a
+           previous rebuild's, already resolved. The band of every pixel it lit is kept (lamp.js), which is what lets a
+           live pool light what it reaches without lighting it a second time. */
+        j.steps.push(timed('pool', () => {
+          const all = lightSources(L.dark, R);
+          /* a hearth breathes, so it is not baked: it is a live pool, found again from this list each frame */
+          const srcs = all.filter(sc => !sc.hearth);
+          all.forEach(sc => { if (sc.hearth) j.hearths.push(sc.px, sc.py, sc.peak); });
+          const to = lampState(L.st, L.dark);
+          j.boxes = srcs.length ? lamp.plan(srcs, L.st, to, clip) : [];
+        }));
+        const bakeSteps = () => {
+          /* one box a step (found by the step above, which has run by the time this one does) */
+          for (let n = 0; n < 64; n++) j.steps.push(timed('pool', () => { const bx = j.boxes && j.boxes[n]; if (bx) j.t.lit += lamp.bakeBox(g, bx); }));
+        };
+        bakeSteps();
+        j.steps.push(() => {
+          /* Light does not spill into the void. The margin outside a room's walls is deliberate dead black and a warm
+             pool creeping out over it reads as the room leaking, so it is painted back afterwards rather than the glow
+             being clipped to a shape. */
           for (let y = R.y0; y < R.y1; y++) for (let x = R.x0; x < R.x1; x++) {
             if (tileAt(S.map, x, y) !== ' ') continue;
             g.fillStyle = C(0); g.fillRect(x * BEK_T_SRC, y * BEK_T_SRC, BEK_T_SRC, BEK_T_SRC);
+            lamp.mask({ x: x * BEK_T, y: y * BEK_T, w: BEK_T, h: BEK_T });       /* and no live pool lights it either */
           }
           g.restore();
-        } finally { g = prev; }
-        perf.light = now() - t0 - perf.ground - perf.detail - perf.forest;
-        perf.rects = rects; perf.key = k; perf.rebuilds++;
-        perf.ms = now() - t0;
-        return terrCv;
+        });
+        return j;
+      }
+      /* run pieces of the rebuild until the frame's share is spent (or, with Infinity, all of it); when it is done the two
+         canvases swap */
+      function runJob(budget) {
+        if (!job) return;
+        const t0 = now();
+        while (job && job.i < job.steps.length) {
+          const step = job.steps[job.i++];
+          const prev = g, css = LUT_CSS, tag = LUT_TAG;
+          g = job.b.g; useLut(job.css, job.tag);
+          try { step(); } finally { g = prev; useLut(css, tag); }
+          if (now() - t0 > budget && job.i < job.steps.length) break;
+        }
+        job.t.all += now() - t0;
+        if (job.i < job.steps.length) return;
+        const b = job.b;
+        b.key = job.k; b.kGeo = job.kGeo; b.R = job.R; b.mw = job.mw; b.live = job.live; b.hearths = job.hearths;
+        fi ^= 1;
+        perf.ground = job.t.ground; perf.detail = job.t.detail; perf.forest = job.t.forest;
+        perf.pool = job.t.pool; perf.lit = job.t.lit; perf.veil = 0; perf.light = job.t.pool;
+        perf.rects = 0; perf.key = job.k; perf.rebuilds++; perf.ms = job.t.all;
+        job = null;
+      }
+
+      /* The cache for this frame: what is on screen now, with the next one painted a few pieces a frame behind it. When the
+         picture on screen can no longer be shown (the map changed under it, a tile was felled, the viewport has walked off
+         the part of the map it covers) the new one is painted whole, right now, as it always was. */
+      function terrain(force) {
+        const L = lighting();
+        const cols = COLS(), rows = ROWS(), mw = cols * BEK_T, mh = rows * BEK_T;
+        const R = regionOf(cols, rows);
+        /* what the map IS (its geometry), and then that plus the light. The distance fields, masks and floorboards are
+           functions of the first only: they used to be keyed with the light as well, and so were laid again from scratch
+           at every step of dawn and dusk for nothing. */
+        const kGeo = S.map + '|' + cols + 'x' + rows + '|' + S.day + '|' + (S.built ? 1 : 0) + '|' + terrBump;
+        const kMap = kGeo + '|' + L.key;
+        const k = kMap + '|' + R.x0 + ',' + R.y0 + ',' + R.x1 + ',' + R.y1;
+        const F = front();
+        if (k === F.key && !force) { if (job) runJob(REBUILD_BUDGET_MS); return F.cv; }
+        const ready = F.key && F.kGeo === kGeo && F.mw === mw && covers(F, viewTiles());
+        /* a rebuild already running for something older is left to land if what is on screen can be shown meanwhile; the
+           newer one starts when it has */
+        if (!job || (job.k !== k && !(ready && job.kGeo === kGeo && !force))) job = startJob(k, kGeo, L, R, cols, rows, mw, mh);
+        /* a picture that can be shown for now is left on screen while this one is painted; one that cannot is painted at once */
+        runJob(ready && !force ? REBUILD_BUDGET_MS : Infinity);
+        return front().cv;
       }
       /* The ploughed plot and what grows in it live in crops.js — the last
          of the live second pass, and the one tile that reads `S.soil` rather
@@ -3660,7 +3867,27 @@ export default {
         g.fillRect(EN_BAR_X, EN_BAR_Y, Math.round(EN_BAR_W * S.en / S.enMax), EN_BAR_H);
 
         panel(0, HUD_BOT_Y, BEK_W, BEK_HUD_H, 8);
+        /* the line that says what the thing you did has left you holding, else what SPACE will do here */
+        const hold = giftSel && has(giftSel, 1) && !hudHint ? holdingLine({ no: iname(giftSel), en: iname(giftSel) }) : null;
         if (note) text(T(note), HUD_PAD, HUD_BOT_Y + HUD_TXT_DY, 11, FONT_SM);
+        else if (hudHint) text(T(hudHint), HUD_PAD, HUD_BOT_Y + HUD_TXT_DY, 9, FONT_SM);
+        else if (hold) text(T(hold), HUD_PAD, HUD_BOT_Y + HUD_TXT_DY, 14, FONT_SM);
+      }
+
+      /* Words over somebody's head: a call across the square. In screen pixels, after the playfield, kept inside the picture. */
+      function drawBubbles(spots) {
+        if (!bubbles.length) return;
+        bubbles.forEach(b => {
+          const sp = spots[b.id];
+          if (!sp) return;
+          const str = T(b.text), w = textW(str, FONT_SM) + PAD_SM * 2, h = LINE_SM + PAD_SM;
+          const cx = BEK_VIEW_X + sp.x * BEK_ART_SCALE - camX, top = BEK_VIEW_Y + sp.y * BEK_ART_SCALE - camY;
+          const x = Math.max(BEK_VIEW_X + 4, Math.min(BEK_VIEW_X + BEK_VIEW_W - w - 4, Math.round(cx - w / 2)));
+          const y = Math.max(BEK_VIEW_Y + 4, Math.round(top - h - 8));
+          panel(x, y, w, h, 15);
+          g.fillStyle = C(15); g.fillRect(Math.round(cx) - 2, y + h, 4, 4);                 /* the tail */
+          text(str, x + PAD_SM, y + Math.round((h - GLYPH_SM) / 2), 15, FONT_SM);
+        });
       }
 
       /* ---- the frame ---------------------------------------------------- */
@@ -3685,9 +3912,11 @@ export default {
            in device pixels, so it goes down before the art transform, not
            under it. Everything after this line is still source-space art. */
         g.drawImage(terrain(), 0, 0);
+        livePools(L, t);
         g.scale(BEK_ART_SCALE, BEK_ART_SCALE);
-        for (let i = 0; i < terrLive.length; i += 2) {
-          const lx = terrLive[i], ly = terrLive[i + 1];
+        const FL = front().live;
+        for (let i = 0; i < FL.length; i += 2) {
+          const lx = FL[i], ly = FL[i + 1];
           tileLive(tileAt(S.map, lx, ly), lx, ly, t);
         }
         /* The plots are the only squares with soil state, so the live pass walks those (a handful) and not
@@ -3702,22 +3931,10 @@ export default {
           for (let i = 0; i < ph.length; i++) if (tileAt('farm', ph[i][0], ph[i][1]) === 'f') drawSoil(ph[i][0], ph[i][1]);
         }
 
-        /* The moving half of the light. The pools themselves are in the cache;
-           what cannot be is a fire whose reach breathes on the same cycle as
-           its flame. It breathes as the warm veil now rather than as a second
-           pool, and that is the whole of the old stacking bug: a cached pool
-           and a live one used to land on the same pixels, clamp to 16
-           independently and composite to something effectively opaque. A veil
-           over a pool cannot do that, and neither can two pools. */
+        /* The moving half of the light (a hearth that breathes, the lantern you carry) is cut out of the cache
+           and laid down right after it, above: see `livePools`. What is left to do here is the props that
+           animate themselves. */
         propMap.forEach(d => { if (PROP_LIVE[d.kind]) drawProp(d, d.x, d.y, t); });
-
-        if (L.dark > 0.02 && terrHearths.length) {
-          const fl = 1 + 0.10 * Math.sin(t * 5.1) + 0.05 * Math.sin(t * 11.7);
-          const hs = [];
-          for (let i = 0; i < terrHearths.length; i += 2)
-            hs.push({ px: terrHearths[i], py: terrHearths[i + 1], r: 1.7 * BEK_T * fl });
-          veil(hs, L.dark);
-        }
 
         S.drops.filter(d => d.map === S.map).forEach(d => drawIcon(d.item, d.x * BEK_T_SRC + 3, d.y * BEK_T_SRC + 3));
 
@@ -3735,9 +3952,11 @@ export default {
            change to how terrain is cached and out of scope here. */
         const actors = npcsHere().map(n => ({ n: n, y: n.y }));
         actors.push({ me: 1, y: S.py });
+        hudHint = interactHint(actors.filter(a => a.n).map(a => a.n));
         BEK_GOATS.filter(gt => gt.map === S.map).forEach(gt => actors.push({ goat: gt, y: gt.y }));
         if (S.map === 'farm') S.animals.forEach(a => actors.push({ animal: a, y: a.y }));
         actors.sort((a, b) => a.y - b.y);
+        const spots = {};
         actors.forEach(a => {
           if (a.me) {
             /* what is in the hand: the selected tool at rest, or whatever is
@@ -3749,7 +3968,7 @@ export default {
               ? { kind: kind, u: sw ? Math.min(1, swing.t / swing.len) : 0, dir: S.dir } : null;
             /* two frames of recoil when the answer was no */
             const jx = swing && swing.kind === 'deny' ? ((swing.t * 46) | 0) % 2 ? 2 : -2 : 0;
-            person(S.px * BEK_T_SRC + 4 + jx, S.py * BEK_T_SRC + 2, S.dir, S.step, PLAYER_HAIR, PLAYER_SHIRT, PLAYER_PANTS, held, (S.bag.ullgenser || 0) > 0);
+            inLight(L, S.px, S.py, () => person(S.px * BEK_T_SRC + 4 + jx, S.py * BEK_T_SRC + 2, S.dir, S.step, PLAYER_HAIR, PLAYER_SHIRT, PLAYER_PANTS, held, (S.bag.ullgenser || 0) > 0));
             return;
           }
           if (a.goat) { goat(a.goat.x * BEK_T_SRC + 1, a.goat.y * BEK_T_SRC + 1, t); return; }
@@ -3764,10 +3983,23 @@ export default {
              cycle, off the game clock rather than off `t` — a schedule is a
              pure function of the day and the minute, so its own animation
              phase has to be too, or two frames of the same minute (a paused
-             game, a replayed save) would show two different poses. Standing
-             still keeps the slow idle bob every NPC always had. */
-          else person(n.x * BEK_T_SRC + 4, n.y * BEK_T_SRC + 2, n.walking ? n.dir : 0,
-                       n.walking ? walkStep(S.min) : (Math.floor(t) % 2 ? 0 : 2), n.hair, n.shirt, n.pants);
+             game, a replayed save) would show two different poses. Somebody
+             a heart event is moving is walked in real time (the clock is held
+             while one plays), so their legs go off `t`. Standing still keeps
+             the slow idle bob every NPC always had. */
+          else {
+            const fx = n.fx != null ? n.fx : n.x, fy = n.fy != null ? n.fy : n.y;
+            const act = n.act ? ACT_TOOL[n.act] : null;
+            /* what they have been given (looks.js), and what the chore they are at has in the hand */
+            const rec = S.look[n.id];
+            let look = rec ? lookNow(n, rec, S.day, S.min, BEK_SEASONS[S.season].id, L.dark, n.act) : null;
+            if (act && act.item && LOOKS[act.item] && !(look && look.hold)) look = { wear: look ? look.wear : [], hold: LOOKS[act.item].hold };
+            const held = act && act.tool ? { kind: act.tool, u: 0.5 + 0.5 * Math.sin(t * Math.PI * 2 * (act.swing || 0.5)), dir: n.dir } : null;
+            const step = n.walking ? (n.fx != null ? Math.floor(t * 7) % 4 : walkStep(S.min)) : (Math.floor(t) % 2 ? 0 : 2);
+            const px0 = Math.round(fx * BEK_T_SRC) + 4, py0 = Math.round(fy * BEK_T_SRC) + 2;
+            spots[n.id] = { x: px0 + 6, y: py0 };
+            inLight(L, fx, fy, () => person(px0, py0, n.walking || n.act || n.fx != null ? n.dir : 0, step, n.hair, n.shirt, n.pants, held, wearsKnit(look), look, t));
+          }
         });
 
         /* FURNISHING: the ghost. A stipple under the real prop art, never a
@@ -3794,32 +4026,8 @@ export default {
 
         if (S.map === 'lake' && S.flag.lot && !S.built) { g.fillStyle = C(SAN[2]); g.fillRect(3 * BEK_T_SRC, 3 * BEK_T_SRC, 5 * BEK_T_SRC, 1); g.fillRect(3 * BEK_T_SRC, 6 * BEK_T_SRC - 1, 5 * BEK_T_SRC, 1); }
 
-        /* The one pool that cannot be cached, because it walks. It is the same
-           pass as the cached ones, run on the screen once everything in the
-           playfield is on it — so the lamp lights the floor, the ore glints,
-           the drops and the player's own shirt, none of which a pool baked
-           into the terrain could ever reach. It goes on the screen in screen
-           pixels, which is what `camX`/`camY` are doing here; the veil after
-           it is still world-space art under the ambient transform. The
-           viewport is passed in by hand because `getImageData` knows nothing
-           about the clip path, and a lantern must not reach the HUD.
-
-           The peak is flat rather than scaled by darkness: a cave ignores the
-           clock (`mineLight`), so there is only ever one darkness for it to be
-           scaled against, and a lamp you are carrying is the brightest thing
-           down there by design. Which lamp is `lampTier()` above — the
-           descent's four light bands get darker with depth, and the crystal
-           lamp is what a player goes and fetches to answer that. */
-        const tier = isCave(S.map) ? lampTier() : 0;
-        if (tier) {
-          const src = [{ px: S.px * BEK_T + BEK_T / 2, py: S.py * BEK_T + BEK_T / 2,
-                         r: LANTERN[tier].r, peak: LANTERN[tier].peak }];
-          lampV.apply(g, src.map(sc => ({ px: sc.px + BEK_VIEW_X - camX, py: sc.py + BEK_VIEW_Y - camY,
-                                          r: sc.r, peak: sc.peak })),
-                      L.st, lampState(L.st, L.dark), VIEW_RECT);
-          veil(src, L.dark);
-        }
         g.restore();
+        drawBubbles(spots);
 
         /* Weather sits over the playfield only, and it is the last thing that
            still composites: fog really is a sheet of something between you
@@ -3938,10 +4146,10 @@ export default {
            and paying that on every rebuild would inflate the very millisecond
            figure sitting beside it. Wraps, forces one rebuild, unwraps. */
         rects: () => {
-          const real = terrG.fillRect;
+          const reals = bufs.map(b => b.g.fillRect);
           let n = 0;
-          terrG.fillRect = function () { n++; return real.apply(this, arguments); };
-          try { terrKey = ''; terrain(); } finally { terrG.fillRect = real; terrKey = ''; }
+          bufs.forEach((b, i) => { b.g.fillRect = function () { n++; return reals[i].apply(this, arguments); }; });
+          try { terrain(true); } finally { bufs.forEach((b, i) => { b.g.fillRect = reals[i]; }); }
           return n;
         },
         /* Open a panel so the harness can photograph it. Menus are the one
@@ -4006,14 +4214,18 @@ export default {
            around them, so a check can walk a whole scene and see that every
            line has a face and every actor a square. */
         scene: steps => {
+          /* with no argument: ask the question a frame asks, then let the cast cross the ground (a frame at a time would do
+             the same thing, slower: this is the same sceneTick, on synthetic time) until the box opens or it stands down */
           if (steps == null) sceneWatch();
-          else for (let i = 0; i < steps; i++) { if (mode === 'talk' && dlg && dlg.scene) dlgAdvance(); }
+          for (let i = 0; i < 600 && scene && scene.phase === 'walk'; i++) sceneTick(0.05);
+          if (steps) for (let i = 0; i < steps; i++) { if (mode === 'talk' && dlg && dlg.scene) dlgAdvance(); }
           if (!scene) return { id: '', line: '', who: '', beat: -1, cast: [] };
           const l = dlg && dlg.lines[dlg.i];
-          return { id: scene.def.id, beat: scene.i, line: T(l) || '',
+          return { id: scene.def.id, beat: scene.i, line: T(l) || '', phase: scene.phase,
                    who: dlg && dlg.npc ? dlg.npc.n : '', mood: (dlg && dlg.mood) || '',
                    px: S.px, py: S.py, min: Math.floor(S.min),
-                   cast: sceneCast(scene).map(c => c.id + '@' + c.x + ',' + c.y) };
+                   cast: sceneCast(scene).map(c => c.id + '@' + c.x + ',' + c.y),
+                   walkers: scene.walk ? [...scene.walk.values()].map(w => w.id + '@' + Math.round(w.x) + ',' + Math.round(w.y)) : [] };
         },
         /* The descent, from the harness. Called with no argument it reports
            where the run is; called with 'mouth', 'down', 'up' or 'out' it
@@ -4154,6 +4366,8 @@ export default {
         raf = requestAnimationFrame(frame);
         const dt = Math.min(0.1, (ts - last) / 1000 || 0); last = ts;
         if (!mode) { move(dt); tickFish(dt); sceneWatch(); }
+        if (sceneCool > 0) sceneCool -= dt;
+        sceneTick(dt); leavingTick(dt); bubblesTick(dt);
         mineSync();
         tickSwing(dt); fx.step(dt);
         if (mode === 'end' || mode === 'loftend') S.ending += dt;

@@ -41,6 +41,7 @@ function makeCtx2D() {
        what these harnesses assert is that the frame path does not throw. */
     getImageData: (x, y, w, h) => ({ width: w, height: h,
                                      data: new Uint8ClampedArray(Math.max(0, w * h * 4)) }),
+    createImageData: (w, h) => ({ width: w, height: h, data: new Uint8ClampedArray(Math.max(0, w * h * 4)) }),
     putImageData: noop,
     createLinearGradient: () => ({ addColorStop: noop }),
     createRadialGradient: () => ({ addColorStop: noop }),

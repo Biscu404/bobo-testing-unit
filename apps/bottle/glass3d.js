@@ -24,6 +24,10 @@ const EX = 190, EY = 96;                                       /* where the eye 
 const ROOM = { glass: [205, 220, 230], glassDk: [124, 150, 166], hi: [255, 255, 255],
   liq: [216, 128, 34], liqDk: [104, 50, 12], top: [238, 166, 62], foam: [240, 217, 160], rim: [250, 252, 255], floor: [110, 140, 150] };
 
+/* what is poured: the liquor's colours, from drinks.js (the amber of the Jägermeister the room was built with, unless told otherwise) */
+const ROOM0 = { liq: ROOM.liq.slice(), liqDk: ROOM.liqDk.slice(), top: ROOM.top.slice(), foam: ROOM.foam.slice() };
+export function setLiquor(c) { const k = c || ROOM0; ROOM.liq = k.liq; ROOM.liqDk = k.liqDk; ROOM.top = k.top; ROOM.foam = k.foam; }
+
 const N_SLICE = 40;
 const out = [0, 0, 0, 0];
 

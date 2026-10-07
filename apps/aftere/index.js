@@ -1,169 +1,141 @@
+import { LEVELS, levelById, payout } from './levels.js';
+import { createRun, stepRun, W, H } from './sim.js';
+import { draw, makeStars } from './draw.js';
+
+const PHOS_GLOW = [0.75, 0.40, 0.20, 0.05];
+const STEP_MS = 1000 / 60;
+
 export default {
   id: 'aftere',
   title: 'AfterEgypt',
   width: 460,
-  height: 360,
+  height: 380,
   resizable: true,
-  mount(root, ctx) {
-    const VGA16 = [
-      [0,0,0],      [0,0,170],    [0,170,0],    [0,170,170],
-      [170,0,0],    [170,0,170],  [170,85,0],   [170,170,170],
-      [85,85,85],   [85,85,255],  [85,255,85],  [85,255,255],
-      [255,85,85],  [255,85,255], [255,255,85], [255,255,255]
-    ];
-    const PHOS_GLOW = [0.75, 0.40, 0.20, 0.05];
-    const phosLevel = () => window.CRT ? PHOS_GLOW[window.CRT.phos || 0] : 0.75;
+  async mount(root, ctx) {
+    const snd = (name, ...a) => { try { if (window.Snd && window.Snd[name]) window.Snd[name](...a); } catch (e) {} };
+    const phos = () => window.CRT ? PHOS_GLOW[window.CRT.phos || 0] : 0.75;
 
     const wrap = document.createElement('div');
     wrap.className = 'gamepane';
     const cv = document.createElement('canvas');
-    cv.width = 320; cv.height = 200;
+    cv.width = W; cv.height = H;
     cv.className = 'gamecv';
     cv.tabIndex = 0;
     wrap.appendChild(cv);
     const bar = document.createElement('div');
     bar.className = 'appbar';
+    const lvBtn = document.createElement('button');
+    lvBtn.className = 'appbtn';
     const info = document.createElement('span');
     info.className = 'godword';
-    info.textContent = 'ARROWS OR MOUSE. REACH THE TEMPLE.';
+    bar.appendChild(lvBtn);
     bar.appendChild(info);
     root.appendChild(wrap);
     root.appendChild(bar);
-    
+
     const g = cv.getContext('2d');
     if (!g) { info.textContent = 'NO CANVAS.'; return; }
-    
-    const C = i => { const p = VGA16[i]; return 'rgb(' + p[0] + ',' + p[1] + ',' + p[2] + ')'; };
-    const S = { y: 100, vy: 0, dist: 0, goal: 2600, dead: false, won: false, t: 0 };
-    let pillars = [];
+
+    /* what has been flown: { cleared: { id: true }, best: { id: percent }, level: id, runs } */
+    const prog = Object.assign({ cleared: {}, best: {}, level: 'pilgrim', runs: 0 }, await ctx.load('prog') || {});
+    const unlocked = i => i === 0 || !!prog.cleared[LEVELS[i - 1].id];
+    if (!unlocked(LEVELS.indexOf(levelById(prog.level)))) prog.level = 'pilgrim';
+
+    const ui = { mode: 'ready', stars: makeStars(), phos: 0.75, pay: null, unlocked: '', best: 0, cleared: false };
+    let run = null, alive = true, last = 0, acc = 0, aim = null, pointer = null, dir = 0;
     const keys = Object.create(null);
-    let alive = true;
-    
-    const reset = () => {
-      S.y = 100; S.vy = 0; S.dist = 0; S.dead = false; S.won = false; S.t = 0;
-      pillars = [];
-      for (let i = 0; i < 7; i++) pillars.push({ x: 340 + i * 90, gap: 60 + Math.random() * 70, h: 44 + Math.random() * 24 });
+
+    const level = () => levelById(prog.level);
+    const note = () => {
+      const L = level(), nx = LEVELS[LEVELS.indexOf(L) + 1];
+      lvBtn.textContent = 'WAY: ' + L.name;
+      info.textContent = 'ARROWS OR MOUSE. REACH THE TEMPLE.' + (nx && !prog.cleared[L.id] ? '  CLEAR IT TO OPEN ' + nx.name + '.' : '');
     };
-    reset();
-    
+    const ready = () => {
+      const L = level();
+      run = createRun(L);
+      ui.mode = 'ready'; ui.pay = null; ui.unlocked = '';
+      ui.best = prog.best[L.id] || 0; ui.cleared = !!prog.cleared[L.id];
+      note();
+    };
+    const fly = () => {
+      run = createRun(level());
+      if (pointer != null) { run.y = pointer; run.aim = pointer; }
+      ui.mode = 'run'; ui.pay = null; ui.unlocked = '';
+      acc = 0;
+      snd('ok');
+    };
+    ready();
+
+    /* a run is over: pay it, remember it, and say what it opened */
+    const finish = () => {
+      const L = level(), i = LEVELS.indexOf(L), first = run.won && !prog.cleared[L.id];
+      ui.mode = run.won ? 'won' : 'dead';
+      ui.pay = payout(L, run, first);
+      prog.runs++;
+      prog.best[L.id] = Math.max(prog.best[L.id] || 0, run.won ? 100 : Math.min(99, Math.round(run.dist / L.goal * 100)));
+      if (run.won) {
+        prog.cleared[L.id] = true;
+        if (first && LEVELS[i + 1]) ui.unlocked = LEVELS[i + 1].name;
+        snd('holy');
+      } else { snd('err'); snd('thunk'); }
+      if (ui.pay.total > 0 && window.Economy) window.Economy.earn(ui.pay.total, 'AFTEREGYPT: ' + (run.won ? 'THE THIRD TEMPLE' : L.name + ' (COINS)'));
+      ctx.save('prog', prog);
+      note();
+    };
+
+    lvBtn.addEventListener('mousedown', ev => {
+      ev.stopPropagation();
+      let i = LEVELS.indexOf(level());
+      do { i = (i + 1) % LEVELS.length; } while (!unlocked(i));
+      prog.level = LEVELS[i].id;
+      ctx.save('prog', prog);
+      snd('click');
+      ready();
+      cv.focus();
+    });
+
+    const startOrAgain = () => { if (ui.mode === 'run') return; fly(); };
     cv.addEventListener('keydown', e => {
       keys[e.key] = true;
       if (e.key === ' ' || e.key.indexOf('Arrow') === 0) e.preventDefault();
-      if ((S.dead || S.won) && (e.key === ' ' || e.key === 'Enter')) { reset(); if (window.Snd) window.Snd.ok(); }
+      if ((e.key === ' ' || e.key === 'Enter') && ui.mode !== 'run') startOrAgain();
     });
     cv.addEventListener('keyup', e => { keys[e.key] = false; });
     cv.addEventListener('mousemove', e => {
       const r = cv.getBoundingClientRect();
-      S.y = Math.max(10, Math.min(190, (e.clientY - r.top) / r.height * 200));
-      S.vy = 0;
+      aim = pointer = Math.max(10, Math.min(190, (e.clientY - r.top) / r.height * H));
     });
-    cv.addEventListener('mousedown', ev => { ev.stopPropagation(); cv.focus(); if (S.dead || S.won) reset(); });
+    cv.addEventListener('mousedown', ev => { ev.stopPropagation(); cv.focus(); if (ui.mode !== 'run') startOrAgain(); });
     wrap.addEventListener('mousedown', () => setTimeout(() => cv.focus(), 0));
     setTimeout(() => cv.focus(), 30);
-    
-    const stars = [];
-    for (let i = 0; i < 40; i++) stars.push({ x: Math.random() * 320, y: Math.random() * 200, s: 0.4 + Math.random() * 1.6 });
-    
+
     const state = { raf: null };
-    
-    const frame = () => {
+    const frame = ts => {
       if (!alive || !document.body.contains(cv)) { alive = false; return; }
       state.raf = requestAnimationFrame(frame);
-      S.t++;
-      if (!S.dead && !S.won) {
-        if (keys.ArrowUp || keys.w) S.vy -= 0.55;
-        if (keys.ArrowDown || keys.s) S.vy += 0.55;
-        S.vy *= 0.90;
-        S.vy += 0.10;                                  
-        S.y += S.vy;
-        if (S.y < 8) { S.y = 8; S.vy = 0; }
-        if (S.y > 192) { S.y = 192; S.vy = 0; }
-        S.dist += 2.4;
-        if (S.dist >= S.goal) {
-          S.won = true;
-          if (window.Snd) window.Snd.holy();
-          if (window.Economy) window.Economy.earn(50, 'AFTEREGYPT: THE THIRD TEMPLE');
+      ui.phos = phos();
+      const dt = Math.min(100, ts - (last || ts));
+      last = ts;
+      if (ui.mode === 'run') {
+        acc += dt;
+        dir = (keys.ArrowDown || keys.s ? 1 : 0) - (keys.ArrowUp || keys.w ? 1 : 0);
+        while (acc >= STEP_MS && ui.mode === 'run') {
+          acc -= STEP_MS;
+          stepRun(run, { aim, dir });
+          aim = null;                                            /* a pointer move is an event; the ship remembers where it was told to go */
+          run.ev.forEach(e => { if (e === 'coin' || e === 'ankh') snd('coin'); else if (e === 'shield') snd('thunk'); });
+          if (run.dead || run.won) finish();
         }
-        pillars.forEach(p => {
-          p.x -= 2.4;
-          if (p.x < -30) { p.x += 7 * 90; p.gap = 55 + Math.random() * 75; p.h = 40 + Math.random() * 30; }
-          if (!S.won && p.x < 46 && p.x > 14) {
-            const top = 100 - p.gap / 2, bot = 100 + p.gap / 2;
-            if (S.y < top || S.y > bot) { 
-              S.dead = true; 
-              if (window.Snd) { window.Snd.err(); window.Snd.thunk(); }
-            }
-          }
-        });
-      }
-      
-      g.fillStyle = 'rgba(0,0,0,' + (0.30 + (1 - phosLevel()) * 0.6) + ')';
-      g.fillRect(0, 0, 320, 200);
-      stars.forEach(s => {
-        if (!S.dead && !S.won) s.x -= s.s;
-        if (s.x < 0) { s.x = 320; s.y = Math.random() * 200; }
-        g.fillStyle = s.s > 1.2 ? C(15) : C(8);
-        g.fillRect(s.x | 0, s.y | 0, 1, 1);
-      });
-      
-      g.fillStyle = C(6);
-      g.fillRect(0, 186, 320, 14);
-      g.fillStyle = C(14);
-      for (let x = 0; x < 320; x += 8) g.fillRect(x, 186 + ((x + (S.dist | 0)) % 3), 3, 1);
-      
-      pillars.forEach(p => {
-        const top = 100 - p.gap / 2, bot = 100 + p.gap / 2;
-        g.fillStyle = C(7);
-        g.fillRect(p.x, 0, 16, top);
-        g.fillRect(p.x, bot, 16, 200 - bot);
-        g.fillStyle = C(15);
-        g.fillRect(p.x, 0, 3, top);
-        g.fillRect(p.x, bot, 3, 200 - bot);
-        g.fillStyle = C(8);
-        g.fillRect(p.x + 13, 0, 3, top);
-        g.fillRect(p.x + 13, bot, 3, 200 - bot);
-        g.fillStyle = C(14);
-        g.fillRect(p.x - 2, top - 5, 20, 5);
-        g.fillRect(p.x - 2, bot, 20, 5);
-      });
-      
-      const tx = 330 + (S.goal - S.dist) * 0.42;
-      if (tx < 330) {
-        g.fillStyle = C(14);
-        for (let s = 0; s < 5; s++) g.fillRect(tx - s * 6, 150 - s * 8, 12 + s * 12, 8);
-        g.fillRect(tx + 10, 100, 4, 12);
-        g.fillRect(tx + 6, 103, 12, 4);
-        g.fillStyle = C(3);
-        g.fillRect(tx - 6, 158, 48, 28);
-        g.fillStyle = C(7);
-        for (let c = 0; c < 5; c++) g.fillRect(tx - 4 + c * 10, 158, 5, 28);
-      }
-      
-      if (!S.dead) {
-        g.fillStyle = C(11);
-        g.fillRect(22, S.y - 2, 14, 4);
-        g.fillStyle = C(15);
-        g.fillRect(34, S.y - 1, 4, 2);
-        g.fillStyle = C(12);
-        g.fillRect(16, S.y - 1, 6, 2);
-        if (S.t % 3) { g.fillStyle = C(14); g.fillRect(12, S.y, 4, 1); }
-      } else {
-        g.fillStyle = C(4 + (S.t >> 2) % 2 * 8);
-        g.fillRect(20, S.y - 4, 16, 8);
-      }
-      
-      g.fillStyle = C(15);
-      g.font = '10px monospace';
-      const pct = Math.min(100, Math.round(S.dist / S.goal * 100));
-      g.fillText('TO THE TEMPLE ' + pct + '%', 6, 12);
-      if (S.dead) { g.fillStyle = C(12); g.fillText('YOU DID NOT ARRIVE. SPACE TO TRY AGAIN.', 30, 100); }
-      if (S.won) { g.fillStyle = C(14); g.fillText('YOU REACHED THE THIRD TEMPLE.', 60, 100); }
+      } else if (ui.mode === 'ready' && pointer != null) { run.y = pointer; run.aim = pointer; }
+      draw(g, run, ui);
     };
-    
     state.raf = requestAnimationFrame(frame);
     this._state = state;
+    this._stop = () => { alive = false; };
   },
   unmount() {
+    if (this._stop) this._stop();
     if (this._state && this._state.raf) cancelAnimationFrame(this._state.raf);
   }
 };

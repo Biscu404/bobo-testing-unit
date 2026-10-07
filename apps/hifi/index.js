@@ -7,6 +7,7 @@ import { stackFolders } from './library.js';
 import { Vault } from '../../kernel/vault.js';
 import { scopedListeners, whenGone } from '../lifecycle.js';
 import { Studio } from '../../kernel/studio.js';
+import { loadTrack } from '../../kernel/style_track.js';
 
 export default {
   id: 'hifi',
@@ -297,7 +298,7 @@ export default {
          One per app that scores itself, and one for the lobby. They are on the
          shelf at once but pressed only when somebody plays one. */
       stackFolders().forEach((f, fi) => f[2].forEach((d, di) => {
-        const spec = d[1], secs = spec.len * 15 / spec.bpm * spec.reps + 2.2;
+        const spec = d[1], secs = spec.dur || spec.len * 15 / spec.bpm * spec.reps + 2.2;
         addTrack({ name: d[0], artist: spec.artist || f[0], folder: f[0], folderTint: f[1], spec: spec,
                    builtin: true, sleeve: 100 + fi * 20 + di, tint: spec.tint || f[1],
                    art: makeArt(f[0] + d[0], spec.tint || f[1]), dur: secs });
@@ -377,7 +378,7 @@ export default {
         t.decoding = true;
         if (t.spec) {                                   /* a folder disc: press it now */
           try {
-            const buf = t.spec.song ? await Studio.render(t.spec.song, { repeat: t.spec.reps, level: t.spec.level, limit: t.spec.limit }) : await hifiPress(t.spec, ctx.sampleRate);
+            const buf = t.spec.mp3 ? await loadTrack() : t.spec.song ? await Studio.render(t.spec.song, { repeat: t.spec.reps, level: t.spec.level, limit: t.spec.limit }) : await hifiPress(t.spec, ctx.sampleRate);
             if (buf) { t.buf = buf; t.dur = buf.duration; t.peaks = analysePeaks(buf, 480); }
             else t.missing = true;
           } catch (e) { t.missing = true; say('COULD NOT PRESS ' + t.name); }

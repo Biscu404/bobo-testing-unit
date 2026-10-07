@@ -1,4 +1,5 @@
 import { showMenu, spriteFor, expectArrivals } from '../../kernel/desktop.js';
+import { iconEl } from '../../kernel/icons_dom.js';
 import { Dnd } from '../../kernel/dnd.js';
 import { openItem, deletePaths } from '../../kernel/fileops.js';
 import { itemMenu, spaceMenu } from '../../kernel/filemenus.js';
@@ -93,16 +94,8 @@ export default {
       bBack.disabled = !history.length;
       bUp.disabled = path === '::';
       const els = items.map(item => {
-        const el = document.createElement('div');
-        el.className = 'icon' + (keep.has(item.name) ? ' sel' : '');
-        el.dataset.name = item.name;
-        el.innerHTML = spriteFor(item.type, item.app);
-        const lbl = document.createElement('div');
-        const span = document.createElement('span');
-        span.className = 'lbl';
-        span.textContent = item.name;
-        lbl.appendChild(span);
-        el.appendChild(lbl);
+        const el = iconEl(item);
+        if (keep.has(item.name)) el.classList.add('sel');
         if (item.type === 'folder') { el.dataset.drop = item.path; wireDrop(el, () => item.path); }
         wireIcon(el, item);
         return el;
@@ -142,13 +135,9 @@ export default {
             if (cancelled || !zone || zone.drop === path) return;
             if (zone.drop === '@trash') { await deletePaths(files.map(f => f.path)); return; }
             if (zone.drop === '::') expectArrivals(e.clientX, e.clientY, files.length);
-            let n = 0;
-            for (const f of files) {
-              try {
-                if (e.ctrlKey) await ctx.fs.copy(f.path, zone.drop); else await ctx.fs.move(f.path, zone.drop);
-                n++;
-              } catch (err) { import('../../kernel/wm.js').then(m => m.toast(err.message)); if (window.Snd) window.Snd.err(); }
-            }
+            const out = await (e.ctrlKey ? ctx.fs.copyMany : ctx.fs.moveMany)(files.map(f => f.path), zone.drop);
+            const n = out.made.length;
+            if (out.bad.length) { import('../../kernel/wm.js').then(m => m.toast(out.bad[0])); if (window.Snd) window.Snd.err(); }
             if (n && window.Snd) window.Snd.drop();
             if (n) import('../../kernel/wm.js').then(m => m.toast((e.ctrlKey ? 'COPIED ' : 'MOVED ') + n + ' ITEM' + (n === 1 ? '' : 'S') + ' TO ' + (zone.drop === '::' ? 'THE DESKTOP' : baseName(zone.drop)) + '.'));
           }
@@ -181,15 +170,19 @@ export default {
       const ox = ev.clientX - r.left + body.scrollLeft, oy = ev.clientY - r.top + body.scrollTop;
       const box = document.createElement('div');
       box.className = 'fband';
-      let live = false;
+      let live = false, rects = null;
       const move = e => {
         const cx = e.clientX - r.left + body.scrollLeft, cy = e.clientY - r.top + body.scrollTop;
         if (!live && Math.abs(cx - ox) + Math.abs(cy - oy) < 4) return;
         if (!live) { live = true; body.appendChild(box); }
         const x0 = Math.min(ox, cx), x1 = Math.max(ox, cx), y0 = Math.min(oy, cy), y1 = Math.max(oy, cy);
         box.style.cssText = 'left:' + x0 + 'px;top:' + y0 + 'px;width:' + (x1 - x0) + 'px;height:' + (y1 - y0) + 'px';
-        iconEls().forEach(n => n.classList.toggle('sel',
-          n.offsetLeft < x1 && n.offsetLeft + n.offsetWidth > x0 && n.offsetTop < y1 && n.offsetTop + n.offsetHeight > y0));
+        /* the icons stay where they are while the band moves: measure them once, then it is arithmetic */
+        if (!rects) rects = iconEls().map(n => ({ n, l: n.offsetLeft, t: n.offsetTop, w: n.offsetWidth, h: n.offsetHeight, on: n.classList.contains('sel') }));
+        rects.forEach(q => {
+          const hit = q.l < x1 && q.l + q.w > x0 && q.t < y1 && q.t + q.h > y0;
+          if (hit !== q.on) { q.on = hit; q.n.classList.toggle('sel', hit); }
+        });
       };
       const upEv = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', upEv); box.remove(); };
       window.addEventListener('pointermove', move);

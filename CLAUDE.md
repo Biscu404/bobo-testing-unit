@@ -32,9 +32,13 @@ npm run check:package   # after `npm run pack`: every file the app loads is pack
 node scripts/smoke.mjs  # ~10 min; node scripts/lint-content.mjs; node apps/*/*_check.js (pure Node)
 node scripts/check-drunk.mjs   # the Jäger journey (pure Node): a blackout is inside one bottle, about two minutes away at the very quickest
 node scripts/check-style.mjs   # the style meter against five kinds of player (pure Node)
-node scripts/check-symphony.mjs # the symphony's contract, its tune against its chords, its keys and its two silences (pure Node)
+node scripts/check-styletrack.mjs # the style meter's recording: how it opens under the delete sound, how it loops, its gains (pure Node)
+node scripts/check-desk.mjs    # where desktop icons go: the grid, the occupancy map, a full desk (pure Node); npm run check:bulk pastes and deletes two hundred files
+node apps/aftere/aftere_check.js # AfterEgypt: a bot flies all five ways across, nothing is asked that the ship cannot fly, the pay climbs (pure Node)
+node apps/garden/garden_check.js # the garden: synergy arithmetic, and how long 99,999 SUN takes three kinds of player, equipped and not (pure Node)
+node apps/bekkedal/life_check.js # what Bekkedal's people do between their posts: chores, sleep, errands, gifts worn (pure Node)
 node apps/magen/music_check.js # Magen's score, its band's energy and the seams between tunes (pure Node); apps/bekkedal/music_check.js likewise
-npm run check:music     # instruments, the studio, every game's score, and the symphony rendered whole (its loudness arc as heard)
+npm run check:music     # instruments, the studio, every game's score, and the style meter's recording
 node apps/garage/edit_check.js # the Garage's note, segment and undo logic (pure Node)
 ```
 Pixel comparison between two builds: `scripts/bekkedal_shots.mjs` twice per build, then `scripts/pngdiff.mjs`.
@@ -76,6 +80,13 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   `assets/seed.json` that are missing (pulling a deleted one out of the bin, leaving moved/renamed/edited ones alone, never
   resetting the desktop): it is in the desktop menu, File, Help and the terminal (`RESTORE`). `SEED_VERSION` in `vfs.js` must be
   bumped whenever `seed.json` gains an entry, or existing installs never see it.
+  **Two hundred files are an ordinary thing to ask of it** (the style meter asks for exactly that): `vfs.js` keeps one IndexedDB
+  connection for the session and answers `names(dir)` with a key cursor; `vfs_batch.js` is `copyMany/moveMany/trashMany/restoreMany/
+  purgeMany/duplicateMany` (one transaction, one `vfs-changed` per folder, one `Style.hit` with the size of the pile) and the shared commands
+  in `fileops.js` use them; `changed()` in `vfs_ops.js` coalesces announcements for 24 ms. **The desktop's icons are a keyed
+  reconcile**, not a rebuild (`kernel/desktop.js` `buildIcons`): an icon whose name and kind are unchanged keeps its element and its
+  selection, positions come from one occupancy map (`kernel/desk_grid.js`, pure), icons are CSS sprite classes rather than an `<img>`
+  each (`icons_dom.js`). `check-desk.mjs` and `check-bulk.mjs` hold the numbers; the old code took twenty seconds for each step.
 - **Dragging files** is `kernel/dnd.js` (pointer events, one mechanism for every source). A drop zone is any element with
   `data-drop`: a folder path, `::` (the desktop) or `@trash`. Desktop icons, folder windows and the bin all use it; Ctrl at the
   drop copies, Esc cancels. The shared commands (copy/cut/paste/duplicate/rename/delete/undo/properties/keys) are
@@ -114,7 +125,7 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   make are 2×2 weaves from `dith()`). A scene's photo is optional: one that fails to load is never dealt. The double exposure is a
   checkerboard of pixels, not an alpha blend, so every pixel stays one of the sixteen. To add a scene: draw it (or add a photo to `FILES`
   in `blackout_photo.js`), then list it in `SCENES` in `blackout.js`.
-- **Real instruments.** `kernel/instruments.js` is a sampler over `assets/instruments/` (30 instruments + a drum kit, samples of the
+- **Real instruments.** `kernel/instruments.js` is a sampler over `assets/instruments/` (49 instruments + a drum kit — the first 30 free, nineteen more in Dave's packs, samples of the
   MIT-licensed FluidR3_GM soundfont, built by `node scripts/make-instruments.mjs`; held instruments carry seamless loop points).
   `kernel/studio.js` is the mixer and scheduler (per-track volume/pan/room/mute/solo, a master that follows the MUS knob and the
   taskbar mixer's THE GARAGE channel, a limiter): `Studio.play(song)`, `Studio.live()`, `Studio.render(song)` (offline, for WAV
@@ -149,23 +160,40 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   the rank's own grace, which shrinks), and the top keeps its give so it does not flicker. `kernel/style.js` is the screen
   (`kernel/smeter.css`: `data-t` is the rank, and every rank up the meter is bigger, via `--sm-k`, and moves more;
   `kernel/style_fx.js`: sparks, a frame of light, and confetti at the top; reduced-motion switches all of it off). At the top rank
-  **the symphony plays** (`kernel/symphony*.js`: 100 bars at 160 bpm, 2:30, sixteen real instruments). It is a long sad tune over a fast
-  broken beat — C minor, ghost snares, a kick that does not sit on the grid, the tune itself an eight-bar question and answer that
-  does not hurry (`symphony_theme.js`: the chords, the tune, its counter-line and every drum pattern) — shaped as: the unwrapping (bars
-  1-8, C major, **the exact notes of the delete sound at that rank**, which are open fifths so as never to fight the orchestra), the
-  ignition (9-16), the question and the answer (17-32), a breath in half-time (33-40), the lift into E flat major, the one place it is
-  glad (41-48), a climb back down and **a real silence** (49-56), the tune at full cry and then a whole step up (57-72), the last stand
-  (73-92) and the arrival in C major on the harp and the bell it began with (93-100). It is written in `symphony_a.js`, `symphony_b.js`
-  and `symphony_c.js` with the tools in `symphony_kit.js` (`riff`, `arp`, `pad`, `chug`...). **The band is made smaller before the master's
-  limiter, bar by bar (`ARC` in `symphony.js`)**: the raw mix is over twice full scale and the limiter flattens anything loud to one
-  level, so a piece written at one volume is a wall; the quiet places are written quiet, and `STOPS` cut anything that would ring across
-  the beat of silence before bars 57 and 93. `node scripts/check-symphony.mjs` (pure Node) holds the contract, the tune against its
-  chords, the keys and the stops; `scripts/check-music.mjs` renders it whole and holds the arc as the listener hears it. `symphony_play.js`
-  starts it on its own `'style'` channel, ducks the lobby, hushes `kernel/rage.js` (the chiptune layer), and fades it out 1.5 s after the
-  meter leaves the top). The first time the meter reaches it, `templeos.symphony.v1` is set and the Stack gets a STYLE METER folder with the full
-  song. **After a minute at the top the sound glitches** (`kernel/glitch.js`: stutter, bitcrush, tape wobble, gates; on the studio's
+  **a song plays**: a recording, `assets/style/at_ends.mp3` (2:29, D minor; third-party content the owner supplied: its licence is theirs),
+  decoded once and played from memory, so it starts at once (`kernel/style_track.js` plays it, `kernel/style_track_plan.js` is when and
+  how, pure, held by `scripts/check-styletrack.mjs`). **It comes in under the delete sound**: for `BLEND` (5 s) the song rises on a
+  smoothstep beneath echoes of the top rank's sound (C6 G6 C7 G7, `style_sfx.js`: open fifths, which sit inside D minor) that thin out
+  and darken as it arrives. Kept at the top it plays through, and its own fade-out crosses (`SEAM`) into `LOOP_FROM` (the quiet build
+  before the first drop) and goes round again. It plays on its own `'style'` channel of the studio, ducks the lobby, hushes
+  `kernel/rage.js` (the chiptune layer), and fades out 1.5 s after the meter leaves the top. The first time the meter reaches it,
+  `templeos.symphony.v1` is set (the key kept so earned folders are kept) and the Stack gets a STYLE METER folder with the song, which
+  `apps/hifi/library.js` plays through the same decoded buffer (the old rendered symphony, which sometimes took two minutes to start in
+  the Stack, is gone). **After a minute at the top the sound glitches** (`kernel/glitch.js`: stutter, bitcrush, tape wobble, gates; on the studio's
   channels, the SFX bus and the chiptune layer; rare and short at first, frequent and long over the next minute and a half; a pile
   of twenty or more files deleted while it is going throws a burst on the spot).
+
+- **Dave's shop is a set of shelves** (`kernel/cos_data.js` is the stock, `kernel/cos.js` the till). A category in `COS_CATS` has a `kind`:
+  `look` (frames, logos, pointers, schemes: worn one at a time, previewed by hovering), `stock` (pots, seeds: what the garden grows with),
+  `wall` (BACKDROPS: the seven pressed photographs already in `assets/blackout/`; buying one sets the desktop and writes a real picture
+  to `::/Home/Backdrops/`, and equipping sets the wallpaper through `kernel/wallpaper.js`) and `unlock` (CRAYON, GARAGE, DRINKS, ELEPHANT: something an
+  app was given; `app` names which one, and the card opens it). `Cos.buy` ends in `Cos.tell`: every subscriber and a `cos-changed`
+  window event hear it, so an open app (a crayon with a locked brush, a garage picker) updates at once. **A new thing for sale is one
+  line in its list.** An app sends you to the right shelf with `ctx.openWindow('shop', { tab: 'crayon' })`. Lists are sorted by price on load.
+  What the apps do with their shelves: **the Crayon** lists its eight extra brushes (`apps/crayon/brushes.js`, one function per brush
+  laying one segment) and four layers (`layers.js`: clear sheets over the sheet, composited into the canvas the window shows) for everybody,
+  dim and marked `$` until bought; **the Garage's** picker (`apps/garage/packs.js`) lists all forty-nine instruments and auditions any, but only a bought
+  pack's can go on a track (a song that already uses one still plays); the nineteen new ones are built by `scripts/make-instruments.mjs <ids>`
+  from FluidR3_GM like the first thirty; **THE BOTTLE** pours any drink you own (`apps/bottle/drinks.js` builds a whole bottle, label and
+  liquor from three colours in `DRINKS`; `Drunk.drink(strength)` counts a measure against the limit in Jägermeisters, 0 for the cordial); **the Elephant** has a wardrobe
+  (`apps/elephant/wear.js` draws on the big front-on elephant, `kernel/pet_art.js` on the small side-on one: same twelve things, two pictures).
+- **The elephant on the desktop** (`kernel/pet.js`, saved as `templeos.pet.v1`) exists once FREE RANGE is bought and he is let out
+  of his window (GO OUTSIDE; CALL HIM IN, or his menu, brings him back). He lives in `#desktop` under every window and over every icon,
+  walks, sleeps (sooner and longer after 23:00; he wakes if the pointer comes close), talks (some lines read the desk: the icon count, the
+  sun, the hour), hops, can be picked up and dropped, and every few minutes walks to one of your icons and pushes it a cell or two
+  (`petIcons()` / `petMoveIcon()` in `desktop.js`: the move slides and is remembered like any other; his menu's PUT THE LAST ICON BACK undoes it). One 80 x 60 canvas
+  redrawn twelve times a second and a transform. He wears what the wardrobe says (`Pet.setWear`), and the big elephant's window shows only the place
+  and a note while he is outside.
 
 ### Writing music (for Claude, and anyone else)
 Music is data, not oscillator code. A song is `{ v, title, bpm, key, scale, bars, beats, swing, tracks: [{ id, name, inst, vol, pan,
@@ -366,6 +394,20 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   `recue()` on every step of the heat. The rotation is `apps/director.js` (each tune about a minute and a half); Shabbat takes ZMIROT in on the next
   bar line and `want(null)` goes on from where it left off. It plays on the studio's `'magen'` channel, so MUS and the taskbar slider set
   how loud. `node apps/magen/music_check.js` (pure Node): bars, notes, the lead on its chords, the energy's steps, the seams.
+- `aftere`: `apps/aftere/index.js` - AfterEgypt, five ways across the sky to the third temple (`levels.js`: PILGRIM is the game as it was, then
+  SCRIBE, PRIEST, PHARAOH and THE THIRD TEMPLE, each opened by clearing the one before). The tiers add a ship that chases the pointer at a limited
+  speed, gaps that wander and breathe, locusts, gusts with a second of warning, a sky that closes in, coins and ankhs (a second chance). Pay climbs from 50 SUN
+  to 2,500 plus coins a clear, a first clear and a clear with no hit pay more, and dying in the pillars keeps half the coins. `sim.js` is one run as plain data at a fixed
+  60 Hz (no canvas, no clock), `draw.js` the picture, and `aftere_check.js` flies every tier with a bot and holds the pay ladder to a rising rate a minute.
+- `garden`: `apps/garden/index.js` - GARDEN.EXE. Five rooms of twelve pots, each room standing in a pot of its own choice. **What grows where matters**
+  (`synergy.js`, pure): HOME room, KIN pot, ROOTED (both), a room's SET pot, a BED of its own kind, MATE species beside it; hover a plant to read exactly what is helping
+  it. **The work is taken out late**: drag with the can, the hand or the pull tool to sweep a rack, TEND (SPACE) waters every room and sweeps every plant with a chain
+  bonus, and the bench (`B`) sells a DRIP line per room, bigger BASKETS (20 to 150 tokens a room) and a GATHERER that empties a full room at 65-85% of a hand's price
+  (half that while away, for at most an hour). `model.js` is the whole economy as plain data; `world.js` loads and migrates a save; `scene.js`, `art.js`, `air.js`, `bench.js` are the picture, the plants, the wind and the panel.
+  `garden_check.js` runs hours of it as a player who checks in every few minutes: fully equipped, 99,999 SUN is about a quarter of an hour; from nothing, two and a half hours;
+  a night away with everything bought brings in about half of it.
+- `shop`: `apps/shop/index.js` - CRAZY DAVE'S, eleven shelves (see **Dave's shop is a set of shelves**). `thumbs.js` draws every card, `lines.js` is what Dave says.
+- `crayon`: DRAW.EXE; its extra brushes and layers are Dave's. `elephant`: the big elephant, his five places and songs, and the wardrobe and the door to the desktop.
 - `folder`: a folder window: BACK / UP / path, select (click, Ctrl, Shift, rubber band), drag and drop to move or Ctrl-copy,
   right-click menus, F2/Del/Ctrl+C/X/V/D/A/Z, Enter opens, Backspace goes up. `trash`: the RecycleBin (put back, delete for good,
   drag things out). `viewer`: pictures and video; BACKGROUND (five fits), SAVE A COPY, DELETE, arrow keys walk the folder.
@@ -411,7 +453,7 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   Nothing is pressed when the window opens, and no loose discs ride on the shelf outside the folders. Its face is drawn at the
   pixels it is shown at (`fit()`: the 480x386 room is scaled to the canvas, rectangles snap to whole screen pixels) in VT323 with the
   dimmest inks lifted for text, not blown up one and two thirds times. The STYLE METER folder appears once the meter has read
-  HAPPY BIRTHDAY, with the whole symphony. **1-9 are EQ presets**, read as the physical digit (`Digit1`/`Numpad1`, so a layout where the digits
+  HAPPY BIRTHDAY, with the song. **1-9 are EQ presets**, read as the physical digit (`Digit1`/`Numpad1`, so a layout where the digits
   need Shift still works) and heard from the document whenever TheStack is the front window and nothing is being typed into (a click on the title bar
   or the taskbar moves focus off the canvas, and the digits used to go to the desktop). A preset puts a bypassed EQ in circuit, and it is the curve the next
   discs inherit unless a disc has an EQ of its own saved with it, so a track change does not put the flat curve back.

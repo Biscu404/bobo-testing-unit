@@ -182,6 +182,7 @@ function dismissSplash() {
   desktopBuilt = true;
   if (window.Snd && window.Snd.ok) window.Snd.ok();
   initDesktop();
+  try { import('./pet.js').then(m => m.Pet.boot()); } catch(e) {}      /* the elephant, if he was let out */
   try { SunUI.mount(); } catch(e) {}
   try { MixerUI.mount(); } catch(e) {}
   try { Hold.apply(); } catch(e) {}
