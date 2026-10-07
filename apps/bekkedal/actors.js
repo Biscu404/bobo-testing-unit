@@ -24,8 +24,10 @@
 import { TIM, STO, SAN, SNO, DRY, WAT, GRASS, CON, ATMO, WAR } from './palette.js';
 import { BEK_ITEMS } from './data.js';
 import { toolAt, drawHeld } from './fx.js';
+import { createLooks } from './actors_look.js';
 
 export function createActors(GG, C) {
+  const looks = createLooks(GG, C);
   function drawIcon(id, x, y) {
     const it = BEK_ITEMS[id], col = it.col == null ? 7 : it.col, ic = it.icon;
     const R = (a, b, w, h, k) => { GG().fillStyle = C(k); GG().fillRect(x + a, y + b, w, h); };
@@ -61,7 +63,7 @@ export function createActors(GG, C) {
      any part of a person separates from the ground they are standing on
      — which is the question that matters, not whether one garment does. */
   const PERSON_INK = ATMO[0];
-  function person(px, py, dir, step, hair, shirt, pants, held, knit) {
+  function person(px, py, dir, step, hair, shirt, pants, held, knit, look, t) {
     const bob = (step === 1 || step === 3) ? 1 : 0, y = py + bob;
     /* the far hand's tool goes behind the body, the near hand's in front */
     const back = held && (held.dir === 1);
@@ -96,7 +98,10 @@ export function createActors(GG, C) {
       GG().fillRect(px + 2, y + 13, 9, 1);                                 /* the ribbed hem */
       GG().fillRect(px, y + 11, 2, 1); GG().fillRect(px + 11, y + 11, 2, 1);      /* the cuffs */
     }
+    /* what they have been given (looks.js): worn over the shirt, and carried in the near hand */
+    if (look) looks.worn(look, px, y);
     if (held && !back) heldTool(px, y, held);
+    if (look && look.hold && !(held && !back)) looks.carried(look, px, y, dir, t);
   }
   /* `person` drew no tool at all, which is why a swing had nothing to be a
      swing *of*. The arc tables in fx.js put the head somewhere sensible at

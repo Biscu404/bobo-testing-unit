@@ -10,7 +10,7 @@
  *   - the next tune is the next one in the pool, not a dice roll: the same hour always gives the same order;
  *   - a change of place does not wait out a long pass (a crossfade on the bar), and does not cut a nearly-finished one;
  *   - going quiet at night is a layer switch, not a new tune. */
-import { createSongs, MIN_LOOPS, PREP, URGENT_REST } from './music.js';
+import { createSongs, MIN_LOOPS, LOOPS, OVERLAP, GLIDE, PREP, URGENT_REST } from './music.js';
 import { song as scoreOf, IDS } from './score.js';
 import * as Lang from '../../kernel/songtext.js';
 
@@ -19,7 +19,7 @@ const ok = (c, label, detail) => { checks++; if (c) { console.log('OK   ' + labe
 
 /* a studio that is a clock: songs have a length in seconds, a deck plays the one it was last given, and `tick(dt)` advances */
 function rig() {
-  const R = { t: 0, calls: [], player: null, ctx: 'day', season: 'sommer', playing: true, layers: [] };
+  const R = { t: 0, calls: [], player: null, ctx: 'day', season: 'sommer', playing: true, layers: [], glides: [] };
   const lenOf = id => Lang.songLength(scoreOf(Lang, id)) * 60 / scoreOf(Lang, id).bpm;
   const mkPlayer = (id, startT) => ({
     id, startT, len: lenOf(id),
@@ -37,7 +37,10 @@ function rig() {
       R.calls.push({ how: 'segue', when, id: sg.title.toLowerCase(), t: R.t, rest, o });
       R.player = mkPlayer(sg.title.toLowerCase(), startT); return R.player;
     },
-    layers(m) { R.layers.push(m); }, stop() { R.player = null; }
+    layers(m) { R.layers.push(m); },
+    /* the valley glides its layers: a level is the same switch, over a few seconds */
+    levels(m, o) { R.glides.push(o && o.glide); R.layers.push(Object.keys(m).reduce((r, k) => { r[k] = m[k] > 0; return r; }, {})); },
+    stop() { R.player = null; }
   };
   const S = { deck: () => deck, lang: Lang };
   R.songs = createSongs({ studio: () => S, playing: () => R.playing, context: () => R.ctx, season: () => R.season });
@@ -104,6 +107,34 @@ console.log('\n-- the night --');
   ok(R.calls[0].o.layers && R.calls[0].o.layers.lead === false, 'a tune that goes quiet at night starts without its lead', id);
   R.ctx = 'day'; R.songs.cur = 'kveld'; await R.run(1);
   ok(R.layers.length >= 1 || R.calls.length > 1, 'and the dawn brings it back by layer or by a change');
+}
+
+/* ---- 5b. a change is not a feature of walking --------------------------------------- */
+console.log('\n-- how gently it changes --');
+{
+  /* walking from the farm into the square, up the mountain, or the evening coming in: the tune you were hearing goes on */
+  for (const [from, to] of [['day', 'townday'], ['day', 'high'], ['day', 'night'], ['townday', 'night']]) {
+    const R = rig(); R.ctx = from; await R.tick(0.1);
+    const was = R.calls[0].id;
+    if (!(R.songs.pool().indexOf(was) >= 0)) continue;
+    R.ctx = to; await R.run(12);
+    const stays = R.calls.length === 1 && R.player && R.player.id === was;
+    ok(stays, 'going from "' + from + '" to "' + to + '" does not change the tune at that step', R.calls.map(c => c.id).join(' > '));
+  }
+  /* the mine is the one place that takes the music away, and it takes it slowly */
+  { const R = rig(); R.ctx = 'day'; await R.tick(0.1); R.ctx = 'mine'; await R.run(3);
+    const c = R.calls[1];
+    ok(c && c.id === 'gruva' && c.o.fade >= 5, 'the mine takes the music away over a crossfade of ' + (c && c.o.fade) + ' s', c && c.how + ' ' + c.when); }
+  /* a natural change is laid over the end of the old tune, and a tune is heard for minutes */
+  { const R = rig(); R.ctx = 'day'; await R.tick(0.1);
+    const first = R.calls[0].id, sg = scoreOf(Lang, first), pass = Lang.songLength(sg) * 60 / sg.bpm;
+    await R.run(pass * (LOOPS[first] || MIN_LOOPS) + 5);
+    const c = R.calls.filter(x => x.how === 'segue')[0];
+    ok(c && c.o.overlap === OVERLAP && c.o.fade >= 5, 'the change is laid over the last ' + OVERLAP + ' s of the old tune, in a crossfade of ' + (c && c.o.fade) + ' s', c && c.id);
+    ok(pass * (LOOPS[first] || MIN_LOOPS) >= 100, 'and the first tune is heard for ' + Math.round(pass * (LOOPS[first] || MIN_LOOPS)) + ' s before it'); }
+  /* after dark the lead and the arpeggios leave as a swell, not a switch */
+  { const R = rig(); R.ctx = 'day'; await R.tick(0.1); R.songs.cur = 'kveld'; R.player.id = 'kveld'; R.ctx = 'night'; await R.run(1);
+    ok(R.glides.length >= 1 && R.glides.every(g => g === GLIDE), 'after dark the lead and the arpeggios go out over ' + GLIDE + ' s', 'glides ' + R.glides.join(',')); }
 }
 
 /* ---- 6. every tune is one the director can ask for -------------------------------- */

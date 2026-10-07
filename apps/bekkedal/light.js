@@ -222,14 +222,14 @@ export const lutAt = (min, indoors) => lutOf(shelter(lightAt(min), indoors ? 0.5
 export const DAY_LUT = PAL.map(p => p.slice());
 export const DAY_CSS = cssOf(DAY_LUT);
 
-/* built LUTs, kept by key. Two are ever live — the chrome's and the hour's —
-   so this holds at most a handful and gets swept when it does not. */
+/* built LUTs, kept by key. Two are ever live — the chrome's and the hour's — and the five a pool of local light
+   goes through, so this holds a couple of dozen at most and gets swept when it does not. */
 const cache = new Map();
 export function cssFor(st) {
   const k = keyOf(st);
   let hit = cache.get(k);
   if (!hit) {
-    if (cache.size > 6) cache.clear();
+    if (cache.size > 24) cache.clear();
     hit = cssOf(lutOf(st));
     cache.set(k, hit);
   }

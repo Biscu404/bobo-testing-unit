@@ -36,6 +36,7 @@
 import { BEK_ITEMS, BEK_CROPS, BEK_TOOLS, BEK_MAPS, BEK_RECIPES, AXE_NAME, PICK_NAME, UI,
          BEK_W, BEK_H } from './data.js';
 import { boardRows } from './quests.js';
+import { GIFT_HELP } from './hint.js';
 import { createDialogue } from './menus_talk.js';
 import { createChrome } from './menus_chrome.js';
 import { createFish } from './menus_fish.js';
@@ -208,6 +209,13 @@ export function createMenus(A, GG, C) {
     text(TX('JORD: ', 'SOIL: ') + planted + TX(' plantet, ', ' planted, ') + ready + TX(' klare', ' ready'), bx, fy, 7, FONT_SM);
     fy += LINE_SM;
     text(T(UI.tools) + ': ' + BEK_TOOLS.filter(tt => S.tools[tt.id]).map(tt => tt.id === 'oks' ? toolName('oks') : tt.id === 'hakke' ? toolName('hakke') : T(tt.name)).join('  '), bx, fy, 7, FONT_SM);
+    /* What SPACE does with the item under the cursor. It used to do something nobody could see — mark it as the thing held out
+       for the next person you talk to — and the only sign was a line that went by at the bottom of the picture. */
+    const under = ids.length ? ids[bagCur % ids.length] : null;
+    const help = !under ? GIFT_HELP.open
+      : BEK_ITEMS[under].place && typeof BEK_ITEMS[under].place === 'string' ? GIFT_HELP.place
+      : under === giftSel ? GIFT_HELP.holding : GIFT_HELP.open;
+    text(T(help), bx, BAG_Y + BAG_H - PAD_SM - GLYPH_SM, under && under === giftSel ? 14 : 10, FONT_SM);
   }
   function toolName(id) {
       const S = A.S(), fish = A.fish(), dlg = A.dlg(), shop = A.shop(), travel = A.travel(), offer = A.offer();
