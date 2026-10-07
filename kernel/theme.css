@@ -52,10 +52,10 @@ html, body {
 #monitor {
   --bez: clamp(7px, 1.5vmin, 26px);
   --chin: clamp(46px, 6.6vmin, 78px);
-  /* All four are rewritten by the LENS knob — see applyLensShape(). The
-     radii are in PIXELS on purpose: a percentage radius on a 1600px-wide
-     tube eats 170px of corner and swallows the File menu. */
-  --tube-r: 8px / 10px;
+  /* The glass is flat: there is no lens, so no curve to the picture. The case and the well keep a
+     little plastic radius, in PIXELS on purpose: a percentage radius on a 1600px-wide tube eats
+     170px of corner and swallows the File menu. */
+  --tube-r: 0;
   --well-r: 12px;
   --case-r: 12px;
   /* how far the whole interface sits inside the curved picture area */
@@ -75,7 +75,6 @@ html, body {
     inset 0 -3px 0 rgba(0,0,0,0.30),
     inset 3px 0 0 rgba(255,255,255,0.16),
     inset -3px 0 0 rgba(0,0,0,0.18);
-  transition: border-radius 260ms ease;
 }
 
 /* the recessed well the tube sits in */
@@ -89,7 +88,6 @@ html, body {
   box-shadow:
     inset 0 3px 8px rgba(0,0,0,0.55),
     inset 0 -1px 0 rgba(255,255,255,0.25);
-  transition: border-radius 260ms ease;
 }
 
 #screen {
@@ -98,25 +96,21 @@ html, body {
   height: 100%;
   overflow: hidden;
   background: #05050a;
-  /* the tube's own corner radius — wider than it is tall, like real glass.
-     It deepens as the lens is turned up, so the glass, the well and the case
-     all follow the same curve the picture is being bent to. */
+  /* flat glass: square corners */
   border-radius: var(--tube-r);
   box-shadow:
     inset 0 0 0 2px rgba(0,0,0,0.9),
     inset 0 0 22px 8px rgba(0,0,0,0.85),
     0 0 26px rgba(90,160,255,0.10);
-  transition: border-radius 260ms ease;
 }
 
 /* The picture layer. It carries no SVG filter: a full-viewport
    feDisplacementMap re-ran on every repaint — every clock tick, every
    keystroke, every dragged window — which is where the lag came from, and
    rasterizing the subtree is what made editor and terminal text spill past
-   its own window border. The curvature now lives entirely in the glass
-   canvas and the frame, which are drawn once per resize and cost nothing.
-   All that is left here is a little overscan, so turning the lens still
-   makes the picture move. No will-change: promoting this layer is what
+   its own window border. There is no lens: the glass is flat, and the
+   scanlines, grille and vignette live in the glass canvas, drawn once per
+   resize at no cost. No will-change: promoting this layer is what
    would blur the text at non-integer scales. */
 #tube {
   position: absolute;
@@ -126,8 +120,8 @@ html, body {
   transform-origin: 50% 50%;
 }
 
-/* curved glass drawn on a canvas: scanlines, grille, vignette, glare.
-   It sits outside #tube so animating it never re-runs the lens filter. */
+/* the glass drawn on a canvas: scanlines, grille, purity patches, vignette, glare.
+   It sits outside #tube so animating it never touches the picture. */
 /* While drunk the whole interface sways (filter and transform on #room) and the edges close in on an
    overlay fixed to the viewport (#drunkover): see kernel/drunk.js. #tube is not touched by it. */
 #glass {
@@ -188,7 +182,7 @@ html, body {
 }
 .knob:hover { background: linear-gradient(180deg, #ded5bf 0%, #b6ad97 100%); }
 .knob:active { box-shadow: inset 0 2px 4px rgba(0,0,0,0.4); transform: translateY(1px); }
-/* a disabled knob (LENS) is plastic with the legend printed on it and nothing behind it */
+/* a disabled knob is plastic with the legend printed on it and nothing behind it */
 .knob:disabled, .knob:disabled:hover, .knob:disabled:active {
   cursor: default; opacity: 0.55; background: linear-gradient(180deg, #cdc4ae 0%, #a89f89 100%);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -1px 0 rgba(0,0,0,0.12); transform: none;
@@ -196,7 +190,7 @@ html, body {
 #power { color: #6a3b32; font-weight: bold; }
 
 /* --- the front panel: two pots and a switch, in a routed recess ---------- */
-@media (max-width: 1080px) { #k-phos, #k-burn { display: none; } }
+@media (max-width: 1080px) { #k-phos, #k-burn, #k-dgauss { display: none; } }
 @media (max-width: 880px)  { .potbox.hold { display: none; } }
 
 #panel {
@@ -1324,10 +1318,13 @@ textarea.editor {
 .gardenpane { background: #1d1a12; padding: 2px; }
 .gardencv { width: 700px; height: auto; max-height: none; cursor: default; }
 .gardencv.canning { cursor: cell; }
-.gbar { color: #55FF55; }
+.gbar { color: #55FF55; white-space: nowrap; overflow: hidden; }
+.gtip .gl2 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .gardenpane { position: relative; }
 .appbar.wrap { flex-wrap: wrap; row-gap: 2px; }
-.gtip { padding: 2px 6px; min-height: 38px; color: var(--sch-fg, #FFFFFF); background: var(--sch-bg, #000000); border-top: 1px solid var(--sch-dim, #555555); font-size: 16px; line-height: 1.05; }
+/* The line under the garden is one box of one fixed height (a header line and two of text), whatever is under the pointer:
+   a box that grew and shrank with the text moved the whole picture up and down as the pointer crossed the plants. */
+.gtip { box-sizing: border-box; flex: none; height: 56px; overflow: hidden; padding: 2px 6px; color: var(--sch-fg, #FFFFFF); background: var(--sch-bg, #000000); border-top: 1px solid var(--sch-dim, #555555); font-size: 16px; line-height: 1.05; }
 .gbench { position: absolute; left: 50%; top: 34px; transform: translateX(-50%); width: 560px; max-width: 96%; background: rgba(0, 0, 0, 0.94); border: 2px solid var(--sch-hi, #FFFF55); padding: 6px 8px; z-index: 5; text-align: left; }
 .gbench .gbh { color: var(--sch-hi, #FFFF55); padding: 4px 0 2px; }
 .gbench .gbrow { display: flex; align-items: center; gap: 8px; padding: 3px 0; border-bottom: 1px dotted var(--sch-dim, #555555); }

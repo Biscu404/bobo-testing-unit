@@ -11,6 +11,8 @@
 import { drawMini, MINI_W, MINI_H } from './pet_art.js';
 import { showMenu, hideMenus } from './menus.js';
 import { petIcons, petMoveIcon } from './desktop.js';
+import { openWindow } from './wm.js';
+import { LINES, PUSH_LINES, GOODBYES_DAY, GOODBYES_NIGHT, WAKES, WAKES_NEAR, HOME_LINES, DOOR_LINES, choose } from './pet_lines.js';
 
 const KEY = 'templeos.pet.v1', S = 2, SW = MINI_W * S, SH = MINI_H * S, FOOT = 56 * S;
 const SPEED = 46, ICON_W = 84, ICON_H = 78;
@@ -29,30 +31,23 @@ const tell = () => subs.forEach(f => { try { f(); } catch (e) {} });
 const snd = (...a) => { try { window.Snd.tone(...a); } catch (e) {} };
 const pick = a => a[Math.floor(Math.random() * a.length)];
 
-/* ---- what he says. Some of it knows what is on the desk ---------------------------------------------------------------- */
-const LINES = [
-  () => 'THIS DESKTOP NEEDS MORE GRASS.',
-  () => 'I HAVE COUNTED YOUR ICONS. THERE ARE ' + petIcons().length + '. I WILL COUNT THEM AGAIN.',
-  () => { const h = new Date().getHours(); return h >= 23 || h < 6 ? 'YOU SHOULD BE ASLEEP. SO SHOULD I.' : h < 12 ? 'GOOD MORNING. I HAVE BEEN UP FOR HOURS. I HAVE NOT DONE ANYTHING.' : 'IT IS AFTERNOON. I CAN TELL BY THE LIGHT. THERE IS NO LIGHT. I CAN TELL ANYWAY.'; },
-  () => 'YOU HAVE ' + (window.Economy ? window.Economy.balance() : 0) + ' SUN. I DO NOT UNDERSTAND SUN. I UNDERSTAND PEANUTS.',
-  () => 'I WALKED ALL THE WAY ACROSS THE SCREEN. IT TOOK NINE SECONDS. I AM VERY BRAVE.',
-  () => 'THAT ONE LOOKS LONELY. THE ICON. THE ONE BY ITSELF.',
-  () => 'DO NOT WORRY. I WILL NOT STEP ON THE WINDOWS. THEY ARE ABOVE ME.',
-  () => 'I AM NOT A PET. I AM A GUEST WHO HAS NOT LEFT.',
-  () => 'THERE IS A BEAR IN YOUR GAME. HE IS NOT HERE. I CHECKED.',
-  () => 'I REMEMBER A SUNFLOWER FIELD. I WILL NOT SAY MORE.',
-  () => 'SOMEBODY LEFT A TRASH CAN ON THE DESKTOP. I LOOKED. I DID NOT TOUCH IT.',
-  () => 'SHALL I MOVE ONE OF YOUR THINGS? I WILL. I AM ONLY ASKING TO BE POLITE.',
-  () => 'I CAN SEE THE TASKBAR FROM HERE. IT IS NOT MUCH OF A HORIZON.',
-  () => 'A GOOD ELEPHANT HAT IS A GOOD ELEPHANT HAT. I SAY NOTHING ELSE.',
-  () => 'DAVE SENDS HIS REGARDS. DAVE DOES NOT KNOW I AM OUT.',
-  () => 'I AM THINKING ABOUT THE THIRD TEMPLE. IT IS A LONG WAY AND I HAVE SHORT LEGS.'
-];
-const PUSH_LINES = ['IN THE WAY.', 'BETTER.', 'THAT WAS DOING NOTHING THERE.', 'THERE. NOW YOU CAN SEE THE WALLPAPER.', 'I AM TIDYING. DO NOT THANK ME.', 'ONE CELL. I WILL NOT SAY WHICH.'];
+/* ---- what he says. kernel/pet_lines.js is the words (in the voice of the elephant in his window); some of it knows the desk ---- */
+const deskNow = () => ({ icons: petIcons().length, sun: window.Economy ? window.Economy.balance() : 0, wins: document.querySelectorAll('#desktop .win:not(.hidden)').length, hour: new Date().getHours() });
+const recent = [];
+/* a line from a pool, never one of the last few he has said */
+function line(pool) {
+  let txt = '', tries = 0;
+  do { txt = choose(pool, Math.random, deskNow()); } while (recent.indexOf(txt) >= 0 && ++tries < 8);
+  recent.push(txt); if (recent.length > 10) recent.shift();
+  return txt;
+}
+const lateHour = () => { const h = new Date().getHours(); return h >= 23 || h < 6; };
 
+let bubH = 40;
 function speak(txt, secs) {
   if (!bub) return;
   bub.textContent = txt; bub.style.display = 'block'; P.say = secs || 4.5;
+  bubH = bub.offsetHeight || 40;             /* it grows upward from his head, so how tall it is is wanted every frame */
 }
 
 /* ---- the world he walks in ----------------------------------------------------------------------------------------------- */
@@ -75,8 +70,14 @@ function wander() {
   const x = P.x + (Math.random() - 0.5) * 700, y = h * 0.35 + Math.random() * h * 0.55;
   goTo(Math.max(0, Math.min(w - SW, x)), y - SH / 2);
 }
+/* He says goodbye before he lies down (kernel/pet_lines.js: one set for the day, one for the late hours), yawns, and then goes to sleep. */
+function goodbye() {
+  P.mode = 'goodbye'; P.t = 0; P.wait = 4.4; P.job = null;
+  speak(line(lateHour() ? GOODBYES_NIGHT : GOODBYES_DAY), 4.2);
+  snd(330, 420, { type: 'triangle', to: 196, vol: 0.016 });
+}
 function sleep() { P.mode = 'sleep'; P.t = 0; P.wait = 25 + Math.random() * 45; P.snore = 1; speak('...', 1.6); }
-function talk() { P.mode = 'talk'; P.t = 0; P.wait = 5.2; speak(pick(LINES)()); }
+function talk() { P.mode = 'talk'; P.t = 0; P.wait = 5.6; speak(line(LINES)); }
 function hop() { P.mode = 'hop'; P.t = 0; P.wait = 0.9; snd(660, 50, { type: 'triangle', to: 880, vol: 0.02 }); }
 function pushIcon() {
   const list = petIcons();
@@ -86,12 +87,12 @@ function pushIcon() {
   goTo(ic.x - SW + 34, ic.y + ICON_H - FOOT - 2, { kind: 'push', name: ic.name, ix: ic.x, iy: ic.y });
 }
 function think() {
-  const hour = new Date().getHours(), sleepy = hour >= 23 || hour < 6;
+  const sleepy = lateHour();
   const canPush = performance.now() - P.lastPush > 150000 && petIcons().length > 2;
   const w = [['walk', 5], ['sleep', sleepy ? 6 : 1.4], ['talk', 2.2], ['push', canPush ? 1.4 : 0], ['hop', 0.7], ['stay', 1.5]];
   let r = Math.random() * w.reduce((a, b) => a + b[1], 0), c = 'stay';
   for (const [k, v] of w) { if ((r -= v) < 0) { c = k; break; } }
-  if (c === 'walk') wander(); else if (c === 'sleep') sleep(); else if (c === 'talk') talk(); else if (c === 'push') pushIcon(); else if (c === 'hop') hop();
+  if (c === 'walk') wander(); else if (c === 'sleep') goodbye(); else if (c === 'talk') talk(); else if (c === 'push') pushIcon(); else if (c === 'hop') hop();
   else { P.mode = 'idle'; P.t = 0; P.wait = 2 + Math.random() * 4; }
 }
 
@@ -122,8 +123,10 @@ function tick(ts) {
   } else if (P.mode === 'sleep') {
     P.snore -= dt; if (P.snore <= 0) { P.snore = 3.2; snd(104, 700, { type: 'sine', to: 78, vol: 0.008 }); }
     const c = { x: P.x + SW / 2, y: P.y + SH / 2 };
-    if (Math.hypot(ptr.x - c.x, ptr.y - c.y) < 80 && P.t > 3) { P.mode = 'idle'; P.t = 0; P.wait = 2; speak('HM? ...OH. IT IS YOU.', 3); }
-    else if (P.t > P.wait) { P.mode = 'idle'; P.t = 0; P.wait = 1.5; speak('...MORNING.', 2.5); }
+    if (Math.hypot(ptr.x - c.x, ptr.y - c.y) < 80 && P.t > 3) { P.mode = 'idle'; P.t = 0; P.wait = 2; speak(line(WAKES_NEAR), 3.5); }
+    else if (P.t > P.wait) { P.mode = 'idle'; P.t = 0; P.wait = 1.5; speak(line(WAKES), 3.2); }
+  } else if (P.mode === 'goodbye') {
+    if (P.t > P.wait) sleep();
   } else if (P.mode === 'idle' || P.mode === 'talk' || P.mode === 'hop') {
     if (P.t > P.wait) think();
   }
@@ -132,7 +135,7 @@ function tick(ts) {
 
   el.style.transform = 'translate(' + Math.round(P.x) + 'px,' + Math.round(P.y) + 'px)';
   cv.style.transform = P.dir < 0 ? 'scaleX(-1)' : '';
-  if (bub && bub.style.display !== 'none') bub.style.transform = 'translate(' + Math.round(Math.min(room().w - 240, Math.max(4, P.x + SW / 2 - 40))) + 'px,' + Math.round(Math.max(2, P.y - 26)) + 'px)';
+  if (bub && bub.style.display !== 'none') bub.style.transform = 'translate(' + Math.round(Math.min(room().w - 240, Math.max(4, P.x + SW / 2 - 40))) + 'px,' + Math.round(Math.max(2, P.y + 6 - bubH)) + 'px)';
   if (ts - drawAt > 80) { drawAt = ts; drawMini(g, { pose: pose(), t: ts / 1000, wear: st.wear, think: P.mode === 'talk' }); }
 }
 
@@ -145,7 +148,7 @@ function arrive() {
 function shove() {
   const j = P.job, jx = j.ix + ICON_W * (1 + Math.floor(Math.random() * 2)), jy = j.iy + Math.round((Math.random() - 0.5) * 2) * ICON_H;
   const moved = petMoveIcon(j.name, jx, jy);
-  if (moved) { st.last = { name: j.name, x: moved.from.x, y: moved.from.y }; speak(pick(PUSH_LINES), 3.5); snd(180, 120, { type: 'triangle', to: 110, vol: 0.035 }); save(); }
+  if (moved) { st.last = { name: j.name, x: moved.from.x, y: moved.from.y }; speak(line(PUSH_LINES), 3.5); snd(180, 120, { type: 'triangle', to: 110, vol: 0.035 }); save(); }
 }
 
 /* ---- being handled --------------------------------------------------------------------------------------------------------------- */
@@ -159,7 +162,7 @@ function wire() {
   });
   el.addEventListener('pointermove', ev => {
     const d = P.down; if (!d) return;
-    if (!d.moved && Math.hypot(ev.clientX - d.px, ev.clientY - d.py) > 5) { d.moved = true; P.mode = 'carried'; P.job = null; speak('PUT ME DOWN. GENTLY. THERE.', 3); snd(300, 60, { type: 'triangle', vol: 0.02 }); }
+    if (!d.moved && Math.hypot(ev.clientX - d.px, ev.clientY - d.py) > 5) { d.moved = true; P.mode = 'carried'; P.job = null; speak('oh. put me down gently, pal. there we go', 3); snd(300, 60, { type: 'triangle', vol: 0.02 }); }
     if (d.moved) {
       const r = desk().getBoundingClientRect();
       P.x = ev.clientX - r.left - SW / 2; P.y = ev.clientY - r.top - SH / 2;
@@ -169,9 +172,9 @@ function wire() {
     const d = P.down; if (!d) return;
     P.down = null;
     try { el.releasePointerCapture(ev.pointerId); } catch (e) { /* already let go */ }
-    if (d.moved) { P.x = clampX(P.x); P.y = clampY(P.y); P.mode = 'hop'; P.t = 0; P.wait = 0.8; speak('THANK YOU.', 2.5); save(); return; }
-    if (P.mode === 'sleep') { P.mode = 'idle'; P.t = 0; P.wait = 2; speak('I WAS NOT ASLEEP. I WAS THINKING.', 3.5); return; }
-    trumpet(); hop(); speak(Math.random() < 0.5 ? 'HELLO.' : pick(LINES)(), 3.5);
+    if (d.moved) { P.x = clampX(P.x); P.y = clampY(P.y); P.mode = 'hop'; P.t = 0; P.wait = 0.8; speak('thank you, friend', 2.5); save(); return; }
+    if (P.mode === 'sleep') { P.mode = 'idle'; P.t = 0; P.wait = 2; speak('i wasn\'t asleep. i was thinking', 3.5); return; }
+    trumpet(); hop(); speak(Math.random() < 0.4 ? 'hello, friend' : line(LINES), 4.5);
   };
   el.addEventListener('pointerup', end);
   el.addEventListener('pointercancel', end);
@@ -179,7 +182,7 @@ function wire() {
     ev.preventDefault(); ev.stopPropagation();
     showMenu(document.getElementById('ctxmenu'), ev.clientX, ev.clientY, [
       { label: 'SAY SOMETHING', run: () => { P.job = null; talk(); } },
-      { label: 'LIE DOWN', run: () => { P.job = null; sleep(); } },
+      { label: 'LIE DOWN', run: () => { P.job = null; goodbye(); } },
       { label: 'TRUMPET', run: () => { trumpet(); hop(); } },
       { label: 'PUT THE LAST ICON BACK', off: !st.last, run: () => Pet.putBack() },
       { sep: true },
@@ -247,24 +250,34 @@ export const Pet = {
     const right = r.x + r.w + SW + 60 < w;
     const x1 = right ? r.x + r.w + 20 : Math.max(0, r.x - SW - 20), y1 = Math.min(h - SH - 6, r.y + r.h - SH + 10);
     P.x = x0; P.y = y0; P.dir = x1 >= x0 ? 1 : -1;
-    P.mode = 'jump'; P.t = 0; P.jump = { x0, y0, x1: Math.max(0, Math.min(w - SW, x1)), y1: Math.max(30, y1), len: 1.0, say: 'OUTSIDE. THERE IS MORE OF IT THAN I THOUGHT.' };
+    P.mode = 'jump'; P.t = 0; P.jump = { x0, y0, x1: Math.max(0, Math.min(w - SW, x1)), y1: Math.max(30, y1), len: 1.0, say: 'outside. there is more of it than i thought' };
     snd(392, 120, { type: 'triangle', to: 660, vol: 0.03 });
     save(); tell();
     return true;
   },
-  /* back in: he walks to his window if it is open, or to the nearest edge if it is not, and is gone */
+  /* back in: he walks to his window and is gone. If the window is not open he opens it himself (the app is the door), waits for it,
+     and then goes in; if it will not open he walks off the nearest edge as he always did */
   home() {
     if (!el) { st.out = false; save(); tell(); return; }
-    const { w, h } = room(), r = winRect();
-    P.job = null; P.mode = 'home';
-    if (r) P.to = { x: r.x + r.w / 2 - SW / 2, y: r.y + r.h - SH - 20 };
-    else P.to = { x: P.x + SW / 2 < w / 2 ? -SW : w, y: Math.min(h - SH - 4, P.y) };
-    speak('GOING IN. DO NOT MOVE ANYTHING WHILE I AM GONE.', 3.5);
+    if (P.mode === 'home' || P.mode === 'door') return;
+    P.job = null;
+    const walkIn = () => {
+      if (!el) return;
+      const { w, h } = room(), r = winRect();
+      P.mode = 'home';
+      if (r) P.to = { x: r.x + r.w / 2 - SW / 2, y: r.y + r.h - SH - 20 };
+      else P.to = { x: P.x + SW / 2 < w / 2 ? -SW : w, y: Math.min(h - SH - 4, P.y) };
+    };
+    if (winRect()) { speak(line(HOME_LINES), 3.5); walkIn(); return; }
+    P.mode = 'door'; P.t = 0;
+    speak(line(DOOR_LINES), 3.2);
+    snd(196, 90, { type: 'square', vol: 0.012 }); snd(196, 90, { type: 'square', delay: 0.14, vol: 0.012 });
+    openWindow('elephant').catch(() => {}).then(() => setTimeout(walkIn, 450));
   },
   putBack() {
     const l = st.last;
     if (!l) return false;
-    if (petMoveIcon(l.name, l.x, l.y)) { st.last = null; speak('PUT BACK. I WAS ONLY HELPING.', 3.5); save(); return true; }
+    if (petMoveIcon(l.name, l.x, l.y)) { st.last = null; speak('put back. i was only helping, kiddo', 3.5); save(); return true; }
     st.last = null; save();
     return false;
   }

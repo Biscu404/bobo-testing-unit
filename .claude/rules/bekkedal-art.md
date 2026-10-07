@@ -864,6 +864,22 @@ pass was 0.9ms before the local-light rework and 5.4ms after. The current
 figures are in **Local light is a palette too → Cost** above. Measure before
 quoting, and measure warm.
 
+## A made room
+
+The two houses were one brown texture over a floor plan, and the props in them looked scattered because they were: a kettle here, a cat there, nothing that made sense as a place. They are *made* rooms now, and a made room has three things the old one had none of.
+
+**Zones.** `rooms.js` cuts a room into rectangles, and each says what its floor is and what its paper is: the cabin's bedroom is pine plank under striped paper, its sitting room parquet, its kitchen cream tile under white subway tile, its hall flagstone over panelling; the house by the water is limewashed boards under white paper with a blue wainscot. A square nobody named is plain pine and `rooms_check.js` fails on one.
+
+**Patterns that repeat.** `interior_floors.js` is periodic on purpose, off world position and nothing else: a plank is ten pixels with a joint every eighty, stepped twenty a course so four courses and it comes round; the parquet is a twenty-pixel basket weave; the kitchen tile is a twenty-pixel chequer; the flags are forty by twenty in running bond; the paper is a stripe every eight pixels with a sprig on every stripe, stepped; the panelling is a raised panel every twenty; the rug is a diamond on a twenty-pixel lattice, four to a square, with a fringe where it stops. The old boards were noise, so that nothing ever repeated and a floor could not be seen to tile; it also looked as though nobody had laid it. A made floor repeats, and `rooms_check.js` holds that: the same tile every six squares across and down, and a rug's diamond the same on every square of it.
+
+**A wall is a face or a cap.** A wall with floor to its south is a *face* (a crown, plaster or tile, a rail, a wainscot, a skirting) and may have a window, with curtains hung in folds four pixels apart; anything else is a *cap*, the top of a wall seen from above, boards laid along it every ten pixels with a trim where it meets the floor. A post with floor on both sides is a cap. Windows are where `rooms.js` says: one over the sink, one either side of the bed, one either side of the hearth.
+
+**Furniture is drawn whole.** `decor_home.js` and `decor_home2.js` draw *pieces* (a double bed with a headboard, two pillows, a patchwork quilt in ten-pixel patches and a folded blanket at the foot; a wardrobe the height of a person; a bookcase whose books stand in a fixed rhythm; a sofa striped on a four-pixel beat; a kitchen run with one worktop, one pair of doors and one handle). A piece bigger than a square is drawn from its top-left square and spills over the squares beside and below it, which carry a solid glyph in the map: the glyph makes it solid, the prop makes it a bed, and in a made room `furniture()` (the old per-glyph art) is not drawn at all. A tall piece spills *up* onto the wall behind it. Materials are the same few in the same few steps — pine, one of three cloths (blue, red, green, `d.c`), brass, ink round the edge — so a room reads as one set of things bought together. Light comes from where a lamp is: a nightstand says which with `w` (`'nightstand:lamp'` in `LIGHTS`), a standing lamp, a desk lamp, the hearth.
+
+**A house has something to do in it.** `furniture_act.js` is the table of what answers when faced: a bookcase, a clock, a mirror, a picture, a plant (watered, once a day, from the can), the cat, the stove (tea, +6 energy, once a day), a window (what the weather is, or the night), the piece under a window or a clock (facing north at a sink looks out of the window over it). Nothing makes money; the tea is the one thing that gives anything back and it is the size of the ash. `hint.js` names each in the HUD.
+
+**The two are two houses.** The cabin is three rooms and a hall (bedroom, sitting room with a hearth, a kitchen that is used, a flagstone hall with coats); the house by the water is a sleeping room off one long room that runs from the hearth to the door, with the kitchen in the corner and the table by the window. Neither is the other with the furniture moved.
+
 ## The facade
 
 Every building was a flat rectangle of roof seen from directly above with a
@@ -972,6 +988,10 @@ that lights and there is no second table saying where they are. The rate went
 from two-in-five per *tile* to three-in-five per *column*: two courses of the
 old roll came out as five scattered openings on a six-tile house and **none at
 all** on the fjord's, and every building in the valley now has at least one.
+
+### Not every house is the same house
+
+Eleven buildings in the valley were two: log under turf, or red board under tile. `facades.js` authors each one by the square its top-left corner stands on (`FACADES`): a wall (log, falu red, ochre, white, blue, green, tarred log, silvered log), a roof (turf, grey tile, red tile, slate, shingle), a chimney (stone, brick, render, or none), a door (plank, red, green, blue, dark), shutters, a flower box under each window, a lantern, and one of three windows (`cross`, `plain`, `six`). `building.js` finds which house a tile belongs to by a flood fill of its own tiles in `prepare()` and hands every tile that house's `F`; `facade_parts.js` draws the window, the shutters, the box, the door and the lantern in building space, so a window that spans the seam between two courses is still drawn in two pieces that agree. A building the table does not name wears what its map always wore. Every colour is a step of a table in `palette_marks.js` (`WALL_*`, `ROOF_*`, `EAVE_*`, `TRIM_*`, `DOOR_*`, `SHUTTER_*`), so `palette_check.js` reads what the art draws: the pale walls get a *softer* eave and plinth than the dark ones, because a shadow may go no further than `SHADOW_MAX` below its surface. The street in the town is falu red with green shutters, ochre under red tile with a brick stack and flowers, a whitewashed house under slate, a blue one with red shutters, a pale green one under shingle, and the old storehouse in silver log; the farm is dark log under turf; the house you build by the water is whitewashed, with a blue door and shutters.
 
 ### Cost
 

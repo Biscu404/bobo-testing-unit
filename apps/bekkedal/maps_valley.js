@@ -186,24 +186,33 @@ export const VALLEY = {
      through a two-tile doorway each, and nothing else is a door: a partition
      is a wall (`H`), and a wall with nothing but floor either side of it has
      no window (see tileDetail). The two houses are still told apart by what
-     BEK_DECOR puts in them, not by their glyphs. */
+     BEK_DECOR puts in them, not by their glyphs.
+
+     THE ROOMS ARE FURNISHED NOW (rooms.js says what each is made of, BEK_DECOR what stands in it). A solid glyph is the *footprint*
+     of a piece, and the piece is drawn over it as a prop (decor_home*.js): `b` a bed, `u` a wardrobe, bookcase, dresser, a unit of
+     the kitchen run, `c` a nightstand, trunk, plant or lamp, `J` a chair, armchair, sofa or bench, `n` a table, `z` the rug, `v` the
+     hearth. `world_check.js` fails on a solid glyph in a made room that no piece covers, and on a piece with no glyph under it.
+
+     The two houses are different houses, not one plan twice. The cabin is three rooms and a hall: a bedroom, a sitting room with a
+     hearth, a kitchen that is used, and a flagstone hall with the coats. The house by the water is a sleeping room off one long room
+     that runs from the hearth to the door, with the kitchen in the corner and the table by the window. */
   farmhouse: {
     title: { no: 'HYTTA', en: 'THE CABIN' },
     inside: true,
     rows: [
       '                        ',
       ' HHHHHHHHHHHHHHHHHHHHHH ',
-      ' HbiiiiiHiiiiiiHiiivvuH ',
-      ' HiiiiiiHiiiiiiHiiiciiH ',
-      ' HiiiiiiHiiiiiiHiiiiiiH ',
-      ' HiiiiiiizzzzzziiiiiiiH ',
-      ' HiiiiiiizznnzziiiiiiiH ',
-      ' HiiiiiiHzzzzzzHiiiiiiH ',
-      ' HiiiiiiHiiiiiiHiiiiiiH ',
+      ' HucccccHucvvcuHuuuuuuH ',
+      ' HiibbiiHiiiiiiHiiiiiiH ',
+      ' HiiiiiiHJzzzzJHiiJJiiH ',
+      ' HiizzzziiznnziiiinniiH ',
+      ' HiizzzziizzzziiiiJJiiH ',
+      ' HJiiiiiHiJJJiiHiiiiiiH ',
+      ' HcciiuuHciiiicHiiiiicH ',
       ' HHHHHHHHiiiiiiHHHHHHHH ',
-      ' HiiiiiiiiiiiiiiiiiiiiH ',
-      ' HiiiiiiiiiiiiiiiiiiiiH ',
-      ' HiiiiiiiiiiiiiiiiiiiiH ',
+      ' HciiiiiiiiiiiiiiiiiicH ',
+      ' HizzzzzzzzzzzzzzzzzziH ',
+      ' HiiiiiiJiiiiiJiiiiiiiH ',
       ' HHHHHHHHHHDHHHHHHHHHHH ',
       '                        '
     ],
@@ -215,17 +224,17 @@ export const VALLEY = {
     rows: [
       '                        ',
       ' HHHHHHHHHHHHHHHHHHHHHH ',
-      ' HbiiiiiHiiiiiiHiiivvuH ',
-      ' HiiiiiiHiiiiiiHiiiciiH ',
-      ' HiiiiiiHiiiiiiHiiiiiiH ',
-      ' HiiiiiiizzzzzziiiiiiiH ',
-      ' HiiiiiiizznnzziiiiiiiH ',
-      ' HiiiiiiHzzzzzzHiiiiiiH ',
-      ' HiiiiiiHiiiiiiHiiiiiiH ',
-      ' HHHHHHHHiiiiiiHHHHHHHH ',
+      ' HibccuuHcuvvuciuuuuuuH ',
+      ' HibiiiiHizzzziiiiiiiiH ',
+      ' HiiiiiiHiznnziiiJJiiiH ',
+      ' HuizzzziizzzzJiinninnH ',
+      ' HiizzzziiiiiiiiiJJiJiH ',
+      ' HJiiiiiHiJJJiiiiiiiiiH ',
+      ' HciiiicHciiiiiiiiiiicH ',
+      ' HHHHHHHHiiiiiiiiiiiiiH ',
+      ' HciiiiiiiiiiiiiciiiicH ',
       ' HiiiiiiiiiiiiiiiiiiiiH ',
-      ' HiiiiiiiiiiiiiiiiiiiiH ',
-      ' HiiiiiiiiiiiiiiiiiiiiH ',
+      ' HiiJiiJiiiiiiiiiiiiciH ',
       ' HHHHHHHHHHDHHHHHHHHHHH ',
       '                        '
     ],

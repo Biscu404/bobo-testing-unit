@@ -25,6 +25,7 @@ import { createShore } from './shore.js';
 import { createWater } from './water.js';
 import { createRock, oreKind } from './rock.js';
 import { createInterior } from './interior.js';
+import { zoneAt, zoned as zonedMap, paperOf, windowAt as roomWindowAt } from './rooms.js';
 import { createBuilding } from './building.js';
 import { createForest } from './forest.js';
 import { createWear } from './wear.js';
@@ -55,6 +56,7 @@ import { MARKS, SHADOWS, FEATURES } from './palette_marks.js';
 import { lightAt, shelter, keyOf, cssFor, DAY_CSS, mineLight } from './light.js';
 import { lampState, createLamp, bandStates } from './lamp.js';
 import { hintFor, holdingLine } from './hint.js';
+import { FURN, furnitureAct } from './furniture_act.js';
 import { lifeFor } from './life.js';
 import { ACT_TOOL, CALLS, LOOKS } from './life_data.js';
 import { noteGift, lookNow, wearsKnit } from './looks.js';
@@ -1377,6 +1379,12 @@ export default {
         if (e) { if (e.need && !gateOK(e.need)) { say(T(e.why)); deny(); return true; } S.map = e.to; S.px = e.tx; S.py = e.ty; markDisc(e.to); say(T(BEK_MAPS[e.to].title)); return true; }
         return false;
       }
+      /* the wall item over the square in front of you, if you are facing north at a piece of furniture that stands against it */
+      function furnAbove(f) {
+        if (S.dir !== 1 || !zonedMap(S.map)) return null;
+        const prop = propMap.get(f.x + ',' + (f.y - 1)), win = !!roomWindowAt(S.map, f.x, f.y - 1);
+        return (prop && FURN[prop.kind]) || win ? { prop: prop, win: win && !(prop && FURN[prop.kind]) } : null;
+      }
       function act() {
         if (swing) return;                       /* one thing at a time */
         /* the boat, from the end of the pier or the dock */
@@ -1393,6 +1401,12 @@ export default {
           const anim = S.animals.filter(a => a.x === f.x && a.y === f.y)[0];
           if (anim) return tendAnimal(anim);
         }
+        /* the things in a house that answer when faced (furniture_act.js): a prop on the square in front, or a window in the wall */
+        { const fp = propMap.get(f.x + ',' + f.y), fw = roomWindowAt(S.map, f.x, f.y), env = { S: S, say: say, sfx: sfx, TX: TX, light: () => lighting().dark };
+          if ((fp || fw) && furnitureAct(fp, env, !!fw)) return;
+          /* facing the piece under a window or a clock (the sink, a nightstand, a counter): what hangs on the wall above it answers */
+          const hi = furnAbove(f);
+          if (hi && furnitureAct(hi.prop, env, hi.win)) return; }
         if (t === 'b') { mode = 'sleep'; return; }
         /* a bench is not a task. You sit, the afternoon moves on a little,
            and you get up less tired than you sat down. */
@@ -2948,6 +2962,10 @@ export default {
         },
         tileAt: (x, y) => tileAt(S.map, x, y),
         salt: () => mapSalt(S.map),
+        zone: (x, y) => zoneAt(S.map, x, y),
+        win: (x, y) => roomWindowAt(S.map, x, y),
+        paper: () => paperOf(S.map),
+        map: () => S.map,
         cols: COLS, rows: ROWS
       });
       /* Every building in the valley, as one elevation sampled per tile. The
@@ -3035,7 +3053,7 @@ export default {
           ? mask4((nx, ny) => { const p = propMap.get(nx + ',' + ny); return !!p && p.kind === d.kind; }, x, y)
           : (d.placed && BEK_PLACE_ROT[d.kind]) ? (d.rot || 0)
           : hLowV(x, y, mapSalt(S.map) + 4090, 1, 3);
-        native(() => fn(propArt, x * BEK_T, y * BEK_T, v, t));
+        native(() => fn(propArt, x * BEK_T, y * BEK_T, v, t, d));
       }
 
       /* The ring of trees around every outdoor map, as one continuous strip
@@ -3091,6 +3109,14 @@ export default {
         });
       }
 
+      /* just the fire, over the stone `hearthstone` (decor_home2.js) draws: two flames to a tile pair, one to each square, a little out of step */
+      function hearthFlame(x, y, t) {
+        const px = x * BEK_T_SRC, py = y * BEK_T_SRC, fl = Math.floor(t * 6 + x) % 3;
+        g.fillStyle = C(HEARTH[0]); g.fillRect(px + 5, py + 12, 10, 4);
+        g.fillStyle = C(HEARTH[1]); g.fillRect(px + 6, py + 9 - fl, 8, 6 + fl);
+        g.fillStyle = C(HEARTH[2]); g.fillRect(px + 8, py + 7 - fl, 4, 5);
+        g.fillStyle = C(HEARTH[3]); g.fillRect(px + 9, py + 5 - fl, 2, 2);
+      }
       function hearthTile(x, y, t) {
         const px = x * BEK_T_SRC, py = y * BEK_T_SRC, fl = Math.floor(t * 6) % 3;
         g.fillStyle = C(STO[3]); g.fillRect(px + 2, py + 2, 16, 16);
@@ -3262,6 +3288,7 @@ export default {
            drawing of the same wall and stays in interior.js. */
         if (c === 'H' || c === 'R' || c === 'D') {
           if (!ins) native(() => building.tile(c, x, y));
+          else if (zonedMap(S.map)) native(() => (c === 'D' ? interior.doorZ(x, y) : interior.wallZ(x, y)));
           else if (c === 'D') native(() => interior.door(x, y));
           else if (c === 'H') {
             /* a window looks out: only a wall with the dead margin behind it has one. A partition has
@@ -3282,7 +3309,7 @@ export default {
            draw at native density; this is the last of the glyph ladder that
            still had them. */
         if (c === 'z') { native(() => interior.rug(x, y)); }
-        else if ('nuJcb'.indexOf(c) >= 0) native(() => furniture(propArt, c, x, y));
+        else if ('nuJcb'.indexOf(c) >= 0 && !zonedMap(S.map)) native(() => furniture(propArt, c, x, y));   /* a made room draws its furniture as props (decor_home.js) */
         tileProp(c, x, y);
         if (rim) edgeMark(px, py, x, y);
       }
@@ -3292,6 +3319,12 @@ export default {
         if (c === '~') { native(() => shore.live(x, y, t, edgeVar(S.map, x, y))); if (rim_(x, y)) edgeMark(x * BEK_T_SRC, y * BEK_T_SRC, x, y); return; }
         if (c === 'O' || c === 'Q') { native(() => rock.live(c, x, y, t)); return; }
         if (c === 'R') { native(() => building.smoke(x, y, t)); return; }
+        if (c === 'v' && zonedMap(S.map)) {                                  /* a made room's hearth: its stone is a prop, its fire is live over it */
+          const hp = propMap.get(x + ',' + y);
+          if (hp) drawProp(hp, x, y, t);
+          hearthFlame(x, y, t);
+          return;
+        }
         if (c === 'v') hearthTile(x, y, t);                                  /* the hearth, alight */
         /* A prop standing on a tile that is itself redrawn every frame has to
            be redrawn with it, or the tile paints over it — which is how the
@@ -3493,6 +3526,11 @@ export default {
          Worked out once a frame from the square in front of you and shown in the bottom band whenever nothing else is
          being said there. `act()` stays the one place that does anything: this only asks the same questions. */
       let hudHint = null;
+      /* what SPACE does at a piece of furniture or a wall item (furniture_act.js's FURN), or at the one over the piece in front of you */
+      function furnHint(f) {
+        const at = (x, y) => roomWindowAt(S.map, x, y) ? FURN.window.hint : ((propMap.get(x + ',' + y) || {}).kind in FURN ? FURN[propMap.get(x + ',' + y).kind].hint : null);
+        return at(f.x, f.y) || (S.dir === 1 && zonedMap(S.map) ? at(f.x, f.y - 1) : null);
+      }
       function interactHint(npcs) {
         if (mode || swing || fish || dlg || S.ending || scene) return null;
         const f = facing(), t = tileAt(S.map, f.x, f.y);
@@ -3509,6 +3547,7 @@ export default {
           canGive: !S.flag.gifted && Object.keys(S.bag).some(id => S.bag[id] > 0 && !BEK_ITEMS[id].place),
           animal: S.map === 'farm' && S.animals.some(a => a.x === f.x && a.y === f.y),
           placed: !!S.placed[pk], ready: t === 'p' && (S.picked[pk] || 0) <= S.day,
+          furn: furnHint(f),
           soil: cell ? { till: cell.till, seed: cell.seed, ready: cell.ready, wet: cell.wet } : null,
           hasSeed: !!curSeed(), door: doorOK
         });
@@ -3598,8 +3637,8 @@ export default {
           const c = tileAt(S.map, x, y);
           if (c === 'v') { at(x, y, 0.1, 2.7 * BEK_T, litPeak(16, dark), 1); continue; }
           const dp = propMap.get(x + ',' + y);
-          if (dp && PROP_LIGHTS[dp.kind]) {
-            const L2 = PROP_LIGHTS[dp.kind];
+          if (dp && (PROP_LIGHTS[dp.kind + ':' + dp.w] || PROP_LIGHTS[dp.kind])) {
+            const L2 = PROP_LIGHTS[dp.kind + ':' + dp.w] || PROP_LIGHTS[dp.kind];
             at(x, y, 0.5, L2.r * BEK_T, litPeak(L2.peak, dark));
           }
           /* A window that is drawn is a window that lights, so outdoors this
@@ -3615,6 +3654,7 @@ export default {
             continue;
           }
           if (c !== 'H') continue;
+          if (zonedMap(S.map)) { if (roomWindowAt(S.map, x, y)) at(x, y, 0.9, 1.8 * BEK_T, litPeak(12, dark)); continue; }   /* a made room says where its windows are */
           if (objVar('H', S.map, x, y).win >= 2) continue;            /* no window in this course */
           if (tileAt(S.map, x, y + 1) === ' ') continue;
           at(x, y, 0.9, 1.5 * BEK_T, litPeak(11, dark));

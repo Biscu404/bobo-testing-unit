@@ -85,7 +85,30 @@ export const MARKS = {
      cut out of. Full doctrine: **The faces**, .claude/rules/bekkedal-art.md. */
   PORT_SKIN:     { on: SAN[1],  cols: [SAN[0], SAN[2]] },
   PORT_SKIN_TAN: { on: SAN[0],  cols: [TIM[3], SAN[1]] },
-  PORT_BACK:     { on: ATMO[1], cols: [ATMO[0], ATMO[2]] }
+  PORT_BACK:     { on: ATMO[1], cols: [ATMO[0], ATMO[2]] },
+  /* ---- the other ways to dress a house (facades.js) -----------------------
+     Every building used to be one of two things, log under turf or red board
+     under tile, so the town was one house repeated. These are the rest: a
+     painted board in ochre, white, blue or green, the grey of an old
+     storehouse, the black of tarred log; and the roofs to go over them. Each
+     is a wall (or a roof) as one material lit differently up its height, so
+     every step is the base's own ramp neighbour, as WALL_LOG and WALL_BOARD
+     are. The stone a painted wall stands on is a mark where the wall is dark
+     enough for stone to be inside the band, and a shadow where it is not. */
+  WALL_OCHRE:   { on: SAN[1], cols: [SAN[2], SAN[1], SAN[0]] },
+  WALL_WHITE:   { on: SNO[0], cols: [SNO[1], SNO[0], STO[5]] },
+  WALL_BLUE:    { on: WAT[2], cols: [WAT[3], WAT[2], WAT[1]] },
+  WALL_GREEN:   { on: CON[2], cols: [CON[3], CON[2], CON[1]] },
+  WALL_TAR:     { on: TIM[0], cols: [TIM[1], TIM[0], ATMO[0]] },
+  WALL_SILVER:  { on: STO[2], cols: [STO[3], STO[2], STO[1]] },
+  PLINTH_TAR:   { on: TIM[0], cols: [STO[0], STO[1]] },
+  PLINTH_BLUE:  { on: WAT[2], cols: [STO[1], STO[2]] },
+  PLINTH_GREEN: { on: CON[2], cols: [STO[1], STO[2]] },
+  ROOF_RED:     { on: WAR[2], cols: [WAR[3], WAR[2], WAR[1]] },
+  ROOF_SLATE:   { on: STO[1], cols: [STO[2], STO[1], STO[0]] },
+  ROOF_SHINGLE: { on: TIM[2], cols: [TIM[3], TIM[2], TIM[1]] },
+  CHIMNEY_BRICK:{ on: WAR[1], cols: [WAR[2], WAR[1]] },
+  CHIMNEY_WHITE:{ on: SNO[0], cols: [SNO[1], SNO[0]] }
 };
 
 export const SHADOWS = {
@@ -117,7 +140,22 @@ export const SHADOWS = {
   /* Under the jaw: the one part of a face that is genuinely unlit rather than
      turned away, and without it a bust is a mask sitting on a shirt. */
   PORT_JAW:     { on: SAN[1],  cols: [SAN[0]] },
-  PORT_JAW_TAN: { on: SAN[0],  cols: [TIM[3]] }
+  PORT_JAW_TAN: { on: SAN[0],  cols: [TIM[3]] },
+  /* eaves and plinths of the painted houses (facades.js). A shadow may go no
+     further than SHADOW_MAX below its surface, so the pale walls get a softer
+     overhang than the dark ones: a bluish grey under cream, not black. */
+  EAVE_OCHRE:  { on: SAN[1], cols: [STO[3], SAN[0]] },
+  EAVE_WHITE:  { on: SNO[0], cols: [STO[4], STO[5]] },
+  EAVE_BLUE:   { on: WAT[2], cols: [ATMO[0], WAT[1]] },
+  EAVE_GREEN:  { on: CON[2], cols: [ATMO[0], CON[1]] },
+  EAVE_TAR:    { on: TIM[0], cols: [ATMO[0], ATMO[0]] },
+  EAVE_SILVER: { on: STO[2], cols: [ATMO[0], STO[0]] },
+  PLINTH_DARK: { on: STO[2], cols: [STO[0], STO[1]] },
+  PLINTH_OCHRE:{ on: SAN[1], cols: [STO[3], STO[4]] },
+  PLINTH_WHITE:{ on: SNO[0], cols: [STO[4], STO[5]] },
+  EAVE_RED:    { on: WAR[2], cols: [WAR[0], TIM[0]] },
+  EAVE_SLATE:  { on: STO[1], cols: [STO[0], ATMO[0]] },
+  EAVE_SHINGLE:{ on: TIM[2], cols: [TIM[0], ATMO[0]] }
 };
 
 export const FEATURES = {
@@ -183,5 +221,30 @@ export const FEATURES = {
   PORT_EYE:      { on: SAN[1], cols: [SNO[1], WAT[2], TIM[1]] },
   PORT_EYE_TAN:  { on: SAN[0], cols: [SNO[1], WAT[2], TIM[1]] },
   PORT_LINE:     { on: SAN[1], cols: [TIM[0], SOI[0]] },
-  PORT_LINE_TAN: { on: SAN[0], cols: [TIM[0], SOI[0]] }
+  PORT_LINE_TAN: { on: SAN[0], cols: [TIM[0], SOI[0]] },
+  /* ---- trim, doors, shutters and ridges of the painted houses (facades.js) --
+     All thin, all the marks the eye lands on, all outside the band of the wall
+     they are on: white on ochre, blue and green; dark on white; pale on grey. */
+  TRIM_OCHRE:  { on: SAN[1], cols: [SNO[1], SNO[0]] },
+  TRIM_WHITE:  { on: SNO[0], cols: [STO[2], STO[1]] },
+  TRIM_BLUE:   { on: WAT[2], cols: [SNO[1], SNO[0]] },
+  TRIM_GREEN:  { on: CON[2], cols: [SAN[2], SNO[1]] },
+  TRIM_TAR:    { on: TIM[0], cols: [STO[3], STO[4]] },
+  TRIM_SILVER: { on: STO[2], cols: [SAN[1], SAN[2]] },
+  /* glass seen from outside, in a frame that is pale or dark: the dark pane is what breaks the band */
+  WINDOW_GLASS:{ on: SAN[1], cols: [ATMO[1], WAT[2]] },
+  DOOR_RED:    { on: SAN[1], cols: [WAR[1], WAR[2], WAR[0]] },
+  DOOR_GREEN:  { on: SNO[0], cols: [CON[2], CON[3], CON[1]] },
+  DOOR_BLUE:   { on: SNO[0], cols: [WAT[2], WAT[3], WAT[1]] },
+  DOOR_DARK:   { on: SAN[1], cols: [STO[1], STO[2], STO[0]] },
+  SHUTTER_GREEN:{ on: SAN[1], cols: [CON[2], CON[3]] },
+  SHUTTER_BLUE: { on: SNO[0], cols: [WAT[2], WAT[3]] },
+  SHUTTER_RED:  { on: SNO[0], cols: [WAR[1], WAR[2]] },
+  SHUTTER_DARK: { on: SAN[1], cols: [STO[1], STO[2]] },
+  RIDGE_RED:    { on: WAR[2], cols: [SAN[1], SAN[2]] },
+  RIDGE_SLATE:  { on: STO[1], cols: [STO[4], STO[3]] },
+  RIDGE_SHINGLE:{ on: TIM[2], cols: [TIM[4], SAN[1]] },
+  /* a lantern by the door, and the flower box under a window */
+  LANTERN:      { on: TIM[1], cols: [WAR[3], WAR[4]] },
+  BOX_SOIL:     { on: SAN[1], cols: [TIM[1], TIM[2]] }
 };

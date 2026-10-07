@@ -40,10 +40,27 @@ export function showMenu(el, x, y, items) {
   });
   if (window.Snd && window.Snd.menu) window.Snd.menu();
   el.style.display = 'block';
+  placeMenu(el, x, y);
+}
+
+/* Put a menu where the pointer is, and keep every item of it on the glass. (x, y) are viewport coordinates; the menu is
+   positioned inside the shell, which is not at the corner of the viewport, and the viewport is not the picture either:
+   below the glass is the chin of the monitor, so a menu clamped to the window's own height slid under the case. The
+   box is moved up (and left) just far enough to fit inside the screen, and a menu taller than the screen scrolls. */
+export function placeMenu(el, x, y) {
+  const pad = 4, host = el.offsetParent, hr = host ? host.getBoundingClientRect() : { left: 0, top: 0, width: 1 };
+  const k = host && host.offsetWidth ? hr.width / host.offsetWidth : 1;         /* the picture's own scale, if it has one */
+  const sc = document.getElementById('screen');
+  const sr = sc ? sc.getBoundingClientRect() : { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
+  el.style.maxHeight = Math.max(80, (sr.bottom - sr.top - pad * 2) / k) + 'px';
+  el.style.overflowY = 'auto';
   el.style.left = '0px';
   el.style.top = '0px';
-  el.style.left = Math.max(0, Math.min(x, window.innerWidth - el.offsetWidth - 4)) + 'px';
-  el.style.top = Math.max(0, Math.min(y, window.innerHeight - el.offsetHeight - 4)) + 'px';
+  const w = el.offsetWidth * k, h = el.offsetHeight * k;
+  const cx = Math.max(sr.left + pad, Math.min(x, sr.right - w - pad));
+  const cy = Math.max(sr.top + pad, Math.min(y, sr.bottom - h - pad));
+  el.style.left = ((cx - hr.left) / k) + 'px';
+  el.style.top = ((cy - hr.top) / k) + 'px';
 }
 
 export function hideMenus() {

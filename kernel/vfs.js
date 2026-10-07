@@ -279,6 +279,26 @@ async function names(dir) {
   });
 }
 
+/* is there anything a person would see under this folder? The first visible key ends the walk: the bin's icon only
+   needs to know full or empty, which used to be a whole listing of it */
+async function hasAny(dir) {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const store = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME);
+    const prefix = dir.endsWith('/') ? dir : dir + '/';
+    const c = store.openKeyCursor(IDBKeyRange.bound(prefix, prefix + '\uFFFF', true, false));
+    c.onsuccess = () => {
+      const cur = c.result;
+      if (!cur) { resolve(false); return; }
+      const rest = cur.key.substring(prefix.length), i = rest.indexOf('/');
+      const name = i < 0 ? rest : rest.slice(0, i);
+      if (name.charAt(0) !== '.') { resolve(true); return; }
+      cur.continue(prefix + name + '0');
+    };
+    c.onerror = () => reject(c.error);
+  });
+}
+
 /* removeQuiet for a whole list, in one transaction */
 async function removeManyQuiet(paths) {
   if (!paths.length) return;
@@ -313,5 +333,5 @@ async function readMany(paths) {
   });
 }
 
-export const fs = { read, write, list, remove, stat, entries, putMany, removeQuiet, names, removeManyQuiet, readMany };
+export const fs = { read, write, list, remove, stat, entries, putMany, removeQuiet, names, removeManyQuiet, readMany, hasAny };
 export { initVFS };

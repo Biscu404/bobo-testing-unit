@@ -58,7 +58,10 @@ export function groundOf(mapId, c) {
     /* A shore tile begins as deep water and ends as sand and bank. What you
        stand on there is the bank, so that is what it reads as. */
     case '~': return SAN[1];
-    case 'z': return WAR[2];                  /* a rag rug, walked on                   */
+    /* A rug, walked on. The rugs of a made room are a dark field (red, blue or green) in a darker border, so the one number this table can
+       give for all of them is a deep step of the emission ramp: WAR[2] was a bright orange none of them is, and put a chair beside a rug
+       within a hair of the same value. */
+    case 'z': return WAR[1];
     default:  return defaultGround(mapId);
   }
 }

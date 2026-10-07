@@ -75,8 +75,8 @@ export function createRoof(A, bands) {
      outlined the way `forest.js` inks a fir: a grey stack on a green turf roof
      is two colours of one luminance and would otherwise be invisible. Value
      first, then colour, which is what the ore taught. */
-  function chimney(px, py) {
-    const cx = px + ((BEK_T - CH_W) >> 1), K = MARKS.CHIMNEY.cols;
+  function chimney(px, py, V) {
+    const cx = px + ((BEK_T - CH_W) >> 1), K = [V.lit, V.body];
     const INK = SHADOWS.CHIMNEY_INK.cols, CAP = FEATURES.CHIMNEY_CAP.cols;
     A.fill(INK[0], cx - 1, py - CH_UP - 1, CH_W + 2, CH_UP + 13);
     A.fill(K[1], cx, py - CH_UP, CH_W, CH_UP + 11);
@@ -93,7 +93,7 @@ export function createRoof(A, bands) {
      surface, so a turf roof gets the four scattered tufts and dry patches
      those channels have always described — they are the one part of the old
      roof art worth keeping, and without them a torvtak is a green gradient. */
-  function tile(px, py, u0, rh, M, gW, gE, hasChim, o, spot) {
+  function tile(px, py, u0, rh, M, gW, gE, chimV, o, spot) {
     bands(px, py, u0, rh, M, roofBand);
     if (M.dry) {
       const T = BEK_T, top = Math.max(0, 4 - u0), bot = Math.min(T, rh - 8 - u0);
@@ -107,7 +107,7 @@ export function createRoof(A, bands) {
     /* the verge: the barge board down the outside edge of a gable */
     if (gW) { A.fill(M.deep, px, py, 3, BEK_T); A.fill(M.ridge[0], px + 1, py, 1, BEK_T); }
     if (gE) { A.fill(M.deep, px + BEK_T - 3, py, 3, BEK_T); A.fill(M.ridge[0], px + BEK_T - 2, py, 1, BEK_T); }
-    if (hasChim) chimney(px, py);
+    if (chimV) chimney(px, py, chimV);
   }
 
   /* ---- smoke, the one thing in a building that is not in the cache ----------

@@ -34,6 +34,8 @@ node scripts/check-drunk.mjs   # the Jäger journey (pure Node): a blackout is i
 node scripts/check-style.mjs   # the style meter against five kinds of player (pure Node)
 node scripts/check-styletrack.mjs # the style meter's recording: how it opens under the delete sound, how it loops, its gains (pure Node)
 node apps/shop/lines_check.js  # Dave's crazy hover lines: the pool, the 1-in-10 rate, no repeats (pure Node); node scripts/check-farewell.mjs his farewell tiers and babble (pure Node)
+node scripts/check-petlines.mjs # the desktop elephant's words: 77 idle lines, 19 goodbyes, wakings, no repeats, all lowercase and in his voice (pure Node)
+node apps/bekkedal/rooms_check.js # Bekkedal's two houses as made rooms: zones, furniture on its footprint, repeating patterns, what answers (pure Node)
 node scripts/check-delete.mjs  # the delete reel: a beat a file, 70 ms apart, a tune in C pentatonic that lands on the high C (pure Node)
 node scripts/check-desk.mjs    # where desktop icons go: the grid, the occupancy map, a full desk (pure Node); npm run check:bulk pastes and deletes two hundred files
 node apps/aftere/aftere_check.js # AfterEgypt: a bot flies all five ways across, nothing is asked that the ship cannot fly, the pay climbs (pure Node)
@@ -80,10 +82,10 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   a fill-forwards animation: an animated value beats an inline style, which is what silently killed this effect before.
 - **The SFX knob sets the bus when it turns.** `Snd.sfx.gain` is set when the speaker wakes (`snd.js`) *and* by the SFX pot (`hardware.js`); it used to be set
   only at wake, so a machine that woke with SFX at its default 0 stayed silent however far the knob was turned, until it was relaunched.
-- **The chin.** LENS is a disabled knob: every machine runs at SOFT (`LENS_LOCK` in `hardware.js`, whatever an old save says).
-  DEGAUSS is not a button any more but permanent: purity patches painted into the glass canvas with the scanlines
-  (`kernel/degauss.js`, once per resize, so nothing animated sits over the picture); the terminal's `DEGAUSS` still fires the
-  coil (`#degauss.pulse`, a one-shot flash).
+- **The chin.** There is no LENS: the glass is flat (square tube corners, straight scanlines; `CRT.lens` is deleted from any old save).
+  DGAUSS is a switch (`CRT.degauss`, default on, saved): while it is on, purity patches are painted into the glass canvas with the
+  scanlines (`kernel/degauss.js`, once per resize and per switch, so nothing animated sits over the picture); switching it on and the
+  terminal's `DEGAUSS` fire the coil (`#degauss.pulse`, a one-shot flash).
 
 - **Durable storage.** `index.html` loads `kernel/durable.js`, which mirrors every `localStorage` write into IndexedDB
   (`templeos_ls`) and restores it before `kernel/boot.js` loads. Chromium's own localStorage flush can lag by more than
@@ -105,17 +107,21 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   selection, positions come from one occupancy map (`kernel/desk_grid.js`, pure), icons are CSS sprite classes rather than an `<img>`
   each (`icons_dom.js`). `check-desk.mjs` and `check-bulk.mjs` hold the numbers; the old code took twenty seconds for each step.
 - **Deleting is a reel, not a thump.** `deletePaths` (`fileops.js`) hits the style meter once for the whole pile
-  (`hitPile`), then puts the files in the bin a beat at a time (`gatherTrash` reads the pile once, `commitTrash` moves a
-  slice): `kernel/delete_reel.js` (pure; `node scripts/check-delete.mjs`) plans it, **70 ms between beats, one file a beat
-  until that would pass 3.4 s, then several**, and each beat is a note of a four-phrase tune in C pentatonic (C D E G A: inside
-  C major and D minor, so it never fights the style meter's song) that always lands on the high C, with a chord on the last beat;
-  a lone file is a two-note "dun-dun" (`Snd.reelNote/reelEnd/reelOne` in `style_sfx.js`). Piles queue, Ctrl+Z waits for the one
-  running, and the pile is one undo.
+  (`hitPile`), moves the whole pile into the bin in **one transaction** (`gatherTrash` reads it once, `commitTrash(items, true)` writes it and
+  announces nothing), and *then* plays the show: `kernel/delete_reel.js` (pure; `node scripts/check-delete.mjs`) plans it, **70 ms between beats, one
+  file a beat until that would pass 3.4 s, then several**, and each beat is a note of a four-phrase tune in C pentatonic (C D E G A: inside
+  C major and D minor, so it never fights the style meter's song) that always lands on the high C, with a chord on the last beat, and a
+  `vfs-reel` event that makes the desktop and any folder window take just those icons off the screen (an element removed, nothing listed or laid out
+  again). One `vfs-changed` at the end makes every view true. A lone file is a two-note "dun-dun" (`Snd.reelNote/reelEnd/reelOne` in `style_sfx.js`).
+  It used to move the files a beat at a time (forty-eight transactions, forty-eight listings of the desk, forty-eight redraws), which is where the lag
+  of a mass delete came from. Piles queue, Ctrl+Z waits for the one running, and the pile is one undo. The desktop's own redraw (`buildIcons`) now only
+  appends what is new and removes what is gone, instead of laying all two hundred icons down again on every paste.
 - **Dragging files** is `kernel/dnd.js` (pointer events, one mechanism for every source). A drop zone is any element with
   `data-drop`: a folder path, `::` (the desktop) or `@trash`. Desktop icons, folder windows and the bin all use it; Ctrl at the
   drop copies, Esc cancels. The shared commands (copy/cut/paste/duplicate/rename/delete/undo/properties/keys) are
   `kernel/fileops.js`, the menus `kernel/filemenus.js`; `Active` in `fileops.js` says which list of files owns Delete/F2/Ctrl+C:
   the desktop or one folder window (set `win._fileEnv`), and none for any other window. The menu bar is `kernel/menubar.js`.
+- **Menus stay on the glass.** `kernel/menus.js`'s `placeMenu` puts a pop-up where the pointer is and keeps every item of it inside `#screen`, the picture, not the window: the menu is positioned inside the shell (which is not at the corner of the viewport) and below the glass is the chin of the monitor, so a menu clamped to the page's own height slid under the case. It is moved up and left just far enough to fit, and one taller than the screen scrolls. Every menu (icons, the elephant, the File menu, a folder) goes through it.
 - **Right-click.** `kernel/ctxguard.js` suppresses the browser menu everywhere and gives text fields a cut/copy/paste menu; the
   desktop menu opens only on the bare desktop (never from inside a window); `wm.js` keeps the right mouse button away from any
   app that does not declare `rightClick: true` (Sweeper does). The `contextmenu` event itself is never blocked, so an app can
@@ -230,7 +236,11 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   sun, the hour), hops, can be picked up and dropped, and every few minutes walks to one of your icons and pushes it a cell or two
   (`petIcons()` / `petMoveIcon()` in `desktop.js`: the move slides and is remembered like any other; his menu's PUT THE LAST ICON BACK undoes it). One 80 x 60 canvas
   redrawn twelve times a second and a transform. He wears what the wardrobe says (`Pet.setWear`), and the big elephant's window shows only the place
-  and a note while he is outside.
+  and a note while he is outside. **His words are `kernel/pet_lines.js`** (pure; `node scripts/check-petlines.mjs`): the same voice as the elephant in his window — lowercase, on
+  your side, pal and friend and kiddo, drink some water, i believe in you — turned on the desk (77 idle lines, some that read the icons, the sun, the windows, the hour), and
+  **before he lies down he says goodbye** (`goodbye()` in `pet.js`: twelve for the day, seven for the late hours, a yawn, 4.4 s, then he sleeps; LIE DOWN in his menu does the same),
+  with a few ways of waking. His bubble grows upward from his head (it used to grow down over it). **Called in with no window open** (GO BACK INSIDE, or CALL HIM IN from nowhere),
+  he opens the elephant's window himself, waits for it, and walks in.
 
 ### Writing music (for Claude, and anyone else)
 Music is data, not oscillator code. A song is `{ v, title, bpm, key, scale, bars, beats, swing, tracks: [{ id, name, inst, vol, pan,
@@ -420,6 +430,7 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   candidate tile — the same function `node apps/bekkedal/layout_check.js`
   exercises directly, with synthetic corridors where the trap is
   constructed rather than merely hoped for, and a sweep of every real map.
+  **The houses are made, inside and out.** Inside, `rooms.js` cuts the cabin and the house by the water into zones, each with a periodic floor (plank, parquet, tile, flagstone, limewashed board) and a paper (striped, tiled, panelled, white), and the furniture is drawn whole (`decor_home.js`, `decor_home2.js`) on solid glyphs in the map: a bed with a headboard and a patchwork quilt, a wardrobe, bookcases, a sofa facing the hearth, a kitchen run with a window over the sink. Patterns *repeat* on purpose and `node apps/bekkedal/rooms_check.js` holds it. Some of it answers (`furniture_act.js`: books, a clock, a window, a plant, the cat, tea). Outside, `facades.js` gives every building its own wall, roof, chimney, door, shutters and window, so six houses on a street are six houses. See `.claude/rules/bekkedal-art.md`: **A made room**, **Not every house is the same house**.
   **Palette:** this app is the second explicit, user-requested exception to the machine's base 16-colour rule above — see `apps/bekkedal/CLAUDE.md` and `.claude/rules/bekkedal-art.md` for the full doctrine.
 - `magen`: `apps/magen/index.js` - Magen, an idle game of mitzvot around a clicked star. **Its music is six tunes for the studio's real
   instruments** (`apps/magen/score.js`: FREYGISH, NIGUN, HORA in 3, MI SHEBERACH, FREYLEKHS, and Shabbat's ZMIROT; all on D so any can follow any
@@ -467,6 +478,7 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   (half that while away, for at most an hour). `model.js` is the whole economy as plain data; `world.js` loads and migrates a save; `scene.js`, `art.js`, `air.js`, `bench.js` are the picture, the plants, the wind and the panel.
   `garden_check.js` runs hours of it as a player who checks in every few minutes: fully equipped, 99,999 SUN is about a quarter of an hour; from nothing, two and a half hours;
   a night away with everything bought brings in about half of it.
+- Garden's line under the picture (`.gtip`) is **one box of one fixed height** (a header line and two of text, clamped): a box that grew with the text moved the whole picture up and down as the pointer crossed the plants. What helps a plant (one pip a helper) and that it is thirsty (a sand-coloured hollow pip) sit on a little plate at the foot of its pot, not in the air over its leaves.
 - `shop`: `apps/shop/index.js` - CRAZY DAVE'S, eleven shelves (see **Dave's shop is a set of shelves**). `thumbs.js` draws every card, `lines.js` is what Dave says.
   **A card has no `title` attribute**: the bubble in the window is the only place Dave describes a thing, and a native tooltip repeated it. **One hover in ten
   (`CRAZY_RATE`) Dave says one of ~100 crazy lines instead of the card's own blurb** (`makeHoverTalk(rng)`: `DAVE_CRAZY` for anywhere, `DAVE_CRAZY_CAT` per shelf,

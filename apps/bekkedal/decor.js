@@ -43,6 +43,10 @@ import { PROP_WILD } from './decor_wild.js';
    S.placed (index.js) rather than authored in BEK_DECOR. See its own header
    for the one exception to "decor never changes walkability". */
 import { PROP_PLACE } from './decor_place.js';
+/* the furniture of a made room (beds, sofas, a kitchen): two siblings, for the 300-line rule */
+import { PROP_HOME, HOME_LIGHTS, FOOT } from './decor_home.js';
+export { FOOT };
+import { PROP_HOME2 } from './decor_home2.js';
 
 /* kinds that are redrawn every frame rather than baked into the cache */
 export const LIVE = { cat: 1 };
@@ -50,10 +54,9 @@ export const LIVE = { cat: 1 };
    `peak` is out of 16 and means how much of the *daylight* picture the pool
    resolves to at its centre, not how much warm paint goes down; it was
    rescaled when local light stopped being an overlay. See lamp.js.
-   `lamppost` is the outdoor kind — the two street lamps the local-light
-   doctrine already talks about, finally placed (see BEK_DECOR.town). */
-export const LIGHTS = { candle: { r: 1.2, peak: 10 }, lamp: { r: 1.8, peak: 13 },
-                         lamppost: { r: 1.8, peak: 12 } };
+   `lamppost` is the outdoor kind (the town's two street lamps, BEK_DECOR.town). */
+export const LIGHTS = Object.assign({ candle: { r: 1.2, peak: 10 }, lamp: { r: 1.8, peak: 13 },
+                         lamppost: { r: 1.8, peak: 12 } }, HOME_LIGHTS);
 
 /* the outdoor placeable kinds that are a genuine barrier once set down — the
    one deliberate exception to "decor never changes walkability", and only
@@ -234,7 +237,7 @@ const PROP_ROOM = {
 
 /* the outdoor kinds (decor_outdoor.js) merged in, so every other caller
    still just sees one PROP table keyed by kind name */
-export const PROP = Object.assign({}, PROP_ROOM, PROP_OUTDOOR, PROP_WILD, PROP_PLACE);
+export const PROP = Object.assign({}, PROP_ROOM, PROP_OUTDOOR, PROP_WILD, PROP_PLACE, PROP_HOME, PROP_HOME2);
 
 /* ---- the furniture -------------------------------------------------------
    Moved out of `tileDetail`'s glyph ladder and redrawn at native density on

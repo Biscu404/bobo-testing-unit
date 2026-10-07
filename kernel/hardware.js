@@ -3,10 +3,10 @@ import { Snd } from "./snd.js";
 import { degauss, paintPurity } from "./degauss.js";
 export { degauss };
 export const CRT = {
-  lens: 1,
   scan: 2,
   phos: 0,
   burn: false,
+  degauss: true,
   on: false,
   mus: 0,
   sfx: 0,
@@ -24,11 +24,7 @@ window.CRT = CRT;
 export const DISP = { scan: true, band: true, vig: true };
 window.DISP = DISP;
 
-const LENS_NAME = ['FLAT', 'SOFT', 'FULL'];
-/* The LENS button is disabled: every machine runs at SOFT, the curve it shipped with, whatever an old save says. */
-const LENS_LOCK = 1;
 const PHOS_NAME = ['P1', 'P4', 'P7'];
-const LENS_BOW = [0.0, 0.08, 0.22];
 /* P1 decays in microseconds (crisp, no bloom); P7 smears for a while
    (bright pixels glow/bleed into their neighbors). */
 const PHOS_GLOW = [0, 0.45, 1];
@@ -64,7 +60,6 @@ export function initHardware() {
   applyBand();
   applyPhosphor();
   applyBurn();
-  applyLensShape();
   window.addEventListener("resize", () => { clearTimeout(window._crtT); window._crtT = setTimeout(paintGlass, 100); });
 }
 
@@ -97,10 +92,10 @@ export function applyDisplay() {
 }
 
 function labelKnobs() {
-  const g = document.getElementById('k-lens'); if(g) g.textContent = 'LENS: ' + (CRT.lens===0 ? 'FLAT' : CRT.lens===1 ? 'SOFT' : 'FULL');
   const s = document.getElementById('k-scan'); if(s) s.textContent = 'SCAN: ' + (CRT.scan===5 ? 'OFF' : CRT.scan);
   const p = document.getElementById('k-phos'); if(p) p.textContent = 'PHOS: P' + (CRT.phos===0 ? '1' : CRT.phos===1 ? '4' : '7');
   const b = document.getElementById('k-burn'); if(b) b.textContent = 'BURN: ' + (CRT.burn ? 'ON' : 'OFF');
+  const d = document.getElementById('k-dgauss'); if(d) d.textContent = 'DGAUSS: ' + (CRT.degauss ? 'ON' : 'OFF');
 }
 
 function saveCRT() {
@@ -112,8 +107,9 @@ function loadCRT() {
     const raw = localStorage.getItem('templeos.crt.v1');
     if (raw) Object.assign(CRT, JSON.parse(raw));
   } catch (e) {}
-  CRT.lens = LENS_LOCK;
-  delete CRT.dgauss;   /* DEGAUSS was a button once; it is permanent now (kernel/degauss.js) */
+  delete CRT.lens;     /* the LENS knob is gone: the glass is flat, whatever an old save says */
+  delete CRT.dgauss;   /* an older save of the first DEGAUSS button, which only ever flashed */
+  CRT.degauss = CRT.degauss !== false;
   CRT.on = true;
   CRT.vhold = CRT.vhold ?? 5;
   CRT.hhold = CRT.hhold ?? 5;
@@ -138,21 +134,6 @@ function applyBurn() {
   else root.classList.remove('burn');
 }
 
-function lensInset() { const k = LENS_BOW[CRT.lens]; return k / (1 - k); }
-
-function applyLensShape() {
-  const t = document.getElementById('tube');
-  if (!t) return;
-  if (CRT.lens === 0) {
-    t.style.borderRadius = '0';
-    document.documentElement.style.setProperty('--inset', '0');
-    return;
-  }
-  const f = CRT.lens === 1 ? '10%' : '18%';
-  t.style.borderRadius = `50% / ${f}`;
-  document.documentElement.style.setProperty('--inset', CRT.lens === 1 ? '2%' : '4%');
-}
-
 function paintGlass() {
   const cv = document.getElementById('glass');
   const screen = document.getElementById('screen');
@@ -172,27 +153,13 @@ function paintGlass() {
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   g.clearRect(0, 0, W, H);
 
-  const k = 0.010 + LENS_BOW[CRT.lens];
-  const norm = 1 - k;
-  const toScreen = (u, v) => {
-    const m = (1 - (u * u + v * v) * k) / norm;
-    return [(u * m + 1) / 2 * W, (v * m + 1) / 2 * H];
-  };
-
+  /* the glass is flat: a scanline is a straight line across it */
   g.lineWidth = 1;
   g.strokeStyle = 'rgba(0,0,0,0.34)';
-  const steps = 34;
   if (DISP.scan) {
-    for (let y = 0; y < H; y += CRT.scan + 1) {
-      const v = (y / H) * 2 - 1;
-      g.beginPath();
-      for (let s = 0; s <= steps; s++) {
-        const u = (s / steps) * 2 - 1;
-        const p = toScreen(u, v);
-        if (s === 0) g.moveTo(p[0], p[1]); else g.lineTo(p[0], p[1]);
-      }
-      g.stroke();
-    }
+    g.beginPath();
+    for (let y = 0; y < H; y += CRT.scan + 1) { g.moveTo(0, y + 0.5); g.lineTo(W, y + 0.5); }
+    g.stroke();
   }
 
   g.globalAlpha = 0.055;
@@ -209,7 +176,7 @@ function paintGlass() {
   fringe.addColorStop(1,    'rgba(60,140,255,0.10)');
   g.fillStyle = fringe;
   g.fillRect(0, 0, W, H);
-  paintPurity(g, W, H);
+  if (CRT.degauss) paintPurity(g, W, H);
 
   if (DISP.vig) {
     const vig = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.28,
@@ -282,10 +249,6 @@ function wireChin() {
     });
   }
 
-  /* LENS is disabled (see LENS_LOCK): a button that is shown, dimmed, and does nothing */
-  const lens = getEl('k-lens');
-  if (lens) { lens.disabled = true; lens.title = 'Tube curvature (locked)'; }
-
   if (getEl('k-scan')) getEl('k-scan').addEventListener('click', () => {
     CRT.scan = CRT.scan >= 4 ? 0 : CRT.scan + 1;
     labelKnobs();
@@ -302,6 +265,17 @@ function wireChin() {
     if (window.Snd && window.Snd.click) window.Snd.click();
   });
   
+  /* DGAUSS is the switch for the tube's purity patches (kernel/degauss.js): on, the corners show the
+     wrong colour a magnetised tube would; off, the glass is clean. Switching it on fires the coil. */
+  if (getEl('k-dgauss')) getEl('k-dgauss').addEventListener('click', () => {
+    CRT.degauss = !CRT.degauss;
+    labelKnobs();
+    paintGlass();
+    saveCRT();
+    if (CRT.degauss) degauss();
+    else if (window.Snd && window.Snd.click) window.Snd.click();
+  });
+
   if (getEl('k-burn')) getEl('k-burn').addEventListener('click', () => {
     CRT.burn = !CRT.burn;
     labelKnobs();
