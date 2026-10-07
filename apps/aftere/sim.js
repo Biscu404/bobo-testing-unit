@@ -6,9 +6,16 @@
  * an ankh sit in a doorway. Everything that can be hit has a way past it that the ship can fly, and that is arranged here,
  * not hoped for: the next gap's middle is never further from the last than `maxShift`, and a locust is never loosed so that
  * it would arrive in a doorway as you do (`blocked`).
+ *
+ * What happened in a step is `r.ev`, a list of words the picture and the sound read (the sim itself never does anything with them):
+ *   coin ankh          an item taken                       shield dead     a blow the ankh took / that ended the run (`r.info.cause`)
+ *   gap graze          a doorway passed (`r.info.gap`: its middle, its height, and how close the ship came to the stone)
+ *   gust gust-on gust-off   the warning, the push begins, the push is over (`r.gust.dir`)
+ *   locust             one loosed (`r.info.locust`: its speed)                               win     the temple
  */
 export const W = 320, H = 200, SHIP_X = 30, RING = 7, GROUND = 186, LOCUSTS_MAX = 4;
-const INV = 90, GUST_WARN = 60, GUST_LEN = 90, GUST_PUSH = 0.9;
+const INV = 90, GUST_PUSH = 0.9;
+export const GUST_WARN = 60, GUST_LEN = 90;
 
 const lerp = (a, b, t) => a + (b - a) * t;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -19,7 +26,7 @@ export const maxShift = L => Math.max(0, L.follow * (L.space / L.speed) * L.wand
 
 export function createRun(L, rng = Math.random) {
   const r = { L, rng, t: 0, dist: 0, y: 100, vy: 0, aim: 100, dead: false, won: false, shield: 0, inv: 0, hits: 0, coins: 0,
-              pillars: [], items: [], locusts: [], gust: null, nextGust: 300 + (rng() * 300 | 0), lastCy: 100, ev: [] };
+              pillars: [], items: [], locusts: [], gust: null, nextGust: 300 + (rng() * 300 | 0), lastCy: 100, ev: [], info: {} };
   for (let i = 0; i < RING; i++) {
     const p = { x: 340 + i * L.space, cy: 100, gap: 0, ph: 0, off: false };
     arrange(r, p);
@@ -35,6 +42,7 @@ export function arrange(r, p) {
   const prog = clamp(arrive / L.goal, 0, 1);
   p.off = arrive > L.goal - 60;
   p.ph = rng() * 6.283;
+  p.passed = false; p.close = 99;
   if (L.centred) {                                   /* PILGRIM, as it was: always in the middle, 55 to 130 */
     p.gap = L.gap[0] + rng() * (L.gap[1] - L.gap[0]); p.cy = 100; p.base = 100; p.wob = 0;
     return;
@@ -68,6 +76,7 @@ function blocked(r, y, v) {
 function hit(r, pushTo) {
   if (r.inv > 0 || r.dead || r.won) return;
   r.hits++;
+  r.info.cause = pushTo == null ? 'locust' : 'pillar';
   if (r.shield > 0) { r.shield--; r.inv = INV; r.ev.push('shield'); if (pushTo != null) r.y = pushTo; return; }
   r.dead = true; r.ev.push('dead');
 }
@@ -94,8 +103,9 @@ export function stepRun(r, inp) {
   if (L.wind) {
     if (r.gust) {
       r.gust.t++;
+      if (r.gust.t === GUST_WARN + 1) r.ev.push('gust-on');
       if (r.gust.t > GUST_WARN) r.y += r.gust.dir * GUST_PUSH;
-      if (r.gust.t > GUST_WARN + GUST_LEN) { r.gust = null; r.nextGust = r.t + 420 + (rng() * 420 | 0); }
+      if (r.gust.t > GUST_WARN + GUST_LEN) { r.gust = null; r.nextGust = r.t + 420 + (rng() * 420 | 0); r.ev.push('gust-off'); }
     } else if (r.t >= r.nextGust) { r.gust = { dir: rng() < 0.5 ? -1 : 1, t: 0 }; r.ev.push('gust'); }
   }
   if (r.y < 8) { r.y = 8; r.vy = 0; }
@@ -109,9 +119,15 @@ export function stepRun(r, inp) {
     if (p.x < -30) { p.x += RING * L.space; arrange(r, p); }
     if (p.off) continue;
     /* PILGRIM keeps the window it always had; the others are hit exactly where the picture overlaps: the pillar's 16 pixels against the ship's 22 to 38 */
-    if (L.centred ? p.x < 46 && p.x > 14 : p.x < 38 && p.x > 6) {
+    const lo = L.centred ? 14 : 6;
+    if (p.x < lo + 32 && p.x > lo) {
       const c = L.centred ? 100 : centre(r, p), top = c - p.gap / 2, bot = c + p.gap / 2;
+      p.close = Math.min(p.close, r.y - top, bot - r.y);
       if (r.y < top || r.y > bot) hit(r, clamp(r.y, top + 4, bot - 4));
+    } else if (!p.passed && p.x <= lo && !r.dead) {              /* through: how near the stone it came is `close` */
+      p.passed = true;
+      r.info.gap = { cy: L.centred ? 100 : centre(r, p), gap: p.gap, close: p.close };
+      r.ev.push(p.close < 6 ? 'graze' : 'gap');
     }
   }
 
@@ -129,7 +145,7 @@ export function stepRun(r, inp) {
     const v = L.speed + 1.4 + rng() * 1.2;
     for (let tries = 0; tries < 4; tries++) {
       const y = 22 + rng() * 156;
-      if (!blocked(r, y, v)) { r.locusts.push({ x: W + 16, y, v, ph: rng() * 6.283 }); break; }
+      if (!blocked(r, y, v)) { r.locusts.push({ x: W + 16, y, v, ph: rng() * 6.283 }); r.info.locust = { v, y }; r.ev.push('locust'); break; }
     }
   }
   for (let i = r.locusts.length - 1; i >= 0; i--) {
