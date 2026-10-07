@@ -389,7 +389,8 @@ function caseIdleYearAct2() {
   if (far.finalDay <= KNOWN_DAY + YEAR) problems.push('day never advanced past the one-year mark: ' + far.finalDay);
   [['near', near], ['far', far]].forEach(([label, run]) => {
     if (!run.save) return;
-    if (run.save.kr !== KNOWN_KR) problems.push(label + ': kr drifted with no input: ' + run.save.kr + ' !== ' + KNOWN_KR);
+    /* nobody is in bed: every night the clock runs out and a magpie takes a twelfth (sleep.js), so the purse may only ever go down */
+    if (run.save.kr > KNOWN_KR || run.save.kr < 0) problems.push(label + ': kr drifted with no input: ' + run.save.kr + ' !== ' + KNOWN_KR);
     if (JSON.stringify(run.save.bag) !== JSON.stringify(KNOWN_BAG)) problems.push(label + ': bag drifted with no input: ' + JSON.stringify(run.save.bag));
     if (run.save.houseBuilt !== true) problems.push(label + ': houseBuilt did not survive: ' + run.save.houseBuilt);
     if (run.save.act2Unlocked !== true) problems.push(label + ': act2Unlocked did not survive: ' + run.save.act2Unlocked);
@@ -664,7 +665,7 @@ function caseDescent() {
        S.enRescaled — the marker over heal()'s one-shot stamina raise, since
        a save carrying the old 120-point bar into the retuned economy is not
        a save of the old game but an unwinnable version of the new one. */
-    if (out.ver !== 21) problems.push('a fresh save is ver ' + out.ver);
+    if (out.ver !== 22) problems.push('a fresh save is ver ' + out.ver);
     if (out.enRescaled !== true) problems.push('the stamina rescale marker is missing');
   } catch (e) { report(NAME, false, 'threw driving the descent: ' + (e && e.stack || e)); return; }
 
@@ -703,7 +704,7 @@ function caseNightEndsARun() {
     for (let i = 0; i < 4000 && dbg.mine().floor > 0; i++) frames(1);
     const st = dbg.mine();
     if (st.floor !== 0) problems.push('still on floor ' + st.floor + ' after the night');
-    if (st.map !== 'farm') problems.push('woke up on ' + st.map + ' rather than the farm');
+    if (st.map !== 'gruva') problems.push('woke up on ' + st.map + ' rather than at the mouth of the mine, where the night leaves you');
     if (st.registered !== 0) problems.push(st.registered + ' floors still registered the morning after');
     if (st.deepest < 1) problems.push('the deepest floor reached was forgotten');
     if ((st.bag.solv || 0) !== 3) problems.push('the bag did not come up with the player');

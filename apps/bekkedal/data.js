@@ -294,7 +294,7 @@ export const BEK_ITEMS = {
                 bait: { widen: 0.05, grace: 0.9 } },
   /* dairy & animal */
   melk:       { name: { no: 'MELK',       en: 'MILK'         }, sell: 32,  icon: 'milk',  col: 15 },
-  brunost:    { name: { no: 'BRUNOST',    en: 'BROWN CHEESE' }, buy: 760, sell: 190, eat: 80, icon: 'cheese', col: 6 },
+  brunost:    { name: { no: 'BRUNOST',    en: 'BROWN CHEESE' }, buy: 400, sell: 190, eat: 80, icon: 'cheese', col: 6 },
   ull:        { name: { no: 'ULL',        en: 'WOOL'         }, sell: 45,  icon: 'wool',  col: 7  },
   egg:        { name: 'EGG', sell: 45,  icon: 'egg',   col: 15 },
   /* animal feed, and the two animals themselves — `animal` is read by
@@ -304,11 +304,11 @@ export const BEK_ITEMS = {
   geit:       { name: { no: 'GEIT',       en: 'GOAT'         }, buy: 2200, icon: 'wool', col: 15, animal: 'goat' },
   hone:       { name: { no: 'HØNE',       en: 'CHICKEN'      }, buy: 1000, icon: 'hen',  col: 6,  animal: 'chicken' },
   /* food you eat */
-  kaffe:      { name: { no: 'KAFFE',      en: 'COFFEE'       }, buy: 480, sell: 120, eat: 50,  icon: 'cup',  col: 6  },
-  vaffel:     { name: { no: 'VAFFEL',     en: 'WAFFLE'       }, buy: 900, sell: 225, eat: 95,  icon: 'food', col: 14 },
-  lefse:      { name: 'LEFSE', buy: 720, sell: 180, eat: 75,  icon: 'food', col: 7  },
-  fiskesuppe: { name: { no: 'FISKESUPPE', en: 'FISH SOUP'    }, buy: 1330, sell: 330, eat: 140,  icon: 'bowl', col: 11 },
-  multekrem:  { name: { no: 'MULTEKREM',  en: 'CLOUDB. CREAM'}, buy: 1560, sell: 390, eat: 165, icon: 'bowl', col: 14 },
+  kaffe:      { name: { no: 'KAFFE',      en: 'COFFEE'       }, buy: 250, sell: 120, eat: 50,  icon: 'cup',  col: 6  },
+  vaffel:     { name: { no: 'VAFFEL',     en: 'WAFFLE'       }, buy: 470, sell: 225, eat: 95,  icon: 'food', col: 14 },
+  lefse:      { name: 'LEFSE', buy: 380, sell: 180, eat: 75,  icon: 'food', col: 7  },
+  fiskesuppe: { name: { no: 'FISKESUPPE', en: 'FISH SOUP'    }, buy: 700, sell: 330, eat: 140,  icon: 'bowl', col: 11 },
+  multekrem:  { name: { no: 'MULTEKREM',  en: 'CLOUDB. CREAM'}, buy: 820, sell: 390, eat: 165, icon: 'bowl', col: 14 },
   /* cooked at the chest, never sold — BEK_RECIPES.cook, one raw crop plus
      one animal product each, and each restores more than the best shop
      food (multekrem's 110) by design */
@@ -482,7 +482,11 @@ export const BEK_RARE_CHANCE = 0.1;           /* pickFishSpecies(): the base one
    pass can work out how much of each thing a day actually offers instead of
    assuming a map's whole stock every morning. `vein` is one day shorter at
    mine level 2. */
-export const BEK_REGROW = { birch: 2, gran: 3, vein: 3, flower: 1 };
+/* What a day's bought food can add to the bar. Food from a shop used to cost ten kr a point, which was a wall; it is five
+   now, which would be a press (a point of stamina earns about seven), so a day has a stomach: past this many points of
+   *bought* food you are full and eating does nothing. A dish you cooked yourself is not counted — that is its whole point. */
+export const BEK_FOOD_DAY_CAP = 130;
+export const BEK_REGROW = { birch: 6, gran: 9, vein: 3, flower: 1 };
 
 /* ---- 27.1b tools ---------------------------------------------------------
    Five tools on one cycle. The axe and the pick also carry a *tier*, stored
@@ -549,6 +553,14 @@ export { BEK_MAPS };
    — `.claude/rules/content.md` still governs every line in them, and BEK_TALK
    below is what every consumer keeps asking data.js for. */
 import { TOWN_TALK } from './talk_town.js';
+import { ASK_ASTRID } from './ask_astrid.js';
+import { ASK_HAKON } from './ask_hakon.js';
+import { ASK_INGRID } from './ask_ingrid.js';
+import { ASK_OLAV } from './ask_olav.js';
+import { ASK_MARIT } from './ask_marit.js';
+import { ASK_SIGRID } from './ask_sigrid.js';
+import { ASK_GUNNAR } from './ask_gunnar.js';
+import { ASK_LARS } from './ask_lars.js';
 import { WATER_TALK } from './talk_water.js';
 import { FIELD_TALK } from './talk_field.js';
 import { STONE_TALK } from './talk_stone.js';
@@ -1205,7 +1217,7 @@ export const BEK_NPCS = [
         neutral:  [{ no: 'Takk. Alt teller der nede.', en: 'Thanks. Everything counts down there.' }],
         disliked: [{ no: 'Blomster dør fort der jeg jobber.', en: 'Flowers do not last long where I work.' }]
       } } },
-  { id: 'bjorn',  n: '',       map: 'forest', x: 12, y: 10, bear: true, from: 6 }
+  { id: 'bjorn',  n: '',       map: 'forest', x: 12, y: 10, bear: true, from: 21 }
 ];
 
 /* decorative animals — drawn, never collided with */
@@ -1221,6 +1233,13 @@ export const BEK_GOATS = [
    A node may carry `buy` (a counter offer) or `give` (a gift).
    ========================================================================== */
 export const BEK_TALK = Object.assign({}, TOWN_TALK, WATER_TALK, FIELD_TALK, STONE_TALK);
+/* What you can say back (asks.js): each of the eight has a list of topics to bring up, and a few lines for their ordinary pool that are
+   only said to somebody who answered a certain way. Joined here rather than written into the four files above, which are theirs. */
+Object.entries({ astrid: ASK_ASTRID, hakon: ASK_HAKON, ingrid: ASK_INGRID, olav: ASK_OLAV,
+                 marit: ASK_MARIT, sigrid: ASK_SIGRID, gunnar: ASK_GUNNAR, lars: ASK_LARS }).forEach(([id, a]) => {
+  BEK_TALK[id].topics = a.topics;
+  BEK_TALK[id].chat = BEK_TALK[id].chat.concat(a.echoes || []);
+});
 
 /* ---- 27.4b the heart events ----------------------------------------------
    A conversation is something the player starts; a scene is something that

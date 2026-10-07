@@ -35,7 +35,7 @@ export const clampMin = m => ((Math.floor(m) % DAY_MIN) + DAY_MIN) % DAY_MIN;
 
 /* whichever of the four conditions a post carries, or null for a default —
    also GROUPS' own iteration order, festival first */
-function kindOf(post) {
+export function kindOf(post) {
   return post.festival ? 'festival' : post.season ? 'season' : post.weather ? 'weather' : post.flag ? 'flag' : null;
 }
 const GROUPS = ['festival', 'season', 'weather', 'flag', null];

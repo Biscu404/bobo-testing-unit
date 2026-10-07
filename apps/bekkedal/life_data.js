@@ -103,6 +103,24 @@ export const CHORES = {
 
 /* the share of working slots (out of 100) spent at a station rather than at the post */
 export const CHORE_ODDS = 50;
+/* of the stretches that are *not* a chore, the share (out of 100) on which somebody wanders instead of standing where their post is: a few tiles
+   off, looking at nothing in particular, and back. Nobody keeps one square for a working day. */
+export const WANDER_ODDS = 55;
+export const WANDER_REACH = 5;           /* tiles of walking from the post, at most */
+
+/* Going to bed is a walk to a door, and through it: `HOMES[person][map]` is the door (a `D` on that map) they live behind, and they go in by it
+   (life.js: the last tile is theirs to stand on, the next one up is the door). Somebody with no building on their map (the lake, the vidda, the
+   mine) goes in the way they would go home: along the road to the nearest way off the map. */
+export const HOMES = {
+  astrid: { town: { x: 9, y: 10 } },
+  hakon:  { town: { x: 32, y: 23 } },
+  marit:  { enga: { x: 13, y: 7 } },
+  sigrid: { setra: { x: 6, y: 6 } }
+};
+/* minutes the door takes to swallow somebody, or let them out */
+export const DOOR_MIN = 3;
+/* how long a walk to bed, or to a faraway post, may take at most */
+export const TRIP_CAP_MIN = 45;
 /* how long, in game minutes, one stretch lasts: a day is five real minutes, so ninety of them is about twenty-two seconds */
 export const SLOT_MIN = 90;
 

@@ -7,18 +7,18 @@ import { BEK_BARN_SLOTS, BEK_BARN_SLOTS2 } from './data.js';
 
 /* the house itself. Two build paths chosen once (S.flag.build), each with
  * its own kr/tømmer/stein price; S.flag.rabatt2 (Håkon's own fr>=4 discount,
- * skog path only) knocks 1500 kr off. Unchanged by Act II — this is the
+ * skog path only) knocks 2000 kr off. Unchanged by Act II — this is the
  * milestone that unlocks it, not a thing Act II repriced.
  *
  * The kr figures are the last and largest step of Act I's ladder, and they
  * are what sets its length: at the measured ~7 kr per energy and a 200-point
- * bar, a first playthrough clears the pick, the lot and this between day 20
- * and day 25 (act2_check_balance.js). Move either number and that window
+ * bar, a first playthrough clears the pick, the lot and this between day 24
+ * and day 37 (act2_check_balance.js). Move either number and that window
  * moves with it. */
 export function houseCost(S) {
   const skog = S.flag.build === 'skog';
-  let kr = skog ? 28000 : 35000;
-  if (S.flag.rabatt2) kr -= 1500;
+  let kr = skog ? 42000 : 52000;
+  if (S.flag.rabatt2) kr -= 2000;
   return { kr: kr, tommer: skog ? 30 : 12, stein: skog ? 20 : 10 };
 }
 

@@ -187,7 +187,7 @@ export const FIELD_TALK = {
          three hours of track and the walk is the point of it */
       { t: ['Three hours up that track. Nobody drops in by accident, so when you come, I know you came for something. I like that.'] },
       { t: ['You have walked it once. Now set a morning aside and go again. I will put the kettle on when I see you coming. It takes a while to see you coming.'] },
-      { t: [{ no: 'Åtte til åtte er meieriet åpent. Om vinteren finner du meg i dalen i stedet. Spør etter meg hos Astrid, hun vet hvor jeg sitter.', en: 'Eight to eight the dairy is open. Come winter you will find me down in the valley instead. Ask for me at Astrid’s, she knows where I sit.' }] },
+      { t: ['Eight to eight the dairy is open. Come winter you will find me down in the valley instead, somewhere warm, with a cup.'] },
       { mood: 'troubled', t: ['You smell of the mine. Say hello to Lars for me, would you? Say it nicely. We were not nice to each other as children.'], if: S => S.disc && S.disc.gruva },
       { t: [{ no: 'Håkon gjerder, jeg fyller. Geit eller høne, valget er ditt. Jeg skal være ærlig om hva jeg selger deg.', en: 'Håkon fences it, I stock it. Goat or chicken, the choice is yours. I will be honest about what I sell you.' }],
         if: S => S.flag.barn },

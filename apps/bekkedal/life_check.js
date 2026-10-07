@@ -18,7 +18,7 @@ import { BEK_NPCS, BEK_MAPS, BEK_SOLID, BEK_ITEMS, BEK_SEASONS } from './data.js
 import { lifeFor, errandOf, wayOut, hash } from './life.js';
 import { activePost, bfsPath, walkable } from './schedule.js';
 import { isFestivalDay, seasonOf } from './seasons.js';
-import { CHORES, BED, ERRANDS, LOOKS, ACT_TOOL, CALLS, CHORE_ODDS, SLOT_MIN } from './life_data.js';
+import { CHORES, BED, ERRANDS, LOOKS, ACT_TOOL, CALLS, CHORE_ODDS, SLOT_MIN, HOMES } from './life_data.js';
 import { noteGift, lookNow } from './looks.js';
 import { createLooks } from './actors_look.js';
 
@@ -71,7 +71,7 @@ for (let day = 1; day <= DAYS; day++) {
       const post = activePost(n, day, min, ctx), st = stat[n.id];
       const working = !fest && post.id !== 'home' && !post.weather && !post.flag && !post.season && !post.festival;
       if (working) { st.work++; if (L.map) st.avail++; else st.away++; }
-      if (L.away === 'asleep') { st.asleep++; if (fest) asleepOutside++; const bed = BED[n.id] || BED.default; const m = min; const inb = bed[0] < bed[1] ? (m >= bed[0] && m < bed[1]) : (m >= bed[0] || m < bed[1]); if (!inb) asleepOutside++; }
+      if (L.away === 'asleep') { st.asleep++; if (post.festival) asleepOutside++; const bed = BED[n.id] || BED.default; const m = min; const inb = bed[0] < bed[1] ? (m >= bed[0] && m < bed[1]) : (m >= bed[0] || m < bed[1]); if (!inb) asleepOutside++; }
       if (L.away === 'errand') { if (fest) errandOnFestival++; if (!ERRANDS[n.id] || !ERRANDS[n.id].odds) shopErrands++; }
       if (!L.map) { delete prev[n.id]; continue; }
       if (!walkable(L.map, L.x, L.y) && BEK_SOLID.indexOf(BEK_MAPS[L.map].rows[L.y].charAt(L.x)) >= 0) solidHits.push(n.id + '@' + L.map + ':' + L.x + ',' + L.y + ' day ' + day + ' ' + min);
@@ -92,7 +92,7 @@ ok(!impure.length, 'the same day and minute always give the same answer', impure
 ok(!solidHits.length, 'nobody ever stands in a wall', solidHits.slice(0, 3).join('; '));
 ok(!sharers.length, 'and nobody ever stands where somebody else does', sharers.slice(0, 3).join('; '));
 ok(!jumps.length, 'nobody jumps: a minute on, an NPC is at most a tile from where they were', jumps.slice(0, 3).join('; ') + (jumps.length > 3 ? ' (+' + (jumps.length - 3) + ' more)' : ''));
-ok(asleepOutside === 0, 'asleep means in bed hours, and never on a festival');
+ok(asleepOutside === 0, 'asleep means in bed hours, and never while a festival is on');
 ok(errandOnFestival === 0 && shopErrands === 0, 'nobody is on an errand on a festival, and no shopkeeper ever is');
 npcs.forEach(n => {
   const st = stat[n.id], avail = pct(st.avail, st.work);
@@ -119,6 +119,45 @@ console.log('\n-- the asleep, and how it begins and ends --');
   ok(!bad.length, 'they go to bed at their hour and are up at theirs', bad.slice(0, 3).join('; '));
   const night = npcs.filter(n => lifeFor(n, 3, 3 * 60, ctxFor(3)).map).map(n => n.id);
   ok(night.length === 0, 'at three in the morning nobody is on the road', night.join(','));
+}
+
+console.log('\n-- nobody appears or vanishes: every change of place is a door, a seam or the edge of a map --');
+{
+  /* Walk every minute of a spread of days (festival days and ordinary ones, with Håkon's pen built and without, in rain and in winter) and
+     look at every pair of minutes. Two places are joined if they are one tile apart on a map (or two: the pace is brisk on a long road),
+     or the first is a tile of an exit whose far side is the second; and somebody vanishes only at a door (the tile in front of one, through
+     it), a way off the map, and appears only at one. */
+  const bad = [], seenKind = { door: 0, seam: 0, vanish: 0, appear: 0 };
+  const exitsAt = (map, x, y) => (BEK_MAPS[map].exits || []).filter(e => e.x === x && e.y === y);
+  const isDoorFront = (n, L) => { const h = HOMES[n.id] && HOMES[n.id][L.map]; return !!h && h.x === L.x && h.y + 1 === L.y; };
+  const isWay = (L) => !!exitsAt(L.map, L.x, L.y).length || (BEK_MAPS[L.map].door && BEK_MAPS[L.map].door.x === L.x && BEK_MAPS[L.map].door.y + 1 === L.y);
+  const days = []; for (let d = 1; d <= 112; d += 1) if (isFestivalDay(d) || d % 9 === 3) days.push(d);
+  for (const day of days) for (const flags of [{}, { barn: 1 }]) {
+    const ctx = { weather: ['klar', 'regn', 'klar', 'take'][day % 4], flag: flags, act2Unlocked: false };
+    for (const n of npcs) {
+      let prev = null;
+      for (let min = 0; min < 1440; min++) {
+        const L = lifeFor(n, day, min, ctx);
+        if (prev) {
+          const a = prev, b = L;
+          if (a.map && b.map && a.map === b.map) { if (Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)) > 2) bad.push(n.id + ' jumps ' + a.x + ',' + a.y + '>' + b.x + ',' + b.y + ' on ' + a.map + ' day ' + day + ' ' + min); }
+          else if (a.map && b.map) { const e = exitsAt(a.map, a.x, a.y).filter(x => x.to === b.map && x.tx === b.x && x.ty === b.y)[0]; seenKind.seam++; if (!e) bad.push(n.id + ' changes map ' + a.map + '>' + b.map + ' without a seam, day ' + day + ' ' + min); }
+          else if (a.map && !b.map) { seenKind.vanish++; if (!(isDoorFront(n, a) || isWay(a))) bad.push(n.id + ' vanishes in the open at ' + a.map + ':' + a.x + ',' + a.y + ' day ' + day + ' ' + min + ' (' + b.away + ')'); }
+          else if (!a.map && b.map) { seenKind.appear++; if (!(isDoorFront(n, b) || isWay(b))) bad.push(n.id + ' appears in the open at ' + b.map + ':' + b.x + ',' + b.y + ' day ' + day + ' ' + min); }
+        }
+        prev = L;
+      }
+    }
+  }
+  ok(!bad.length, 'every change of place is made at a door, a seam or the edge of a map', bad.slice(0, 4).join('; ') + (bad.length > 4 ? ' (+' + (bad.length - 4) + ' more)' : ''));
+  ok(seenKind.seam > 20 && seenKind.vanish > 20 && seenKind.appear > 20, 'and it happens, over those days', JSON.stringify(seenKind));
+  /* the doors themselves */
+  const dbad = [];
+  Object.keys(HOMES).forEach(id => Object.keys(HOMES[id]).forEach(map => { const h = HOMES[id][map]; if (BEK_MAPS[map].rows[h.y].charAt(h.x) !== 'D' || !walkable(map, h.x, h.y + 1)) dbad.push(id + '@' + map); }));
+  ok(!dbad.length, 'every home door is a door with a tile in front of it', dbad.join(','));
+  const fade = [];
+  npcs.forEach(n => { const bed = BED[n.id] || BED.default, a = lifeFor(n, 3, bed[0] - 1, ctxFor(3)); if (HOMES[n.id] && HOMES[n.id][a.map] && !(a.enter > 0.5)) fade.push(n.id); });
+  ok(!fade.length, 'somebody with a door is going through it the minute before they sleep', fade.join(','));
 }
 
 console.log('\n-- where an errand goes --');

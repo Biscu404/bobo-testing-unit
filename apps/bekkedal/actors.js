@@ -103,6 +103,23 @@ export function createActors(GG, C) {
     if (held && !back) heldTool(px, y, held);
     if (look && look.hold && !(held && !back)) looks.carried(look, px, y, dir, t);
   }
+  /* Somebody asleep, on their side in the grass or under a blanket in a bed: the same ink-proud silhouette `person` is made
+     with, turned on its back, a head on the left and the boots on the right. `quilt` is the colour of a blanket drawn over
+     the body from the chest down, or -1 for no blanket (a person who fell asleep where they stood has no blanket). */
+  function lying(px, py, hair, shirt, pants, quilt, breath) {
+    const y = py + 6 + (breath ? 0 : 1);
+    GG().fillStyle = C(PERSON_INK);
+    GG().fillRect(px, y, 8, 9);                    /* head                 */
+    GG().fillRect(px + 6, y + 1, 12, 8);           /* body                 */
+    GG().fillRect(px + 16, y + 2, 4, 7);           /* boots                */
+    GG().fillStyle = C(SAN[2]); GG().fillRect(px + 1, y + 2, 6, 6);
+    GG().fillStyle = C(hair); GG().fillRect(px + 1, y + 1, 3, 7); GG().fillRect(px + 3, y + 1, 4, 2);
+    GG().fillStyle = C(TIM[0]); GG().fillRect(px + 5, y + 4, 2, 1);                 /* a closed eye */
+    GG().fillStyle = C(shirt); GG().fillRect(px + 7, y + 2, 6, 6);
+    GG().fillStyle = C(pants); GG().fillRect(px + 13, y + 3, 4, 5);
+    GG().fillStyle = C(TIM[0]); GG().fillRect(px + 17, y + 3, 2, 5);
+    if (quilt >= 0) { GG().fillStyle = C(quilt); GG().fillRect(px + 8, y + 1, 10, 8); GG().fillStyle = C(SNO[0]); GG().fillRect(px + 8, y + 1, 10, 1); }
+  }
   /* `person` drew no tool at all, which is why a swing had nothing to be a
      swing *of*. The arc tables in fx.js put the head somewhere sensible at
      each end of the action; at rest (u = 0) that is the carry position. */
@@ -140,5 +157,5 @@ export function createActors(GG, C) {
     GG().fillStyle = C(STO[0]); GG().fillRect(px + 5, py + 15, 1, 3); GG().fillRect(px + 9, py + 15, 1, 3);
   }
 
-  return { drawIcon: drawIcon, person: person, bear: bear, goat: goat, chicken: chicken };
+  return { drawIcon: drawIcon, person: person, lying: lying, bear: bear, goat: goat, chicken: chicken };
 }

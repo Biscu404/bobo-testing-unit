@@ -92,7 +92,7 @@ export const STONE_TALK = {
       { t: ['Nothing yesterday? Up here that is a plan, not a failure. Tell me about it, I would like to hear what a plan looks like down there.'], if: idle },
       /* ---- the rest of the valley ------------------------------------- */
       { t: [{ no: 'Det går en bjørn i skogen som feier. Jeg har sett ham. Jeg forklarer det ikke, men jeg synes du skal gå og se selv.', en: 'There is a bear in the wood who sweeps. I have seen him. I do not explain it, but I think you should go and see for yourself.' }],
-        if: S => S.disc && S.disc.forest },
+        if: S => S.disc && S.disc.forest && S.day >= 21 },
       { t: ['Sigrid brings the herd past in June. I hear them before I see them. I stand up, every year, and I do not know why.'],
         if: S => S.disc && S.disc.setra },
       { t: [{ no: 'Lars er under meg akkurat nå. Vi har aldri møttes på fjellet. Jeg tenker på det noen ganger, når jeg står på steinen.', en: 'Lars is underneath me right now. We have never met on the mountain. I think of it sometimes, when I stand on the rock.' }],
@@ -122,7 +122,7 @@ export const STONE_TALK = {
         if: S => S.disc && S.disc.fjord },
       { t: ['Marit keeps the graves. I keep the crossings. Somebody has to keep something, and I think you are keeping something too. I just do not know what.'],
         if: S => S.fr.marit >= 4 },
-      { mood: 'warm', t: [{ no: 'Du kom hit tre ganger. Da slutter jeg å telle og begynner å vente. Jeg har ventet på deg i dag.', en: 'You came up here three times. Then I stop counting and start expecting you. I have been expecting you today.' }],
+      { mood: 'warm', t: ['You came up here three times. After that I stop counting, and I put the kettle on a little before you usually arrive.'],
         if: S => S.fr.gunnar >= 8 },
       { t: [{ no: 'Vidda skylder deg ingenting. Den gir likevel, om du kan vente. Jeg lærte det sent, og det er det eneste jeg har å gi deg.', en: 'The plateau owes you nothing. It gives anyway, if you can wait. I learned that late, and it is the only thing I have to give you.' }] },
       { mood: 'troubled', t: ['Eighteen years. Three graves. Four herds. Those are all the numbers I have, and I have told them to you. That means something, to me.'],

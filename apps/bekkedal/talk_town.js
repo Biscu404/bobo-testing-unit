@@ -86,9 +86,9 @@ export const TOWN_TALK = {
       { mood: 'warm', t: [{ no: 'Kaffen er på. Sett deg fem minutter. Kundene overlever.', en: 'The coffee is on. Sit for five minutes. The customers will survive.' }] },
       { mood: 'troubled', t: ['My knee says rain by Tuesday. It has not been wrong yet, and I would like it to be, just once.'] },
       { t: ['I stock the lanterns for Lars and he will not take a krone for them. It drives me mad. Do you have one on you?'] },
-      { t: ['The road runs west to your gate and east down to the water. I walk both of them in my head every night, counting the doors.'] },
+      { t: ['The road runs west to your gate and east down to the water. I know every door on it by the sound of its latch.'] },
       { t: ['Everything down here is a walk. Only the setra is a journey. I went up once, years ago, and I still have the blister.'] },
-      { t: [{ no: 'Åtte til åtte er jeg ved disken. Hvis det regner, finn meg ved døren i stedet. Jeg liker å se hvem som kommer.', en: 'Eight to eight I am at the counter. If it rains, find me by the door instead. I like to see who is coming.' }] },
+      { t: ['Eight to eight I am at the counter. If it rains I stand by the door instead. I like to see who is coming.'] },
       { mood: 'warm', t: ['You came here for the quiet, and I am glad you did not find too much of it. Stay a while, will you?'],
         if: S => S.flag.why === 'quiet' },
       { mood: 'troubled', t: ['You said land was cheap. It is. I wish you would find a few things that were not, and tell me about them.'],
@@ -106,7 +106,7 @@ export const TOWN_TALK = {
         if: S => S.weather === 'regn' },
       { t: [{ no: 'Tåke. Da går ingen forbi, og da selger jeg ingenting. Så jeg kan like godt snakke med deg.', en: 'Fog. Nobody walks past, so I sell nothing. So I may as well talk to you.' }],
         if: S => S.weather === 'take' },
-      { t: ['Clear sky. Everybody is out, nobody is buying, and I am stuck behind a counter. Take me with you, will you?'],
+      { t: ['Clear sky. Everybody is out, nobody is buying, and I am stuck behind a counter. Go and enjoy it for me, will you?'],
         if: S => S.weather === 'klar' && S.season === SOMMER },
       /* ---- season ----------------------------------------------------- */
       { t: [{ no: 'Vår. Halve dalen kommer inn for frø og går ut med kaffe. Jeg gjør ikke noe for å hindre det.', en: 'Spring. Half the valley comes in for seed and leaves with coffee. I do nothing to stop it.' }],
@@ -142,7 +142,7 @@ export const TOWN_TALK = {
         if: S => S.disc && S.disc.enga },
       { t: [{ no: 'Sigrid er nede i dalen nå. Jeg tror hun hater det. Hun sier det aldri, så jeg lar henne få kaffe uten å spørre.', en: 'Sigrid is down in the valley now. I think she hates it. She never says so, so I give her coffee without asking.' }],
         if: S => S.season === VINTER && S.disc && S.disc.setra },
-      { mood: 'troubled', t: ['I walked down to Olav’s dock yesterday. That boat has been patched for years. I asked him why he does not just rebuild it and he looked at me like I had said something rude.'],
+      { mood: 'troubled', t: ['Olav was in for rope. His boat has been patched for years, and I asked him why he does not just rebuild it. He looked at me as if I had said something rude.'],
         if: S => S.disc && S.disc.lake },
       /* ---- what she will not talk about -------------------------------- */
       { mood: 'troubled', t: [{ no: 'Det står to navn i kassaboken. Det er vanskelig å snakke om. Spør meg en annen dag, og jeg skal prøve.', en: 'There are two names in the ledger. It is hard to talk about. Ask me another day and I will try.' }],
@@ -187,7 +187,7 @@ export const TOWN_TALK = {
          house, gated on S.act2Unlocked exactly like the festival lines
          above gate on S.festival — a chat entry, not a node, so it keeps
          resurfacing rather than firing once and being spent. */
-      { mood: 'warm', t: [{ no: 'Huset ved vannet står nå. Jeg gikk ned og så røyken fra skorsteinen. Dalen trengte en skorstein til, og jeg trengte en grunn til å gå ned.', en: 'The house by the water is standing now. I walked down and saw the smoke from the chimney. This valley needed one more chimney, and I needed a reason to walk down.' }],
+      { mood: 'warm', t: ['The house by the water is standing now. Marit says you can see its smoke from the churchyard. This valley needed one more chimney.'],
         if: S => S.act2Unlocked },
       { t: [{ no: 'Tretti navn i boken igjen. Ditt er det nyeste, og jeg skrev det med en penn jeg ellers sparer.', en: 'Thirty names in the book again. Yours is the newest, and I wrote it with the pen I usually save.' }],
         if: S => S.act2Unlocked && S.flag.astridBok },
@@ -278,7 +278,7 @@ export const TOWN_TALK = {
       { t: ['Autumn. Everything I have built is about to get tested by weather. I do not sleep much in October.'],
         if: S => S.season === HOST },
       /* ---- the hour --------------------------------------------------- */
-      { t: ['Seven to eight, and the site is where I am. Not the shop. Come find me. I would rather you did.'], if: S => S.min < 9 * 60 },
+      { t: ['Seven to eight, and the site is where I am. Not the shop. Follow the sawdust.'], if: S => S.min < 9 * 60 },
       { mood: 'troubled', t: [{ no: 'Mørkt. En sag i mørket tar en finger. Gå hjem, du også. Vi snakker i morgen.', en: 'Dark. A saw in the dark takes a finger. Go home, you too. We talk tomorrow.' }],
         if: S => S.min >= 20 * 60 },
       /* ---- what you are carrying -------------------------------------- */
@@ -291,11 +291,11 @@ export const TOWN_TALK = {
       { mood: 'troubled', t: ['You did nothing yesterday. I have had those days. They add up. Come and hold a plank for me, it helps.'], if: idle },
       /* ---- the rest of the valley ------------------------------------- */
       { t: [{ no: 'Jeg trodde Astrid førte spiker. Nei. Det gjør Lars nå. Jeg glemmer det hver gang og går feil vei. Ikke fortell henne.', en: 'I thought Astrid stocked nails. No. Lars does now. I forget every time and walk the wrong way. Do not tell her.' }] },
-      { mood: 'troubled', t: ['I went down to Olav’s dock and told him to rebuild the boat properly. He did not speak to me for two days. I was right, though.'],
+      { mood: 'troubled', t: ['Olav was by for planks. I told him to patch the boat properly or build it again. He did not speak to me for two days. I was right, though.'],
         if: S => S.disc && S.disc.lake },
       { t: [{ no: 'Kirken på enga heller. Jeg gikk opp og så på den en gang. Den har hellet i åtte hundre år, og jeg hadde ikke hjerte til å si det til Marit.', en: 'The church on the meadow leans. I went up and looked at it once. It has leaned eight hundred years, and I did not have the heart to tell Marit.' }],
         if: S => S.disc && S.disc.enga },
-      { t: ['I stopped by Lars’s drifts. His props are green timber. I told him twice. He said "mm." I think he learned that from me.'],
+      { t: ['Lars was by about props. His are green timber. I told him twice. He said "mm." I think he learned that from me.'],
         if: S => S.disc && S.disc.gruva },
       /* ---- what he will not talk about --------------------------------- */
       { mood: 'troubled', t: [{ no: 'Det står et fjøs lenger opp i dalen med mitt navn på. Ikke spør meg. Jeg vil fortelle deg om det en dag, men ikke i dag.', en: 'There is a barn further up the valley with my name on it. Do not ask me. I will tell you about it one day, but not today.' }],
@@ -313,7 +313,7 @@ export const TOWN_TALK = {
         buy: { label: { no: 'STØRRE JORDE — 6000 kr', en: 'BIGGER FIELD — 6000 kr' }, kr: 6000, flag: { plot3: 1 },
                ok: ['That is most of the flat ground gone now.'],
                no: ['6000 kr. No rush.'] } },
-      { t: [{ no: 'Jeg så noe tråkke ned avlingen din i natt. Et gjerde i hjørnet ville holdt dyrene unna det du nettopp ryddet.', en: 'I saw something trampling your crop last night. A pen in the corner would keep the animals off what you just cleared.' }],
+      { t: ['Somebody’s goats were in your crop last night, I hear. A pen in the corner would keep the animals off what you just cleared.'],
         if: S => S.flag.plot3 && !S.flag.barn,
         buy: { label: { no: 'DYREINNHEGNING — 4000 kr', en: 'ANIMAL PEN — 4000 kr' }, kr: 4000, flag: { barn: 1 },
                ok: ['Fenced and strawed. Sigrid will sell you what goes in it.'],

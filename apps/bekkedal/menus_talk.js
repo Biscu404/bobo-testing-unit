@@ -31,11 +31,15 @@
  */
 import { FONT_SM, FONT_LG } from './font.js';
 import { createPortrait } from './portrait.js';
+import { revealRows } from './typer.js';
 import { BORDER, PAD_LG, LINE_LG, GLYPH_SM, GLYPH_LG,
          DLG_BODY_LINES, DLG_W, DLG_H, DLG_X, DLG_Y, DLG_TX, DLG_TW,
          DLG_TX_FULL, DLG_TW_FULL, DLG_PORT_X, DLG_PORT_Y, DLG_PORT_W, DLG_PORT_H,
          DLG_PLATE_Y, DLG_PLATE_H, DLG_GAP, DLG_ROW_PAD,
          OFFER_W, OFFER_H, OFFER_X, OFFER_Y, OFFER_NAME_H } from './layout.js';
+
+/* what is done rather than said ([HE LAUGHS]): light cyan on the box, and its dim twin in the line that is coming */
+const ACT_COL = 11, ACT_COL_DIM = 3;
 
 export function createDialogue(A, GG, C) {
   const { T, TX, panel, text, textW, wrapText } = A;
@@ -61,17 +65,32 @@ export function createDialogue(A, GG, C) {
     const l = dlg.lines && dlg.lines[dlg.i];
     return (l && l.m) || dlg.mood || 'neutral';
   }
+  /* A row of speech, `n` of its letters on show, in `col`: what is in square brackets is an action and is drawn in `actCol` (brackets
+     included), so the eye can tell what is said from what is done. `inAct` says the row begins inside a bracket that opened on an
+     earlier row. Runs of one colour are drawn whole, one after another, so the font's own spacing is kept. */
+  function richRow(row, n, inAct, x, y, col, actCol, font) {
+    let run = '', cur = inAct, cx = x;
+    const flush = () => { if (!run) return; text(run, cx, y, cur ? actCol : col, font); cx += textW(run, font); run = ''; };
+    for (let i = 0; i < Math.min(n, row.length); i++) {
+      const c = row[i];
+      if (c === '[' && !cur) { flush(); cur = true; }
+      run += c;
+      if (c === ']' && cur) { flush(); cur = false; }
+    }
+    flush();
+  }
   /* An answer is a row the selection moves between, not a caret in front of
      a line of text: the whole row inverts, which is the one thing in this
-     app's chrome vocabulary that unambiguously says "this is the one". */
+     app's chrome vocabulary that unambiguously says "this is the one".
+     An action in the answer ([NOD]) keeps its own colour on either ground. */
   function optRow(str, tx, tw, y, on) {
-    const rows = wrapText(str, tw, FONT_LG);
-    for (const l of rows) {
+    const rows = revealRows(wrapText(str, tw, FONT_LG), str, 1e9);
+    for (const r of rows) {
       if (on) {
         GG().fillStyle = C(15);
         GG().fillRect(tx - DLG_ROW_PAD * 2, y - DLG_ROW_PAD, tw + DLG_ROW_PAD * 4, GLYPH_LG + DLG_ROW_PAD * 2);
       }
-      text(l, tx, y, on ? 0 : 7, FONT_LG);
+      richRow(r.text, r.n, r.inAct, tx, y, on ? 0 : 7, on ? 1 : 11, FONT_LG);
       y += LINE_LG;
     }
     return y;
@@ -92,20 +111,26 @@ export function createDialogue(A, GG, C) {
     let y = DLG_Y + PAD_LG;
     const hint = (str) => text(str, DLG_X + DLG_W - PAD_LG - textW(str, FONT_SM),
                                DLG_Y + DLG_H - PAD_LG - GLYPH_SM, 8, FONT_SM);
+    /* what is being said is typed (typer.js): `ty.n` letters of it are on show, and the answers wait until the question is out */
+    const ty = A.typed();
     if (dlg.opts) {
-      wrapText(T(dlg.opts.q), tw, FONT_LG).forEach(l => { text(l, tx, y, 11, FONT_LG); y += LINE_LG; });
-      dlg.opts.opts.forEach((o, i) => { y = optRow(T(o.t), tx, tw, y, dlg.sel === i); });
-      hint('W/S · SPACE');
+      const q = T(dlg.opts.q), qr = revealRows(wrapText(q, tw, FONT_LG), q, ty.n);
+      qr.forEach(r => { richRow(r.text, r.n, r.inAct, tx, y, 11, ACT_COL, FONT_LG); y += LINE_LG; });
+      if (ty.done) {
+        dlg.opts.opts.forEach((o, i) => { y = optRow(T(o.t), tx, tw, y, dlg.sel === i); });
+        hint('W/S · SPACE');
+      } else hint('SPACE');
       return;
     }
     /* The current line wraps to as many rows as it needs; the next line
-       follows only while there is room left in the box. */
-    const cur = wrapText(T(dlg.lines[dlg.i]) || '', tw, FONT_LG);
-    const nxt = dlg.lines[dlg.i + 1] ? wrapText(T(dlg.lines[dlg.i + 1]), tw, FONT_LG) : [];
+       follows only while there is room left in the box, and only once this one has been said. */
+    const line = T(dlg.lines[dlg.i]) || '';
+    const cur = revealRows(wrapText(line, tw, FONT_LG), line, ty.n);
+    const nxt = ty.done && dlg.lines[dlg.i + 1] ? revealRows(wrapText(T(dlg.lines[dlg.i + 1]), tw, FONT_LG), T(dlg.lines[dlg.i + 1]), 1e9) : [];
     let used = 0;
-    for (const l of cur) { if (used >= DLG_BODY_LINES) break; text(l, tx, y, 15, FONT_LG); y += LINE_LG; used++; }
-    for (const l of nxt) { if (used >= DLG_BODY_LINES) break; text(l, tx, y, 8, FONT_LG); y += LINE_LG; used++; }
-    hint('SPACE');
+    for (const r of cur) { if (used >= DLG_BODY_LINES) break; richRow(r.text, r.n, r.inAct, tx, y, 15, ACT_COL, FONT_LG); y += LINE_LG; used++; }
+    for (const r of nxt) { if (used >= DLG_BODY_LINES) break; richRow(r.text, r.n, r.inAct, tx, y, 8, ACT_COL_DIM, FONT_LG); y += LINE_LG; used++; }
+    hint(ty.done ? 'SPACE' : '...');
   }
   function drawOffer() {
     const S = A.S(), offer = A.offer();

@@ -863,10 +863,10 @@ check rather than in somebody's afternoon.
 
 | | target | simulated | played |
 |---|---|---|---|
-| ACT I, arrival to the finished house | 20-25 in-game days | **day 20-22** across four policies | — |
-| ACT II, house to the loft's ending | at least four more seasons | **4.4-4.5 seasons** (ending day 110) | — |
+| ACT I, arrival to the finished house | 23-38 in-game days (was 20-25: the house is 42,000 kr and a meal is half the price it was) | **day 24-37** across four policies | — |
+| ACT II, house to the loft's ending | at least 3.5 more seasons | **3.6-4.3 seasons** (ending day 110) | — |
 | a day, in real minutes | — | 3.5-4.5 | **5.00 — the whole clock** |
-| TOTAL, to a complete finish | 6-10 real hours | **6.4-8.3 h** | **~9.2 h** at the played day length |
+| TOTAL, to a complete finish | 5.5-10 real hours | **5.6-8.8 h** | — |
 | no livelihood dominating | ≤1.5x kr/energy | **1.34x / 1.05x / 1.35x** at the three stages | — |
 | no policy dominating | — | **≤1.15x** at every milestone along the way | — |
 | lifetime money sinks | ~150,000 kr | **169,290 kr** over 22 rungs | — |
