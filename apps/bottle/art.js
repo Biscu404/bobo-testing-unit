@@ -21,7 +21,13 @@ export const GLS = { rest: [328, 292] };
 const mk = (_w, _h, fn) => g => { g.save(); fn(g); g.restore(); };
 const Rf = g => (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), Math.max(1, Math.round(w)), Math.max(1, Math.round(h))); };
 
-export function makeArt(g) {
+/* a size for `text` that fits in `w` pixels in a monospace face: `size` at most, `k` the width of a character per pixel of size */
+const fit = (text, w, size, k) => Math.max(4, Math.min(size, Math.floor(w / (Math.max(1, text.length) * k) * 10) / 10));
+const JAG_TEXT = { emboss: 'JÄGERMEISTER', title: 'Jägermeister', sub1: 'KRÄUTERLIKÖR', sub2: '35% vol · 56 herbs', icon: null };
+
+/* `D` is a drink's look (drinks.js); without one it is the Jägermeister the game began with */
+export function makeArt(g, D) {
+  const K = D ? Object.assign({}, C, D.colors) : C, X = D ? D.text : JAG_TEXT;
   const R = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), Math.max(1, Math.round(w)), Math.max(1, Math.round(h))); };
   const T = (t, x, y, c, sz, al, font) => { g.fillStyle = c; g.font = (sz || 9) + 'px ' + (font || 'monospace');
     g.textAlign = al || 'left'; g.fillText(String(t), Math.round(x), Math.round(y)); g.textAlign = 'left'; };
@@ -49,9 +55,9 @@ export function makeArt(g) {
     w: BOT.w, h: BOT.h, cx: BOT.cx, cy: BOT.cy,
     base: mk(0, 0, g2 => {
       const r = Rf(g2); g2.translate(BOT.ox, BOT.oy);
-      shape((x, y, w, h) => r(x, y, w, h, C.glass));
-      r(-36, -146, 3, 140, C.glassMid); r(28, -146, 9, 144, C.glassLo);
-      g2.fillStyle = C.glassMid; g2.font = '6px monospace'; g2.textAlign = 'center'; g2.fillText('JÄGERMEISTER', 0, -152);
+      shape((x, y, w, h) => r(x, y, w, h, K.glass));
+      r(-36, -146, 3, 140, K.glassMid); r(28, -146, 9, 144, K.glassLo);
+      g2.fillStyle = K.glassMid; g2.font = '6px monospace'; g2.textAlign = 'center'; g2.fillText(X.emboss, 0, -152);
     }),
     inner: mk(0, 0, g2 => {
       const r = Rf(g2); g2.translate(BOT.ox, BOT.oy);
@@ -68,19 +74,19 @@ export function makeArt(g) {
       /* the light down the left of the glass, over whatever is behind it */
       g2.globalAlpha = 0.34; shape((x, y, w, h) => { if (w > 16) r(x + 3, y, Math.min(7, w / 4), h, '#d8f4d8'); }); g2.globalAlpha = 1;
       const lx = -30, ly = -126, lw = 60, lh = 94;
-      r(lx, ly, lw, lh, C.label); r(lx, ly, lw, 3, C.labelHi); r(lx, ly + lh - 3, lw, 3, C.labelDk);
-      r(lx + 3, ly + 3, lw - 6, 1, C.ink); r(lx + 3, ly + lh - 4, lw - 6, 1, C.ink);
-      r(lx + 3, ly + 3, 1, lh - 6, C.ink); r(lx + lw - 4, ly + 3, 1, lh - 6, C.ink);
-      g2.fillStyle = C.ink; g2.textAlign = 'center';
-      g2.font = 'bold 9px serif'; g2.fillText('Jägermeister', 0, ly + 17);
-      stag(r, -17, ly + 34, 2.6);
-      g2.font = '6px monospace'; g2.fillText('KRÄUTERLIKÖR', 0, ly + lh - 14);
-      g2.font = '5px monospace'; g2.fillText('35% vol · 56 herbs', 0, ly + lh - 7);
-      r(-13, -206, 26, 7, C.band); r(-13, -206, 26, 1, C.labelHi);
-      if (capOn) { r(-15, -238, 30, 15, C.cap); r(-15, -238, 30, 3, C.capHi); for (let x = -13; x < 14; x += 4) r(x, -234, 1, 9, C.glassLo); }
+      r(lx, ly, lw, lh, K.label); r(lx, ly, lw, 3, K.labelHi); r(lx, ly + lh - 3, lw, 3, K.labelDk);
+      r(lx + 3, ly + 3, lw - 6, 1, K.ink); r(lx + 3, ly + lh - 4, lw - 6, 1, K.ink);
+      r(lx + 3, ly + 3, 1, lh - 6, K.ink); r(lx + lw - 4, ly + 3, 1, lh - 6, K.ink);
+      g2.fillStyle = K.ink; g2.textAlign = 'center';
+      g2.font = 'bold ' + fit(X.title, 54, 9, 0.62) + 'px serif'; g2.fillText(X.title, 0, ly + 17);
+      if (X.icon) X.icon(r, -17, ly + 34, 2.6, K); else stag(r, -17, ly + 34, 2.6);
+      g2.font = fit(X.sub1, 54, 6, 0.6) + 'px monospace'; g2.fillText(X.sub1, 0, ly + lh - 14);
+      g2.font = fit(X.sub2, 54, 5, 0.6) + 'px monospace'; g2.fillText(X.sub2, 0, ly + lh - 7);
+      r(-13, -206, 26, 7, K.band); r(-13, -206, 26, 1, K.labelHi);
+      if (capOn) { r(-15, -238, 30, 15, K.cap); r(-15, -238, 30, 3, K.capHi); for (let x = -13; x < 14; x += 4) r(x, -234, 1, 9, K.glassLo); }
     })),
     /* seen through green glass, the liquor is nearly black */
-    liquid: { base: '#2a180a', mid: '#3c2410', hi: '#8a5a24', edge: '#180e06', foam: '#e9c98a' }
+    liquid: (D && D.bottleLiquid) || { base: '#2a180a', mid: '#3c2410', hi: '#8a5a24', edge: '#180e06', foam: '#e9c98a' }
   };
 
   /* ---- the room --------------------------------------------------------- */

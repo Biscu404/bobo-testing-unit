@@ -132,6 +132,9 @@
 .g-icard:hover { border-color: #55FFFF; }
 .g-icard.sel { background: #00AA00; border-color: #55FF55; }
 .g-icard.sel b, .g-icard.sel i { color: #FFFFFF; }
+.g-icard.locked { background: #14141c; border-style: dashed; }
+.g-icard.locked b { color: #8a8a6a; }
+.g-icard.locked i { color: #AA5555; }
 .g-pickinfo { margin-top: 8px; color: #55FFFF; min-height: 20px; }
 .g-bandrow { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
 .g-keytable { display: grid; grid-template-columns: 230px 1fr; gap: 2px 12px; }

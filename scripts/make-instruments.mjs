@@ -56,7 +56,27 @@ const I = [
   ['choir', 'CHOIR', 'choir_aahs', 48, 84, 4, 'hold', 3.0, 'VOICES'],
   ['bells', 'TUBULAR BELLS', 'tubular_bells', 55, 91, 5, 'pluck', 3.0, 'FUN'],
   ['timpani', 'TIMPANI', 'timpani', 36, 60, 4, 'pluck', 2.0, 'FUN'],
-  ['woodblock', 'WOOD BLOCK', 'woodblock', 60, 84, 6, 'pluck', 0.7, 'FUN']
+  ['woodblock', 'WOOD BLOCK', 'woodblock', 60, 84, 6, 'pluck', 0.7, 'FUN'],
+  /* sold at Dave's, in packs (kernel/cos_data.js GARAGE): the Garage's picker lists them once the pack is bought */
+  ['accordion', 'ACCORDION', 'accordion', 48, 84, 4, 'hold', 3.0, 'KEYS'],
+  ['harmonica', 'HARMONICA', 'harmonica', 60, 96, 4, 'hold', 2.6, 'WINDS'],
+  ['banjo', 'BANJO', 'banjo', 48, 88, 4, 'pluck', 1.6, 'GUITARS'],
+  ['sitar', 'SITAR', 'sitar', 48, 84, 4, 'pluck', 2.4, 'GUITARS'],
+  ['koto', 'KOTO', 'koto', 48, 88, 4, 'pluck', 2.0, 'GUITARS'],
+  ['panflute', 'PAN FLUTE', 'pan_flute', 60, 96, 4, 'hold', 2.6, 'WINDS'],
+  ['shamisen', 'SHAMISEN', 'shamisen', 48, 84, 4, 'pluck', 1.6, 'GUITARS'],
+  ['viola', 'VIOLA', 'viola', 48, 88, 4, 'hold', 3.0, 'STRINGS'],
+  ['oboe', 'OBOE', 'oboe', 58, 91, 4, 'hold', 3.0, 'WINDS'],
+  ['frenchhorn', 'FRENCH HORN', 'french_horn', 41, 77, 4, 'hold', 3.0, 'WINDS'],
+  ['trombone', 'TROMBONE', 'trombone', 40, 72, 4, 'hold', 3.0, 'WINDS'],
+  ['tuba', 'TUBA', 'tuba', 28, 58, 4, 'hold', 3.0, 'BASS'],
+  ['synthlead', 'SAW LEAD', 'lead_2_sawtooth', 48, 84, 4, 'hold', 2.6, 'SYNTH'],
+  ['synthpad', 'WARM PAD', 'pad_2_warm', 36, 84, 5, 'hold', 3.0, 'SYNTH'],
+  ['synthbass', 'SYNTH BASS', 'synth_bass_1', 28, 60, 4, 'pluck', 2.0, 'SYNTH'],
+  ['distgtr', 'DISTORTION GUITAR', 'distortion_guitar', 40, 84, 4, 'pluck', 2.5, 'GUITARS'],
+  ['celesta', 'CELESTA', 'celesta', 60, 108, 4, 'pluck', 2.4, 'MALLETS'],
+  ['voiceoohs', 'VOICE OOHS', 'voice_oohs', 48, 84, 4, 'hold', 3.0, 'VOICES'],
+  ['tinklebell', 'TINKLE BELL', 'tinkle_bell', 72, 108, 5, 'pluck', 2.0, 'FUN']
 ];
 /* the kit: key, name, General MIDI note, seconds kept */
 const KIT = [['kick', 'KICK', 36, 0.9], ['snare', 'SNARE', 38, 0.8], ['stick', 'STICK', 37, 0.4], ['clap', 'CLAP', 39, 0.7],

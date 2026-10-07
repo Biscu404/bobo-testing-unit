@@ -5,7 +5,9 @@ import { makeContainer } from './raster.js';
 import { clamp, makeSlosh, stepSlosh, JAG_FULL, JAG_SHOT, POURED_FILL, BOT_FULL } from './physics.js';
 import { startPour, pourStep } from './pour.js';
 import { startDrink, drinkStep, restPose } from './drink.js';
-import { makeGlass3D } from './glass3d.js';
+import { makeGlass3D, setLiquor } from './glass3d.js';
+import { drinkById, paletteOf } from './drinks.js';
+import { DRINKS } from '../../kernel/cos_data.js';
 import { scopedListeners, whenGone } from '../lifecycle.js';
 
 const JAG_KEY = 'templeos.bottle.v1';
@@ -40,21 +42,25 @@ export default {
     wrap.appendChild(cv);
     const bar = document.createElement('div');
     bar.className = 'appbar';
+    const bDrink = document.createElement('button'); bDrink.className = 'appbtn';
     const bBuy = document.createElement('button'); bBuy.className = 'appbtn'; bBuy.textContent = 'BUY A NEW BOTTLE';
     const info = document.createElement('span'); info.className = 'godword';
-    bar.appendChild(bBuy); bar.appendChild(info);
+    bar.appendChild(bDrink); bar.appendChild(bBuy); bar.appendChild(info);
     body.appendChild(wrap); body.appendChild(bar);
 
     const g = cv.getContext('2d');
     if (!g) { info.textContent = 'NO CANVAS.'; return; }
     g.imageSmoothingEnabled = false;
-    const A = makeArt(g), { R, T } = A;
+    /* what is in the bottle, and so what it looks like: the drink picked (Dave's DRINKS), its bottle built from three colours */
+    let drink = drinkById('jager'), PAL = paletteOf(drink);
+    let A = makeArt(g, PAL), R = A.R, T = A.T;
     const sfx = makeSfx(Snd);
-    const botC = makeContainer(A.bottleSpec), glass = makeGlass3D();
-    const liq = C.liquid;
+    let botC = makeContainer(A.bottleSpec);
+    const glass = makeGlass3D();
+    const owned = () => DRINKS.filter(d => window.Cos.has('drink', d.id));
 
     const S = {
-      ml: JAG_FULL, drunk: 0, bottles: 1, phase: 'idle', t: 0, note: '', noteT: 0, rest: 0,
+      ml: JAG_FULL, drunk: 0, bottles: 1, shelf: {}, phase: 'idle', t: 0, note: '', noteT: 0, rest: 0,
       bot: { c: REST_C.slice(), a: 0, vol: BOT_FULL, capOn: true, surf: null, n0: botC.n0, slosh: makeSlosh() },
       gls: { pose: restPose(), vol: 0 },
       sipDrops: [], stream: 0, q: 0, lip: null, glassSurf: FLOOR, glassVol: 0, glugPh: 0, glugIn: 0, dripIn: 0,
@@ -64,12 +70,16 @@ export default {
     const L = scopedListeners(root);
     try {
       const raw = JSON.parse(localStorage.getItem(JAG_KEY) || 'null');
-      if (raw) { S.ml = raw.ml == null ? JAG_FULL : raw.ml; S.drunk = raw.drunk || 0; S.bottles = raw.bottles || 1; wasFull = raw.glass || 0; }
+      if (raw) {
+        S.ml = raw.ml == null ? JAG_FULL : raw.ml; S.drunk = raw.drunk || 0; S.bottles = raw.bottles || 1; wasFull = raw.glass || 0; S.shelf = raw.shelf || {};
+        if (raw.drink && window.Cos.has('drink', raw.drink)) { drink = drinkById(raw.drink); PAL = paletteOf(drink); A = makeArt(g, PAL); R = A.R; T = A.T; botC = makeContainer(A.bottleSpec); }
+      }
     } catch (e) {}
+    setLiquor(PAL.room);
     S.bot.vol = (S.ml / JAG_FULL) * BOT_FULL;
     S.gls.vol = wasFull ? POURED_FILL : 0;
     const save = () => { try { localStorage.setItem(JAG_KEY,
-      JSON.stringify({ ml: S.ml, drunk: S.drunk, bottles: S.bottles, glass: S.gls.vol > 0.55 ? 1 : 0 })); } catch (e) {} };
+      JSON.stringify({ ml: S.ml, drunk: S.drunk, bottles: S.bottles, glass: S.gls.vol > 0.55 ? 1 : 0, drink: drink.id, shelf: S.shelf })); } catch (e) {} };
     const say = t => { S.note = t; S.noteT = 3; };
     const full = () => S.gls.vol > 0.55;
     const fx = { sfx, get glassSurf() { return S.glassSurf; } };
@@ -90,19 +100,19 @@ export default {
         const dx = x - px, dy = y - py;
         const c = (x0, y0, ww, hh, col) => R(x0, y0, ww, hh, col);
         if (Math.abs(dy) >= Math.abs(dx)) {
-          c(Math.min(px, x) - w / 2, Math.min(py, y), w, Math.abs(dy) + 1, C.liquidHi);
-          c(Math.min(px, x) - w / 2 + 1, Math.min(py, y), Math.max(1, w - 2), Math.abs(dy) + 1, '#d98a32');
-          c(Math.min(px, x) - w / 2, Math.min(py, y), 1, Math.abs(dy) + 1, '#f0b868');
+          c(Math.min(px, x) - w / 2, Math.min(py, y), w, Math.abs(dy) + 1, PAL.stream[0]);
+          c(Math.min(px, x) - w / 2 + 1, Math.min(py, y), Math.max(1, w - 2), Math.abs(dy) + 1, PAL.stream[1]);
+          c(Math.min(px, x) - w / 2, Math.min(py, y), 1, Math.abs(dy) + 1, PAL.stream[2]);
         } else {
-          c(Math.min(px, x), Math.min(py, y) - w / 2, Math.abs(dx) + 1, w, C.liquidHi);
-          c(Math.min(px, x), Math.min(py, y) - w / 2 + 1, Math.abs(dx) + 1, Math.max(1, w - 2), '#d98a32');
-          c(Math.min(px, x), Math.min(py, y) - w / 2, Math.abs(dx) + 1, 1, '#f0b868');
+          c(Math.min(px, x), Math.min(py, y) - w / 2, Math.abs(dx) + 1, w, PAL.stream[0]);
+          c(Math.min(px, x), Math.min(py, y) - w / 2 + 1, Math.abs(dx) + 1, Math.max(1, w - 2), PAL.stream[1]);
+          c(Math.min(px, x), Math.min(py, y) - w / 2, Math.abs(dx) + 1, 1, PAL.stream[2]);
         }
         px = x; py = y;
       }
       const w0 = Math.max(2, Math.round(S.q / 60 * 1.5));
       S.landX = px;
-      R(S.landX - w0 / 2 - 2, S.glassSurf - 1, w0 + 4, 2, '#f0b868');
+      R(S.landX - w0 / 2 - 2, S.glassSurf - 1, w0 + 4, 2, PAL.stream[2]);
     }
 
     function draw(ts) {
@@ -120,7 +130,7 @@ export default {
       /* the reckoning: drawn first, so a glass brought up close covers it */
       const frac = clamp(S.ml / JAG_FULL, 0, 1);
       const shots = Math.floor(S.ml / JAG_SHOT + 1e-6);
-      T('JÄGERMEISTER', 190, 20, C.label, 13, 'center');
+      T(drink.name, 190, 20, PAL.title, 13, 'center');
       T(S.ml.toFixed(0) + ' ML LEFT  ·  ' + shots + ' MEASURE' + (shots === 1 ? '' : 'S'), 190, 34, C.white, 9, 'center');
       const drinking = S.phase === 'drink';
       if (!drinking) {
@@ -136,7 +146,7 @@ export default {
                  : full() ? 'CLICK TO DRINK'
                  : S.ml < JAG_SHOT ? 'THE BOTTLE IS EMPTY'
                  : 'CLICK TO POUR';
-      T(S.note || hint, 190, drinking ? 50 : 350, S.note ? C.label : C.dim, 8, 'center');
+      T(S.note || hint, 190, drinking ? 50 : 350, S.note ? PAL.title : C.dim, 8, 'center');
       /* the glass: lifted to the screen and tipped toward whoever is at it, when it is being drunk */
       const rg = glass.render(g, G.pose, { vol: G.vol, foam: S.foam > 0.1 ? Math.min(2.5, S.foam) : 0 });
       if (S.phase === 'drink') {
@@ -148,13 +158,13 @@ export default {
         }
       } else S.glassSurf = Math.min(FLOOR, rg.surfY);
       S.glassVol = G.vol;
-      S.sipDrops.forEach(d => { R(d.x, d.y, d.r, d.r, '#c8741c'); R(d.x, d.y, d.r, Math.max(1, d.r / 4), '#f0b868'); });
+      S.sipDrops.forEach(d => { R(d.x, d.y, d.r, d.r, PAL.drop); R(d.x, d.y, d.r, Math.max(1, d.r / 4), PAL.stream[2]); });
       drawStream(ts);
       /* what is thrown up when the stream lands, and the drops that leave the lip */
-      S.rings.forEach(r => { g.globalAlpha = 1 - r.t / r.life; R(r.x - r.r, S.glassSurf - 1, r.r * 2, 1, C.foam); });
+      S.rings.forEach(r => { g.globalAlpha = 1 - r.t / r.life; R(r.x - r.r, S.glassSurf - 1, r.r * 2, 1, PAL.foam); });
       g.globalAlpha = 1;
-      S.fizz.forEach(f => R(f.x, f.y, f.r, f.r, f.y < S.glassSurf + 3 ? C.foam : '#c58a44'));
-      S.drops.forEach(p => R(p.x, p.y, p.r || 2, p.r || 2, p.c === 'liq' ? liq : p.c));
+      S.fizz.forEach(f => R(f.x, f.y, f.r, f.r, f.y < S.glassSurf + 3 ? PAL.foam : PAL.fizz));
+      S.drops.forEach(p => R(p.x, p.y, p.r || 2, p.r || 2, p.c === 'liq' ? PAL.drop : p.c));
       g.globalAlpha = 0.06;
       const gr = g.createLinearGradient(0, 0, BW, BH);
       gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.5, 'rgba(255,255,255,0)');
@@ -168,6 +178,32 @@ export default {
       if (S.ml < JAG_SHOT) { say('EMPTY. BUY ANOTHER ONE.'); sfx.deny(); return false; }
       startPour(S); sfx.cap(); return true;
     }
+    /* ---- which bottle is on the table ---------------------------------------- */
+    const quip = d => d.name + '.  ' + d.abv + '% VOL.  ' + (d.strength === 0 ? 'NOTHING IN IT AT ALL.' : d.strength >= 1.5 ? 'EACH ONE COUNTS AS ' + d.strength.toFixed(1) + ' JÄGER. GO CAREFULLY.' : d.strength < 0.7 ? 'GENTLE: IT TAKES A LOT OF THEM.' : 'ABOUT AS STRONG AS WHAT YOU WERE DRINKING.');
+    function setDrink(d) {
+      S.shelf[drink.id] = S.ml;                                  /* the one on the table goes back on the shelf, as full as it is */
+      drink = d; PAL = paletteOf(d);
+      A = makeArt(g, PAL); R = A.R; T = A.T;
+      botC = makeContainer(A.bottleSpec); S.bot.n0 = botC.n0;
+      setLiquor(PAL.room);
+      S.ml = S.shelf[d.id] != null ? S.shelf[d.id] : JAG_FULL;
+      S.bot.vol = (S.ml / JAG_FULL) * BOT_FULL; S.bot.a = 0; S.bot.c = REST_C.slice(); S.bot.capOn = true;
+      S.gls.vol = 0; S.foam = 0;
+      refreshBar(); save(); sfx.cork();
+      say(quip(d));
+    }
+    function refreshBar() { bDrink.textContent = 'DRINK: ' + drink.name; bDrink.title = owned().length > 1 ? 'CHANGE WHAT YOU ARE POURING' : 'DAVE SELLS OTHER BOTTLES'; }
+    bDrink.addEventListener('click', () => {
+      if (S.phase !== 'idle') return;
+      if (full()) { say('FINISH THE GLASS FIRST.'); sfx.deny(); cv.focus(); return; }
+      const own = owned();
+      if (own.length < 2) { say('ONLY ' + drink.name + ' ON THE SHELF. DAVE SELLS OTHERS.'); ctx.openWindow('shop', { tab: 'drink' }).catch(() => {}); return; }
+      setDrink(own[(own.findIndex(d => d.id === drink.id) + 1) % own.length]);
+      cv.focus();
+    });
+    L.on(window, 'cos-changed', () => refreshBar());
+    refreshBar();
+
     /* a click is for now. While a measure is being poured or drunk, or while whoever
        it is gets their breath back, it does nothing at all: nothing is kept for later,
        and nothing can be hurried by it. */
@@ -199,7 +235,7 @@ export default {
       S.phase = 'idle'; S.drunk++; S.rest = BREATHER;
       S.gls.vol = Math.min(S.gls.vol, 0.03);
       sfx.down(); sfx.ahh(); save();
-      if (window.Drunk) window.Drunk.drink();
+      if (window.Drunk) window.Drunk.drink(drink.strength);
       const lines = JAG_LINES[window.Drunk ? window.Drunk.stage() : 'SOBER'] || JAG_LINES.SOBER;
       say(lines[S.drunk % lines.length]);
     }
@@ -226,7 +262,7 @@ export default {
       if (S.stream > 0.1 && S.phase === 'pour') {
         S.ringIn -= dt;
         if (S.ringIn <= 0) { S.ringIn = 0.13; S.rings.push({ x: lx, r: 2, t: 0, life: 0.7 }); }
-        for (let k = 0; k < 2; k++) S.drops.push({ x: lx + (Math.random() - 0.5) * 6, y: S.glassSurf, vx: (Math.random() - 0.5) * 70, vy: -30 - Math.random() * 70, life: 0.45, c: Math.random() < 0.5 ? '#f0b868' : C.foam });
+        for (let k = 0; k < 2; k++) S.drops.push({ x: lx + (Math.random() - 0.5) * 6, y: S.glassSurf, vx: (Math.random() - 0.5) * 70, vy: -30 - Math.random() * 70, life: 0.45, c: Math.random() < 0.5 ? PAL.stream[2] : PAL.foam });
         if (Math.random() < 0.7) S.fizz.push({ x: lx + (Math.random() - 0.5) * 14, y: S.glassSurf + 4 + Math.random() * 10, r: 1 + (Math.random() < 0.3 ? 1 : 0), vy: -24 - Math.random() * 20 });
         S.foam = Math.min(2.6, S.foam + dt * 3);
       } else S.foam = Math.max(0, S.foam - dt * 0.35);
