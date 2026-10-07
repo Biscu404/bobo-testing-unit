@@ -109,6 +109,9 @@ async function cycle(id) {
     });
   });
   await page.waitForTimeout(500);
+  /* closing the shop leaves Dave's farewell box on the desktop (kernel/dave_box.js). It is the machine's, not the app's, and has its own
+     timers while it types: take it down so it is not measured as something the shop left behind. */
+  await page.evaluate(() => { if (window.DaveBox) window.DaveBox.dismiss(); });
   const after = await snapshot();
   return { id, opened: opened.n, winsDuring: during.wins - before.wins, winsAfter: after.wins - before.wins, before, after, errs: errors.slice(err0) };
 }

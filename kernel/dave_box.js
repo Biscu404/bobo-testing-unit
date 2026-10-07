@@ -57,7 +57,7 @@ export const DaveBox = {
   show(v) {
     this.dismiss();
     const shell = document.getElementById('shell');
-    if (!CRT.on || !shell || shell.style.display === 'none') return false;       /* switched off, or not yet on the desktop */
+    if (!CRT.on || !shell || getComputedStyle(shell).display === 'none') return false;       /* switched off, or not yet on the desktop */
     const pick = pickFarewell(v, null, this.last);
     this.last = pick.text;
     this.text = pick.text;
