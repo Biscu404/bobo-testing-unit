@@ -1057,14 +1057,18 @@ textarea.editor {
 #room #lamp.dip { background: var(--lamp-off); box-shadow: none; }
 
 /* frame decoration: moss, screws, tape, labels. One layer over the plastic,
-   drawn per frame as inline SVG, never in the way of the pointer. */
+   drawn per frame as inline SVG, never in the way of the pointer. Each piece is pixel art at the size it is
+   shown (kernel/cos_deco.js: sized in pixels, never a share of the monitor, anchored to a corner of the case),
+   and the layer follows the case's own rounded corners, so a piece taped round a corner stops where the plastic does. */
 #framedeco {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 3;
+  border-radius: var(--case-r);
   background-repeat: no-repeat;
   background-size: 100% 100%;
+  image-rendering: pixelated;
 }
 /* the tint the frame lends the phosphor. Inside the glass, under the glass
    canvas, over the picture. */
@@ -1276,6 +1280,45 @@ textarea.editor {
 .shopcard.eq .bt { background: #00AAAA; color: #000000; }
 .shopfoot { padding: 2px 6px; background: #AA00AA; color: #FFFF55; display: flex; }
 .shopfoot .r { margin-left: auto; color: var(--phos); }
+
+/* Dave's farewell (kernel/dave_box.js): the box he leaves on the desktop when the shop window shuts. In the shop's own colours. It sits over
+   the windows and under the menus and the toast, in the corner of the desktop, takes no key, and goes by itself. */
+#davebox {
+  position: absolute; right: 10px; bottom: 34px;
+  width: 440px; max-width: calc(100% - 20px);
+  z-index: 455;
+  background: #AA00AA; border: 3px solid #FF55FF;
+  display: flex; flex-direction: column;
+  user-select: none;
+}
+#davebox .dbtitle {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 20px; padding: 0 6px;
+  background: repeating-linear-gradient(90deg, #FF55FF 0 8px, #AA00AA 8px 16px);
+  color: #FFFF55;
+}
+#davebox .dbhint { color: var(--phos); }
+#davebox .dbbody { display: flex; gap: 6px; padding: 4px; align-items: flex-start; }
+#davebox .dbport { flex: 0 0 96px; }
+#davebox .dbport canvas { width: 96px; height: 96px; display: block; image-rendering: pixelated; }
+#davebox .dbport.up { transform: translateY(-2px); }
+#davebox .dbsay {
+  flex: 1 1 auto;
+  text-transform: uppercase;
+  background: #FFFFFF; color: #000000; border: 2px solid #000000;
+  padding: 4px 6px; line-height: 1.05;
+  position: relative;
+  min-height: 62px;
+}
+#davebox .dbsay:after {
+  content: ''; position: absolute; left: -10px; top: 14px;
+  width: 0; height: 0;
+  border: 5px solid transparent; border-right-color: #000000;
+}
+#davebox .dbrest { visibility: hidden; }
+#davebox .dbcur { display: inline-block; width: 0; overflow: visible; color: #AA00AA; }   /* no width: the line must not reflow as the cursor moves */
+@media (prefers-reduced-motion: reduce) { #davebox .dbport.up { transform: none; } }
+#tube #davebox, #tube #davebox * { cursor: var(--cur-hand, pointer); }
 
 /* ---- the garden --------------------------------------------------------- */
 .gardenpane { background: #1d1a12; padding: 2px; }

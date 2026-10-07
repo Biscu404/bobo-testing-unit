@@ -1,3 +1,5 @@
+import { DECO_NEW } from './cos_deco.js';
+
 export const FRAMES = [
   {
     id: 'beige', name: 'BEIGE OFFICE', price: 0,
@@ -39,7 +41,10 @@ export const FRAMES = [
       '--case-shadow': 'inset 0 2px 0 rgba(255,255,255,0.14), inset 0 -3px 0 rgba(0,0,0,0.6), inset 3px 0 0 rgba(255,255,255,0.05), inset -3px 0 0 rgba(0,0,0,0.5)'
     },
     deco: [
-      { svg: 'screws', pos: 'left 0px top 0px', size: '100% 100%' },
+      { svg: 'screw', pos: 'left 2px top 2px' },
+      { svg: 'screw', pos: 'right 2px top 2px' },
+      { svg: 'screw', pos: 'left 2px bottom 2px' },
+      { svg: 'screw', pos: 'right 2px bottom 2px' },
       { svg: 'danger', pos: 'left 2.5% bottom 3%', size: '104px 26px' }
     ]
   },
@@ -79,8 +84,9 @@ export const FRAMES = [
       '--case-shadow': 'inset 0 2px 0 rgba(255,255,255,0.4), inset 0 -3px 0 rgba(0,0,0,0.35), inset 3px 0 0 rgba(180,255,150,0.12), inset -3px 0 0 rgba(0,0,0,0.25)'
     },
     deco: [
-      { svg: 'moss', pos: 'left 0 top 0', size: '100% 100%' },
-      { svg: 'vine', pos: 'right 0 top 0', size: '120px 100%' }
+      { svg: 'mossTL', pos: 'left 0 top 0' },
+      { svg: 'mossBR', pos: 'right 0 bottom 0' },
+      { svg: 'vineR', pos: 'right 0 top 40px' }
     ]
   },
   {
@@ -97,7 +103,7 @@ export const FRAMES = [
     },
     deco: [
       { svg: 'crack', pos: 'left 0 top 0', size: '100% 100%' },
-      { svg: 'tape', pos: 'left 4% top 2%', size: '96px 46px' }
+      { svg: 'tape', pos: 'left 0 top 0' }
     ]
   },
   {
@@ -115,7 +121,7 @@ export const FRAMES = [
       '--scr-tint': 'rgba(255,120,200,0.04)',
       '--case-shadow': 'inset 0 2px 0 rgba(255,255,255,0.8), inset 0 -3px 0 rgba(120,30,80,0.3), inset 3px 0 0 rgba(255,255,255,0.4), inset -3px 0 0 rgba(120,30,80,0.2)'
     },
-    deco: [{ svg: 'sticker', pos: 'right 3% bottom 3%', size: '44px 40px' }, { svg: 'sticker', pos: 'left 2% top 2%', size: '28px 26px' }]
+    deco: [{ svg: 'heart', pos: 'left 0 top 0' }, { svg: 'heart', pos: 'right 0 bottom 0' }]
   },
   {
     id: 'arcade', name: 'ARCADE CABINET', price: 2600,
@@ -166,7 +172,7 @@ export const FRAMES = [
       '--scr-tint': 'rgba(255,255,255,0.03)',
       '--case-shadow': 'inset 0 2px 0 rgba(255,255,255,0.85), inset 0 -3px 0 rgba(0,0,0,0.3), inset 3px 0 0 rgba(255,255,255,0.4), inset -3px 0 0 rgba(0,0,0,0.25)'
     },
-    deco: [{ svg: 'foil', pos: 'left 0 top 0', size: '38% 34%' }, { svg: 'foil', pos: 'right 0 bottom 0', size: '34% 30%' }]
+    deco: [{ svg: 'foilTL', pos: 'left 0 top 0' }, { svg: 'foilBR', pos: 'right 0 bottom 0' }]
   },
   {
     id: 'gold', name: 'THE THIRD TEMPLE', price: 99999, joke: true,
@@ -516,13 +522,6 @@ export const DECO_SVG = {
     '<path d="M0 10 Q30 3 60 10 T120 9" stroke="rgba(0,0,0,0.28)" stroke-width="2" fill="none"/>' +
     '<path d="M0 15 Q40 9 70 16 T120 14" stroke="rgba(255,220,170,0.18)" stroke-width="1" fill="none"/>' +
     '</svg>',
-  screws: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" preserveAspectRatio="none">' +
-    ['8,8', '192,8', '8,192', '192,192'].map(p => {
-      const c = p.split(',');
-      return '<g transform="translate(' + c[0] + ',' + c[1] + ')">' +
-        '<circle r="5" fill="#0d0f11" stroke="#585d64" stroke-width="1.5"/>' +
-        '<rect x="-3.5" y="-0.9" width="7" height="1.8" fill="#585d64"/></g>';
-    }).join('') + '</svg>',
   danger: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 104 26" shape-rendering="crispEdges">' +
     '<rect width="104" height="26" fill="#b0201a"/><rect x="2" y="2" width="100" height="22" fill="none" stroke="#ffffff" stroke-width="1.5"/>' +
     '<text x="52" y="12" font-family="monospace" font-size="8" fill="#ffffff" text-anchor="middle">HIGH VOLTAGE INSIDE</text>' +
@@ -534,26 +533,10 @@ export const DECO_SVG = {
     '<path d="M20 46 C20 30 8 30 8 14" stroke="#7d8683" stroke-width="6" fill="none" stroke-linecap="round"/>' +
     '<path d="M20 46 C20 32 30 30 30 18" stroke="#96a09c" stroke-width="5" fill="none" stroke-linecap="round"/>' +
     '<rect x="4" y="8" width="9" height="8" rx="2" fill="#5f6764"/><rect x="26" y="12" width="9" height="8" rx="2" fill="#5f6764"/></svg>',
-  moss: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" preserveAspectRatio="none">' +
-    '<path d="M0 0 h44 c-4 10 -14 12 -18 22 c-6 14 -20 10 -26 22 z" fill="rgba(74,110,45,0.85)"/>' +
-    '<path d="M0 0 h26 c-2 8 -10 10 -12 18 z" fill="rgba(126,168,70,0.8)"/>' +
-    '<path d="M200 200 h-52 c6 -12 18 -10 24 -22 c6 -12 18 -8 28 -20 z" fill="rgba(74,110,45,0.8)"/>' +
-    '<path d="M200 200 h-30 c4 -8 12 -8 16 -16 z" fill="rgba(126,168,70,0.75)"/>' +
-    '<path d="M0 200 h34 c-6 -10 -20 -8 -34 -20 z" fill="rgba(60,96,40,0.7)"/></svg>',
-  vine: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 400" preserveAspectRatio="none">' +
-    '<path d="M104 0 C88 40 116 70 96 112 C78 152 110 180 92 226 C76 268 106 300 90 350 C82 374 92 390 96 400" ' +
-    'stroke="#4a6e2d" stroke-width="4" fill="none"/>' +
-    [30, 84, 140, 198, 254, 312, 366].map((y, i) =>
-      '<ellipse cx="' + (i % 2 ? 78 : 112) + '" cy="' + y + '" rx="11" ry="6" fill="#6f9a3c" transform="rotate(' +
-      (i % 2 ? -28 : 22) + ' ' + (i % 2 ? 78 : 112) + ' ' + y + ')"/>').join('') + '</svg>',
   crack: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" preserveAspectRatio="none">' +
     '<path d="M200 6 L172 26 L178 40 L150 56 L156 70 L128 92" stroke="rgba(40,34,26,0.85)" stroke-width="1.6" fill="none"/>' +
     '<path d="M172 26 L182 18 M150 56 L162 52 M156 70 L146 78" stroke="rgba(40,34,26,0.6)" stroke-width="1.2" fill="none"/>' +
     '<path d="M200 6 L172 26 L178 40 L150 56" stroke="rgba(255,255,255,0.35)" stroke-width="0.7" fill="none" transform="translate(1,1)"/></svg>',
-  tape: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 46">' +
-    '<g transform="rotate(-14 48 23)"><rect x="4" y="14" width="88" height="17" fill="rgba(216,204,168,0.72)"/>' +
-    '<rect x="4" y="14" width="88" height="2" fill="rgba(255,255,255,0.35)"/>' +
-    '<rect x="4" y="29" width="88" height="2" fill="rgba(0,0,0,0.18)"/></g></svg>',
   crown: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 30" shape-rendering="crispEdges">' +
     '<rect x="72" y="0" width="6" height="14" fill="#fff6c2"/><rect x="66" y="4" width="18" height="5" fill="#fff6c2"/>' +
     '<rect x="30" y="16" width="90" height="4" fill="#fff6c2"/><rect x="40" y="20" width="70" height="3" fill="#8a5f06"/>' +
@@ -562,19 +545,11 @@ export const DECO_SVG = {
     '<rect width="170" height="20" fill="#120a30"/><rect x="1" y="1" width="168" height="18" fill="none" stroke="#ff7ad9" stroke-width="2"/>' +
     Array.from({ length: 14 }, (_, i) => '<rect x="' + (6 + i * 12) + '" y="2" width="3" height="3" fill="' + (i % 2 ? '#ffff55' : '#ffffff') + '"/><rect x="' + (6 + i * 12) + '" y="15" width="3" height="3" fill="' + (i % 2 ? '#ffffff' : '#ffff55') + '"/>').join('') +
     '<text x="85" y="14" font-family="monospace" font-size="10" fill="#55ffff" text-anchor="middle">INSERT COIN</text></svg>',
-  sticker: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 40" shape-rendering="crispEdges">' +
-    '<rect x="4" y="8" width="14" height="14" fill="#e8407a"/><rect x="26" y="8" width="14" height="14" fill="#e8407a"/><rect x="0" y="12" width="44" height="12" fill="#e8407a"/>' +
-    '<rect x="6" y="22" width="32" height="6" fill="#e8407a"/><rect x="12" y="28" width="20" height="5" fill="#e8407a"/><rect x="18" y="33" width="8" height="4" fill="#e8407a"/>' +
-    '<rect x="8" y="10" width="6" height="4" fill="#ffd6ea"/></svg>',
   dims: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 22" shape-rendering="crispEdges">' +
     '<rect x="0" y="9" width="120" height="1" fill="#e8f2ff"/><rect x="0" y="4" width="1" height="11" fill="#e8f2ff"/><rect x="119" y="4" width="1" height="11" fill="#e8f2ff"/>' +
     '<rect x="14" y="2" width="92" height="14" fill="#1d4a9a"/>' +
     '<text x="60" y="13" font-family="monospace" font-size="9" fill="#e8f2ff" text-anchor="middle">640 x 480 mm</text></svg>',
-  foil: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none">' +
-    '<path d="M0 0 H100 L88 22 L96 46 L74 62 L80 84 L58 100 H0 Z" fill="#d8aa3c"/>' +
-    '<path d="M0 0 H70 L52 18 L60 40 L36 52 L40 76 L20 100 H0 Z" fill="#f0cc66" opacity="0.8"/>' +
-    '<path d="M100 0 L88 22 L96 46 L74 62" stroke="#8a6410" stroke-width="2" fill="none"/>' +
-    '<path d="M10 0 L26 30 L12 54 L30 80" stroke="#b8861c" stroke-width="1.5" fill="none"/></svg>'
+  ...DECO_NEW
 };
 
 /* ---- Dave's other shelves ------------------------------------------------------------------------------------------------
