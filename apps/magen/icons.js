@@ -1,4 +1,5 @@
 import { MG_CLICK, MG_KAV, MG_DIAS, MG_SPEC, MG_LEG } from './data.js';
+import { AUTO_LEVELS } from './auto.js';
 
 export const MG_FAM = {
   hand: { rim: 12, bg: 4 },      /* the press           */
@@ -54,6 +55,7 @@ export const MG_ICON = {};
   MG_DIAS.forEach(u => MG_ICON[u.id] = { f: 'dias', g: u.ic });
   MG_SPEC.forEach(u => MG_ICON[u.id] = { f: 'rule', g: u.ic });
   MG_LEG.forEach(u  => MG_ICON[u.id] = { f: 'leg',  g: u.ic });
+  AUTO_LEVELS.forEach((u, i) => MG_ICON[u.id] = { f: 'hand', g: ['hand', 'two', 'yad', 'sway', 'sun', 'crown'][i] });
 })();
 
 /* the frame, then the glyph, then a bright corner so it catches the eye */

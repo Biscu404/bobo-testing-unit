@@ -42,6 +42,7 @@ node apps/aftere/aftere_check.js # AfterEgypt: a bot flies all five ways across,
 node apps/garden/garden_check.js # the garden: synergy arithmetic, and how long 99,999 SUN takes three kinds of player, equipped and not (pure Node)
 node apps/bekkedal/life_check.js # what Bekkedal's people do between their posts: chores, sleep, errands, gifts worn (pure Node)
 node apps/aftere/music_check.js # AfterEgypt's score, layers and sky mapping; node apps/aftere/sfx_check.js its effects and the sound of a flight (pure Node)
+node apps/magen/auto_check.js # Magen's auto-press ladder, its unlock at 1,000 presses by hand, and the rates tooltip (pure Node)
 node apps/magen/music_check.js # Magen's score, its band's energy and the seams between tunes (pure Node); apps/bekkedal/music_check.js likewise
 npm run check:music     # instruments, the studio, every game's score, and the style meter's recording
 node apps/garage/edit_check.js # the Garage's note, segment and undo logic (pure Node)
@@ -53,6 +54,7 @@ An app that opens its own window (`open()`) is never sent `unmount()`: add its w
 CI (`.github/workflows/build.yml`) builds and tests both installers. Record of the move: `docs/electron-migration-plan.md`.
 
 ## The machine's own behaviour (kernel)
+- **The taskbar clock** (`#clock`, `startClock()` in `kernel/boot.js`) shows the real local time, HH:MM:SS.
 - **Boot.** `kernel/boot.js` decides, `kernel/bootseq.js` performs. A launch after **eight hours** away (a 5 min
   heartbeat in IndexedDB `templeos_meta`, not the launch time) gets the *long boot*: ten seconds, unskippable — seven of a
   PC in trouble (dying fan, bad block, drive timeout, a progress bar that goes backwards, a freeze, the song coming
@@ -454,6 +456,11 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   icon repeated along a canvas strip (`.mgzone`, repainted only when the pane is rebuilt or resized). Affordable rows are the bare picture, rows
   you cannot afford have a black dither over them, rows not yet unlocked (or a MITZVAH not yet earned) a blue dither veil. **A new building or
   upgrade: add its scene to the matching `scenes_*.js` under the same id as in `data.js`** (a missing id falls back to the starfield).
+  **The auto-press is earned and bought, and its presses are not clicks.** Holding the left button on the star only repeats once `apps/magen/auto.js` says so: a thousand presses *by hand* (`S.clicks`, which the click achievements and that
+  unlock are paid from, and which an auto press never touches; `S.auto` counts those separately) put its first level on sale in UPGRADES, and six levels (`AUTO_LEVELS`: a gap of 0.6 s down to 0.06 s between presses) are bought one at a time.
+  Not bought, a held button is one press. **CHESHBON** (a RULE upgrade) adds a "per minute" line under the counter and turns that plaque into a ledger: hovering it shows `rates.js`'s tooltip (second, minute, hour, per press, auto-press, what makes the rate, what multiplies it).
+  **The right-hand lists are spacious:** a row is 120 px (2.5 x the old 48), its picture 65 px (a 26 px icon, no smoothing), the backdrop tile five times over (`.sc`, `ROW_SCALE` in `backdrops.js`), the count a big white number on a black plate, the name and price on a solid black plate (price green when it can be paid, red when not).
+  The pane scrolls, and is rebuilt only when what is in it changes (`refreshAll`'s `shape`), never because there is more money, so the scroll position and the hovered row survive.
 - `aftere`: `apps/aftere/index.js` - AfterEgypt, five ways across the sky to the third temple (`levels.js`: PILGRIM is the game as it was, then
   SCRIBE, PRIEST, PHARAOH and THE THIRD TEMPLE, each opened by clearing the one before). The tiers add a ship that chases the pointer at a limited
   speed, gaps that wander and breathe, locusts, gusts with a second of warning, a sky that closes in, coins and ankhs (a second chance). Pay climbs from 50 SUN
@@ -520,7 +527,7 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   respirator round his neck. **That portrait is a third user-requested exception to the 16-colour rule** (a face needs a
   skin tone); nothing else in the app leaves VGA16. On a win he speaks first, in a box that fits what he says, and the
   BATCH COMPLETE panel does not start until he has finished.
-- `bottle`: a Jägermeister bottle (baked once and turned by pixel sampling, `raster.js`, with the liquid poured into the *turned*
+- `bottle` (pour and drink move with the drunkenness: `physics.js`'s `sway/drift/lurch` make the hand wander, rock the bottle and glass, and lurch through its timing without changing a pour's or a drink's length, so the journey's pace in `check-drunk.mjs` still holds): a Jägermeister bottle (baked once and turned by pixel sampling, `raster.js`, with the liquid poured into the *turned*
   interior) and a tumbler that is an object, not a sprite (`glass3d.js`: a thick-walled cylinder with a floor, found pixel by pixel by
   following a ray out of an eye, with the liquor held level by a plane and the volume solved for it). The pour (`pour.js`) is a
   feedback loop on the head of liquid above the lip (a weir). **Nobody is drawn drinking** (`drink.js`): the glass is lifted toward the

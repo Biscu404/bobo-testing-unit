@@ -220,6 +220,9 @@ export const MG_DIAS = [
 
 /* ---- 32.5 the ones that change the rules ---------------------------------- */
 export const MG_SPEC = [
+  { id:'s_chesh', n:'CHESHBON', cost:2500, need:['ach',2], ic:'book',
+    d:'The reckoning. Before you can know what you are worth you have to write it down, and then do the sum twice.',
+    m:'Shows your rate per minute under the counter. Hover it for every rate there is.' },
   { id:'s_goy', n:'THE SHABBOS GOY', cost:2e6, need:['nerot',10], ic:'lamp',
     d:'Your neighbour. He is not Jewish, he is not working for you, and he comes by on a Friday night to turn the stove down because that is what neighbours do.',
     m:'Work continues through Shabbat at 60% instead of 15%.' },

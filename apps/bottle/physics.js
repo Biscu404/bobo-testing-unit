@@ -34,3 +34,15 @@ export function arc(x, y, vx, vy, floor) {
   const t = (-vy + Math.sqrt(vy * vy + 2 * GRAV * dy)) / GRAV;
   return { t, x: x + vx * t, dy };
 }
+
+/* How drunk whoever is holding it is, 0..1, as the machine feels it (kernel/drunk.js). Read at the moment a hand moves. */
+export const sway = () => (typeof window !== 'undefined' && window.Drunk && window.Drunk.level) || 0;
+
+/* A hand that is not sure of itself: a slow drift made of three sines that never quite repeat, different for every
+   measure (`seed`), in -1..1. Pure, so the same measure drawn twice moves the same way. */
+export const drift = (t, seed) =>
+  (Math.sin(t * 2.1 + seed * 1.7) * 0.55 + Math.sin(t * 3.7 + seed * 4.1) * 0.3 + Math.sin(t * 6.3 + seed * 0.9) * 0.15);
+
+/* Time as a drunk hand spends it: the same start and the same end, but a lurch in between (slow, then all at once).
+   `a` is 0 for a steady hand and under 1 for the worst; it is monotonic for every a < 1. */
+export const lurch = (u, a) => clamp(u, 0, 1) - a * Math.sin(2 * Math.PI * clamp(u, 0, 1)) / (2 * Math.PI);
