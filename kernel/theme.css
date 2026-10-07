@@ -128,11 +128,8 @@ html, body {
 
 /* curved glass drawn on a canvas: scanlines, grille, vignette, glare.
    It sits outside #tube so animating it never re-runs the lens filter. */
-/* while drunk, the edges of the glass close in (see kernel/drunk.js) */
-#screen.drunk::after {
-  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 8;
-  box-shadow: var(--drunk-vig, none);
-}
+/* While drunk the whole interface sways (filter and transform on #room) and the edges close in on an
+   overlay fixed to the viewport (#drunkover): see kernel/drunk.js. #tube is not touched by it. */
 #glass {
   position: absolute;
   inset: 0;
@@ -191,12 +188,16 @@ html, body {
 }
 .knob:hover { background: linear-gradient(180deg, #ded5bf 0%, #b6ad97 100%); }
 .knob:active { box-shadow: inset 0 2px 4px rgba(0,0,0,0.4); transform: translateY(1px); }
+/* a disabled knob (LENS) is plastic with the legend printed on it and nothing behind it */
+.knob:disabled, .knob:disabled:hover, .knob:disabled:active {
+  cursor: default; opacity: 0.55; background: linear-gradient(180deg, #cdc4ae 0%, #a89f89 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -1px 0 rgba(0,0,0,0.12); transform: none;
+}
 #power { color: #6a3b32; font-weight: bold; }
 
 /* --- the front panel: two pots and a switch, in a routed recess ---------- */
 @media (max-width: 1080px) { #k-phos, #k-burn { display: none; } }
 @media (max-width: 880px)  { .potbox.hold { display: none; } }
-@media (max-width: 700px)  { #k-dgauss { display: none; } }
 
 #panel {
   margin-left: auto;
@@ -892,8 +893,8 @@ textarea.editor {
     rgba(255,255,255,0.28) 0%, rgba(0,0,0,0.85) 22%,
     rgba(0,0,0,0.85) 78%, rgba(255,255,255,0.12) 100%);
 }
-/* The coil, at about a third of what it used to be. It was a strobe before;
-   now it is a shimmer you can leave switched on and still read the screen. */
+/* The coil: only the DEGAUSS command fires it (kernel/degauss.js). The permanent part of degauss is in
+   the glass canvas, so nothing animated lives over the picture between pulses. */
 #degauss {
   position: absolute;
   inset: -12%;
@@ -907,10 +908,7 @@ textarea.editor {
   mix-blend-mode: screen;
   filter: blur(20px);
 }
-/* left on, it drifts rather than flashes */
-#degauss.held { display: block; opacity: 0.5; animation: dg-drift 9s linear infinite; }
-@keyframes dg-drift { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { #degauss.held { animation: none; } }
+#degauss.pulse { display: block; animation: dg-flash 1.5s cubic-bezier(0.1, 0.7, 1.0, 0.1) forwards; }
 #saver {
   position: absolute;
   inset: 0;
@@ -957,7 +955,10 @@ textarea.editor {
 ::-webkit-scrollbar-thumb { background: #AAAAAA; border: 1px solid var(--phos, #FFFFFF); }
 
 /* ---- the notes ---------------------------------------------------------- */
-.notesroot { display: flex; flex-direction: column; height: 100%; background: #000000; color: var(--phos-dim); }
+.notesroot { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; background: #000000; color: var(--phos-dim); }
+/* The shop's and the notes' root IS the window body (the app sets its className, which drops .wbody), so it fills
+   the window as a flex item rather than with `height: 100%`: the browser's zoom is applied to this very box,
+   and a zoomed 100% is taller than the window, which pushed the shop's footer off the bottom of the screen. */
 .ntop { display: flex; align-items: center; gap: 4px; padding: 3px 4px; background: #000000;
         border-bottom: 1px solid #555555; flex: 0 0 auto; flex-wrap: wrap; }
 .ntop .appbtn { padding: 1px 6px; }
@@ -1475,7 +1476,7 @@ textarea.editor {
   height: 24px;
 }
 .win.shopwin .titlebar .t { color: var(--phos); }
-.shoproot { display: flex; flex-direction: column; height: 100%; background: #2a0a2a; }
+.shoproot { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; background: #2a0a2a; }
 .shoptop { display: flex; gap: 4px; padding: 4px; background: #AA00AA; border-bottom: 2px solid #FF55FF; }
 .shopdave { width: 96px; flex: 0 0 96px; }
 .shopdave canvas { width: 96px; height: 96px; display: block; image-rendering: pixelated; }
@@ -1653,12 +1654,6 @@ textarea.editor {
   20% { transform: scale(1.2) rotate(45deg); opacity: 0.8; filter: contrast(2) brightness(1.5); }
   100% { transform: scale(3) rotate(90deg); opacity: 0; filter: contrast(1) brightness(1); }
 }
-#degauss.held {
-  animation: dg-flash 1.5s cubic-bezier(0.1, 0.7, 1.0, 0.1) forwards;
-  display: block;
-}
-
-
 /* ---- dragging files (kernel/dnd.js) ---------------------------------------- */
 #dndghost {
   position: absolute; z-index: 2147483000; pointer-events: none; opacity: 0.85;

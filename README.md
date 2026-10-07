@@ -105,9 +105,9 @@ Underneath are the controls, and they all do something.
 
 | Control | What it does |
 |---|---|
-| **LENS** | `FLAT` / `SOFT` / `FULL`. Bends the glass and the picture bends with it. The case, the well and the tube all deepen their corner radius to follow the same curve. `FULL` bends harder than the pointer can honestly track, and says so — it is there for screenshots. |
+| **LENS** | Disabled: the button is dimmed and does nothing, and every machine runs at `SOFT`, the curve it shipped with (the case, the well and the tube share one corner radius). `LENS_LOCK` in `kernel/hardware.js` is the one number to change. |
 | **SCAN** | Scanline pitch in pixels, 0–4. `0` is off. |
-| **DGAUSS** | Degausses. Hold it on a cold tube. |
+| ~~DGAUSS~~ | No longer a button. Degauss is permanent: patches of the wrong colour (purity errors) sit toward the corners of the glass, painted once into the glass canvas with the scanlines so they cost no frame time. The terminal's `DEGAUSS` still fires the coil — the thunk and a flash of colour. |
 | **PHOS** | Phosphor persistence: `P1` fast, `P4`, `P7` smearing. The same number widens the glow on lit characters *and* sets how little the canvas apps clear between frames, so the starfield, AfterEgypt and GodDoodle all drag their own tails. |
 | **BURN** | Twenty years of the same menu bar ghosted into the coating. |
 | **MUS** / **SFX** | Volume pots. Drag to turn, scroll, or use the arrow keys. |
