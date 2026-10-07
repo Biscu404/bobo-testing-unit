@@ -413,6 +413,17 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   `recue()` on every step of the heat. The rotation is `apps/director.js` (each tune about a minute and a half); Shabbat takes ZMIROT in on the next
   bar line and `want(null)` goes on from where it left off. It plays on the studio's `'magen'` channel, so MUS and the taskbar slider set
   how loud. `node apps/magen/music_check.js` (pure Node): bars, notes, the lead on its chords, the energy's steps, the seams.
+  **Its window is a night, not a black box, and every row stands in front of a picture of its own**, as a Cookie Clicker building does.
+  `apps/magen/style.css` is its own stylesheet (linked by the window; the clicker block that was in `kernel/theme.css` is gone): a deep-blue
+  room with a star tile, planks for the ticker, tabs and bottom bar, blue-and-gold plaques for the count, rate, goal and tooltip; the stage's
+  first eras and ground are blue rather than black. `apps/magen/backdrops.js` is the registry and the CSS, `scene_kit.js` + `scene_props.js` the
+  drawing kit (a 160x24 tile that wraps at its edges, whole-pixel rects, ordered dither, VGA16 only) and `scenes_a..e.js` the 77 scenes: one per
+  building, one per hand/kavanah/community/rule/legacy upgrade (tier rows reuse their building's), shared ones for the MITZVOT tab. A tile is
+  drawn once, on first use (and pre-drawn after the window opens), becomes a CSS rule as a `data:` URL and is tiled at 2x with
+  `image-rendering: pixelated`, so strips stay crisp in fullscreen and zoom and cost nothing per frame. A building's owned count is its own
+  icon repeated along a canvas strip (`.mgzone`, repainted only when the pane is rebuilt or resized). Affordable rows are the bare picture, rows
+  you cannot afford have a black dither over them, rows not yet unlocked (or a MITZVAH not yet earned) a blue dither veil. **A new building or
+  upgrade: add its scene to the matching `scenes_*.js` under the same id as in `data.js`** (a missing id falls back to the starfield).
 - `aftere`: `apps/aftere/index.js` - AfterEgypt, five ways across the sky to the third temple (`levels.js`: PILGRIM is the game as it was, then
   SCRIBE, PRIEST, PHARAOH and THE THIRD TEMPLE, each opened by clearing the one before). The tiers add a ship that chases the pointer at a limited
   speed, gaps that wander and breathe, locusts, gusts with a second of warning, a sky that closes in, coins and ankhs (a second chance). Pay climbs from 50 SUN

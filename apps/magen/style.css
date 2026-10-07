@@ -1,0 +1,228 @@
+/* ---- the clicker ----------------------------------------------------------
+   A store with two hundred rows in it wants to be a document, not a canvas, so
+   this one is DOM everywhere except the star itself. Sixteen colours still and
+   every border is one hard pixel.
+
+   It used to be black. Nobody decided that; a flat black panel is what you get
+   when nobody decides anything, and the dithers laid over it did not fix it. The
+   window is a night now (deep blue with its stars), the bars are planks, the
+   plaques are blue and gold, and every row in every list stands in front of a
+   picture of its own (apps/magen/backdrops.js). The textures are tiles made
+   there and handed in as --mg-night, --mg-wood, --mg-scrim and so on.
+   ========================================================================== */
+.mgroot {
+  --hue: #55FFFF;
+  display: flex; flex-direction: column; height: 100%; position: relative;
+  background: #0000AA var(--mg-night, none); color: #FFFFFF;
+  font: 18px 'VT323', 'Courier New', monospace;
+}
+.mgroot [class*="sc-"], .mgroot .mgzone canvas, .mgroot .mgleft { image-rendering: pixelated; }
+
+/* every bit of type that sits over a picture gets a hard black edge, one pixel, no blur */
+.mgnews, .mgcount, .mgrate, .mgact, .mggoal, .mgbuff, .mghint, .mgrow, .mgach, .mghead, .mgempty, .mgtab {
+  text-shadow: 1px 0 0 #000000, -1px 0 0 #000000, 0 1px 0 #000000, 0 -1px 0 #000000, 1px 1px 0 #000000, -1px -1px 0 #000000;
+}
+
+/* the ticker is a plank across the top */
+.mgnews { flex: 0 0 auto; background: #AA5500 var(--mg-wood, none); border-top: 1px solid #FFFF55; border-bottom: 2px solid var(--hue);
+          padding: 2px 6px; color: #FFFFFF; white-space: pre; overflow: hidden; font-size: 16px; position: relative; }
+.mgbody { flex: 1 1 auto; display: flex; min-height: 0; }
+
+/* ---- the left: the sky goes on, and the valley is at the foot of it ------- */
+.mgleft { flex: 0 0 306px; display: flex; flex-direction: column; align-items: center; min-height: 0; padding-top: 4px;
+          border-right: 2px solid var(--hue); position: relative;
+          background: var(--mg-hills, none) repeat-x 0 100% / 320px 48px, #0000AA var(--mg-night, none); }
+.mgleft:before, .mgleft:after { content: ''; position: absolute; top: 0; bottom: 48px; width: 4px;
+          background-image: repeating-linear-gradient(to bottom, var(--hue) 0 2px, transparent 2px 9px); opacity: 0.45; }
+.mgleft:before { left: 0; }
+.mgleft:after { right: 0; }
+.mgleft > * { position: relative; z-index: 1; }
+
+/* the count and the rate are two plaques, blue and gold, with a lit edge */
+.mgcount { width: 288px; text-align: center; line-height: 1.1; padding: 2px 0 3px; background: #0000AA var(--mg-plaque, none);
+           border: 2px solid; border-color: #FFFF55 #AA5500 #AA5500 #FFFF55; }
+.mgcount .mgn { color: #FFFF55; font-size: 36px; font-weight: bold; display: block; word-break: break-all;
+                text-shadow: 2px 2px 0 #000000, -1px -1px 0 #000000, 1px -1px 0 #000000, -1px 1px 0 #000000; }
+.mgcount .mgn.big { font-size: 30px; }
+.mgcount .mgu { color: #FFFFFF; font-size: 16px; }
+.mgrate { width: 288px; text-align: center; background: #0000AA var(--mg-plaque, none); color: #55FFFF; font-size: 16px; margin: 2px 0 3px; padding: 0 0 1px;
+          border: 2px solid; border-color: #5555FF #000000 #000000 #5555FF; }
+.mgrate b { color: #FFFF55; font-weight: normal; }
+.mgrate i { color: #FFFFFF; font-style: normal; }
+.mgrate u { color: #FF55FF; text-decoration: none; }
+
+/* the bar that says what is next, and how long it is */
+.mggoal { position: relative; width: 288px; height: 20px; background: #AA5500 var(--mg-wood, none); margin: 1px 0 3px; overflow: hidden;
+          border: 2px solid; border-color: #000000 #FFFF55 #FFFF55 #000000; }
+.mggoal span, .mggoal b { position: relative; z-index: 2; font-size: 15px; line-height: 16px; }
+.mggoal span { float: left; padding-left: 4px; color: #FFFFFF; }
+.mggoal b { float: right; padding-right: 4px; color: #FFFF55; font-weight: normal; }
+.mggoal i { position: absolute; left: 0; top: 0; bottom: 0; z-index: 1; background: #00AA00; box-shadow: inset 0 2px 0 #55FF55; }
+
+.mgstagewrap { flex: 0 0 auto; position: relative; border: 1px solid var(--hue); }
+.mgstagewrap:before, .mgstagewrap:after { content: ''; position: absolute; width: 7px; height: 7px; background: var(--hue); }
+.mgstagewrap:before { left: -1px; top: -1px; }
+.mgstagewrap:after  { right: -1px; bottom: -1px; }
+.mgcv { width: 300px; height: 300px; image-rendering: pixelated; cursor: pointer; display: block; }
+
+.mgbuffs { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; min-height: 15px; font-size: 15px; padding: 2px 4px; }
+.mgbuff { position: relative; display: inline-block; padding: 1px 5px 4px; border: 1px solid #FFFFFF; background: #0000AA; }
+.mgbuff i { position: absolute; left: 0; bottom: 0; height: 2px; }
+.mgact { width: 288px; font-size: 16px; min-height: 20px; padding: 1px 2px; text-align: center; margin-top: 2px; color: #FFFFFF;
+         background: #AA5500 var(--mg-wood, none); border: 2px solid; border-color: #FFFF55 #000000 #000000 #FFFF55; }
+.mgshab { color: #FFFF55; }
+.mgshab.lit { background: #00AA00; color: #FFFFFF; border: 1px solid #FFFF55; padding: 0 6px; cursor: pointer; }
+.mgshab.lit:hover { background: #FFFF55; color: #000000; text-shadow: none; }
+.mgsoon { color: #FFFFFF; }
+
+/* ---- the right: tabs on a plank, then whatever the tab is ----------------- */
+.mgright { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.mgtabs { flex: 0 0 auto; display: flex; gap: 2px; padding: 3px 3px 0; background: #AA5500 var(--mg-wood, none); border-bottom: 2px solid var(--hue); }
+.mgtab { flex: 1 1 auto; font: inherit; font-size: 16px; background: #AAAAAA; color: #000000; text-shadow: none; padding: 0 2px 1px; cursor: pointer;
+         border: 2px solid; border-color: #FFFFFF #555555 #555555 #FFFFFF; border-bottom: 0; }
+.mgtab:hover { background: #FFFFFF; }
+.mgtab.on { background: var(--hue); border-color: #FFFFFF #000000 #000000 #FFFFFF; border-bottom: 0; padding-bottom: 3px; }
+.mgtab i { color: #0000AA; font-style: normal; font-weight: bold; }
+.mgtab.on i { color: #AA0000; }
+.mgpane { flex: 1 1 auto; overflow: auto; min-height: 0; background: #0000AA var(--mg-night, none); }
+
+/* a row: its own picture, its name and price on a dithered plate, its count at the right */
+.mgrow { display: flex; align-items: center; gap: 6px; padding: 0 6px 0 4px; height: 48px; position: relative; cursor: pointer;
+         border-left: 3px solid #AAAAAA; border-bottom: 1px solid #000000; background-color: #0000AA; color: #FFFFFF; overflow: hidden; }
+.sc { background-repeat: repeat-x; background-size: 320px 48px; background-position: 0 100%; }
+.mgrow:after, .mgach:after { content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.mgrow.poor:after { background-image: var(--mg-poor, none); }
+.mgrow.locked:after, .mgach.off:after { background-image: var(--mg-veil, none); }
+.mgrow > *, .mgach > * { position: relative; z-index: 3; }
+.mgrow > .mgzone { z-index: 1; }
+.mgrow:hover { box-shadow: inset 0 0 0 2px var(--hue); }
+.mgrow.locked { cursor: default; justify-content: center; }
+.mgrow.locked:hover { box-shadow: none; }
+.mgq { color: #FFFFFF; background: #0000AA var(--mg-plaque, none); padding: 0 12px; border: 1px solid #5555FF; }
+
+.mgic { width: 26px; height: 26px; flex: 0 0 26px; image-rendering: pixelated; transition: none; }
+.mgrow:hover .mgic { transform: translateY(-2px) scale(1.12); }
+.mgnm { flex: 0 1 auto; min-width: 0; display: flex; flex-direction: column; line-height: 1.15; padding: 1px 5px 2px;
+        background-image: var(--mg-scrim, none); }
+.mgnm b { color: #FFFFFF; font-weight: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mgnm i { color: #FFFF55; font-style: normal; font-size: 15px; }
+.mgrow.poor .mgnm b { color: #DDDDDD; }
+.mgrow.poor .mgnm i { color: #FF5555; }
+.mgrow:not([data-b]) .mgnm { max-width: calc(100% - 110px); }
+.mgrow[data-b] .mgnm { flex: 0 0 auto; width: 196px; max-width: 46%; }
+/* the strip the icons you own stand on, between the name and the count */
+.mgzone { flex: 1 1 auto; align-self: stretch; min-width: 0; position: relative; }
+.mgzone canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; }
+.mgown { color: #55FFFF; font-size: 23px; flex: 0 0 auto; min-width: 30px; text-align: right; padding: 0 3px; background: var(--mg-scrim, none); }
+.mgtag { color: #55FF55; font-size: 14px; flex: 0 0 auto; padding: 0 3px; margin-left: auto; background: var(--mg-scrim, none); }
+.mgrow.up { border-left-color: #00AA00; }
+.mgrow.leg { border-left-color: #AA00AA; }
+.mgrow.leg .mgnm i { color: #FFFF55; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mgrow.leg.poor .mgnm i { color: #FF5555; }
+.mgrow.leg.owned { color: #55FF55; cursor: default; }
+.mgrow.leg.owned .mgnm i { color: #55FF55; }
+.mgrow.leg.owned .mgtag { color: #FFFFFF; }
+.mgrow.up.owned { cursor: default; border-left-color: #AAAAAA; }
+.mgrow.up.owned .mgnm b { color: #55FF55; }
+.mgrow.up.owned .mgnm i { color: #FFFF55; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* rows you can afford light their edge; rows you cannot sit still */
+@keyframes mg-ready { 0%, 100% { border-left-color: #AAAAAA; } 50% { border-left-color: #FFFF55; } }
+.mgrow.ready { animation: mg-ready 1.4s steps(1, end) infinite; }
+.mgrow.poor.ready { animation: none; }
+.mgrow.poor { border-left-color: #555555; }
+.mgrow.f-tier.ready      { animation: none; border-left-color: #FFFF55; }
+.mgrow.f-hand.ready      { animation: none; border-left-color: #FF5555; }
+.mgrow.f-kavanah.ready   { animation: none; border-left-color: #FF55FF; }
+.mgrow.f-community.ready { animation: none; border-left-color: #55FFFF; }
+.mgrow.f-rule.ready      { animation: none; border-left-color: #55FF55; }
+.mgrow.leg.ready         { animation: none; border-left-color: #FF55FF; }
+
+/* the three things a row does when you press it: a flash of dither stepping down, a shove, a shake */
+@keyframes mg-bought { 0% { background-image: var(--mg-f1); transform: translateX(0); }
+                       25% { background-image: var(--mg-f2); transform: translateX(6px); }
+                       60% { background-image: var(--mg-f3); transform: translateX(-2px); }
+                       100% { background-image: none; transform: translateX(0); } }
+@keyframes mg-sold   { 0% { background-image: var(--mg-f1); transform: translateX(0); }
+                       40% { background-image: var(--mg-f4); transform: translateX(-8px); }
+                       100% { background-image: none; transform: translateX(0); } }
+@keyframes mg-nope   { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+.mgrow:before { content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.mgrow.bought:before { animation: mg-bought 360ms steps(4, end); }
+.mgrow.sold:before   { animation: mg-sold 300ms steps(3, end); }
+.mgrow.bought { animation: mg-nudge 360ms steps(4, end); }
+.mgrow.sold   { animation: mg-nudge 300ms steps(3, end); }
+.mgrow.nope   { animation: mg-nope 160ms steps(1, end) 2; }
+@keyframes mg-nudge { 0% { transform: translateX(0); } 25% { transform: translateX(6px); } 60% { transform: translateX(-2px); } 100% { transform: translateX(0); } }
+
+/* an upgrade waiting to be bought pulls at the tab it is under */
+@keyframes mg-badge { 0%, 100% { color: #0000AA; } 50% { color: #AA0000; } }
+.mgtab i { animation: mg-badge 900ms steps(1, end) infinite; }
+
+/* ---- headings, the held / for sale toggle, the word list, the numbers ----- */
+.mgempty, .mghead { padding: 6px 8px; color: #FFFFFF; font-size: 16px; line-height: 1.4; background: #AA5500 var(--mg-wood, none);
+                    border-bottom: 2px solid #FFFF55; }
+.mgtoggle { display: flex; gap: 0; padding: 0; }
+.mgtoggle .mgt { flex: 1 1 0; text-align: center; padding: 4px; cursor: pointer; color: #FFFFFF; font-weight: normal; border-right: 2px solid #FFFF55; }
+.mgtoggle .mgt:last-child { border-right: 0; }
+.mgtoggle .mgt:hover { color: #FFFF55; }
+.mgtoggle .mgt.on { background: var(--hue); color: #000000; text-shadow: none; }
+
+.mgach { padding: 3px 8px; line-height: 1.2; height: 44px; position: relative; overflow: hidden; border-bottom: 1px solid #000000; background-color: #0000AA; }
+.mgach b { display: block; width: fit-content; max-width: 100%; color: #AAAAAA; font-weight: normal; padding: 0 4px; background: var(--mg-scrim, none); }
+.mgach i { display: block; width: fit-content; max-width: 100%; color: #FFFFFF; font-style: normal; font-size: 15px; padding: 0 4px; background: var(--mg-scrim, none); }
+.mgach.on b { color: #FFFF55; }
+.mgach.on.zero b { color: #55FFFF; }
+.mgach.off i { color: #AAAAAA; }
+.mgdict { padding: 4px 8px; line-height: 1.3; border-bottom: 1px solid #000000; }
+.mgdict:nth-child(even), .mgstat div:nth-child(even) { background: #0000AA var(--mg-band, none); }
+.mgdict b { color: #FFFF55; font-weight: normal; display: block; }
+.mgdict i { color: #FFFFFF; font-style: normal; font-size: 14px; }
+.mgstat div { display: flex; justify-content: space-between; padding: 2px 8px; border-bottom: 1px solid #000000; }
+.mgstat span { color: #FFFFFF; font-size: 16px; }
+.mgstat b { color: #FFFF55; font-weight: normal; }
+.mgasc { padding: 8px; border-bottom: 2px solid #FFFF55; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+         background: #0000AA var(--mg-plaque, none); }
+.mgasc span { color: #55FFFF; font-size: 15px; }
+
+/* ---- the bar along the foot, and the drawer behind the dots --------------- */
+.mgbar { flex: 0 0 auto; display: flex; align-items: center; gap: 5px; padding: 3px 4px; background: #AA5500 var(--mg-wood, none);
+         border-top: 2px solid var(--hue); }
+.mgbuy { border-width: 2px; }
+.mgbuy.on { background: #FFFF55; border-color: #FFFFFF; color: #000000; }
+.mghint { color: #FFFFFF; font-size: 15px; white-space: nowrap; overflow: hidden; }
+.mgwipe { display: none; background: #AA0000; color: #FFFFFF; border-color: #FF5555; }
+.mgroot.opts .mgwipe { display: inline-block; }
+.mgroot.opts .mgopt { background: #FFFF55; }
+.mgwipe:hover { background: #FF5555; color: #000000; }
+
+/* ---- the tooltip ------------------------------------------------------------ */
+.mgtip { display: none; position: absolute; z-index: 40; width: 250px; background: #0000AA var(--mg-plaque, none); color: #FFFFFF;
+         border: 2px solid; border-color: #FFFF55 #AA5500 #AA5500 #FFFF55; padding: 6px 8px; font-size: 16px; line-height: 1.35;
+         pointer-events: none; box-shadow: 3px 3px 0 #000000; }
+.mgtip b { color: #FFFF55; font-weight: normal; }
+.mgtip u { color: #55FFFF; text-decoration: none; float: right; }
+.mgtip p { color: #FFFFFF; margin-top: 4px; }
+.mgtip .mgt2 { color: #55FF55; }
+.mgtip .mgt2 b { color: #FFFFFF; }
+/* Flavour is white and mechanics are yellow, everywhere, without exception.
+   You should never have to read a paragraph to find the number. */
+.mgtip .mgmech { color: #FFFF55; margin-top: 4px; }
+
+/* ---- and the room takes its colour from what is happening in it ------------ */
+.mgroot[data-mood="simcha"] { --hue: #FFFF55; }
+.mgroot[data-mood="guest"]  { --hue: #55FF55; }
+.mgroot[data-mood="havd"]   { --hue: #FF55FF; }
+.mgroot[data-mood="buff"]   { --hue: #55FFFF; }
+.mgroot[data-mood="chain"]  { --hue: #FF55FF; }
+.mgroot[data-mood="shab"]   { --hue: #FFFFFF; }
+.mgroot[data-mood="bad"]    { --hue: #FF5555; }
+/* the number itself stays gold: it is the thing you are reading */
+.mgroot[data-mood="bad"] .mgcount .mgn { color: #FF5555; }
+@keyframes mg-alive { 0%, 100% { box-shadow: inset 0 0 0 1px transparent; } 50% { box-shadow: inset 0 0 0 1px var(--hue); } }
+.mgroot[data-mood="simcha"] .mgstagewrap, .mgroot[data-mood="guest"] .mgstagewrap,
+.mgroot[data-mood="havd"] .mgstagewrap, .mgroot[data-mood="chain"] .mgstagewrap { animation: mg-alive 700ms steps(1, end) infinite; }
+.mgroot[data-mood="bad"] .mgstagewrap { animation: mg-alive 300ms steps(1, end) infinite; }
+@keyframes mg-rails { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.9; } }
+.mgroot:not([data-mood=""]) .mgleft:before, .mgroot:not([data-mood=""]) .mgleft:after { animation: mg-rails 900ms steps(1, end) infinite; }
+.mgroot[data-mood="bad"] .mgleft:before, .mgroot[data-mood="bad"] .mgleft:after { animation-duration: 320ms; }
