@@ -465,6 +465,12 @@ html, body {
 }
 #icons .icon { position: absolute; }
 #icons .icon.dragging { opacity: 0.65; z-index: 60; }
+#icons .icon.petmoved { transition: left 0.5s ease-out, top 0.5s ease-out; }
+
+/* the elephant that lives on the desktop (kernel/pet.js): under every window, over every icon */
+#pet { position: absolute; left: 0; top: 0; z-index: 30; width: 160px; height: 120px; cursor: var(--cur-hand, pointer); touch-action: none; }
+#pet canvas { width: 160px; height: 120px; display: block; image-rendering: pixelated; pointer-events: none; }
+#petsay { position: absolute; left: 0; top: 0; z-index: 31; display: none; max-width: 230px; padding: 3px 8px; background: #FFFFFF; color: #000000; border: 2px solid #000000; box-shadow: 3px 3px 0 #000000; font-size: 18px; line-height: 1; pointer-events: none; }
 
 /* rubber band */
 #marquee {

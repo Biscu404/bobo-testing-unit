@@ -112,6 +112,25 @@ function wireDeskContextMenu(desk) {
 }
 
 /* put every icon back on the grid, left edge first, top to bottom */
+/* ---- what the desktop's elephant may do to the icons (kernel/pet.js) ---------------------------------------------------
+   He can see where each one is, and move one to the nearest free cell to where he pushed it. The move slides (the .petmoved
+   class carries the transition) and is remembered like any other: put somewhere by hand, it stays there. */
+export function petIcons() {
+  return Array.from(iconEls.entries()).filter(([, rec]) => rec.x != null && !rec.el.classList.contains('dragging')).map(([name, rec]) => ({ name, x: rec.x, y: rec.y }));
+}
+export function petMoveIcon(name, wantX, wantY) {
+  const rec = iconEls.get(name);
+  if (!rec || rec.x == null) return null;
+  const from = { x: rec.x, y: rec.y }, to = freeCell(wantX, wantY, new Set([name]));
+  if (to.x === from.x && to.y === from.y) return null;
+  iconPos[name] = to; rec.x = to.x; rec.y = to.y;
+  rec.el.classList.add('petmoved');
+  rec.el.style.left = to.x + 'px'; rec.el.style.top = to.y + 'px';
+  setTimeout(() => rec.el.classList.remove('petmoved'), 700);
+  saveIconPos();
+  return { from, to };
+}
+
 export function arrangeIcons() {
   iconPos = {};
   const dims = deskDims(), els = deskIcons();

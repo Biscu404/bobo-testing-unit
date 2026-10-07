@@ -46,12 +46,10 @@ export function hintFor(c) {
     return L('SPACE: FYLL KANNEN', 'SPACE: FILL THE CAN');
   }
   if (t === 'p' && c.ready) return L('SPACE: PLUKK BLOMSTEN', 'SPACE: PICK THE FLOWER');
-  switch (c.tool) {
-    case 'stang': return t === 'W' ? L('SPACE: KAST UT', 'SPACE: CAST THE LINE') : null;
-    case 'oks': return t === 'Y' || t === 'G' ? L('SPACE: FELL TREET', 'SPACE: FELL THE TREE') : null;
-    case 'hakke': return t === 'O' || t === 'Q' ? L('SPACE: HUGG UT MALMEN', 'SPACE: MINE THE ORE') : null;
-    default: break;
-  }
+  /* a tool only has a line where it has a use: anywhere else the squares below still get their say (F sows with whatever is in the hand) */
+  if (c.tool === 'stang' && t === 'W') return L('SPACE: KAST UT', 'SPACE: CAST THE LINE');
+  if (c.tool === 'oks' && (t === 'Y' || t === 'G')) return L('SPACE: FELL TREET', 'SPACE: FELL THE TREE');
+  if (c.tool === 'hakke' && (t === 'O' || t === 'Q')) return L('SPACE: HUGG UT MALMEN', 'SPACE: MINE THE ORE');
   if (t === 'f') {
     const s = c.soil;
     if (s && s.ready) return L('SPACE: HØST', 'SPACE: HARVEST');

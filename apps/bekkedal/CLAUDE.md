@@ -69,7 +69,7 @@ coordinates") lives in `bekkedal-art.md`.
 - `palette.js` — the sixty-four colours, the luminance ordering they are stated in, and `rampStep`. See `.claude/rules/bekkedal-art.md`.
 - `palette_marks.js` — the `MARKS`/`SHADOWS`/`FEATURES` contrast tables: what may be drawn on what. Split off `palette.js` for the 300-line rule; the dependency runs one way, so import a colour from `palette.js` and a table from here. See `.claude/rules/bekkedal-art.md`.
 - `light.js` — hour-of-day palette transform, the lamp state a pool resolves toward, and the falloff. See `.claude/rules/bekkedal-art.md`.
-- `lamp.js` — the local-light pass: an ordered dither between the picture at this hour and the picture in daylight. See `.claude/rules/bekkedal-art.md`.
+- `lamp.js` — the local-light pass: four hard bands between the picture at this hour and the picture in daylight (no dither). `lamp_bands.js` is its constants, `lampState`, `relightCoef` and the band states. See **Banded light**, `.claude/rules/bekkedal-art.md`.
 - `surface.js` — glyph-to-palette-entry table per map. See `.claude/rules/bekkedal-art.md`.
 - `building.js` — the elevation of a house, authored once as a profile of a
   tile's vertical position inside its own building: the wall and its courses,
@@ -138,6 +138,17 @@ coordinates") lives in `bekkedal-art.md`.
 - `schedule.js` — where everybody is: two to four named posts per NPC, and
   which one the clock (plus weather, season, a festival day, a story flag)
   currently puts them at. See `.claude/rules/bekkedal-content.md`.
+- `life.js`, `life_data.js` — what people do between their posts. **They keep hours and do chores**: through the working day each goes to a *station* near their
+  post (a doorstep to sweep, a well, a bench, a wall to mend, the water) for a ninety-minute slot and comes back; they sleep (`BED`: indoors and not to be found, so
+  nobody is on the road at three in the morning); some of them (never the shopkeepers) are away on an errand for a few hours on some days. Every choice is a hash of the day, the person
+  and the slot, never a random number. `life_check.js` walks all of it (every station is standable and reachable on foot, nobody jumps, a festival still gathers all eight).
+- `walkers.js` — real-time walkers (breadth-first on the map's own walkability) for a scene's cast. **Nothing teleports**: a heart event no longer sets the player's square.
+  The lead calls out (a bubble, `CALLS` in `life_data.js`) if they are more than five tiles off, runs to the square beside the player, the box opens where the player stands,
+  and the cast walks home or away afterwards. `scripts/smoke.mjs` asserts the player's square did not move and the box opened.
+- `looks.js`, `actors_look.js` — what a gift looks like once it is somebody's (`S.look`, save v21): a sweater and a scarf are worn, a cup, a bouquet, a basket of berries are held while
+  they rest, the item the hands already carry at a chore is theirs if they were given it. `LOOKS` in `life_data.js` is the table.
+- `hint.js` — what SPACE would do at the square in front of you, as the one line the HUD shows (`hintFor`, pure, the rules of `act()` read as questions), and the bag's footer saying how to
+  hold a gift out and what happens next (`GIFT_HELP`). Before this nothing said that SPACE from the bag held the gift out, and the only sign was a line at the bottom of the screen.
 - `scene.js` — the heart-event runner: whether one fires here and now, which
   beat is showing, where its cast stands, and what the world gets back when
   it ends. Pure, the way `schedule.js` is. See **Arcs and heart events**,
@@ -198,19 +209,17 @@ coordinates") lives in `bekkedal-art.md`.
   blend you cannot express as a stipple is a blend you may not use." (full
   doctrine: **No alpha, still**, `.claude/rules/bekkedal-art.md`)
 - Every blend is an ordered dither via `dither()`/`ditherPat()`; every fill
-  is an axis-aligned `fillRect` on integer coordinates. `lamp.js` is the one
-  place that reads the `DITHER` matrix directly instead of through a stipple
-  pattern — it dithers between two *pictures* rather than between a picture
-  and a colour, so it cannot go through `ditherPat`. It is still whole pixels
-  of one of two colours, with no alpha anywhere.
+  is an axis-aligned `fillRect` on integer coordinates. The one exception to the
+  stipple is the local light (`lamp.js`), which is **not a dither at all any more**:
+  it is four hard-edged bands of whole colours (see **Banded light**). It is still whole pixels of
+  one of the palette's colours, with no alpha anywhere but the mask a live pool is cut out with.
 - `data.js` is content, `index.js` is behaviour (see File split above).
 - Files stay under 300 lines (repo-wide rule, see root `CLAUDE.md`).
 
 ## Save versioning
 
 The save key is `BEK_SAVE` (`data.js`). The in-save schema version is the `ver`
-field written by `fresh()` in `index.js` — currently **20**, the greetings.
-Its one new field is `S.lastTalk`: NPC id to the day number you last spoke to them,
+field written by `fresh()` in `index.js` — currently **21**, what people wear and hold. Its one new field is `S.look` (NPC id to what a gift has made them wear or hold, and since when), backfilled to `{}` by `heal()` and never rewound; version 20 before it was the greetings, whose one new field was `S.lastTalk`: NPC id to the day number you last spoke to them,
 which is all `greet.js` needs to say hello, hello again, or "where have you been". It is
 stamped by `talkTo()` and backfilled to `{}` by `heal()`; a save from before it has never
 "spoken" to anybody, so nobody remarks on an absence they cannot date, and everybody's
@@ -274,7 +283,7 @@ still load without throwing.
 
 ## Checks
 
-Run all fourteen before claiming anything is done:
+Run all sixteen before claiming anything is done:
 
 - `node apps/bekkedal/tile_check.js` — terrain variation field is
   deterministic, uniform and aperiodic. Full paragraph: `.claude/rules/bekkedal-art.md`.
@@ -341,6 +350,10 @@ Run all fourteen before claiming anything is done:
   own speaker, the first time on a day is a hello most of the time and not always, the second a
   hello again, four days away is always remarked on and longer says more, a stranger says
   nothing before their own first words, and the answer is a function of the save.
+- `node apps/bekkedal/life_check.js` — what people do between their posts: every station a chore sends somebody to is a real tile they can reach on foot from their post,
+  sleep is indoors and not on any map, errands are never a shopkeeper's and always end at the post they left, nobody jumps between two squares in a step (except the festival
+  walk, which `schedule.js` caps itself), the same day and person give the same answer, and a gift is shown worn or held as `LOOKS` says.
+- `node apps/bekkedal/hint_check.js` — the hint line: a line for everything SPACE does (a person by name, a gift by what it is, a locked door, a plot at each stage, a tool only where it has a use), none for what it does nothing with, and both languages in capitals everywhere.
 - `node apps/bekkedal/music_check.js` — the director: where the first tune is drawn from, that
   a tune is heard through before another follows it, that a change is arranged once and lands at the
   end of the pass, that the order is an order, and what a change of place and the dark do.
