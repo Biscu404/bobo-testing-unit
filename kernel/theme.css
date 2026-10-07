@@ -1532,6 +1532,17 @@ textarea.editor {
 .gardencv { width: 700px; height: auto; max-height: none; cursor: default; }
 .gardencv.canning { cursor: cell; }
 .gbar { color: #55FF55; }
+.gardenpane { position: relative; }
+.appbar.wrap { flex-wrap: wrap; row-gap: 2px; }
+.gtip { padding: 2px 6px; min-height: 38px; color: var(--sch-fg, #FFFFFF); background: var(--sch-bg, #000000); border-top: 1px solid var(--sch-dim, #555555); font-size: 16px; line-height: 1.05; }
+.gbench { position: absolute; left: 50%; top: 34px; transform: translateX(-50%); width: 560px; max-width: 96%; background: rgba(0, 0, 0, 0.94); border: 2px solid var(--sch-hi, #FFFF55); padding: 6px 8px; z-index: 5; text-align: left; }
+.gbench .gbh { color: var(--sch-hi, #FFFF55); padding: 4px 0 2px; }
+.gbench .gbrow { display: flex; align-items: center; gap: 8px; padding: 3px 0; border-bottom: 1px dotted var(--sch-dim, #555555); }
+.gbench .gbrow .nm { color: var(--sch-acc, #55FFFF); min-width: 190px; font-size: 16px; }
+.gbench .gbrow .tx { color: var(--sch-fg, #FFFFFF); flex: 1; font-size: 15px; line-height: 1; }
+.gbench .gbrow.own .nm { color: var(--sch-ok, #55FF55); }
+.gbench .gbrow .sw { width: 8px; height: 8px; flex: none; }
+.gbench .appbtn:disabled { background: #555555; color: #000000; cursor: default; }
 
 /* ---- the sweeper -------------------------------------------------------- */
 .sweeppane { background: #06070d; padding: 3px; }

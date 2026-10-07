@@ -302,26 +302,39 @@ export const POTS = [
     c: ['#cfc4a8', '#e8e0c8', '#9a8f74'], buff: { grow: 1.25, yield: 1.3, water: 1.25 } },
   { id: 'stump', name: 'HOLLOW STUMP',   price: 2400,
     blurb: 'A pot in the sense that it holds soil. +40% growth, +50% SUN, holds water 50% longer.',
-    c: ['#5c3d22', '#7a5230', '#3a2614'], buff: { grow: 1.4, yield: 1.5, water: 1.5 } }
+    c: ['#5c3d22', '#7a5230', '#3a2614'], buff: { grow: 1.4, yield: 1.5, water: 1.5 } },
+  { id: 'gild',  name: 'GILDED URN',     price: 4200,
+    blurb: 'Gold leaf over something that was once a bucket. +50% growth, +65% SUN, holds water 70% longer.',
+    c: ['#b8860b', '#e8c247', '#7a5a06'], buff: { grow: 1.5, yield: 1.65, water: 1.7 } },
+  { id: 'halo',  name: 'HALO BOWL',      price: 8000,
+    blurb: 'A bowl with a ring of light around the rim that nobody will explain. +60% growth, +90% SUN, holds water twice as long.',
+    c: ['#8fd4e8', '#d8f6ff', '#4a8aa0'], buff: { grow: 1.6, yield: 1.9, water: 2 } }
 ];
 export const SPECIES = [
-  { id: 'sunshoot', name: 'SUNSHOOT',  price: 0,   yield: 2,  grow: 40,  drop: 55, note: 0, hue: ['#c8d84a', '#8fae2c', '#e8f07a'],
+  { id: 'sunshoot', name: 'SUNSHOOT',  price: 0,   yield: 2,  grow: 40,  drop: 55, note: 0, hue: ['#c8d84a', '#8fae2c', '#e8f07a'], home: 'yard', kin: 'terra', mate: 'bellvine',
     blurb: 'Grows anywhere. Pays a little. Never complains.' },
-  { id: 'mosscap',  name: 'MOSSCAP',   price: 120, yield: 3,  grow: 55,  drop: 62, note: 1, hue: ['#6f9a4a', '#4a6e2d', '#9dc46a'],
+  { id: 'mosscap',  name: 'MOSSCAP',   price: 120, yield: 3,  grow: 55,  drop: 62, note: 1, hue: ['#6f9a4a', '#4a6e2d', '#9dc46a'], home: 'cellar', kin: 'stump', mate: 'nightpea',
     blurb: 'A mushroom with opinions about damp.' },
-  { id: 'bellvine', name: 'BELLVINE',  price: 240, yield: 5,  grow: 80,  drop: 70, note: 2, hue: ['#7ab8a0', '#3f7a66', '#a8e0cc'],
+  { id: 'bellvine', name: 'BELLVINE',  price: 240, yield: 5,  grow: 80,  drop: 70, note: 2, hue: ['#7ab8a0', '#3f7a66', '#a8e0cc'], home: 'greenhouse', kin: 'glaze', mate: 'sunshoot',
     blurb: 'Rings when poked. Rings when not poked, quieter.' },
-  { id: 'embercup', name: 'EMBERCUP',  price: 420, yield: 7,  grow: 110, drop: 78, note: 3, hue: ['#d1683a', '#9a3f1e', '#f2a06a'],
+  { id: 'embercup', name: 'EMBERCUP',  price: 420, yield: 7,  grow: 110, drop: 78, note: 3, hue: ['#d1683a', '#9a3f1e', '#f2a06a'], home: 'greenhouse', kin: 'iron', mate: 'ironbud',
     blurb: 'Warm to the touch. Do not water with anything flammable.' },
-  { id: 'glassreed',name: 'GLASSREED', price: 640, yield: 10, grow: 150, drop: 86, note: 4, hue: ['#9ac6d8', '#5a8ea6', '#d4eef8'],
+  { id: 'glassreed',name: 'GLASSREED', price: 640, yield: 10, grow: 150, drop: 86, note: 4, hue: ['#9ac6d8', '#5a8ea6', '#d4eef8'], home: 'rooftop', kin: 'glaze', mate: 'halofern',
     blurb: 'Hollow. Sings in a draught. Snaps if you look at it.' },
-  { id: 'nightpea', name: 'NIGHTPEA',  price: 900, yield: 18, grow: 170, drop: 92, note: 5, hue: ['#7a6ab8', '#4a3d80', '#b0a0e8'], night: true,
+  { id: 'nightpea', name: 'NIGHTPEA',  price: 900, yield: 18, grow: 170, drop: 92, note: 5, hue: ['#7a6ab8', '#4a3d80', '#b0a0e8'], home: 'cellar', kin: 'bone', mate: 'mosscap', night: true,
     blurb: 'Pays nothing in daylight. Pays properly after dark.' },
-  { id: 'ironbud',  name: 'IRONBUD',   price: 1300,yield: 20, grow: 240, drop: 110, note: 6, hue: ['#8a8f96', '#5c6067', '#c4c9d0'],
+  { id: 'ironbud',  name: 'IRONBUD',   price: 1300,yield: 20, grow: 240, drop: 110, note: 6, hue: ['#8a8f96', '#5c6067', '#c4c9d0'], home: 'rooftop', kin: 'iron', mate: 'embercup',
     blurb: 'Takes an age. Worth the age.' },
-  { id: 'halofern', name: 'HALOFERN',  price: 2000,yield: 34, grow: 320, drop: 130, note: 7, hue: ['#e8d86a', '#b0a03a', '#fff4b0'],
-    blurb: 'Glows faintly. The garden gets quieter around it.' }
+  { id: 'halofern', name: 'HALOFERN',  price: 2000,yield: 34, grow: 320, drop: 130, note: 7, hue: ['#e8d86a', '#b0a03a', '#fff4b0'], home: 'shrine', kin: 'bone', mate: 'glassreed',
+    blurb: 'Glows faintly. The garden gets quieter around it.' },
+  { id: 'starmoss', name: 'STARMOSS',  price: 3600, yield: 45,  grow: 380, drop: 150, note: 3, hue: ['#6a8ad8', '#3a4f9a', '#a8c0ff'], night: true, home: 'cellar', kin: 'gild', mate: 'suncrown',
+    blurb: 'Collects light all day and spends it in the dark. Loves a cellar and gold.' },
+  { id: 'suncrown', name: 'SUNCROWN',  price: 6500, yield: 58,  grow: 460, drop: 170, note: 6, hue: ['#f0b23a', '#b87810', '#ffe08a'], home: 'rooftop', kin: 'gild', mate: 'starmoss',
+    blurb: 'Faces the sky and does not look away. Wants the roof, wants gold, wants a star beside it.' },
+  { id: 'thirdroot', name: 'THIRDROOT', price: 11000, yield: 84,  grow: 600, drop: 210, note: 7, hue: ['#f4e9a8', '#c9a227', '#ffffff'], home: 'shrine', kin: 'halo', mate: 'halofern',
+    blurb: 'What the third temple was built on. Slow past all reason. It is not a joke.' }
 ];
+
 export const DECO_SVG = {
   vents: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 84 12" shape-rendering="crispEdges">' +
     Array.from({ length: 12 }, (_, i) =>
