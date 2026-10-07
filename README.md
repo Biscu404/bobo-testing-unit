@@ -98,16 +98,14 @@ checks are plain `node apps/bekkedal/*_check.js`, `node scripts/smoke.mjs` and
 The monitor is the page. It isn't a picture of a computer sitting on a desk; the
 case grows and shrinks with your browser window, and the beige is lit from the
 upper left like injection-molded plastic under an office ceiling. The tube sits
-in a recessed well behind glass with its own corner radius, wider than it is
-tall, the way real glass is.
+in a recessed well behind flat glass: there is no lens and no curve to the picture.
 
 Underneath are the controls, and they all do something.
 
 | Control | What it does |
 |---|---|
-| **LENS** | Disabled: the button is dimmed and does nothing, and every machine runs at `SOFT`, the curve it shipped with (the case, the well and the tube share one corner radius). `LENS_LOCK` in `kernel/hardware.js` is the one number to change. |
 | **SCAN** | Scanline pitch in pixels, 0–4. `0` is off. |
-| ~~DGAUSS~~ | No longer a button. Degauss is permanent: patches of the wrong colour (purity errors) sit toward the corners of the glass, painted once into the glass canvas with the scanlines so they cost no frame time. The terminal's `DEGAUSS` still fires the coil — the thunk and a flash of colour. |
+| **DGAUSS** | A switch, `ON` or `OFF` (saved): while it is on, patches of the wrong colour (purity errors) sit toward the corners of the glass, painted once into the glass canvas with the scanlines so they cost no frame time. Switching it on fires the coil (the thunk and a flash of colour); the terminal's `DEGAUSS` fires it too. |
 | **PHOS** | Phosphor persistence: `P1` fast, `P4`, `P7` smearing. The same number widens the glow on lit characters *and* sets how little the canvas apps clear between frames, so the starfield, AfterEgypt and GodDoodle all drag their own tails. |
 | **BURN** | Twenty years of the same menu bar ghosted into the coating. |
 | **MUS** / **SFX** | Volume pots. Drag to turn, scroll, or use the arrow keys. |
@@ -670,13 +668,13 @@ One file, in numbered sections. The comment banners are the map.
 | Section | |
 |---|---|
 | CSS · THE HARDWARE | the case, the well, the glass, the chin |
-| CSS · THE STYLE METER | inside `#tube`, so the lens zooms it too |
+| CSS · THE STYLE METER | inside `#tube`, so the picture zoom carries it |
 | 1 | pixel image helper |
 | **2** | **the virtual file system — the one object to edit** |
 | **3** | **the terminal response table** |
 | 4–5 | sprites, boot sequence |
 | 6–9 | window manager, icon grids, terminal, desktop |
-| 10 | the tube — lens, glass, speaker, power |
+| 10 | the tube — glass, speaker, power |
 | 11 | user file import · 11.3d the style meter |
 | 12–14 | God's random, DolDoc, HolyC |
 | 15–18 | panic, Adam and Seth, the 16-colour pipe, video |

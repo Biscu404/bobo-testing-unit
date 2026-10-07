@@ -27,7 +27,9 @@
     "check:desk": "node scripts/check-desk.mjs",
     "check:bulk": "node scripts/check-bulk.mjs",
     "check:delete": "node scripts/check-delete.mjs",
-    "check:farewell": "node scripts/check-farewell.mjs"
+    "check:farewell": "node scripts/check-farewell.mjs",
+    "check:petlines": "node scripts/check-petlines.mjs",
+    "check:rooms": "node apps/bekkedal/rooms_check.js"
   },
   "devDependencies": {
     "electron": "^44.5.1",

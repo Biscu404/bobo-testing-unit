@@ -9,7 +9,7 @@ import { iconEl, spriteFor } from './icons_dom.js';
 import { layout, slotOf, gridOf, cellOf, cellPos, nearestFree } from './desk_grid.js';
 import { itemMenu, spaceMenu } from './filemenus.js';
 import { wireMenubar } from './menubar.js';
-import { joinPath, baseName, TRASH } from './vfs_ops.js';
+import { joinPath, baseName, dirOf, TRASH } from './vfs_ops.js';
 
 export { showMenu, hideMenus } from './menus.js';
 export { pickUpload, wireDrop } from './importer.js';
@@ -83,6 +83,15 @@ export async function initDesktop() {
   window.addEventListener('vfs-changed', ev => {
     const dir = ev.detail && ev.detail.dir;
     if (dir === '::' || (dir && dir.indexOf(TRASH) === 0)) refreshIcons();
+  });
+  /* a delete reel (kernel/fileops.js) takes its icons off the desk a beat at a time: just those elements, nothing is
+     listed or laid out again until the reel announces that it is done */
+  window.addEventListener('vfs-reel', ev => {
+    ((ev.detail && ev.detail.paths) || []).forEach(p => {
+      if (dirOf(p) !== '::') return;
+      const name = baseName(p), rec = iconEls.get(name);
+      if (rec) { rec.el.remove(); iconEls.delete(name); }
+    });
   });
   applyWallpaper();
   await refreshIcons();
@@ -170,11 +179,11 @@ async function buildIcons() {
   const box = iconsBox();
   if (!box) return;
   try {
-    const [files, bin] = await Promise.all([vfs.list('::'), vfs.list(TRASH)]);
+    const [files, binFull] = await Promise.all([vfs.list('::'), vfs.hasAny(TRASH)]);
     const list = files.map(it => Object.assign(it, { vfs: true }));
     // the terminal and the bin are kernel primitives, not VFS nodes
     list.push({ name: 'TERMINAL', type: 'terminal' });
-    list.push({ name: 'RecycleBin', type: bin.length ? 'binfull' : 'bin' });
+    list.push({ name: 'RecycleBin', type: binFull ? 'binfull' : 'bin' });
     lastList = list;
 
     // forget icons for anything that no longer exists, so their old cells don't stay "taken" forever
@@ -205,10 +214,15 @@ async function buildIcons() {
     });
     iconEls.forEach((rec, name) => { if (!liveNames.has(name)) iconEls.delete(name); });
 
+    /* the box is touched as little as the change allows: icons that are gone come out one by one, new ones are
+       appended (a paste adds to the end), and only an order that really changed is laid down again whole */
+    const keep = new Set(order);
+    Array.prototype.slice.call(box.children).forEach(n => { if (!keep.has(n)) n.remove(); });
     const cur = box.children;
-    let same = cur.length === order.length;
-    for (let i = 0; same && i < order.length; i++) if (cur[i] !== order[i]) same = false;
-    if (!same) box.replaceChildren(...order);
+    let k = 0;
+    while (k < cur.length && k < order.length && cur[k] === order[k]) k++;
+    if (k === cur.length) { if (k < order.length) box.append(...order.slice(k)); }
+    else box.replaceChildren(...order);
     if (moved) saveIconPos();
   } catch (e) {
     console.error('Failed to load desktop icons', e);

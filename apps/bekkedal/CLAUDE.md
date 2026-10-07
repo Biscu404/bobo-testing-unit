@@ -81,7 +81,13 @@ coordinates") lives in `bekkedal-art.md`.
 - `shore.js` — shoreline profile, surf, bank. See `.claude/rules/bekkedal-art.md`.
 - `water.js` — deep water and its depth ramp. See `.claude/rules/bekkedal-art.md`.
 - `rock.js` — the mountain and the ore (`oreKind`). See `.claude/rules/bekkedal-art.md`.
-- `interior.js` — floorboards, volume, wear, house interior. See `.claude/rules/bekkedal-art.md`.
+- `interior.js` — the inside of a room: the legacy aperiodic boards, volume and wear (the loft keeps them), and the switch to a made room. See `.claude/rules/bekkedal-art.md`.
+- `rooms.js` — `BEK_ROOMS`: how each made room is dressed (the cabin and the house by the water). A room is rectangles of zone, each with a floor, a paper and a rug colourway, and a list of its windows. A map with no entry (the loft) keeps the old look.
+- `interior_floors.js` — what a made room is made of, and all of it *periodic* (so it visibly repeats): five floors (plank, parquet, tile, flag, wash), four papers (stripe, tiled, panel, white) as a face or a cap, a patterned rug, a window with curtains, the door from inside.
+- `decor_home.js`, `decor_home2.js` — the furniture of a made room, drawn whole: beds, wardrobes, dressers, bookcases, sofas, armchairs, chairs, tables, a kitchen run, a hearth and its breast, clocks, mirrors, plants, lamps. A piece bigger than a square is drawn from its top-left square (`FOOT` in `decor.js` says how many it covers), and the squares under it carry a solid glyph in the map. Merged into the one `PROP` table.
+- `furniture_act.js` — what you can do with a house (`FURN`): browse a bookcase, read a clock, look out of a window (or from the piece under it), water a plant, stroke the cat, make tea (+6 energy, once a day, like the ash). Pure but for the few save fields it names. `hint.js` reads its lines.
+- `facades.js`, `facade_parts.js` — which house is which on the outside: eight walls, five roofs, three chimneys, five doors, four shutters, flower boxes, lanterns, three window styles, and `FACADES`, the list of every building by its top-left square. A map's building with no entry wears what the map always wore. See **The facade**.
+- `rooms_check.js` — `node apps/bekkedal/rooms_check.js`. Every floor square is named; every piece stands on the solid squares it covers and nothing is an invisible block; wall items hang on walls with floor in front; windows are in outer walls; every pattern repeats (the same tile every six squares); everything that answers answers.
 - `forest.js` — the treeline as a continuous strip. See `.claude/rules/bekkedal-art.md`.
 - `fx.js` — the tool swing and its particles. See `.claude/rules/bekkedal-art.md`.
 - `crops.js` — the ploughed plot; the one live (uncached) tile. See `.claude/rules/bekkedal-art.md`.
@@ -283,7 +289,7 @@ still load without throwing.
 
 ## Checks
 
-Run all sixteen before claiming anything is done:
+Run all seventeen before claiming anything is done:
 
 - `node apps/bekkedal/tile_check.js` — terrain variation field is
   deterministic, uniform and aperiodic. Full paragraph: `.claude/rules/bekkedal-art.md`.
@@ -346,6 +352,7 @@ Run all sixteen before claiming anything is done:
   house, every heart event's cast and the square it stands the player on, the
   menu's own landing squares — stands in a wall or on the water.
   This is the check that a map edit is most likely to break.
+- `node apps/bekkedal/rooms_check.js` — the two houses as made rooms: every floor square is a named zone, every piece of furniture is a prop on the solid squares it covers (a piece with no glyph is a thing you walk through, a glyph with no piece is an invisible block), everything on a wall hangs on one, every window is in an outer wall, the patterns *repeat* (a floor is the same tile every six squares, a rug's diamond is the same on every square), and every piece that answers says something in both languages. Full paragraph: `.claude/rules/bekkedal-art.md`.
 - `node apps/bekkedal/greet_check.js` — the greetings: every NPC has every pool, no line names its
   own speaker, the first time on a day is a hello most of the time and not always, the second a
   hello again, four days away is always remarked on and longer says more, a stranger says

@@ -73,7 +73,10 @@ function hitPile(first, files) {
   try { Style.hit({ name: baseName(first) }, Math.max(1, files)); } catch (e) {}
 }
 
-async function commitTrash(items) {
+/* `quiet`: the data moves but nothing is announced, and the folders it left are handed back: the reel in fileops.js
+   then takes the files off the screen a beat at a time and announces once at the end, so two hundred files cost one
+   transaction and one redraw, not forty-eight of each */
+async function commitTrash(items, quiet) {
   const puts = [], gone = [], pairs = [];
   for (const { path, id, ents } of items) {
     const dst = TRASH + '/' + id + '/' + baseName(path);
@@ -84,7 +87,9 @@ async function commitTrash(items) {
   await fs.putMany(puts);
   await fs.removeManyQuiet(gone);
   if (pairs.length) await trackMany(pairs);
-  changed(TRASH, ...gone.map(dirOf));
+  const dirs = gone.map(dirOf);
+  if (!quiet) changed(TRASH, ...dirs);
+  return dirs;
 }
 
 async function trashMany(paths) {

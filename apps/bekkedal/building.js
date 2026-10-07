@@ -51,34 +51,22 @@
  */
 import { MARKS, SHADOWS, FEATURES } from './palette_marks.js';
 import { mask4, AT_E, AT_W } from './autotile.js';
-import { createRoof, TURF, TILE } from './roof.js';
+import { createRoof } from './roof.js';
+import { createParts, WIN_T, WIN_H } from './facade_parts.js';
+import { facadeOf } from './facades.js';
 import { rustic } from './surface.js';
 import { BEK_T } from './data.js';
 
-/* ---- the two dressings ----------------------------------------------------
-   One silhouette, two materials, so you can tell where you are by looking: log
-   walls under turf out on the farms and at the water, painted board under dark
-   tile in the town. The paint is `WAR` because falu red is iron oxide and the
-   emission ramp's bottom step already *is* that paint — there is no second red
-   anywhere in this file. Every entry below is a step of a table declared in
-   palette.js, so the check reads the colours the art draws.
-
-   `course` is the rhythm in device pixels: 12 for a log, which is
-   `interior.wall`'s own, and 7 for a weatherboard, which is a thinner thing. */
-const W_LOG = MARKS.WALL_LOG.cols, W_BRD = MARKS.WALL_BOARD.cols;
-const LOG = { course: 12, lit: W_LOG[0], body: W_LOG[1], gap: W_LOG[2],
-              deep: SHADOWS.EAVE_LOG.cols[0], shade: SHADOWS.EAVE_LOG.cols[1],
-              plinth: MARKS.PLINTH_LOG.cols[0], plinthTop: MARKS.PLINTH_LOG.cols[1],
-              trim: FEATURES.TRIM_LOG.cols, glass: MARKS.WINDOW_LOG.cols, log: 1 };
-const BOARD = { course: 7, lit: W_BRD[0], body: W_BRD[1], gap: W_BRD[2],
-                deep: SHADOWS.EAVE_BOARD.cols[0], shade: SHADOWS.EAVE_BOARD.cols[1],
-                plinth: MARKS.PLINTH_BOARD.cols[0], plinthTop: MARKS.PLINTH_BOARD.cols[1],
-                trim: FEATURES.TRIM_BOARD.cols, glass: FEATURES.WINDOW_BOARD.cols, log: 0 };
+/* ---- the dressings ------------------------------------------------------
+   A wall is a table of three steps of one material, the shadow under the eave, the stone it stands on, its trim and its glass,
+   and a roof the same; which building wears which is `facades.js` (eight walls, five roofs, three chimneys, five doors, four
+   shutters and a flower box), so two houses on one street are no longer one house. The paint is `WAR` because falu red is iron
+   oxide and the emission ramp's bottom step already *is* that paint — there is no second red anywhere. Every entry is a step of a
+   table declared in palette_marks.js, so the check reads the colours the art draws. `course` is the rhythm in device pixels: 12
+   for a log, which is `interior.wall`'s own, and 7 for a weatherboard, which is a thinner thing. */
 /* how hard under the overhang, how far the shade reaches down the wall, how
    tall the plinth is, and how far the wall steps back at a gable */
 const EAVE_DEEP = 2, EAVE_SHADE = 7, PLINTH = 9, RETURN_W = 4;
-/* the window and the door, in building space: distance below the eave line */
-const WIN_T = 22, WIN_H = 28, WIN_W = 22, DOOR_H = 46, DOOR_W = 22;
 
 /* ---- the elevation, as a function of one number ---------------------------
    `v` is the device-pixel distance below the eave line, `h` the whole wall,
@@ -113,7 +101,7 @@ export function createBuilding(A) {
      the wall stands on, both found by walking this tile's own column — so a
      taller building, or a second row of roof, needs no new rule. `chim` is the
      one column of a roof run that carries a stack. */
-  let ridge = null, eave = null, sole = null, msk = null, chim = null, ready = '';
+  let ridge = null, eave = null, sole = null, msk = null, chim = null, fac = null, ready = '';
   let cols = 0, rows = 0;
   function prepare(key) {
     if (key === ready) return;
@@ -122,6 +110,26 @@ export function createBuilding(A) {
     const n = cols * rows;
     ridge = new Int16Array(n); eave = new Int16Array(n);
     sole = new Int16Array(n); msk = new Uint8Array(n); chim = new Uint8Array(n);
+    fac = new Array(n);
+    /* which house is this tile of? Its top-left square names it in FACADES, found by a flood fill of its own tiles. */
+    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+      if (!isB(x, y) || fac[y * cols + x]) continue;
+      const seen = [[x, y]], list = [];
+      fac[y * cols + x] = true;
+      let x0 = x, y0 = y;
+      while (seen.length) {
+        const [a, b] = seen.pop();
+        list.push(b * cols + a);
+        if (a < x0) x0 = a;
+        if (b < y0) y0 = b;
+        [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(d => {
+          const na = a + d[0], nb = b + d[1];
+          if (na >= 0 && nb >= 0 && na < cols && nb < rows && isB(na, nb) && !fac[nb * cols + na]) { fac[nb * cols + na] = true; seen.push([na, nb]); }
+        });
+      }
+      const F = facadeOf(A.map(), x0, y0, rustic(A.map()));
+      list.forEach(i => { fac[i] = F; });
+    }
     for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
       if (!isB(x, y)) continue;
       let t = y; while (t > 0 && isB(x, t - 1)) t--;
@@ -140,8 +148,6 @@ export function createBuilding(A) {
       if ((run < 3 ? a : a + 1 + (A.obj('R', a, y).chim % (run - 2))) === x) chim[i] = 1;
     }
   }
-
-  const dress = () => (rustic(A.map()) ? LOG : BOARD);
 
   /* ---- one profile, one fillRect per band ----------------------------------
      Every band is the full width of the tile, so a wall tile costs about eight
@@ -205,47 +211,7 @@ export function createBuilding(A) {
     return { y: e, dy: (WIN_T + WIN_H / 2) / BEK_T };
   }
 
-  function windowOn(px, py, v0, M, lit) {
-    const x0 = (BEK_T - WIN_W) >> 1, L = FEATURES.WINDOW_LIT.cols;
-    const put = (col, wy, wh, wx, ww) => {
-      const a = Math.max(0, wy - v0), b = Math.min(BEK_T, wy + wh - v0);
-      if (b > a) A.fill(col, px + wx, py + a, ww, b - a);
-    };
-    put(M.deep, WIN_T - 1, WIN_H + 2, x0 - 1, WIN_W + 2);         /* the reveal  */
-    put(M.trim[0], WIN_T, WIN_H, x0, WIN_W);                      /* the frame   */
-    put(lit ? L[1] : M.glass[0], WIN_T + 3, WIN_H - 8, x0 + 3, WIN_W - 6);
-    put(lit ? L[0] : M.glass[1], WIN_T + 3, 3, x0 + 3, WIN_W - 6);  /* sky in it */
-    put(M.trim[1], WIN_T + 12, 2, x0 + 3, WIN_W - 6);             /* glazing bar */
-    put(M.trim[1], WIN_T + 3, WIN_H - 8, x0 + 10, 2);
-    put(M.trim[1], WIN_T + WIN_H - 5, 4, x0 - 2, WIN_W + 4);      /* the sill    */
-    put(M.deep, WIN_T + WIN_H - 1, 2, x0 - 1, WIN_W + 2);         /* under it    */
-  }
-
-  /* ---- the door ------------------------------------------------------------
-     Drawn by the `D` tile and rising into the `H` above it. The detail pass
-     runs top to bottom, so that tile is already laid down and the door wins —
-     which is the whole reason it can be taller than a tile, and so the whole
-     reason it reads as a door. It stands on the sill beam at the top of the
-     plinth, which the profile above has already put at a known height. */
-  function door(px, py, M) {
-    const x0 = (BEK_T - DOOR_W) >> 1, bot = BEK_T - PLINTH, top = bot - DOOR_H;
-    const B = MARKS.DOOR_BOARD.cols, J = SHADOWS.DOOR_JOINT.cols, I = FEATURES.DOOR_IRON.cols;
-    A.fill(J[1], px + x0 - 4, py + top - 1, DOOR_W + 8, bot - top + 2);
-    A.fill(M.trim[0], px + x0 - 3, py + top, DOOR_W + 6, bot - top);      /* the frame */
-    A.fill(J[0], px + x0 - 1, py + top + 2, DOOR_W + 2, bot - top - 2);
-    for (let bx = 0; bx < DOOR_W; bx += 5) {
-      A.fill(B[(bx / 5) & 1], px + x0 + bx, py + top + 3, 4, bot - top - 3);
-      A.fill(J[0], px + x0 + bx + 4, py + top + 3, 1, bot - top - 3);
-    }
-    A.fill(B[2], px + x0, py + top + 3, DOOR_W, 1);                       /* the head  */
-    A.fill(I[0], px + x0 + 1, py + top + 7, DOOR_W - 2, 2);               /* two hinges */
-    A.fill(I[0], px + x0 + 1, py + bot - 9, DOOR_W - 2, 2);
-    A.fill(I[1], px + x0 + DOOR_W - 6, py + bot - 20, 3, 3);              /* the handle */
-    /* the threshold, and the worn step down off it */
-    A.fill(M.plinthTop, px + x0 - 4, py + bot, DOOR_W + 8, 3);
-    A.fill(M.plinth, px + x0 - 6, py + bot + 3, DOOR_W + 12, 3);
-    A.fill(M.deep, px + x0 - 6, py + bot + 6, DOOR_W + 12, 1);
-  }
+  const Parts = createParts(A);
 
   /* The other half of the profile, from the ridge to the eave, plus the two
      things that stand on it. It is handed `bands` rather than importing it
@@ -259,22 +225,22 @@ export function createBuilding(A) {
     const eaveY = eave[i] * BEK_T, gW = !(m & AT_W), gE = !(m & AT_E);
     if (c === 'R') {
       const rY = ridge[i] * BEK_T;
-      Roof.tile(px, py, py - rY, eaveY - rY, rustic(A.map()) ? TURF : TILE,
-                gW, gE, chim[i], A.obj('R', x, y), A.spot);
+      const F = fac[i];
+      Roof.tile(px, py, py - rY, eaveY - rY, F.roof, gW, gE, chim[i] && F.chim, A.obj('R', x, y), A.spot);
       return;
     }
-    const M = dress(), hh = sole[i] * BEK_T - eaveY, v0 = py - eaveY;
+    const F = fac[i], M = F.wall, hh = sole[i] * BEK_T - eaveY, v0 = py - eaveY;
     bands(px, py, v0, hh, M, wallBand);
     if (gW) corner(px, py, v0, hh, M, -1);
     if (gE) corner(px, py, v0, hh, M, 1);
-    if (c === 'D') { door(px, py, M); return; }
-    if (windowAt(x, y)) windowOn(px, py, v0, M, A.dark() > 0.12);
+    if (c === 'D') { Parts.door(px, py, M, F); return; }
+    if (windowAt(x, y)) Parts.windowOn(px, py, v0, M, A.dark() > 0.12, F);
   }
 
   /* Only a roof tile that carries a stack has anything live about it; every
      other one is entirely in the cache and this is one array read. */
   function smoke(x, y, t) {
-    if (msk && chim[y * cols + x]) Roof.smoke(x, y, t, A.obj('R', x, y));
+    if (msk && chim[y * cols + x] && fac[y * cols + x].chim) Roof.smoke(x, y, t, A.obj('R', x, y));
   }
 
   return { prepare: prepare, tile: tile, smoke: smoke, windowAt: windowAt };

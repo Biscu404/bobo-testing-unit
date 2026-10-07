@@ -56,7 +56,7 @@ export default {
     btn('DAVE', () => ctx.openWindow('shop'));
     const tipEl = document.createElement('div'); tipEl.className = 'gtip';
     const l1 = document.createElement('div'), l2 = document.createElement('div');
-    l1.className = 'godword gbar'; l2.className = 'godword'; l2.style.whiteSpace = 'normal'; l2.style.color = 'var(--sch-fg, #FFFFFF)';
+    l1.className = 'godword gbar'; l2.className = 'godword gl2'; l2.style.whiteSpace = 'normal'; l2.style.color = 'var(--sch-fg, #FFFFFF)';
     tipEl.appendChild(l1); tipEl.appendChild(l2);
     root.appendChild(pane); root.appendChild(bar); root.appendChild(tipEl);
 
@@ -218,8 +218,9 @@ export default {
         l2.textContent = d.name + ': ' + d.blurb + '  SET FOR THE ' + w.pot(d.kinPot).name + '.' + (st.rooms[tabHover].unlocked ? '' : '  CLICK TO BUY FOR ' + d.price + ' SUN.');
       } else if (hover >= 0 && r.pots[hover]) {
         const p = r.pots[hover], sp = w.species(p.sp), s = M.stats(w, st, st.active, hover);
-        l2.textContent = sp.name + '  x' + s.yield.toFixed(2) + ' SUN  x' + s.grow.toFixed(2) + ' GROWTH  --  ' + describe(s.tags) +
-          (p.tok ? '  --  HOLDING ' + M.worth(w, st, st.active, hover) + ' SUN' : '') + '  --  ' + likes(sp);
+        const head = sp.name + '  x' + s.yield.toFixed(2) + ' SUN  x' + s.grow.toFixed(2) + ' GROWTH  --  ' + describe(s.tags) +
+          (p.tok ? '  --  HOLDING ' + M.worth(w, st, st.active, hover) + ' SUN' : ''), full = head + '  --  ' + likes(sp);
+        l2.textContent = full.length <= 200 ? full : head;   /* two lines is all the box has: the likes go when the rest is long */
       } else if (hover >= 0) {
         l2.textContent = 'AN EMPTY POT. CLICK OR DRAG TO PLANT ' + seedNow().name + '.  ' + likes(seedNow());
       } else l2.textContent = 'CLICK A PLANT TO PICK IT, DRAG TO SWEEP.  SPACE: TEND EVERY ROOM.  B: THE BENCH.  1-' + ROOM_DEFS.length + ': ROOMS.';

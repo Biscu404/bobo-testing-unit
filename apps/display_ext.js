@@ -11,7 +11,7 @@ function openDisplaySettings() {
       p.className = 'sysdlg';
       const m = document.createElement('div');
       m.className = 'msg';
-      m.textContent = 'THE GLASS. SCAN PITCH, PHOSPHOR AND BURN-IN ARE KNOBS ON\nTHE CHIN OF THE MONITOR, NOT SOFTWARE. DEGAUSS IS PERMANENT.';
+      m.textContent = 'THE GLASS. SCAN PITCH, PHOSPHOR AND BURN-IN ARE KNOBS ON\nTHE CHIN OF THE MONITOR, NOT SOFTWARE. DEGAUSS IS A SWITCH.';
       p.appendChild(m);
       const btns = document.createElement('div');
       btns.className = 'btns';

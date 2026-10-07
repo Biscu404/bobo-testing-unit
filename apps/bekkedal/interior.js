@@ -34,6 +34,7 @@ import { TIM, STO, SAN, WAR, WAT, ATMO } from './palette.js';
 import { MARKS, SHADOWS } from './palette_marks.js';
 import { hash, hv } from './noise.js';
 import { BEK_T } from './data.js';
+import { FLOORS, wallZ, rug as zoneRug, doorIn } from './interior_floors.js';
 
 const GRAIN = MARKS.FLOOR_GRAIN.cols, JOINT = SHADOWS.FLOOR_JOINT.cols[0];
 const WALL_FOOT = SHADOWS.WALL_FOOT.cols;
@@ -45,7 +46,10 @@ export function createInterior(A) {
      A.wash(x, y, w, h, col, s)  — the ordered stipple, likewise
      A.tileAt(x, y)              — the glyph at a grid square
      A.salt()                    — the current map's channel salt
-     A.cols() / A.rows()         — how big this map is, in tiles */
+     A.cols() / A.rows()         — how big this map is, in tiles
+     A.zone(x, y)                — the room's own dressing at a square (rooms.js), or null: the loft keeps the old boards
+     A.win(x, y)                 — the window in the wall at a square, or null
+     A.map()                     — which room this is */
 
   /* The room's own size, taken once per rebuild. The boards are laid across
      the whole floor and the wear is traced over the whole grid, so both have
@@ -138,9 +142,13 @@ export function createInterior(A) {
     boards = layBoards(A.salt());
     wear = traceWear();
   }
+  /* a room that has zones is made (periodic floors, papered walls, a patterned rug); one that has not keeps what it had */
+  const zoned = () => !!A.zone(2, 2);
 
   /* ---- the floor, as boards ------------------------------------------------ */
   function floor(x, y) {
+    const zn = A.zone(x, y);
+    if (zn) { FLOORS[zn.floor](A, x, y); return; }
     const px = x * BEK_T, py = y * BEK_T, salt = A.salt();
     const first = boards.rowOf[py], last = boards.rowOf[Math.min(MH - 1, py + BEK_T - 1)];
     for (let bi = first; bi <= last; bi++) {
@@ -180,6 +188,13 @@ export function createInterior(A) {
      a second rule for corners. */
   function volume(x, y) {
     const px = x * BEK_T, py = y * BEK_T;
+    if (A.zone(x, y)) {                                          /* a made room: a soft shade under the wall and nothing more */
+      const sol = (dx, dy) => { const c = A.tileAt(x + dx, y + dy); return c === 'H' || c === 'D'; };
+      if (sol(0, -1)) { A.wash(px, py, BEK_T, 8, WALL_FOOT[1], 7); A.wash(px, py + 8, BEK_T, 5, WALL_FOOT[1], 3); }
+      if (sol(-1, 0)) A.wash(px, py, 5, BEK_T, WALL_FOOT[1], 4);
+      if (sol(1, 0)) A.wash(px + BEK_T - 5, py, 5, BEK_T, WALL_FOOT[1], 3);
+      return;
+    }
     const solidAt = (dx, dy) => {
       const c = A.tileAt(x + dx, y + dy);
       return c === 'H' || c === ' ' || c === 'u' || c === 'b' || c === 'c';
@@ -207,6 +222,8 @@ export function createInterior(A) {
   function rug(x, y) {
     const px = x * BEK_T, py = y * BEK_T, salt = A.salt();
     const isRug = (dx, dy) => A.tileAt(x + dx, y + dy) === 'z' || A.tileAt(x + dx, y + dy) === 'n';
+    const zn = A.zone(x, y);
+    if (zn) { zoneRug(A, x, y, zn.rug, isRug); return; }
     /* Bands first, one fill each rather than one fill a row — a rug covering
        ten tiles at a fill per pixel row was four thousand rects on its own. */
     const B = 4;
@@ -268,5 +285,6 @@ export function createInterior(A) {
     A.fill(WAR[4], px + T - 13, py + 18, 3, 3);                /* the latch     */
   }
 
-  return { prepare: prepare, floor: floor, volume: volume, rug: rug, wall: wall, door: door };
+  return { prepare: prepare, floor: floor, volume: volume, rug: rug, wall: wall, door: door, zoned: zoned,
+           wallZ: (x, y) => wallZ(A, x, y), doorZ: (x, y) => doorIn(A, x, y) };
 }

@@ -12,7 +12,7 @@
  * `hint_check.js` walks the same cases and fails if a thing act() answers has no line here.
  *
  *   c = { tile, map, tool, who: { id, n, bear, gift } | null, giftSel, giftName, animal, placed, ready,
- *         soil: { till, seed, ready, wet } | null, hasSeed, canGive, water, door }
+ *         soil: { till, seed, ready, wet } | null, hasSeed, canGive, water, door, furn }
  */
 
 /* the two lines that tell you the other half of a gift: the bag picks it, the person takes it */
@@ -33,6 +33,8 @@ export function hintFor(c) {
     return L('SPACE: SNAKK MED ' + who.n + (c.canGive ? '   (I: HOLD FRAM EN GAVE)' : ''), 'SPACE: TALK TO ' + who.n + (c.canGive ? '   (I: HOLD OUT A GIFT)' : ''));
   }
   if (c.animal) return L('SPACE: STELL DYRET', 'SPACE: TEND THE ANIMAL');
+  /* a thing in a house that answers (furniture_act.js's FURN): the line it names for itself */
+  if (c.furn) return c.furn;
   const t = c.tile;
   if (t === 'b') return L('SPACE: SOV', 'SPACE: SLEEP');
   if (t === 'J') return L('SPACE: SETT DEG', 'SPACE: SIT DOWN');

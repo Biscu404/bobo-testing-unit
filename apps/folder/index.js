@@ -196,6 +196,15 @@ export default {
       if (!dir || dir === path || path.indexOf(dir + '/') === 0 || dir.indexOf(path + '/') === 0) render();
     });
 
+    /* a delete reel takes its files out of the view a beat at a time (kernel/fileops.js), and the redraw comes at the end */
+    L.on(window, 'vfs-reel', ev => {
+      ((ev.detail && ev.detail.paths) || []).forEach(p => {
+        if (dirOf(p) !== path) return;
+        const n = baseName(p), el = iconEls().find(e => e.dataset.name === n);
+        if (el) el.remove();
+      });
+    });
+
     ctx.setTitle(path);
     await render();
   },

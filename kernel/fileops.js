@@ -7,7 +7,7 @@ import { Snd } from './snd.js';
 import { Style } from './style.js';
 import { planReel, chunkItems, melody } from './delete_reel.js';
 import { openWindow, createWindow, toast, askName } from './wm.js';
-import { baseName, dirOf, joinPath, changed } from './vfs_ops.js';
+import { baseName, dirOf, joinPath, changed, TRASH } from './vfs_ops.js';
 
 export const Clip = { mode: null, paths: [] };
 const undo = [];                                   /* what was put in the bin, newest last: one entry (a list of ids) per delete */
@@ -76,7 +76,11 @@ export async function dropInto(paths, dir, copyIt) {
 /* A selection goes into the bin on a reel (kernel/delete_reel.js): the meter is hit once for the whole pile, then the
    files go a beat at a time, each beat a short cooldown after the one before and each a note of a fast tune, so
    deleting a lot of files is a melody and not a thump. A single file is a "dun-dun". Piles queue behind each other,
-   and Ctrl+Z waits for the one that is running. The pile is one undo. */
+   and Ctrl+Z waits for the one that is running. The pile is one undo.
+   The reel is a show and not forty-eight jobs: the whole pile goes into the bin in ONE transaction first (what used
+   to be a transaction, a listing of the desk and a redraw of it on every beat was where the lag came from), and then
+   each beat only takes its icons off the screen (a `vfs-reel` event: the desktop and any folder window showing them
+   remove just those elements). One `vfs-changed` at the end makes every view true again. */
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let reeling = Promise.resolve();
 
@@ -84,14 +88,18 @@ async function reel(g) {
   const plan = planReel(g.items.length), tier = Math.max(0, Style.tier);
   hitPile(g.items[0].path, g.files);
   if (g.items.length === 1) { Snd.reelOne(tier); await commitTrash(g.items); return; }
-  const tune = melody(plan.steps), beats = chunkItems(g.items, plan.chunk), t0 = performance.now();
-  for (let i = 0; i < beats.length; i++) {
-    Snd.reelNote(tune[i].hz, tier, tune[i].accent);
-    if (i === beats.length - 1) Snd.reelEnd();
-    await commitTrash(beats[i]);
-    const wait = t0 + (i + 1) * plan.gap - performance.now();
-    if (i < beats.length - 1 && wait > 0) await sleep(wait);
-  }
+  const tune = melody(plan.steps), beats = chunkItems(g.items, plan.chunk);
+  const dirs = await commitTrash(g.items, true);
+  const t0 = performance.now();
+  try {
+    for (let i = 0; i < beats.length; i++) {
+      Snd.reelNote(tune[i].hz, tier, tune[i].accent);
+      if (i === beats.length - 1) Snd.reelEnd();
+      window.dispatchEvent(new CustomEvent('vfs-reel', { detail: { paths: beats[i].map(it => it.path) } }));
+      const wait = t0 + (i + 1) * plan.gap - performance.now();
+      if (i < beats.length - 1 && wait > 0) await sleep(wait);
+    }
+  } finally { changed(TRASH, ...dirs); }
 }
 
 export function deletePaths(paths) {

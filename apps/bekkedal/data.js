@@ -848,58 +848,140 @@ export const BEK_DECOR = {
        valley that is a way through rather than a piece of scenery */
     { x: 12, y: 23, kind: 'ladder' }
   ],
+  /* THE CABIN: where the work happens, and a place to come back to from it. Every piece stands where a person would put it: the bed
+     against the wall with a window either side and a table at each side of its head, the wardrobe in the corner, the chair and the
+     lamp together, the sofa facing the fire with the low table between, the kitchen along the one wall that has a window over the
+     sink, the table in the middle of the room with a chair at every side of it. `c` is the cloth (blue, red, green), `w` what is on
+     a nightstand (lamp, candle, book), `o` which way a chair faces (0 south, 1 north, 2 east, 3 west), `p` which picture, `h` which
+     half of the chimney breast. The glyphs under the big pieces are in the map (maps_valley.js); rooms.js says what each room is
+     made of. */
   farmhouse: [
-    { x: 18, y: 4,  kind: 'kettle' },
-    { x: 20, y: 4,  kind: 'jars' },
-    { x: 16, y: 4,  kind: 'crockery' },
-    { x: 17, y: 3,  kind: 'candle' },
-    { x: 16, y: 3,  kind: 'herbs' },
-    { x: 17, y: 5,  kind: 'firewood' },
-    { x: 16, y: 5,  kind: 'cat' },
-    { x: 10, y: 11, kind: 'boots' },
-    { x: 13, y: 11, kind: 'broom' },
-    { x: 2,  y: 7,  kind: 'picture' },
-    { x: 2,  y: 4,  kind: 'coat' },
-    { x: 4,  y: 8,  kind: 'basket' },
-    { x: 13, y: 5,  kind: 'loaf' },
-    { x: 19, y: 10, kind: 'flowers' },
-    /* the rooms' furniture: the bedroom's chest of drawers and rug, the stue's shelves and two chairs */
-    { x: 6,  y: 2,  kind: 'kommode' },
-    { x: 4,  y: 5,  kind: 'matte' },
-    { x: 10, y: 2,  kind: 'hylle' },
-    { x: 13, y: 2,  kind: 'hylle' },
-    { x: 9,  y: 4,  kind: 'stol' },
-    { x: 14, y: 4,  kind: 'stol' }
+    /* the bedroom */
+    { x: 4,  y: 2,  kind: 'bed2', c: 'blue' },
+    { x: 3,  y: 2,  kind: 'nightstand', w: 'lamp' },
+    { x: 6,  y: 2,  kind: 'nightstand', w: 'book' },
+    { x: 7,  y: 2,  kind: 'trunk' },
+    { x: 2,  y: 2,  kind: 'dresser' },
+    { x: 7,  y: 1,  kind: 'picture', p: 0 },
+    { x: 2,  y: 7,  kind: 'armchair', c: 'red' },
+    { x: 2,  y: 8,  kind: 'floorlamp' },
+    { x: 3,  y: 8,  kind: 'plant' },
+    { x: 6,  y: 8,  kind: 'wardrobe' },
+    /* the sitting room */
+    { x: 9,  y: 2,  kind: 'bookcase' },
+    { x: 14, y: 2,  kind: 'bookcase' },
+    { x: 10, y: 2,  kind: 'nightstand', w: 'lamp' },
+    { x: 13, y: 2,  kind: 'nightstand', w: 'candle' },
+    { x: 11, y: 1,  kind: 'breast', h: 0 },
+    { x: 12, y: 1,  kind: 'breast', h: 1 },
+    { x: 11, y: 2,  kind: 'hearthstone', h: 0 },
+    { x: 12, y: 2,  kind: 'hearthstone', h: 1 },
+    { x: 9,  y: 4,  kind: 'armchair', c: 'red' },
+    { x: 14, y: 4,  kind: 'armchair', c: 'red' },
+    { x: 11, y: 5,  kind: 'coffeetable' },
+    { x: 10, y: 7,  kind: 'sofa', c: 'red' },
+    { x: 12, y: 3,  kind: 'cat' },
+    { x: 9,  y: 8,  kind: 'plant' },
+    { x: 14, y: 8,  kind: 'plant' },
+    /* the kitchen: one run along the north wall, the window over the sink, the table in the middle */
+    { x: 16, y: 2,  kind: 'pantry' },
+    { x: 17, y: 2,  kind: 'counter' },
+    { x: 18, y: 2,  kind: 'sink' },
+    { x: 19, y: 2,  kind: 'counter' },
+    { x: 20, y: 2,  kind: 'stove' },
+    { x: 21, y: 2,  kind: 'counter' },
+    { x: 17, y: 1,  kind: 'wallshelf' },
+    { x: 19, y: 1,  kind: 'wallshelf' },
+    { x: 21, y: 1,  kind: 'clock' },
+    { x: 18, y: 5,  kind: 'dtable', c: 'blue' },
+    { x: 18, y: 4,  kind: 'chair', o: 0 },
+    { x: 19, y: 4,  kind: 'chair', o: 0 },
+    { x: 18, y: 6,  kind: 'chair', o: 1 },
+    { x: 19, y: 6,  kind: 'chair', o: 1 },
+    { x: 21, y: 8,  kind: 'plant' },
+    { x: 16, y: 7,  kind: 'basket' },
+    /* the hall: coats and boots by the door, a bench either side of it, the stairs' worth of pictures on the wall */
+    { x: 3,  y: 9,  kind: 'coatrack' },
+    { x: 5,  y: 9,  kind: 'picture', p: 0 },
+    { x: 7,  y: 9,  kind: 'mirror' },
+    { x: 16, y: 9,  kind: 'picture', p: 1 },
+    { x: 18, y: 9,  kind: 'clock' },
+    { x: 20, y: 9,  kind: 'coatrack' },
+    { x: 2,  y: 10, kind: 'plant' },
+    { x: 21, y: 10, kind: 'plant' },
+    { x: 8,  y: 12, kind: 'hallbench' },
+    { x: 14, y: 12, kind: 'hallbench' },
+    { x: 11, y: 12, kind: 'mat' },
+    { x: 10, y: 12, kind: 'boots' }
   ],
+  /* HOME: the house by the water, built to be quiet in. A single bed in a room with a window and the rods on the wall; one long room
+     with the hearth at one end and the kitchen at the other, the sofa facing the fire, the table by the window, a desk in the corner
+     with a letter that is not finished. */
   lakehouse: [
-    { x: 18, y: 4,  kind: 'kettle' },
-    { x: 20, y: 4,  kind: 'lamp' },
-    { x: 16, y: 4,  kind: 'crockery' },
-    { x: 17, y: 3,  kind: 'loaf' },
-    { x: 17, y: 5,  kind: 'firewood' },
-    { x: 16, y: 5,  kind: 'cat' },
-    { x: 10, y: 11, kind: 'boots' },
+    /* the sleeping room */
+    { x: 3,  y: 2,  kind: 'bed1', c: 'blue' },
+    { x: 4,  y: 2,  kind: 'nightstand', w: 'candle' },
+    { x: 5,  y: 2,  kind: 'nightstand', w: 'book' },
+    { x: 6,  y: 2,  kind: 'wardrobe' },
+    { x: 2,  y: 1,  kind: 'net' },
+    { x: 4,  y: 1,  kind: 'rod' },
+    { x: 2,  y: 5,  kind: 'bookcase' },
+    { x: 2,  y: 7,  kind: 'armchair', c: 'blue' },
+    { x: 2,  y: 8,  kind: 'floorlamp' },
+    { x: 7,  y: 8,  kind: 'plant' },
+    /* the long room: hearth and sofa */
+    { x: 9,  y: 2,  kind: 'nightstand', w: 'lamp' },
+    { x: 10, y: 2,  kind: 'bookcase' },
+    { x: 13, y: 2,  kind: 'bookcase' },
+    { x: 14, y: 2,  kind: 'nightstand', w: 'lamp' },
+    { x: 11, y: 1,  kind: 'breast', h: 0 },
+    { x: 12, y: 1,  kind: 'breast', h: 1 },
+    { x: 11, y: 2,  kind: 'hearthstone', h: 0 },
+    { x: 12, y: 2,  kind: 'hearthstone', h: 1 },
+    { x: 11, y: 4,  kind: 'coffeetable' },
+    { x: 10, y: 7,  kind: 'sofa', c: 'blue' },
+    { x: 14, y: 5,  kind: 'armchair', c: 'blue' },
+    { x: 13, y: 3,  kind: 'cat' },
+    { x: 9,  y: 8,  kind: 'plant' },
+    /* the kitchen, in the corner, the window over the sink; the table by the window */
+    { x: 16, y: 2,  kind: 'counter' },
+    { x: 17, y: 2,  kind: 'sink' },
+    { x: 18, y: 2,  kind: 'counter' },
+    { x: 19, y: 2,  kind: 'stove' },
+    { x: 20, y: 2,  kind: 'counter' },
+    { x: 21, y: 2,  kind: 'pantry' },
+    { x: 20, y: 1,  kind: 'wallshelf' },
+    { x: 17, y: 5,  kind: 'dtable', c: 'blue' },
+    { x: 17, y: 4,  kind: 'chair', o: 0 },
+    { x: 18, y: 4,  kind: 'chair', o: 0 },
+    { x: 17, y: 6,  kind: 'chair', o: 1 },
+    { x: 18, y: 6,  kind: 'chair', o: 1 },
+    /* a desk in the corner, with the lamp on, and a chair */
+    { x: 20, y: 5,  kind: 'desk' },
+    { x: 20, y: 6,  kind: 'chair', o: 1 },
+    { x: 21, y: 8,  kind: 'plant' },
+    /* the entry: the rods by the door, a bench to sit on to take off your boots, a mat */
+    { x: 5,  y: 9,  kind: 'coatrack' },
+    { x: 7,  y: 9,  kind: 'picture', p: 0 },
+    { x: 2,  y: 10, kind: 'plant' },
+    { x: 21, y: 10, kind: 'plant' },
+    { x: 4,  y: 12, kind: 'hallbench' },
+    { x: 7,  y: 12, kind: 'hallbench' },
+    { x: 11, y: 12, kind: 'mat' },
     { x: 13, y: 11, kind: 'basket' },
-    { x: 2,  y: 7,  kind: 'picture' },
-    { x: 5,  y: 3,  kind: 'net' },
-    { x: 19, y: 10, kind: 'rod' },
-    { x: 14, y: 6,  kind: 'flowers' },
-    { x: 6,  y: 2,  kind: 'kommode' },
-    { x: 4,  y: 5,  kind: 'matte' },
-    { x: 11, y: 2,  kind: 'hylle' },
-    { x: 10, y: 4,  kind: 'stol' }
+    { x: 19, y: 11, kind: 'rod' },
+    { x: 20, y: 12, kind: 'trunk' },
+    { x: 16, y: 10, kind: 'plant' }
   ],
-  /* Act II: the house's own upgrade tier (S.houseTier, index.js's
-     hakonTilbygg()) — layered over `lakehouse` above rather than replacing it,
-     the same way the two farm-plot flags overlay the farm map's own grass
-     rather than swapping in a second map. A room with three more things in
-     it than the day you moved in is what "lived in longer" looks like.
-     Coordinates checked against BEK_MAPS.lakehouse's own rows and the
-     `lakehouse` list above for collisions. */
+  /* Act II: the house's own upgrade tier (S.houseTier, index.js's hakonTilbygg()) — layered over `lakehouse` above rather than
+     replacing it, the same way the two farm-plot flags overlay the farm map's own grass rather than swapping in a second map. A
+     room with a few more things in it than the day you moved in is what "lived in longer" looks like: herbs hung to dry over the
+     stove, a basket of knitting by the chair, a pair of boots by the door. Coordinates checked against
+     BEK_MAPS.lakehouse's own rows and the `lakehouse` list above for collisions. */
   lakehouse_t2: [
-    { x: 16, y: 3,  kind: 'herbs' },
-    { x: 2,  y: 4,  kind: 'jars' },
-    { x: 4,  y: 8,  kind: 'coat' }
+    { x: 19, y: 1,  kind: 'herbs' },
+    { x: 15, y: 5,  kind: 'basket' },
+    { x: 9,  y: 12, kind: 'boots' }
   ],
   /* THE LOFT (see BEK_LOFT below): what is in there on the day you first get
      the key — two crates and nothing else, which is what six shut years look

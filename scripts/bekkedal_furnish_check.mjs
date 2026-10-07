@@ -30,7 +30,7 @@ const dbg = (sel, arg) => pg.evaluate(sel, arg);
    lamp, a wall hanging, a dresser — every indoor category the task lists,
    placed by hand through the real startPlace()/canPlace()/confirmPlace(). */
 const spots = [
-  ['stol', 3, 3], ['bord', 4, 3], ['matte', 5, 5], ['seng', 6, 3],
+  ['stol', 3, 3], ['bord', 6, 4], ['matte', 3, 6], ['seng', 6, 3],   /* free floor in the bedroom of the furnished cabin: the bed, the nightstands and the rug have their own squares */
   ['hylle', 3, 5], ['lampe', 7, 3], ['veggbilde', 8, 3], ['kommode', 3, 7]
 ];
 await dbg(() => window.__bekDebug.teleport('farmhouse', 12, 8));
@@ -93,7 +93,7 @@ ok(!placedFlags[3], 'the fourth side, which would seal the player in, is refused
    decor (BEK_DECOR's own "never changes walkability" rule). */
 const walkGjerde = await dbg(() => window.__bekDebug.walkable('farm', 2, 2));
 ok(!walkGjerde, 'a placed fence tile is solid to move()', JSON.stringify(walkGjerde));
-const walkFurniture = await dbg(() => window.__bekDebug.walkable('farmhouse', 4, 3));
+const walkFurniture = await dbg(() => window.__bekDebug.walkable('farmhouse', 6, 4));
 ok(!!walkFurniture, 'a placed table stays walkable, same as authored decor', JSON.stringify(walkFurniture));
 
 console.log('\n' + (fails ? fails + ' FAILED' : 'All FURNISHING functional checks pass.') + (errors.length ? '\nPAGE ERRORS: ' + errors.join(' | ') : ''));

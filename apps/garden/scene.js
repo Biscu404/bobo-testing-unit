@@ -59,10 +59,18 @@ function potsAndPlants(g, V, gk, night) {
     if (p.wig > 0) p.wig = Math.max(0, p.wig - dt * 2.2);
     drawPlant(g, q.cx, q.y + 5, sp, stage, tsec, 1.9, p.wig, night);
     const s = M.stats(w, st, ri, i);
-    s.tags.forEach((t, k) => { g.fillStyle = pipColour(t); g.fillRect(q.x + 2 + k * 6, q.y - 62, 4, 4); });
-    if (!isWet) {
-      g.fillStyle = 'rgba(220,200,140,0.85)';
-      g.fillRect(q.x + q.w - 10, q.y - 8, 3, 3); g.fillRect(q.x + q.w - 6, q.y - 12, 3, 3); g.fillRect(q.x + q.w - 14, q.y - 12, 3, 3);
+    /* what is helping the plant (and that it is thirsty) sits in a little plate at the foot of its pot, not up in the air over the
+       leaves: one pip a helper, centred on the pot, and a sand-coloured hollow one at the end when the plant is dry */
+    const pips = s.tags.map(pipColour);
+    if (!isWet) pips.push(null);
+    if (pips.length) {
+      const pw = pips.length * 6 + 1, px = q.x + ((q.w - pw) >> 1), py = q.y + q.h - 11;
+      g.fillStyle = 'rgba(8,6,2,0.62)'; g.fillRect(px, py, pw, 7);
+      pips.forEach((c, k) => {
+        if (c) { g.fillStyle = c; g.fillRect(px + 1 + k * 6, py + 2, 4, 4); return; }
+        g.fillStyle = '#e8d496'; g.fillRect(px + 1 + k * 6, py + 2, 4, 4);
+        g.fillStyle = '#5a4a28'; g.fillRect(px + 2 + k * 6, py + 3, 2, 2);
+      });
     }
     const n = p.tok || 0, shown = Math.min(n, 6);
     for (let k = 0; k < shown; k++) drawSunToken(g, q.x + 4 + k * 9, q.y + q.h + 4 + Math.round(Math.sin(tsec * 3 + k) * 1.5), 9);

@@ -1,7 +1,7 @@
 /* ==========================================================================
    THE STYLE METER
-   Sits in the picture, not on the glass: it is inside #tube, so the lens
-   zooms it with everything else. 8000 clears the shell and the toast and
+   Sits in the picture, not on the glass: it is inside #tube, so the picture
+   zoom carries it with everything else. 8000 clears the shell and the toast and
    still leaves the degauss flash (9998), the saver (9000) and the glass
    (9999) on top of it. Palette colours only; every shadow is a hard offset,
    every animation moves in whole pixels and snaps with steps().

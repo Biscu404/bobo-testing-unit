@@ -4,6 +4,7 @@
  * the lines are the right ones (a person is named, a gift names what is given, a locked door says so), nothing that does nothing is
  * given a line, and every line exists in both languages and is spoken in capitals like the rest of the HUD. */
 import { hintFor, holdingLine, GIFT_HELP } from './hint.js';
+import { FURN } from './furniture_act.js';
 
 let fails = 0, checks = 0;
 const ok = (c, label, detail) => { checks++; if (c) console.log('OK   ' + label); else { fails++; console.log('FAIL ' + label + '   ' + (detail || '')); } };
@@ -40,6 +41,11 @@ ok(/WATER/.test(say(at({ tile: 'f', tool: 'kanne', soil: { till: true, seed: tru
 ok(/DIG IT FIRST/.test(say(at({ tile: 'f', tool: 'kanne', soil: null }))), 'a can on soil nobody has dug says to dig it first');
 ok(/HARVEST/.test(say(at({ tile: 'f', soil: { till: true, seed: true, ready: true, wet: true } }))), 'a ripe plot is harvested');
 ok(/SOW/.test(say(at({ tile: 'f', tool: 'oks', soil: { till: true, seed: false, ready: false, wet: false }, hasSeed: true }))), 'a dug plot and a seed in the bag: sow it');
+
+/* the things in a house that answer: each says what SPACE does (and a bed or a bench, which have their own, are not overridden by a prop that does not) */
+ok(/BROWSE/.test(say(at({ tile: 'u', furn: FURN.bookcase.hint }))) && /LOOK OUT/.test(say(at({ tile: 'H', furn: FURN.window.hint }))), 'a bookcase is browsed and a window is looked out of');
+ok(/SLEEP/.test(say(at({ tile: 'b' }))) && /SIT/.test(say(at({ tile: 'J', furn: null }))), 'a bed still sleeps and a seat still sits when no prop claims the square');
+ok(Object.keys(FURN).every(k => FURN[k].hint && FURN[k].hint.no && FURN[k].hint.en && FURN[k].hint.no === FURN[k].hint.no.toUpperCase() && FURN[k].hint.en === FURN[k].hint.en.toUpperCase()), 'every answering piece of furniture has a line, both languages, in capitals (' + Object.keys(FURN).length + ')');
 
 /* everything it can say, in both languages, in capitals */
 const samples = [
