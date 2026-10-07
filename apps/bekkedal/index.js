@@ -3667,6 +3667,11 @@ export default {
          question of how many frames it takes to land, and four or five of them at a few milliseconds each is not a thing the
          eye can find where one at forty is. */
       const REBUILD_BUDGET_MS = 4.5, ROWS_PER_STEP = 3;
+      /* ...and how much more it may pay as the viewport closes on the edge of the picture on screen. A rebuild that has not landed by
+         the time the camera walks off the region is painted whole, in one frame (see terrain()), so a slow frame rate used to turn a
+         gentle walk into a stutter every few tiles: at seven tiles a second the margin is half a second. Two tiles or more to spare
+         and it is the usual few milliseconds; one tile and it is twice that, none and it is three times, which is still a slice. */
+      const rebuildBudget = (F, v) => REBUILD_BUDGET_MS + Math.max(0, 2 - Math.min(v.x0 - F.R.x0, v.y0 - F.R.y0, F.R.x1 - v.x1, F.R.y1 - v.y1)) * 5;
 
       /* the tiles the viewport can show, with one to spare for the strike-frame shake and the half tile at each edge */
       const viewTiles = () => ({ x0: Math.floor(camX / BEK_T) - 1, y0: Math.floor(camY / BEK_T) - 1,
@@ -3785,13 +3790,13 @@ export default {
         const kMap = kGeo + '|' + L.key;
         const k = kMap + '|' + R.x0 + ',' + R.y0 + ',' + R.x1 + ',' + R.y1;
         const F = front();
-        if (k === F.key && !force) { if (job) runJob(REBUILD_BUDGET_MS); return F.cv; }
+        if (k === F.key && !force) { if (job) runJob(covers(F, viewTiles()) ? rebuildBudget(F, viewTiles()) : REBUILD_BUDGET_MS); return F.cv; }
         const ready = F.key && F.kGeo === kGeo && F.mw === mw && covers(F, viewTiles());
         /* a rebuild already running for something older is left to land if what is on screen can be shown meanwhile; the
            newer one starts when it has */
         if (!job || (job.k !== k && !(ready && job.kGeo === kGeo && !force))) job = startJob(k, kGeo, L, R, cols, rows, mw, mh);
         /* a picture that can be shown for now is left on screen while this one is painted; one that cannot is painted at once */
-        runJob(ready && !force ? REBUILD_BUDGET_MS : Infinity);
+        runJob(ready && !force ? rebuildBudget(F, viewTiles()) : Infinity);
         return front().cv;
       }
       /* The ploughed plot and what grows in it live in crops.js — the last
