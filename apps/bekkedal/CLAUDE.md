@@ -200,6 +200,7 @@ coordinates") lives in `bekkedal-art.md`.
   `.claude/rules/bekkedal-content.md`.
 - `spine_check_time.js` — its last family, split the same way and for the
   same reason `mine_check_ore.js` is. Still one command.
+- `chop.js`, `sleep.js`, `fog.js`, `typer.js`, `hellos.js`, `trips.js`, `asks.js`, `ask_astrid.js` … `ask_lars.js` — the last pass, all pure: the felling rhythm, the night and what staying up costs, drifting mist, the typed line (and `[action]` masks), a word as you pass, walking between maps, and the topics you can bring up and what is remembered (`S.mem`, save version 22). Each has a `*_check.js` beside it (`asks_check.js` for the ask files). See the root `CLAUDE.md`, "Nights, trees, doors and talk".
 - `world_check.js` — `node apps/bekkedal/world_check.js`. The valley as one walkable thing: seams, flood fills, and everything placed by coordinate.
 
 ## Hard invariants
@@ -225,7 +226,7 @@ coordinates") lives in `bekkedal-art.md`.
 ## Save versioning
 
 The save key is `BEK_SAVE` (`data.js`). The in-save schema version is the `ver`
-field written by `fresh()` in `index.js` — currently **21**, what people wear and hold. Its one new field is `S.look` (NPC id to what a gift has made them wear or hold, and since when), backfilled to `{}` by `heal()` and never rewound; version 20 before it was the greetings, whose one new field was `S.lastTalk`: NPC id to the day number you last spoke to them,
+field written by `fresh()` in `index.js` — currently **22**: `S.mem`, what you have said to whom (`'<person>.<topic>'` to a short word, never rewound, backfilled to `{}` by `heal()`), is the one new field. Version 21 before it was what people wear and hold; its one new field was `S.look` (NPC id to what a gift has made them wear or hold, and since when), backfilled to `{}` by `heal()` and never rewound; version 20 before it was the greetings, whose one new field was `S.lastTalk`: NPC id to the day number you last spoke to them,
 which is all `greet.js` needs to say hello, hello again, or "where have you been". It is
 stamped by `talkTo()` and backfilled to `{}` by `heal()`; a save from before it has never
 "spoken" to anybody, so nobody remarks on an absence they cannot date, and everybody's

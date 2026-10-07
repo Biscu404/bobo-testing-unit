@@ -90,7 +90,7 @@ export const WILD_SCENES = [
     ] },
   /* he comes down for this one, as far as the wood — and the bear is
      already standing in that clearing on his own account (BEK_NPCS.bjorn) */
-  { id: 'gunnar10', npc: 'gunnar', at: 10, map: 'forest', from: 10 * 60, to: 16 * 60,
+  { id: 'gunnar10', npc: 'gunnar', at: 10, map: 'forest', from: 10 * 60, to: 16 * 60, if: S => S.day >= 21,
     anchor: [12, 11], r: 6, stand: [12, 12], face: 1,
     cast: [{ id: 'gunnar', x: 13, y: 11, dir: 2 }],
     gain: 1, set: { tall: 1 },

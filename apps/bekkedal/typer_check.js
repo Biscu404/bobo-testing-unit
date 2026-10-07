@@ -1,0 +1,21 @@
+/* node apps/bekkedal/typer_check.js — the voice: a steady pace, a breath at a stop, bracketed actions quick and silent, a skip that finishes. Pure Node. */
+import { createTyper, actMask, revealRows, CPS, PAUSE } from './typer.js';
+let bad = 0; const ok = (c, m, d) => { console.log((c ? 'OK   ' : 'FAIL ') + m + (d ? '  ' + d : '')); if (!c) bad++; };
+const run = (s, dt = 1 / 60) => { const t = createTyper(); t.reset(s); let secs = 0; const voiced = []; while (!t.done() && secs < 60) { voiced.push(...t.step(dt)); secs += dt; } return { secs, voiced }; };
+const plain = 'Good morning, friend. The coffee is on.';
+const r = run(plain);
+ok(r.secs > plain.length / CPS * 0.9 && r.secs < plain.length / CPS + 0.6, 'a line is said at about the pace', r.secs.toFixed(2) + ' s for ' + plain.length + ' letters');
+const noStops = run('good morning friend the coffee is on'); ok(r.secs - noStops.secs > 0.2, 'a comma and a full stop cost a breath', (r.secs - noStops.secs).toFixed(2) + ' s');
+ok(r.voiced.length > 8 && r.voiced.length < plain.length / 1.5, 'and about half the letters are voiced', r.voiced.length + ' of ' + plain.length);
+const act = run('[SHE LAUGHS]'), say = run('SHE LAUGHS ');
+ok(act.voiced.length === 0, 'an action makes no sound');
+ok(act.secs < say.secs * 0.7, 'and is over faster than the same words said', act.secs.toFixed(2) + ' against ' + say.secs.toFixed(2));
+const mixed = 'Hello. [HE NODS] Sit.', m = actMask(mixed);
+ok(m[mixed.indexOf('[')] && m[mixed.indexOf(']')] && !m[mixed.lastIndexOf('S')] && !m[0], 'the mask is the brackets and what is inside them');
+const t = createTyper(); t.reset(plain); t.step(0.2); ok(!t.done() && t.shown() > 3, 'a line is part way after a moment'); t.skip(); ok(t.done() && t.shown() === plain.length, 'skip finishes it');
+ok(createTyper().done(), 'nothing to say is already said');
+const big = createTyper(); big.reset(plain); big.step(5); ok(big.done(), 'a long frame never overshoots or hangs');
+const rows = revealRows(['Good morning,', 'friend. [HE', 'NODS] Sit.'], 'Good morning, friend. [HE NODS] Sit.', 20);
+ok(rows[0].n === 13 && rows[1].n === 6 && rows[2].n === 0 && rows[1].inAct === false && rows[2].inAct === true, 'wrapped rows reveal in order, and a bracket carries over a wrap', JSON.stringify(rows.map(x => x.n + (x.inAct ? 'a' : ''))));
+ok(Object.keys(PAUSE).every(k => PAUSE[k] > 0 && PAUSE[k] < 0.3), 'no pause is long enough to feel stuck');
+if (bad) process.exit(1); console.log('All typer checks pass.');

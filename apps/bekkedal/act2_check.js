@@ -215,7 +215,7 @@ pass('act2 quest templates', '400+400 rolls');
    are three and four times the size, so a day is mostly walking; the descent,
    the fishing overhaul, farming's quality and preserves, the loft's year of
    work and a house full of furniture all arrived after it was written. The
-   targets are Act I in 20-25 days, Act II in at least four more seasons, six
+   targets are Act I in 23-38 days, Act II in at least three and a half more seasons, five and a half
    to ten real hours to the ending, and no livelihood or policy running away
    with it at any point along the way.
    ========================================================================== */

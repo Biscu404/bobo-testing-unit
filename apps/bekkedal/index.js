@@ -5,7 +5,7 @@ import { BEK_T, BEK_T_SRC, BEK_ART_SCALE, BEK_SAVE, BEK_LOT_COST, UI, BEK_ITEMS,
          BEK_CROPS, BEK_TOOLS, OKS_GRAN_E, AXE_NAME, PICK_NAME, ROD_NAME, BEK_MAPS, BEK_SOLID, BEK_NPCS, BEK_GOATS,
          BEK_START_KR, BEK_EN_MAX, BEK_STEP_S, BEK_TURN_S, BEK_CLOCK_MIN_PER_S, BEK_DAY_START, BEK_DAY_END,
          BEK_XP_STEP, BEK_XP_LVL_STAMINA, BEK_GRADE_MULT, BEK_PRESV_DAYS, BEK_RARE_CHANCE,
-         BEK_FORAGE_DROPS, BEK_FORAGE_BONUS, BEK_REGROW, BEK_GIFT_FR,
+         BEK_FORAGE_DROPS, BEK_FORAGE_BONUS, BEK_REGROW, BEK_FOOD_DAY_CAP, BEK_GIFT_FR,
          BEK_TALK, BEK_SCENES, BEK_QUESTS, BEK_HOUSE, BEK_DECOR, BEK_FARM_PLOTS, BEK_BARN_PLOT,
          BEK_BARN_PLOT2, BEK_GREENHOUSE_PLOT, BEK_ANIMAL_KINDS, BEK_GIFT_CAP, BEK_MINE_MOUTH,
          BEK_RECIPES, BEK_FISH_WATERS, BEK_SEASON_DAYS, BEK_LOFT,
@@ -58,6 +58,12 @@ import { lampState, createLamp, bandStates } from './lamp.js';
 import { hintFor, holdingLine } from './hint.js';
 import { FURN, furnitureAct } from './furniture_act.js';
 import { lifeFor } from './life.js';
+import { fogLevel, FOG_BLOCK } from './fog.js';
+import { helloFor } from './hellos.js';
+import { createTyper } from './typer.js';
+import { topicMenu, topicOf, topicDialogue } from './asks.js';
+import { lateExtra, warningFor, nightOf, pilfer, napPhase, NAP_TOTAL, NAP, zCount, vignette } from './sleep.js';
+import { newChop, chopTick, chopStrike, chopAbandoned } from './chop.js';
 import { ACT_TOOL, CALLS, LOOKS } from './life_data.js';
 import { noteGift, lookNow, wearsKnit } from './looks.js';
 import { makeWalker, sendTo, stepWalker, distance, beside, comesIn, nearestOut, callFor, MEET_R, FAR, RUN } from './walkers.js';
@@ -231,7 +237,7 @@ export default {
       let S = null;
       const fresh = () => {
         const f = {
-        ver: 21, lang: BEK_LANG, fullscreen: 0,
+        ver: 22, lang: BEK_LANG, fullscreen: 0,
         map: 'farm', px: 8, py: 8, dir: 0, step: 0, walk: 0,
         day: 1, min: BEK_DAY_START, kr: BEK_START_KR, en: BEK_EN_MAX, enMax: BEK_EN_MAX,
         water: 20, waterMax: 20,
@@ -288,7 +294,7 @@ export default {
         /* ver 19: the same marker, for the same reason, over the stamina
            rescale in heal() below — see EN_MAX_WAS. */
         enRescaled: true,
-        chatIx: {}, lastTalk: {}, look: {}, disc: { farm: 1 }, weather: 'klar',
+        chatIx: {}, lastTalk: {}, look: {}, mem: {}, disc: { farm: 1 }, weather: 'klar',
         /* the seasonal layer — always recomputed from `day` (seasons.js),
            never incremented on its own, so it cannot drift from it. See
            heal() below for the same recompute on an old save's load. */
@@ -408,7 +414,7 @@ export default {
       /* nested objects a stale save might be missing */
       const heal = s => {
         const f = fresh();
-        ['tools', 'fr', 'soil', 'felled', 'mined', 'picked', 'flag', 'q', 'met', 'seen', 'chatIx', 'lastTalk', 'look', 'disc', 'bag', 'chest', 'xp', 'lvl', 'giftWeek', 'yst', 'xpDay', 'cropGrade', 'presv', 'spine', 'placed'].forEach(k => {
+        ['tools', 'fr', 'soil', 'felled', 'mined', 'picked', 'flag', 'q', 'met', 'seen', 'chatIx', 'lastTalk', 'look', 'mem', 'disc', 'bag', 'chest', 'xp', 'lvl', 'giftWeek', 'yst', 'xpDay', 'cropGrade', 'presv', 'spine', 'placed'].forEach(k => {
           if (typeof s[k] !== 'object' || s[k] === null) s[k] = f[k];
         });
         /* ver 16: a save from before QUALITY has no plot's soil record
@@ -618,7 +624,7 @@ export default {
         s.animals.forEach((a, i) => { if (slots[i]) { a.x = slots[i].x; a.y = slots[i].y; } });
       }
 
-      let mode = '', dlg = null, shop = null, craft = null, fish = null, note = '', noteT = 0, travel = null, offer = null, loft = null;
+      let mode = '', dlg = null, shop = null, craft = null, fish = null, chop = null, nap = null, note = '', noteT = 0, travel = null, offer = null, loft = null;
       /* FURNISHING: `place` is `{ item, kind, x, y, rot }` while mode ===
          'place', else null — see startPlace()/confirmPlace() and the
          `mode === 'place'` keydown block below. */
@@ -648,7 +654,7 @@ export default {
          never in `S`. `bufAct` is the buffered next input: pressing again
          during a swing queues the action rather than dropping it, so holding
          the key still chops at the rate the animation allows. */
-      let swing = null, bufAct = false, shake = 0;
+      let swing = null, bufAct = false, shake = 0, tiredSaid = {};
       /* The SAVE button still exists, but nothing should be lost by closing a
          window, so the valley writes itself down every few seconds and again
          on the way out. */
@@ -908,28 +914,30 @@ export default {
             Snd.tone(base * (0.86 + j * 0.075), 26, { type: 'square', delay: i * 0.045, vol: 0.02 });
           }
         },
+        /* one letter of speech: a short square blip at the speaker's pitch, a little different for every letter so it babbles instead of buzzing */
+        letter(base, c) { const j = (c.charCodeAt(0) * 7) % 9; Snd.tone(base * (0.82 + j * 0.05), 22, { type: 'square', vol: 0.016 }); },
         sel()    { Snd.tone(660, 22, { type: 'square', vol: 0.024 }); },
         choose() { Snd.tone(880, 30, { type: 'square', vol: 0.03 }); Snd.tone(1320, 40, { type: 'square', delay: 0.05, vol: 0.026 }); }
       };
 
       /* ---- who is talking, and how it sounds ---------------------------- */
       const voiceOf = npc => !npc ? 520 : npc.bear ? 110 : (npc.voice || 520);
+      /* A line is said a letter at a time (typer.js), and each second letter is a blip at the speaker's pitch; the bear only growls, once. SPACE
+         finishes a line that is still coming (dlgAdvance asks `typer.done()` first). One hook for every path that can put a line on
+         screen: the frame notices the line, or the question, changed and starts saying it, so no caller has to remember. */
+      const typer = createTyper();
       let spokeDlg = null, spokeIx = -1;
-      function speakLine() {
-        if (!dlg) return;
-        if (dlg.npc && dlg.npc.bear) { sfx.bear(); return; }
-        const s = T(dlg.lines && dlg.lines[dlg.i]) || '';
-        sfx.blip(voiceOf(dlg.npc), Math.ceil(s.length / 7), (dlg.i * 13 + s.length) % 5);
-      }
-      /* one hook for every path that can put a line on screen: the frame
-         notices the line changed and speaks it, so no caller has to remember */
-      function speechTick() {
+      function speechTick(dt) {
         if (mode !== 'talk' || !dlg) { spokeDlg = null; spokeIx = -1; return; }
-        if (dlg.opts) {
-          if (spokeDlg !== dlg || spokeIx !== 'q') { spokeDlg = dlg; spokeIx = 'q'; sfx.blip(voiceOf(dlg.npc), 5, 2); }
-          return;
+        const ix = dlg.opts ? 'q' : dlg.i;
+        if (spokeDlg !== dlg || spokeIx !== ix) {
+          spokeDlg = dlg; spokeIx = ix;
+          typer.reset(T(dlg.opts ? dlg.opts.q : dlg.lines && dlg.lines[dlg.i]) || '');
+          if (dlg.npc && dlg.npc.bear) { sfx.bear(); typer.skip(); return; }
+          if (!dlg.npc) { /* narration: a quiet tick as each line comes, no voice */ }
         }
-        if (spokeDlg !== dlg || spokeIx !== dlg.i) { spokeDlg = dlg; spokeIx = dlg.i; speakLine(); }
+        const voice = dlg.npc ? voiceOf(dlg.npc) : 0;
+        typer.step(dt).forEach(c => { if (voice) sfx.letter(voice, c); });
       }
 
       /* ---- five songs, on rotation --------------------------------------
@@ -1116,8 +1124,11 @@ export default {
           c.wet = 1;
         });
       }
+      /* The night is over. `passedOut` is the clock reaching 02:00 on its own: you fell asleep where you stood, outdoors, and the
+         day turns over round you (sleep.js: two fifths of the bar, a morning lost, a magpie). Otherwise you were in a bed. */
       function newDay(passedOut) {
-        S.day++; S.min = BEK_DAY_START;
+        const night = nightOf(S.min, passedOut), had = S.kr;
+        S.day++; S.min = night.wakeMin; chop = null; swing = null; tiredSaid = {};
         /* yesterday, closed out: the difference between the XP counters now
            and the mark stamped at the start of the day that just ended. The
            chat lines gated on `S.yst.*` (BEK_TALK) read this and nothing
@@ -1133,7 +1144,7 @@ export default {
            in-game weekday — see isRefreshDay()/refreshBoard() in quests.js.
            GIFTING's own weekly cap (BEK_GIFT_CAP) clears on the same day. */
         if (isRefreshDay(S.day)) { S.rq = refreshBoard(S, S.day); S.giftWeek = {}; }
-        S.en = passedOut ? Math.round(S.enMax * 0.6) : S.enMax;
+        S.en = Math.max(1, Math.round(S.enMax * night.frac));
         S.water = S.waterMax; S.met = {};
         const rainy = S.weather === 'regn';
         Object.keys(S.soil).forEach(k => {
@@ -1187,21 +1198,46 @@ export default {
         S.weather = rollWeather(S.day);
         rainOnPlots();
         spawnDrops();
-        /* A run does not survive a night. You wake on the farm whichever
-           floor the clock caught you on — that is the 02:00 rule the whole
-           valley already lives under, and the mine gets no exemption from it.
-           What you keep is the bag you carried up and S.deepest; what you
-           lose is the floor, which the next descent regenerates anyway. */
+        /* A run does not survive a night, and the mine gets no exemption from the 02:00 rule. What you keep is the bag you
+           carried up and S.deepest; what you lose is the floor, which the next descent regenerates anyway. */
         if (S.run) mineDrop();
-        /* out of the cabin door and onto the yard track, whichever bed or
-           field you fell asleep in — the same square the farmhouse sets you
-           down on when you walk out of it */
+        if (passedOut) {
+          /* where you fell. A floor of the descent is gone with the night, so you are at the mouth of it; anywhere else you
+             wake on the very square you lay down on, and the magpie has had your pockets */
+          if (S.run || isMineId(S.map)) mineEnd();
+          const lost = pilfer(had); S.kr -= lost;
+          sfx.sleep();
+          say(TX('DAG ' + S.day + '. DU SOV PÅ BAKKEN. STIV OG KALD.', 'DAY ' + S.day + '. YOU SLEPT ON THE GROUND. STIFF AND COLD.') +
+              (lost ? TX('  EN SKJÆRE TOK ' + lost + ' KR.', '  A MAGPIE TOOK ' + lost + ' KR.') : ''));
+          return;
+        }
+        /* out of the cabin door and onto the yard track, whichever bed you went to sleep in — the same square the
+           farmhouse sets you down on when you walk out of it */
         S.map = 'farm'; S.px = 8; S.py = 8; S.dir = 0;
         sfx.sleep();
         say(TX('DAG ' + S.day + '. ', 'DAY ' + S.day + '. ') +
-            (passedOut ? TX('DU SOVNET DER DU STO.', 'YOU SLEPT WHERE YOU FELL.')
-                       : S.weather === 'regn' ? TX('REGN I DAG.', 'RAIN TODAY.')
-                       : S.weather === 'take' ? TX('TÅKE I DAG.', 'FOG TODAY.') : TX('GOD MORGEN.', 'GOOD MORNING.')));
+            (night.kind === 'late' ? TX('EN KORT NATT.', 'A SHORT NIGHT.')
+             : S.weather === 'regn' ? TX('REGN I DAG.', 'RAIN TODAY.')
+             : S.weather === 'take' ? TX('TÅKE I DAG.', 'FOG TODAY.') : TX('GOD MORGEN.', 'GOOD MORNING.')));
+      }
+
+      /* ---- sleeping, as a scene --------------------------------------------------
+         The picture closes to black through the ordered dither, holds on the sleeper and the Zs while the day turns over (newDay
+         runs at the middle of it, behind the dark) and opens on the morning. Input is ignored for the few seconds it takes, and the
+         clock does not run. Nothing here is saved: a save made mid-scene is a save made at the same hour as before it began. */
+      function startNap(passed) {
+        dlg = null; shop = null; craft = null; offer = null; fish = null; chop = null; swing = null; bufAct = false;
+        const f = facing(), bed = !passed && tileAt(S.map, f.x, f.y) === 'b' ? { x: f.x, y: f.y } : null;
+        nap = { t: 0, passed: !!passed, bed: bed, at: { map: S.map, x: S.px, y: S.py }, woke: false };
+        mode = 'nap'; steer.clear(); stride.reset();
+        sfx.sleep();
+      }
+      function napTick(dt) {
+        if (!nap) { mode = ''; return; }
+        nap.t += dt;
+        /* the day turns over once the picture is shut */
+        if (!nap.woke && nap.t >= NAP.out + 0.35) { nap.woke = true; newDay(nap.passed); }
+        if (nap.t >= NAP_TOTAL) { nap = null; mode = ''; }
       }
 
       /* ---- the verbs ---------------------------------------------------- */
@@ -1213,6 +1249,31 @@ export default {
         swing = { kind: kind, t: 0, fired: false, fx: fx || (TOOL_SWING[kind] || {}).fx,
                   tx: f.x, ty: f.y, len: swingLen(kind) };
         return swing;
+      }
+      /* ---- felling: a rhythm (chop.js) ------------------------------------ */
+      function startChop(glyph, f) {
+        chop = newChop(glyph, S.axeLv, f.x, f.y, Math.random);
+        say(TX('SLÅ NÅR MERKET ER I DET LYSE. SPACE', 'STRIKE WHEN THE MARK IS IN THE PALE. SPACE'));
+      }
+      function chopCancel() { chop = null; }
+      function chopFinish(c) {
+        chop = null;
+        const n = c.glyph === 'G' ? 2 : 1;
+        S.felled[rkey(S.map, c.x, c.y)] = S.day + (c.glyph === 'G' ? BEK_REGROW.gran : BEK_REGROW.birch);
+        terrLater();
+        if (!gainCapped('tommer', n)) return;
+        say('+' + n + ' ' + iname('tommer') + (c.glances === 0 ? TX('  RENT SNITT!', '  CLEAN CUT!') : ''));
+      }
+      function chopSwing() {
+        if (!chop || swing) return;
+        const r = chopStrike(chop, Math.random);
+        if (r === 'wait') return;
+        const f = { x: chop.x, y: chop.y };
+        startSwing('oks').fx = r === 'glance' ? 'sparks' : 'chips';
+        if (r === 'glance') { deny(); say(TX('GLIPPET AV.', 'GLANCED OFF.')); return; }
+        sfx.chop(); shake = r === 'heart' ? 5 : 3;
+        if (chop.done) chopFinish(chop);
+        else say(r === 'heart' ? TX('DYPT!', 'DEEP!') : TX('TREFF.', 'BITE.'));
       }
       const busy = () => !!swing;
       function facing() { const d = [[0,1],[0,-1],[-1,0],[1,0]][S.dir]; return { x: S.px + d[0], y: S.py + d[1] }; }
@@ -1234,7 +1295,7 @@ export default {
         return null;
       }
       function spend(n) {
-        const cost = n + (S.en < 20 ? 1 : 0);               /* tired hands work harder */
+        const cost = n + (S.en < 20 ? 1 : 0) + lateExtra(S.min);   /* tired hands work harder, and so does a body that should be in bed (sleep.js) */
         if (S.en < cost) { say(TX('FOR SLITEN. LEGG DEG.', 'TOO TIRED. GO TO BED.')); deny(); return false; }
         S.en -= cost; return true;
       }
@@ -1386,7 +1447,7 @@ export default {
         return (prop && FURN[prop.kind]) || win ? { prop: prop, win: win && !(prop && FURN[prop.kind]) } : null;
       }
       function act() {
-        if (swing) return;                       /* one thing at a time */
+        if (swing || chop) return;               /* one thing at a time */
         /* the boat, from the end of the pier or the dock */
         const b = M().boat;
         if (b && S.px === b.x && S.py === b.y) {
@@ -1513,14 +1574,16 @@ export default {
              shape of tier reward the hakke's own mine-level saving is, and
              what keeps felling's upgraded rate level with the other four */
           const axeCut = S.axeLv >= 2 ? 1 : 0;
-          if (t === 'Y') { if (!spend(Math.max(1, tool.e - axeCut))) return; S.felled[rkey(S.map, f.x, f.y)] = S.day + BEK_REGROW.birch; terrLater(); if (!gainCapped('tommer', 1)) return; sfx.chop(); startSwing('oks'); say('+1 ' + iname('tommer')); return; }
+          /* The energy for the tree is paid once, here, as it always was; the tree itself now takes a few
+             well-placed blows (chop.js), and comes down on the last of them (chopFinish). */
+          if (t === 'Y') { if (!spend(Math.max(1, tool.e - axeCut))) return; startChop('Y', f); return; }
           if (t === 'G') {
             if (S.axeLv < 2) { say(TX('FOR STOR. Du trenger en STÅLØKS.', 'TOO BIG. You need a STEEL AXE.')); deny(); return; }
             /* a gran pays two tømmer, so it has to cost more than a birch or
                the STÅLØKS would double the felling rate outright rather than
                improve it — the same "the reward is the depth, not a free
                multiplier" rule the mine's own `dig` follows */
-            if (!spend(Math.max(1, tool.e + OKS_GRAN_E - axeCut))) return; S.felled[rkey(S.map, f.x, f.y)] = S.day + BEK_REGROW.gran; terrLater(); if (!gainCapped('tommer', 2)) return; sfx.chop(); startSwing('oks'); say('+2 ' + iname('tommer')); return;
+            if (!spend(Math.max(1, tool.e + OKS_GRAN_E - axeCut))) return; startChop('G', f); return;
           }
           say(TX('INGENTING Å FELLE.', 'NOTHING TO FELL.')); return;
         }
@@ -1855,6 +1918,17 @@ export default {
         leaving.forEach((w, id) => { stepWalker(w, dt, 2.4); if (w.done) leaving.delete(id); });
       }
       /* words over a head: they last about two seconds and are drawn once the playfield is, in screen pixels */
+      /* A word over the shoulder, the first time on a day you come within a few steps of somebody who is about (hellos.js). */
+      const greeted = new Map();
+      function greetWatch() {
+        if (scene || nap) return;
+        npcsHere().forEach(n => {
+          if (n.bear || n.enter != null || greeted.get(n.id) === S.day || S.lastTalk[n.id] === S.day) return;
+          if (Math.max(Math.abs(n.x - S.px), Math.abs(n.y - S.py)) > 3) return;
+          greeted.set(n.id, S.day);
+          bubbles.push({ id: n.id, text: helloFor(n.id, S.day, S.min, S.weather), t: 0 });
+        });
+      }
       function bubblesTick(dt) {
         if (!bubbles.length) return;
         bubbles.forEach(b => { b.t += dt; });
@@ -1864,10 +1938,10 @@ export default {
       /* ---- talking ------------------------------------------------------ */
       const BEAR_LINES = [
         'PERKELE.',
-        { no: 'Bjørnen feier plassen sin og nikker.', en: 'The bear sweeps his clearing and nods.' },
-        { no: 'En lav lyd. Ikke helt et brøl. Nesten et hei.', en: 'A low sound. Not quite a growl. Almost hello.' },
-        { no: 'Han rekker deg et bær. Du tar imot.', en: 'He offers you a berry. You take it.' },
-        { no: 'Han går tilbake til feiingen. Kosten forklarer han aldri.', en: 'He goes back to sweeping. The broom he never explains.' }
+        { no: '[Bjørnen feier plassen sin og nikker.]', en: '[The bear sweeps his clearing and nods.]' },
+        { no: '[En lav lyd. Ikke helt et brøl. Nesten et hei.]', en: '[A low sound. Not quite a growl. Almost hello.]' },
+        { no: '[Han rekker deg et bær. Du tar imot.]', en: '[He offers you a berry. You take it.]' },
+        { no: '[Han går tilbake til feiingen. Kosten forklarer han aldri.]', en: '[He goes back to sweeping. The broom he never explains.]' }
       ];
       function talkTo(npc) {
         if (npc.bear) {
@@ -1955,8 +2029,8 @@ export default {
             S.fr[npc.id] = Math.max(0, Math.min(FR_MAX, S.fr[npc.id] + delta));
             sfx.talk();
             const after = !shown ? [] : [LOOKS[giftSel].wear
-              ? { no: 'Tar den på seg med en gang.', en: 'Puts it on at once.' }
-              : { no: 'Holder den litt for seg selv.', en: 'Keeps it close.' }];
+              ? { no: '[Tar den på seg med en gang.]', en: '[Puts it on at once.]' }
+              : { no: '[Holder den litt for seg selv.]', en: '[Keeps it close.]' }];
             dlg = { lines: g.reactions[tier].slice().concat(after), i: 0, npc: npc,
                      mood: tier === 'loved' ? 'warm' : tier === 'disliked' ? 'troubled' : undefined };
             mode = 'talk';
@@ -1983,11 +2057,15 @@ export default {
              via S.seen), which is what lets the offer keep resurfacing until
              it is actually bought. */
           dlg = { lines: hello.concat(pick.t), i: 0, npc: npc, mood: pick.mood, menu: 1, buy: pick.buy || null };
+          /* and then it is your turn to say something (asks.js): a few things to bring up, and a way out; what you choose is remembered.
+             An offer on the line (a bigger bag, a field) is made first and the list waits for the next visit. */
+          if (!pick.buy) { const tm = topicMenu(book, npc.id, S, !!(book.shop || npc.id === 'hakon')); if (tm) { dlg.ask = tm; dlg.menu = 0; } }
         }
         sfx.talk(); mode = 'talk';
       }
       function dlgAdvance() {
         if (!dlg) { mode = ''; return; }
+        if (!typer.done()) { typer.skip(); return; }           /* the line is still coming: SPACE brings the rest at once */
         if (dlg.opts) return;
         dlg.i++;                       /* speechTick() voices the new line */
         if (dlg.i < dlg.lines.length) return;
@@ -1996,6 +2074,7 @@ export default {
            one may be a different speaker entirely */
         if (dlg.scene) { if (sceneAdvance(scene)) { sceneStep(); return; } sceneEnd(); return; }
         if (dlg.ask) { dlg.opts = dlg.ask; dlg.sel = 0; return; }
+        if (dlg.next) { const nx = topicOf(BEK_TALK[dlg.npc.id], dlg.next); if (nx) { dlg = Object.assign({ i: 0, npc: dlg.npc, menu: 0 }, topicDialogue(BEK_TALK[dlg.npc.id], dlg.npc.id, nx)); return; } }
         /* The offer panel names its seller and the reply that follows draws
            their portrait, so the offer has to carry the speaker the line it
            came out of had. A copy rather than the content object itself:
@@ -2005,14 +2084,26 @@ export default {
         dlg = null; mode = '';
       }
       function dlgChoose() {
-        const o = dlg.opts.opts[dlg.sel];
-        if (o.set) Object.assign(S.flag, o.set);
-        if (o.fr && dlg.npc) S.fr[dlg.npc.id] = Math.min(FR_MAX, S.fr[dlg.npc.id] + o.fr);
-        if (o.give) Object.keys(o.give).forEach(id => add(id, o.give[id]));
-        const q = BEK_QUESTS.filter(q2 => q2.who === dlg.npc.id)[0];
-        if (q && !S.q[q.id]) S.q[q.id] = 'active';
-        dlg = { lines: o.reply.slice(), i: 0, npc: dlg.npc, mood: o.mood || dlg.mood, menu: 0 };
+        const o = dlg.opts.opts[dlg.sel], npc = dlg.npc, book = npc && BEK_TALK[npc.id];
         sfx.choose();
+        /* a way out of the list: to the counter, or just on */
+        if (o.leave) { dlg = null; mode = ''; if (o.shop && npc) openMenu(npc); return; }
+        /* something you bring up: they answer it (asks.js) */
+        if (o.topic) {
+          const t = topicOf(book, o.topic);
+          if (!t) { dlg = null; mode = ''; return; }
+          const d = topicDialogue(book, npc.id, t);
+          if (!d.ask) S.mem[d.key] = 'said';                 /* a topic with no question in it is remembered as having been said */
+          dlg = Object.assign({ i: 0, npc: npc, menu: 0 }, d);
+          return;
+        }
+        if (o.set) Object.assign(S.flag, o.set);
+        if (o.fr && npc) S.fr[npc.id] = Math.min(FR_MAX, S.fr[npc.id] + o.fr);
+        if (o.give) Object.keys(o.give).forEach(id => add(id, o.give[id]));
+        if (o.memKey) S.mem[o.memKey] = o.mem;               /* what you said is theirs to remember */
+        else { const q = BEK_QUESTS.filter(q2 => q2.who === npc.id)[0]; if (q && !S.q[q.id]) S.q[q.id] = 'active'; }
+        dlg = { lines: (o.reply || []).slice(), i: 0, npc: npc, mood: o.mood || dlg.mood, menu: 0, next: o.then || null };
+        if (!dlg.lines.length) { dlg.i = -1; typer.skip(); dlgAdvance(); }
       }
       function openMenu(npc) {
         const book = BEK_TALK[npc.id];
@@ -2046,7 +2137,7 @@ export default {
         if (!S.flag.lot) {
           if (S.kr < BEK_LOT_COST) { dlg = { lines: [{no:'SKILT: TOMT — ' + BEK_LOT_COST + ' KR.',en:'SIGN: LOT — ' + BEK_LOT_COST + ' KR.'}, {no:'Du har det ikke. Ikke ennå.',en:'You do not have it. Not yet.'}], i: 0 }; mode = 'talk'; return; }
           S.kr -= BEK_LOT_COST; S.flag.lot = 1; sfx.coin();
-          dlg = { lines: ['You sign it against the post.', {no:'Tomten er din: skog på tre sider, vann på den fjerde.',en:'The lot is yours: trees on three sides, water on the fourth.'}, 'Now it needs a house. Go and see Håkon.'], i: 0 };
+          dlg = { lines: [{ no: '[Du skriver under mot stolpen.]', en: '[You sign it against the post.]' }, {no:'Tomten er din: skog på tre sider, vann på den fjerde.',en:'The lot is yours: trees on three sides, water on the fourth.'}, 'Now it needs a house. Go and see Håkon.'], i: 0 };
           mode = 'talk'; return;
         }
         dlg = { lines: [{no:'Tomten din. Tom, foreløpig.',en:'Your lot. Empty, for now.'}], i: 0 }; mode = 'talk';
@@ -2063,7 +2154,7 @@ export default {
         }
         S.kr -= c.kr; add('tommer', -c.tommer); add('stein', -c.stein); S.built = 1;
         S.fr.hakon = Math.min(FR_MAX, S.fr.hakon + 2); sfx.done();
-        dlg = { lines: ['Right. Two weeks. Or one, if you carry.', '...', 'It is done. Go down to the water and see.'], i: 0, npc: hak, mood: 'warm' };
+        dlg = { lines: ['Right. Two weeks. Or one, if you carry.', '[Weeks of hammering go by. A chimney. Smoke.]', 'It is done. Go down to the water and see.'], i: 0, npc: hak, mood: 'warm' };
         mode = 'talk';
       }
       /* Act II: the one purchasable house upgrade tier — split out of
@@ -2335,6 +2426,7 @@ export default {
           if (k === ' ' || k === 'Enter') { mode = ''; Song.pickNext(true); }
           return;
         }
+        if (mode === 'nap') return;                       /* asleep: nothing to press */
         if (mode === 'end') {
           if (k === ' ' || k === 'Enter') {
             /* the finished house is a permanent milestone: mark it on the
@@ -2348,7 +2440,7 @@ export default {
           if (dlg && dlg.opts) {
             if (k === 'w' || k === 'ArrowUp') { dlg.sel = (dlg.sel + dlg.opts.opts.length - 1) % dlg.opts.opts.length; sfx.sel(); }
             if (k === 's' || k === 'ArrowDown') { dlg.sel = (dlg.sel + 1) % dlg.opts.opts.length; sfx.sel(); }
-            if (k === ' ' || k === 'Enter') dlgChoose();
+            if (k === ' ' || k === 'Enter') { if (!typer.done()) typer.skip(); else dlgChoose(); }
             return;
           }
           if (k === ' ' || k === 'Enter' || k === 'Escape') dlgAdvance();
@@ -2439,11 +2531,12 @@ export default {
           if (k === 'i' || k === 'q' || k === 'Escape') closeMenu();
           return;
         }
-        if (mode === 'sleep') { if (k === ' ' || k === 'Enter') { mode = ''; if (S.map === 'lakehouse' && !S.flag.homed) { S.flag.homed = 1; mode = 'end'; S.ending = 0; if (window.Economy) window.Economy.earn(500, 'BEKKEDAL: THE HOUSE BY THE WATER'); } else newDay(false); } if (k === 'Escape') closeMenu(); return; }
+        if (mode === 'sleep') { if (k === ' ' || k === 'Enter') { mode = ''; if (S.map === 'lakehouse' && !S.flag.homed) { S.flag.homed = 1; mode = 'end'; S.ending = 0; if (window.Economy) window.Economy.earn(500, 'BEKKEDAL: THE HOUSE BY THE WATER'); } else startNap(false); } if (k === 'Escape') closeMenu(); return; }
 
         /* walking */
         if (k === ' ') {
           if (fish) fishTap();
+          else if (chop) chopSwing();
           else if (swing) bufAct = true;           /* queued, not dropped */
           else act();
           return;
@@ -2459,7 +2552,17 @@ export default {
         if (k === 'm') { openTravel(); return; }
         if (k === 'Tab' || k === 'e') { for (let i = 0; i < BEK_TOOLS.length; i++) { S.tool = (S.tool + 1) % BEK_TOOLS.length; if (S.tools[BEK_TOOLS[S.tool].id]) break; } sfx.talk(); return; }
         if (k >= '1' && k <= '5') { const ix = parseInt(k, 10) - 1; if (BEK_TOOLS[ix] && S.tools[BEK_TOOLS[ix].id]) S.tool = ix; return; }
-        if (k === 'r') { const food = Object.keys(S.bag).filter(id => BEK_ITEMS[id].eat && S.bag[id] > 0)[0]; if (!food) { say(TX('INGENTING Å SPISE.', 'NOTHING TO EAT.')); return; } add(food, -1); S.en = Math.min(S.enMax, S.en + BEK_ITEMS[food].eat); sfx.pick(); say(TX('SPISTE ', 'ATE ') + iname(food)); }
+        if (k === 'r') {
+          /* a day has a stomach: bought food stops doing anything once BEK_FOOD_DAY_CAP points of it are down (S.met is the
+             table that clears every morning); what you cooked yourself is never counted */
+          const stuffed = (S.met.ate || 0) >= BEK_FOOD_DAY_CAP;
+          const ate = Object.keys(S.bag).filter(id => BEK_ITEMS[id].eat && S.bag[id] > 0);
+          const food = ate.filter(id => !(stuffed && BEK_ITEMS[id].buy))[0];
+          if (!food) { say(ate.length ? TX('DU ER STAPPFULL. IKKE MER I DAG.', 'YOU ARE FULL. NO MORE TODAY.') : TX('INGENTING Å SPISE.', 'NOTHING TO EAT.')); return; }
+          add(food, -1); S.en = Math.min(S.enMax, S.en + BEK_ITEMS[food].eat);
+          if (BEK_ITEMS[food].buy) S.met.ate = (S.met.ate || 0) + BEK_ITEMS[food].eat;
+          sfx.pick(); say(TX('SPISTE ', 'ATE ') + iname(food));
+        }
       });
       cv.addEventListener('keyup', e => {
         const k = e.key.length === 1 ? e.key.toLowerCase() : e.key; keys[k] = false;
@@ -2543,6 +2646,7 @@ export default {
            keys are still latched into `steer`, so a turn taken during a swing
            happens the moment it ends. */
         if (swing) return;
+        if (chop) { if (steer.want() >= 0 || chopAbandoned(chop)) chopCancel(); return; }
         const want = steer.want();
         const n = stride.tick(dt, want, S.dir, stepTo);
         /* a key pressed at rest turns you on the spot, at once; one pressed in mid-stride waits for the next tile, so the
@@ -2581,9 +2685,13 @@ export default {
       function tickClock(dt) {
         /* a scene is a held breath: the hour it was triggered in is the hour
            it plays out in, however long the player takes over the lines */
-        if (mode === 'end' || mode === 'loftend' || scene) return;
+        if (mode === 'end' || mode === 'loftend' || mode === 'nap' || scene) return;
+        /* a conversation holds the day: whoever is speaking does not walk off in the middle of it, nor the shopkeeper whose counter you are at */
+        if (mode === 'talk' || mode === 'shop' || mode === 'offer') return;
         S.min += dt * BEK_CLOCK_MIN_PER_S;
-        if (S.min >= BEK_DAY_END) { newDay(true); return; }
+        if (S.min >= BEK_DAY_END) { startNap(true); return; }
+        const w = warningFor(S.min, tiredSaid);
+        if (w) { tiredSaid[w.key] = 1; say(TX(w.no, w.en)); }
       }
       /* Three phases off the frame loop's own dt, never a timer. The strike
          frame is where the effect lands, the camera kicks and the deferred
@@ -3588,14 +3696,18 @@ export default {
         /* and not indoors. There is no moon in a room, and a rim light along
            the top of every wall from inside reads as a dotted line ruled
            around the picture rather than as anything lighting anything. */
-        if (dark < 0.25 || ins_()) return;
+        if (dark < 0.25 || ins_() || isCave(S.map) || isMineId(S.map)) return;     /* nor under a mountain: a cave has no sky */
         native(() => moonRim(R));
       }
+      const MOON_RIMMED = 'HRMOQ';
       function moonRim(R) {
         g.fillStyle = C(WAT[4]);
         for (let y = R.y0; y < R.y1; y++) for (let x = R.x0; x < R.x1; x++) {
           const c = tileAt(S.map, x, y);
-          if (c === ' ' || c === 'W' || c === '~' || BEK_SOLID.indexOf(c) < 0) continue;
+          /* only what fills its square to the top: a wall, a roof, a cliff, a vein. A tree, a well, a bench, a sign or a
+             chest is solid too but is a *sprite* standing on the ground, and a rim at the top of its square floats in the
+             air over the grass as a pale blue line wider than the thing under it. */
+          if (MOON_RIMMED.indexOf(c) < 0) continue;
           /* Never on the border ring: a whole row of it is not moonlight, it is a line ruled across the picture. */
           if (rim_(x, y)) continue;
           if (BEK_SOLID.indexOf(tileAt(S.map, x, y - 1)) < 0) g.fillRect(x * BEK_T, y * BEK_T, BEK_T, BEK_ART_SCALE);
@@ -3849,7 +3961,7 @@ export default {
       /* The people, the animals and the item icons live in actors.js. It is
          handed `() => g` rather than `g`, because `g` is repointed at the
          offscreen terrain canvas for the length of a cache rebuild. */
-      const { drawIcon, person, bear, goat, chicken } = createActors(() => g, C);
+      const { drawIcon, person, lying, bear, goat, chicken } = createActors(() => g, C);
 
       const { text, textW, wrapText } = createText(g, C);
 
@@ -4034,6 +4146,13 @@ export default {
               ? { kind: kind, u: sw ? Math.min(1, swing.t / swing.len) : 0, dir: S.dir } : null;
             /* two frames of recoil when the answer was no */
             const jx = swing && swing.kind === 'deny' ? ((swing.t * 46) | 0) % 2 ? 2 : -2 : 0;
+            /* asleep: on its back in the bed under the quilt, or in the grass in what they stood up in (sleep.js) */
+            if (nap && !nap.woke) {
+              const lx = nap.bed ? nap.bed.x : nap.at.x, ly = nap.bed ? nap.bed.y : nap.at.y;
+              inLight(L, lx, ly, () => lying(lx * BEK_T_SRC, ly * BEK_T_SRC, PLAYER_HAIR, PLAYER_SHIRT, PLAYER_PANTS, nap.bed ? WAR[1] : -1, Math.floor(t * 1.4) % 2));
+              spots.me = nap.sp = { x: lx * BEK_T_SRC + 6, y: ly * BEK_T_SRC + 2 };
+              return;
+            }
             inLight(L, me.x, me.y, () => person(Math.round(me.x * BEK_T_SRC) + 4 + jx, Math.round(me.y * BEK_T_SRC) + 2, S.dir, S.step, PLAYER_HAIR, PLAYER_SHIRT, PLAYER_PANTS, held, (S.bag.ullgenser || 0) > 0));
             return;
           }
@@ -4064,7 +4183,15 @@ export default {
             const step = n.walking ? (n.fx != null ? Math.floor(t * 7) % 4 : walkStep(S.min)) : (Math.floor(t) % 2 ? 0 : 2);
             const px0 = Math.round(fx * BEK_T_SRC) + 4, py0 = Math.round(fy * BEK_T_SRC) + 2;
             spots[n.id] = { x: px0 + 6, y: py0 };
-            inLight(L, fx, fy, () => person(px0, py0, n.walking || n.act || n.fx != null ? n.dir : 0, step, n.hair, n.shirt, n.pants, held, wearsKnit(look), look, t));
+            /* going in at a door, or coming out of one (life.js `enter`, 0 at the step and 1 gone): they step up into the doorway, and the wall
+               has the part of them that is through it. The clip is the bottom edge of the door's own square. */
+            const into = n.enter != null ? n.enter : 0;
+            inLight(L, fx, fy, () => {
+              if (n.enter == null) return person(px0, py0, n.walking || n.act || n.fx != null ? n.dir : 0, step, n.hair, n.shirt, n.pants, held, wearsKnit(look), look, t);
+              g.save(); g.beginPath(); g.rect(px0 - 8, Math.round(fy * BEK_T_SRC), BEK_T_SRC + 16, BEK_T_SRC * 2); g.clip();
+              person(px0, py0 - Math.round(into * 24), 1, 0, n.hair, n.shirt, n.pants, null, wearsKnit(look), look, t);
+              g.restore();
+            });
           }
         });
 
@@ -4106,7 +4233,8 @@ export default {
            nothing standing on the ground is ever speckled by it. */
         g.save();
         viewClip();
-        if (!inside) {
+        /* no rain, and no fog, under rock: the gruva and every floor of the descent are caves, and weather is not a thing a cave has */
+        if (!inside && !isCave(S.map) && !isMineId(S.map)) {
           if (S.weather === 'regn') {
             g.fillStyle = C(WAT[4]);
             for (let i = 0; i < BEK_RAIN_N; i++) {
@@ -4114,8 +4242,22 @@ export default {
               const ry = (i * BEK_RAIN_STRIDE_Y + Math.floor(t * BEK_RAIN_VY)) % BEK_VIEW_H;
               g.fillRect(BEK_VIEW_X + rx, BEK_VIEW_Y + ry, BEK_ART_SCALE, BEK_RAIN_LEN);
             }
-          } else if (S.weather === 'take') dither(STO[4], 4);
+          } else if (S.weather === 'take') {
+            /* banks of mist that drift (fog.js), not one stipple over everything */
+            for (let by = 0; by * FOG_BLOCK < BEK_VIEW_H; by++) for (let bx = 0; bx * FOG_BLOCK < BEK_VIEW_W; bx++) {
+              g.fillStyle = ditherPat(STO[4], fogLevel(bx, by, t));
+              g.fillRect(BEK_VIEW_X + bx * FOG_BLOCK, BEK_VIEW_Y + by * FOG_BLOCK, FOG_BLOCK, FOG_BLOCK);
+            }
+          }
         }
+        /* tired (sleep.js): the edges of the picture close in, in bands of the same ordered stipple, a little more every hour past midnight */
+        { const vg = vignette(S.min);
+          if (vg) vg.forEach((str, k) => {
+            const w = 16 * (k + 1);                       /* each band reaches further in, and they stack at the rim */
+            g.fillStyle = ditherPat(ATMO[0], str);
+            g.fillRect(BEK_VIEW_X, BEK_VIEW_Y, BEK_VIEW_W, w); g.fillRect(BEK_VIEW_X, BEK_VIEW_Y + BEK_VIEW_H - w, BEK_VIEW_W, w);
+            g.fillRect(BEK_VIEW_X, BEK_VIEW_Y + w, w, BEK_VIEW_H - 2 * w); g.fillRect(BEK_VIEW_X + BEK_VIEW_W - w, BEK_VIEW_Y + w, w, BEK_VIEW_H - 2 * w);
+          }); }
         g.restore();
 
         /* the chrome, from here down: two HUD bands, panels, menus, text */
@@ -4143,6 +4285,7 @@ export default {
         }
 
         if (fish) drawFish();
+        if (chop) drawChop();
 
         if (mode === 'talk' && dlg) drawTalk();
         if (mode === 'shop') drawShop();
@@ -4155,6 +4298,19 @@ export default {
         if (mode === 'loft') drawSpine();
         if (mode === 'end') drawEnd(t);
         if (mode === 'loftend') drawLoftEnd(t);
+        if (nap) drawNap(t);
+      }
+      /* the picture shut by the ordered dither, and the Zs over whoever sleeps while it is */
+      function drawNap(t) {
+        const ph = napPhase(nap.t);
+        if (ph.cover > 0) dither(ATMO[0], ph.cover);
+        if (ph.phase === 'done' || ph.phase === 'in') return;
+        const n = zCount(nap.t - 0.2), sp = nap.sp || { x: S.px * BEK_T_SRC + 8, y: S.py * BEK_T_SRC };
+        const ox = BEK_VIEW_X + sp.x * BEK_ART_SCALE - camX, oy = BEK_VIEW_Y + sp.y * BEK_ART_SCALE - camY;
+        for (let i = 0; i < n; i++) {
+          const rise = Math.floor((nap.t * 14 + i * 9) % 36);
+          text(i === n - 1 ? 'Z' : 'z', Math.round(ox + 6 + i * 16 + Math.sin(nap.t * 2 + i) * 4), Math.round(oy - 8 - i * 14 - rise / 3), [15, 11, 14][i], i === 0 ? FONT_SM : FONT_LG);
+        }
       }
 
       /* The needle and the zone are both placed by multiplying the same track
@@ -4164,9 +4320,9 @@ export default {
          fishing gauge, the dialogue box, the shop, the bag, the quest board,
          the travel list and the ending painting. All chrome, so all of it
          draws after the LUT goes back to daylight. */
-      const { drawFish, drawTalk, drawOffer, drawShop, drawCraft, drawBag, drawQuests, drawTravel,
+      const { drawFish, drawChop, drawTalk, drawOffer, drawShop, drawCraft, drawBag, drawQuests, drawTravel,
               drawSleep, drawEnd, drawSpine, drawLoftEnd, toolName } = createMenus({
-        S: () => S, fish: () => fish, dlg: () => dlg, shop: () => shop, craft: () => craft,
+        S: () => S, fish: () => fish, chop: () => chop, typed: () => ({ n: typer.shown(), done: typer.done() }), dlg: () => dlg, shop: () => shop, craft: () => craft,
         travel: () => travel, offer: () => offer, qScroll: () => qScroll, loft: () => loft,
         bagCur: () => bagCur, giftSel: () => giftSel,
         T: T, TX: TX, iname: iname, price: price, houseCost: () => houseCost(S),
@@ -4262,7 +4418,7 @@ export default {
           const n = BEK_NPCS.filter(q => q.id === id)[0];
           if (!n) return null;
           if (steps == null) { mode = ''; dlg = null; offer = null; talkTo(n); }
-          else for (let i = 0; i < steps; i++) { if (mode === 'talk' && dlg && !dlg.opts) dlgAdvance(); }
+          else for (let i = 0; i < steps; i++) { if (mode === 'talk' && dlg && !dlg.opts) { typer.skip(); dlgAdvance(); } }
           if (!dlg) return { mode: mode, who: '', line: '' };
           const l = dlg.lines[dlg.i];
           return { mode: mode, who: dlg.npc && !dlg.npc.bear ? dlg.npc.n : '',
@@ -4432,16 +4588,17 @@ export default {
         raf = requestAnimationFrame(frame);
         const dt = Math.min(0.1, (ts - last) / 1000 || 0); last = ts;
         slide.tick(dt);
-        if (!mode) { move(dt); tickFish(dt); sceneWatch(); }
+        if (!mode) { move(dt); tickFish(dt); if (chop) chopTick(chop, dt); sceneWatch(); greetWatch(); }
         if (sceneCool > 0) sceneCool -= dt;
         sceneTick(dt); leavingTick(dt); bubblesTick(dt);
         mineSync();
         tickSwing(dt); fx.step(dt);
         if (mode === 'end' || mode === 'loftend') S.ending += dt;
+        if (mode === 'nap') napTick(dt);
         tickClock(dt);
         if (noteT > 0) { noteT -= dt; if (noteT <= 0) note = ''; }
         autoT += dt; if (autoT > 6) { autoT = 0; autoSave(); }
-        speechTick();
+        speechTick(dt);
         Song.rotStep(dt); Song.sync();
         Amb.tick(dt);
         /* Drawn on every frame the display offers. The old gate drew when 1/30 s had gathered and then

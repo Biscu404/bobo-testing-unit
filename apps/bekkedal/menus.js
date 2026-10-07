@@ -72,7 +72,7 @@ export function createMenus(A, GG, C) {
      menus_fish.js, split off for the same 300-line reason menus_talk.js and
      menus_chrome.js already are. `panel()` itself is untouched: the fishing
      gauge stays the machine's own chrome, same as the HUD and the tooltip. */
-  const { drawFish } = createFish(A, GG, C);
+  const { drawFish, drawChop } = createFish(A, GG, C);
   /* the loft's shelves and the loft's own ending, a fourth sibling for the
      same reason — handed the chrome, since `shelf()` is a material like the
      rest. `drawEnd` below is untouched. See menus_spine.js. */
@@ -335,7 +335,7 @@ export function createMenus(A, GG, C) {
     if (S.ending > 1.6 + lines.length * 0.7 + 1.2) text(cont, Math.round((BEK_W - textW(cont, FONT_SM)) / 2), BEK_H - PAD_LG - GLYPH_SM, 8, FONT_SM);
   }
 
-  return { drawFish: drawFish, drawTalk: drawTalk, drawOffer: drawOffer, drawShop: drawShop,
+  return { drawFish: drawFish, drawChop: drawChop, drawTalk: drawTalk, drawOffer: drawOffer, drawShop: drawShop,
            drawCraft: drawCraft, drawBag: drawBag, drawQuests: drawQuests, drawTravel: drawTravel,
            drawSleep: drawSleep, drawEnd: drawEnd, drawSpine: drawSpine, drawLoftEnd: drawLoftEnd,
            toolName: toolName };

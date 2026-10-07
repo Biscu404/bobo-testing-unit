@@ -17,6 +17,7 @@
  * beside `S` are replaced wholesale when a menu opens or closes.
  */
 import { BEK_ITEMS } from './data.js';
+import { CHOP_ZONE, CHOP_HEART } from './chop.js';
 import { FONT_SM } from './font.js';
 import { PAD_SM,
          FISH_TRACK_W, FISH_TRACK_H, FISH_W, FISH_H, FISH_X, FISH_Y,
@@ -59,5 +60,30 @@ export function createFish(A, GG, C) {
     } else text(TX('VENTER...', 'WAITING...'), tx, ty, 7, FONT_SM);
   }
 
-  return { drawFish: drawFish };
+  /* The felling bar (chop.js): the same panel as the gauge, a track with the pale stretch the blow bites in, its heart, and
+     the mark sweeping across it, and one pip a point of cutting still to go. Both edges of the stretch are rounded the same
+     way the mark is, so what is drawn is what `chopStrike` tests. */
+  function drawChop() {
+    const chop = A.chop();
+    panel(FISH_X, FISH_Y, FISH_W, FISH_H, 10);
+    const tx = FISH_TRACK_X, ty = FISH_Y + PAD_SM;
+    GG().fillStyle = C(8); GG().fillRect(tx, FISH_TRACK_Y, FISH_TRACK_W, FISH_TRACK_H);
+    const z0 = Math.round(FISH_TRACK_W * (chop.centre - CHOP_ZONE)), z1 = Math.round(FISH_TRACK_W * (chop.centre + CHOP_ZONE));
+    GG().fillStyle = C(7); GG().fillRect(tx + z0, FISH_TRACK_Y, Math.max(FISH_NEEDLE_W, z1 - z0), FISH_TRACK_H);
+    const h0 = Math.round(FISH_TRACK_W * (chop.centre - CHOP_HEART)), h1 = Math.round(FISH_TRACK_W * (chop.centre + CHOP_HEART));
+    GG().fillStyle = C(15); GG().fillRect(tx + h0, FISH_TRACK_Y, Math.max(FISH_NEEDLE_W, h1 - h0), FISH_TRACK_H);
+    const lock = chop.lock > 0;
+    GG().fillStyle = C(lock ? 12 : 14);
+    GG().fillRect(tx + Math.round(FISH_TRACK_W * chop.pos) - FISH_NEEDLE_W / 2,
+                  FISH_TRACK_Y - FISH_NEEDLE_OVER, FISH_NEEDLE_W, FISH_TRACK_H + FISH_NEEDLE_OVER * 2);
+    /* the tree, as pips: lit for what is cut, dark for what is left */
+    const pw = Math.floor((FISH_TRACK_W - (chop.need - 1) * FISH_NEEDLE_W) / chop.need);
+    for (let i = 0; i < chop.need; i++) {
+      GG().fillStyle = C(i < chop.got ? 10 : 8);
+      GG().fillRect(tx + i * (pw + FISH_NEEDLE_W), FISH_PROG_Y, pw, FISH_PROG_H);
+    }
+    text(lock ? TX('GLIPPET AV', 'GLANCED OFF') : TX('SLÅ NÅ', 'STRIKE'), tx, ty, lock ? 12 : 10, FONT_SM);
+  }
+
+  return { drawFish: drawFish, drawChop: drawChop };
 }

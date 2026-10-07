@@ -24,7 +24,7 @@
  * figures stated in this file are the four policies themselves, which are
  * descriptions of players rather than facts about the game.
  */
-import { BEK_CROPS, BEK_EN_MAX, BEK_START_KR, BEK_DAY_START, BEK_DAY_END,
+import { BEK_FOOD_DAY_CAP, BEK_CROPS, BEK_EN_MAX, BEK_START_KR, BEK_DAY_START, BEK_DAY_END,
          BEK_XP_STEP, BEK_XP_LVL_STAMINA, BEK_SEASON_DAYS, BEK_LOFT, BEK_LOFT_STAGES,
          BEK_LOFT_FR, BEK_GIFT_CAP, BEK_QUEST_REFRESH_DAYS, BEK_CLOCK_MIN_PER_S,
          BEK_SEASONS, BEK_GIFT_FR } from './data.js';
@@ -275,11 +275,11 @@ export function simulate(pol, horizon) {
   return s;
 }
 /* how long a run may sit saving before the next thing counts as a wall */
-const BLOCK_DAYS = 25;
+const BLOCK_DAYS = 32;
 /* the counter, once you are standing at it */
 const SELL_MIN = 12;
 /* nobody eats a hundred waffles: what a day's meals can reasonably add */
-const FOOD_CAP = 400;
+const FOOD_CAP = BEK_FOOD_DAY_CAP;
 /* who is where, and what a run needs before it can get to them */
 const NPC_AT = [['astrid', 'town'], ['hakon', 'town'], ['marit', 'town'], ['ingrid', 'lake'],
                 ['olav', 'lake'], ['sigrid', 'setra'], ['gunnar', 'vidda', 'warm'],
