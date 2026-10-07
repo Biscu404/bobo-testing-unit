@@ -259,7 +259,9 @@ function wireChin() {
     if (window.Music && window.Music.sync) window.Music.sync();
     Rage.sync();
   });
-  wirePot('pot-sfx', 'lbl-sfx', 'SFX', v => { CRT.sfx = v; saveCRT(); });
+  /* the bus is set when the speaker wakes, so a knob turned afterwards has to set it again, or a machine that woke with SFX at 0
+     (its default) stays silent until it is relaunched, however far the knob is turned */
+  wirePot('pot-sfx', 'lbl-sfx', 'SFX', v => { CRT.sfx = v; saveCRT(); if (Snd.sfx) Snd.sfx.gain.value = sfxGain(); });
   wirePot('pot-vhold', 'lbl-vhold', 'VHLD', v => { CRT.vhold = v; saveCRT(); applyHold(); });
   wirePot('pot-hhold', 'lbl-hhold', 'HHLD', v => { CRT.hhold = v; saveCRT(); applyHold(); });
 
