@@ -128,11 +128,8 @@ html, body {
 
 /* curved glass drawn on a canvas: scanlines, grille, vignette, glare.
    It sits outside #tube so animating it never re-runs the lens filter. */
-/* while drunk, the edges of the glass close in (see kernel/drunk.js) */
-#screen.drunk::after {
-  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 8;
-  box-shadow: var(--drunk-vig, none);
-}
+/* While drunk the whole interface sways (filter and transform on #room) and the edges close in on an
+   overlay fixed to the viewport (#drunkover): see kernel/drunk.js. #tube is not touched by it. */
 #glass {
   position: absolute;
   inset: 0;
@@ -191,12 +188,16 @@ html, body {
 }
 .knob:hover { background: linear-gradient(180deg, #ded5bf 0%, #b6ad97 100%); }
 .knob:active { box-shadow: inset 0 2px 4px rgba(0,0,0,0.4); transform: translateY(1px); }
+/* a disabled knob (LENS) is plastic with the legend printed on it and nothing behind it */
+.knob:disabled, .knob:disabled:hover, .knob:disabled:active {
+  cursor: default; opacity: 0.55; background: linear-gradient(180deg, #cdc4ae 0%, #a89f89 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -1px 0 rgba(0,0,0,0.12); transform: none;
+}
 #power { color: #6a3b32; font-weight: bold; }
 
 /* --- the front panel: two pots and a switch, in a routed recess ---------- */
 @media (max-width: 1080px) { #k-phos, #k-burn { display: none; } }
 @media (max-width: 880px)  { .potbox.hold { display: none; } }
-@media (max-width: 700px)  { #k-dgauss { display: none; } }
 
 #panel {
   margin-left: auto;
@@ -892,8 +893,8 @@ textarea.editor {
     rgba(255,255,255,0.28) 0%, rgba(0,0,0,0.85) 22%,
     rgba(0,0,0,0.85) 78%, rgba(255,255,255,0.12) 100%);
 }
-/* The coil, at about a third of what it used to be. It was a strobe before;
-   now it is a shimmer you can leave switched on and still read the screen. */
+/* The coil: only the DEGAUSS command fires it (kernel/degauss.js). The permanent part of degauss is in
+   the glass canvas, so nothing animated lives over the picture between pulses. */
 #degauss {
   position: absolute;
   inset: -12%;
@@ -907,10 +908,7 @@ textarea.editor {
   mix-blend-mode: screen;
   filter: blur(20px);
 }
-/* left on, it drifts rather than flashes */
-#degauss.held { display: block; opacity: 0.5; animation: dg-drift 9s linear infinite; }
-@keyframes dg-drift { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { #degauss.held { animation: none; } }
+#degauss.pulse { display: block; animation: dg-flash 1.5s cubic-bezier(0.1, 0.7, 1.0, 0.1) forwards; }
 #saver {
   position: absolute;
   inset: 0;
@@ -957,7 +955,10 @@ textarea.editor {
 ::-webkit-scrollbar-thumb { background: #AAAAAA; border: 1px solid var(--phos, #FFFFFF); }
 
 /* ---- the notes ---------------------------------------------------------- */
-.notesroot { display: flex; flex-direction: column; height: 100%; background: #000000; color: var(--phos-dim); }
+.notesroot { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; background: #000000; color: var(--phos-dim); }
+/* The shop's and the notes' root IS the window body (the app sets its className, which drops .wbody), so it fills
+   the window as a flex item rather than with `height: 100%`: the browser's zoom is applied to this very box,
+   and a zoomed 100% is taller than the window, which pushed the shop's footer off the bottom of the screen. */
 .ntop { display: flex; align-items: center; gap: 4px; padding: 3px 4px; background: #000000;
         border-bottom: 1px solid #555555; flex: 0 0 auto; flex-wrap: wrap; }
 .ntop .appbtn { padding: 1px 6px; }
@@ -1012,264 +1013,7 @@ textarea.editor {
           pointer-events: none; }
 .jagpane { background: #150d06; }
 
-/* ---- the clicker --------------------------------------------------------
-   A store with two hundred rows in it wants to be a document, not a canvas,
-   so this one is DOM everywhere except the star itself. Sixteen colours
-   still, and every border is one hard pixel. */
-.mgroot { display: flex; flex-direction: column; height: 100%; background: #000000; color: var(--phos-dim);
-          font: 18px 'VT323', 'Courier New', monospace; position: relative; }
-.mgnews { flex: 0 0 auto; background: #000000; border-bottom: 1px solid #555555; padding: 2px 4px;
-          color: #55FF55; white-space: pre; overflow: hidden; font-size: 16px; }
-.mgbody { flex: 1 1 auto; display: flex; min-height: 0; }
-.mgleft { flex: 0 0 306px; display: flex; flex-direction: column; align-items: center;
-          border-right: 1px solid #555555; min-height: 0; padding-top: 4px; }
-.mgcount { text-align: center; line-height: 1.1; }
-.mgcount .mgn { color: #FFFF55; font-size: 36px; font-weight: bold; display: block;
-                text-shadow: 0 0 var(--phos-px, 2px) var(--phos, #FFFFFF); word-break: break-all; }
-.mgcount .mgu { color: var(--phos-dim); font-size: 16px; }
-.mgrate { color: #55FFFF; font-size: 16px; margin: 1px 0 3px; }
-.mgstagewrap { flex: 0 0 auto; }
-.mgcv { width: 300px; height: 300px; image-rendering: pixelated; cursor: pointer; display: block; }
-.mgbuffs { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; min-height: 15px;
-           font-size: 15px; padding: 2px 4px; }
-.mgbuff { text-shadow: 0 0 var(--phos-px, 2px) var(--phos, #FFFFFF); }
-.mgact { font-size: 16px; min-height: 18px; padding: 2px; text-align: center; }
-.mgshab { color: #FFFF55; }
-.mgshab.lit { background: #AA5500; color: var(--phos); border: 1px solid #FFFF55; padding: 1px 6px; cursor: pointer; }
-.mgshab.lit:hover { background: #FFFF55; color: #000000; }
-.mgsoon { color: #9A9A9A; }
-
-.mgright { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-.mgtabs { flex: 0 0 auto; display: flex; border-bottom: 1px solid #555555; }
-.mgtab { flex: 1 1 auto; font: inherit; font-size: 16px; background: #000000; color: var(--phos-dim);
-         border: 0; border-right: 1px solid #555555; padding: 3px 2px; cursor: pointer; }
-.mgtab:hover { background: #0000AA; color: var(--phos); }
-.mgtab.on { background: #AAAAAA; color: #000000; }
-.mgtab i { color: #55FF55; font-style: normal; }
-.mgtab.on i { color: #AA0000; }
-.mgpane { flex: 1 1 auto; overflow: auto; min-height: 0; }
-
-.mgrow { display: flex; align-items: center; gap: 6px; padding: 3px 6px; cursor: pointer;
-         border-bottom: 1px solid #111111; }
-.mgrow:hover { background: #0000AA; }
-.mgrow.poor { color: #9A9A9A; }
-.mgrow.poor:hover { background: #550000; }
-.mgrow.locked { color: #8A8A8A; cursor: default; justify-content: center; }
-.mgrow.locked:hover { background: #000000; }
-.mgic { width: 26px; height: 26px; flex: 0 0 26px; image-rendering: pixelated; }
-.mgnm { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; line-height: 1.15; }
-.mgnm b { color: var(--phos); font-weight: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mgrow.poor .mgnm b { color: #BBBBBB; }
-.mgnm i { color: #FFFF55; font-style: normal; font-size: 15px; }
-.mgrow.poor .mgnm i { color: #FF5555; }
-/* the legacy rows show what the thing does, so that line is yellow too */
-.mgrow.leg .mgnm i { color: #FFFF55; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mgrow.leg.poor .mgnm i { color: #AA5500; }
-.mgrow.leg.owned .mgnm i { color: #55FF55; }
-.mgown { color: #55FFFF; font-size: 23px; flex: 0 0 auto; min-width: 30px; text-align: right; }
-.mgtag { color: #55FF55; font-size: 14px; flex: 0 0 auto; }
-.mgrow.up { border-left: 2px solid #00AA00; }
-.mgrow.leg { border-left: 2px solid #AA00AA; }
-.mgrow.leg.owned { color: #55FF55; cursor: default; }
-.mgrow.leg.owned .mgtag { color: var(--phos); }
-.mgq { color: #8A8A8A; }
-.mgempty, .mghead { padding: 8px; color: #55FFFF; font-size: 16px; line-height: 1.4;
-                    border-bottom: 1px solid #555555; }
-.mgach { padding: 3px 8px; border-bottom: 1px solid #111111; line-height: 1.2; }
-.mgach b { color: #8A8A8A; font-weight: normal; display: block; }
-.mgach i { color: #777777; font-style: normal; font-size: 15px; }
-.mgach.on b { color: #FFFF55; }
-.mgach.on i { color: #BBBBBB; }
-.mgach.on.zero b { color: #55FFFF; }
-.mgstat div { display: flex; justify-content: space-between; padding: 2px 8px; border-bottom: 1px solid #111111; }
-.mgstat span { color: var(--phos-dim); font-size: 16px; }
-.mgstat b { color: #FFFF55; font-weight: normal; }
-.mgasc { padding: 8px; border-bottom: 1px solid #555555; display: flex; align-items: center; gap: 8px;
-         flex-wrap: wrap; }
-.mgasc span { color: #55FFFF; font-size: 15px; }
-
-.mgbar { flex: 0 0 auto; display: flex; align-items: center; gap: 5px; padding: 3px 4px;
-         background: #000000; border-top: 1px solid #555555; }
-.mgbuy.on { background: #FFFF55; }
-.mghint { color: #9A9A9A; font-size: 15px; white-space: nowrap; overflow: hidden; }
-.mgtip { display: none; position: absolute; z-index: 40; width: 250px; background: #000000;
-         border: 1px solid var(--phos, #FFFFFF); padding: 6px 8px; font-size: 16px; line-height: 1.35;
-         pointer-events: none; box-shadow: 3px 3px 0 #000000; }
-.mgtip b { color: #FFFF55; font-weight: normal; }
-.mgtip u { color: #55FFFF; text-decoration: none; float: right; }
-.mgtip p { color: var(--phos-dim); margin-top: 4px; }
-.mgtip .mgt2 { color: #55FF55; }
-.mgtip .mgt2 b { color: var(--phos); }
-/* Flavour is grey and mechanics are yellow, everywhere, without exception.
-   You should never have to read a paragraph to find the number. */
-.mgtip .mgmech { color: #FFFF55; margin-top: 4px; }
-
-/* ---- the juice ----------------------------------------------------------
-   Every animation below moves in whole pixels and snaps with steps(), which
-   is the only kind of motion this machine is allowed. */
-.mgrate b { color: #FFFF55; font-weight: normal; }
-.mgrate i { color: #AA5500; font-style: normal; }
-.mgrate u { color: #FF55FF; text-decoration: none; }
-.mgcount .mgn.big { font-size: 30px; }
-
-/* the bar that says what is next and how long it is */
-.mggoal { position: relative; width: 288px; height: 18px; background: #000000;
-          border: 1px solid #555555; margin: 1px 0 3px; overflow: hidden; }
-.mggoal span, .mggoal b { position: relative; z-index: 2; font-size: 15px; line-height: 15px; }
-.mggoal span { float: left; padding-left: 4px; color: var(--phos-dim); }
-.mggoal b { float: right; padding-right: 4px; color: #55FFFF; font-weight: normal; }
-.mggoal i { position: absolute; left: 0; top: 0; bottom: 0; z-index: 1; background: #0000AA; }
-
-/* buffs, with the time left drawn as well as written */
-.mgbuff { position: relative; display: inline-block; padding: 1px 5px 4px;
-          border: 1px solid #555555; background: #000000; }
-.mgbuff i { position: absolute; left: 0; bottom: 0; height: 2px; }
-
-/* rows you can afford breathe; rows you cannot sit still */
-@keyframes mg-ready { 0%, 100% { border-left-color: #555555; } 50% { border-left-color: #FFFF55; } }
-.mgrow { border-left: 3px solid #555555; }
-.mgrow.ready { animation: mg-ready 1.4s steps(1, end) infinite; }
-.mgrow.poor { border-left-color: #222222; }
-.mgrow.f-tier.ready      { animation: none; border-left-color: #FFFF55; }
-.mgrow.f-hand.ready      { animation: none; border-left-color: #FF5555; }
-.mgrow.f-kavanah.ready   { animation: none; border-left-color: #FF55FF; }
-.mgrow.f-community.ready { animation: none; border-left-color: #55FFFF; }
-.mgrow.f-rule.ready      { animation: none; border-left-color: #55FF55; }
-.mgrow.up { border-left-width: 3px; }
-.mgrow.leg.ready { animation: none; border-left-color: #FF55FF; }
-
-/* the three things a row does when you press it */
-@keyframes mg-bought { 0% { background: #FFFFFF; transform: translateX(0); }
-                       25% { background: #FFFF55; transform: translateX(6px); }
-                       60% { background: #00AA00; transform: translateX(-2px); }
-                       100% { background: transparent; transform: translateX(0); } }
-@keyframes mg-sold   { 0% { background: #FF5555; transform: translateX(0); }
-                       40% { background: #AA0000; transform: translateX(-8px); }
-                       100% { background: transparent; transform: translateX(0); } }
-@keyframes mg-nope   { 0%, 100% { transform: translateX(0); }
-                       25% { transform: translateX(-4px); }
-                       75% { transform: translateX(4px); } }
-.mgrow.bought { animation: mg-bought 360ms steps(4, end); }
-.mgrow.sold   { animation: mg-sold 300ms steps(3, end); }
-.mgrow.nope   { animation: mg-nope 160ms steps(1, end) 2; }
-
-/* the icon leans in when the row is hovered, because it should feel touched */
-.mgrow:hover .mgic { transform: translateY(-2px) scale(1.12); }
-.mgic { transition: none; }
-
-/* an upgrade waiting to be bought pulls at the tab it is under */
-@keyframes mg-badge { 0%, 100% { color: #55FF55; } 50% { color: var(--phos); } }
-.mgtab i { animation: mg-badge 900ms steps(1, end) infinite; }
-
-/* the tabs get a lit edge so the row of them is not a flat strip */
-.mgtab { border-bottom: 2px solid #000000; }
-.mgtab.on { border-bottom-color: #FFFF55; }
-.mgtab:hover { border-bottom-color: #55FFFF; }
-
-/* the buy-count buttons say which one is armed with more than a colour */
-.mgbuy { border-width: 2px; }
-.mgbuy.on { background: #FFFF55; border-color: var(--phos); color: #000000; }
-
-/* the ticker gets a hard rule under it and a mark at each end */
-.mgnews { border-bottom: 2px solid #00AA00; position: relative; }
-
-/* the stage sits in a frame with its corners knocked out */
-.mgstagewrap { position: relative; border: 1px solid #555555; }
-.mgstagewrap:before, .mgstagewrap:after {
-  content: ''; position: absolute; width: 7px; height: 7px; background: #FFFF55; }
-.mgstagewrap:before { left: -1px; top: -1px; }
-.mgstagewrap:after  { right: -1px; bottom: -1px; }
-
-/* ---- filling in the black ------------------------------------------------
-   A flat black panel is what you get when nobody decided anything. These are
-   ordered dithers of palette greys, written as 4x4 SVG tiles, which is the
-   same thing the canvas does with pat() and stays inside the sixteen: every
-   pixel is either #000000 or #555555. */
-.mgroot {
-  --dit: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><rect width="4" height="4" fill="%23000000"/><rect x="0" y="0" width="1" height="1" fill="%23555555"/></svg>');
-  --dit2: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><rect width="4" height="4" fill="%23000000"/><rect x="0" y="0" width="1" height="1" fill="%23555555"/><rect x="2" y="2" width="1" height="1" fill="%23555555"/></svg>');
-  --hue: #55FFFF;
-  background-image: var(--dit);
-}
-.mgpane, .mgleft { background-image: var(--dit); }
-.mghead, .mgbar, .mgtabs, .mgnews { background-image: var(--dit2); background-color: #000000; }
-.mgrow:nth-child(even) { background-image: var(--dit); }
-.mgrow:hover { background-image: none; }
-.mgach:nth-child(even) { background-image: var(--dit); }
-.mgdict:nth-child(even) { background-image: var(--dit); }
-.mgstat div:nth-child(even) { background-image: var(--dit); }
-
-/* two rails down the sides of the stage that tick over, so the column is
-   never a dead black margin */
-.mgleft { position: relative; }
-.mgleft:before, .mgleft:after {
-  content: ''; position: absolute; top: 0; bottom: 26px; width: 4px;
-  background-image: repeating-linear-gradient(
-    to bottom, var(--hue) 0 2px, #000000 2px 9px);
-  opacity: 0.45;
-}
-.mgleft:before { left: 0; }
-.mgleft:after { right: 0; }
-
-/* ---- and the room takes its colour from what is happening in it ---------- */
-.mgroot[data-mood="simcha"] { --hue: #FFFF55; }
-.mgroot[data-mood="guest"]  { --hue: #55FF55; }
-.mgroot[data-mood="havd"]   { --hue: #FF55FF; }
-.mgroot[data-mood="buff"]   { --hue: #55FFFF; }
-.mgroot[data-mood="chain"]  { --hue: #FF55FF; }
-.mgroot[data-mood="shab"]   { --hue: #AA5500; }
-.mgroot[data-mood="bad"]    { --hue: #FF5555; }
-
-.mgleft, .mgright { border-color: var(--hue) !important; }
-.mgnews { border-bottom-color: var(--hue); }
-.mgbar  { border-top: 1px solid var(--hue); }
-.mgtabs { border-bottom-color: var(--hue); }
-.mgstagewrap { border-color: var(--hue); }
-.mgstagewrap:before, .mgstagewrap:after { background: var(--hue); }
-/* the number itself stays gold: it is the thing you are reading, and it
-   should not change colour every time a buff lands */
-.mgroot[data-mood="bad"]  .mgcount .mgn { color: #FF5555; }
-.mgroot[data-mood="shab"] .mgcount .mgn { color: #AA5500; }
-.mggoal i { background: #0000AA; }
-
-/* when something is running, the whole frame breathes with it */
-@keyframes mg-alive { 0%, 100% { box-shadow: inset 0 0 0 1px #000000; }
-                      50%      { box-shadow: inset 0 0 0 1px var(--hue); } }
-.mgroot[data-mood="simcha"] .mgstagewrap,
-.mgroot[data-mood="guest"] .mgstagewrap,
-.mgroot[data-mood="havd"] .mgstagewrap,
-.mgroot[data-mood="chain"] .mgstagewrap { animation: mg-alive 700ms steps(1, end) infinite; }
-.mgroot[data-mood="bad"] .mgstagewrap { animation: mg-alive 300ms steps(1, end) infinite; }
-@keyframes mg-rails { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.9; } }
-.mgroot:not([data-mood=""]) .mgleft:before,
-.mgroot:not([data-mood=""]) .mgleft:after { animation: mg-rails 900ms steps(1, end) infinite; }
-.mgroot[data-mood="bad"] .mgleft:before,
-.mgroot[data-mood="bad"] .mgleft:after { animation-duration: 320ms; }
-
-/* the tabs pick it up too, so the whole strip is not one grey */
-.mgtab.on { background: var(--hue); border-bottom-color: var(--phos); }
-.mgtab:hover { border-bottom-color: var(--hue); }
-
-/* ---- the held / for sale toggle, and the word list ----------------------- */
-.mgtoggle { display: flex; gap: 0; padding: 0; }
-.mgtoggle .mgt { flex: 1 1 0; text-align: center; padding: 4px; cursor: pointer;
-                 color: #555555; font-weight: normal; border-right: 1px solid #555555; }
-.mgtoggle .mgt:last-child { border-right: 0; }
-.mgtoggle .mgt:hover { color: var(--phos); }
-.mgtoggle .mgt.on { background: var(--hue); color: #000000; }
-.mgrow.up.owned { cursor: default; border-left-color: #555555; }
-.mgrow.up.owned .mgnm b { color: #55FF55; }
-.mgrow.up.owned .mgnm i { color: #FFFF55; font-size: 11px;
-                          white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mgdict { padding: 4px 8px; border-bottom: 1px solid #111111; line-height: 1.3; }
-.mgdict b { color: #FFFF55; font-weight: normal; display: block; }
-.mgdict i { color: var(--phos-dim); font-style: normal; font-size: 12px; }
-
-/* ---- the options drawer -------------------------------------------------- */
-.mgwipe { display: none; background: #AA0000; color: var(--phos); border-color: #FF5555; }
-.mgroot.opts .mgwipe { display: inline-block; }
-.mgroot.opts .mgopt { background: #FFFF55; }
-.mgwipe:hover { background: #FF5555; color: #000000; }
+/* The clicker's styles live in apps/magen/style.css (they were here, and black). */
 .jagcv { width: 400px; height: auto; max-height: none; image-rendering: pixelated; cursor: pointer; }
 
 /* THE STYLE METER lives in kernel/smeter.css */
@@ -1313,14 +1057,18 @@ textarea.editor {
 #room #lamp.dip { background: var(--lamp-off); box-shadow: none; }
 
 /* frame decoration: moss, screws, tape, labels. One layer over the plastic,
-   drawn per frame as inline SVG, never in the way of the pointer. */
+   drawn per frame as inline SVG, never in the way of the pointer. Each piece is pixel art at the size it is
+   shown (kernel/cos_deco.js: sized in pixels, never a share of the monitor, anchored to a corner of the case),
+   and the layer follows the case's own rounded corners, so a piece taped round a corner stops where the plastic does. */
 #framedeco {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 3;
+  border-radius: var(--case-r);
   background-repeat: no-repeat;
   background-size: 100% 100%;
+  image-rendering: pixelated;
 }
 /* the tint the frame lends the phosphor. Inside the glass, under the glass
    canvas, over the picture. */
@@ -1475,7 +1223,7 @@ textarea.editor {
   height: 24px;
 }
 .win.shopwin .titlebar .t { color: var(--phos); }
-.shoproot { display: flex; flex-direction: column; height: 100%; background: #2a0a2a; }
+.shoproot { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; background: #2a0a2a; }
 .shoptop { display: flex; gap: 4px; padding: 4px; background: #AA00AA; border-bottom: 2px solid #FF55FF; }
 .shopdave { width: 96px; flex: 0 0 96px; }
 .shopdave canvas { width: 96px; height: 96px; display: block; image-rendering: pixelated; }
@@ -1532,6 +1280,45 @@ textarea.editor {
 .shopcard.eq .bt { background: #00AAAA; color: #000000; }
 .shopfoot { padding: 2px 6px; background: #AA00AA; color: #FFFF55; display: flex; }
 .shopfoot .r { margin-left: auto; color: var(--phos); }
+
+/* Dave's farewell (kernel/dave_box.js): the box he leaves on the desktop when the shop window shuts. In the shop's own colours. It sits over
+   the windows and under the menus and the toast, in the corner of the desktop, takes no key, and goes by itself. */
+#davebox {
+  position: absolute; right: 10px; bottom: 34px;
+  width: 440px; max-width: calc(100% - 20px);
+  z-index: 455;
+  background: #AA00AA; border: 3px solid #FF55FF;
+  display: flex; flex-direction: column;
+  user-select: none;
+}
+#davebox .dbtitle {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 20px; padding: 0 6px;
+  background: repeating-linear-gradient(90deg, #FF55FF 0 8px, #AA00AA 8px 16px);
+  color: #FFFF55;
+}
+#davebox .dbhint { color: var(--phos); }
+#davebox .dbbody { display: flex; gap: 6px; padding: 4px; align-items: flex-start; }
+#davebox .dbport { flex: 0 0 96px; }
+#davebox .dbport canvas { width: 96px; height: 96px; display: block; image-rendering: pixelated; }
+#davebox .dbport.up { transform: translateY(-2px); }
+#davebox .dbsay {
+  flex: 1 1 auto;
+  text-transform: uppercase;
+  background: #FFFFFF; color: #000000; border: 2px solid #000000;
+  padding: 4px 6px; line-height: 1.05;
+  position: relative;
+  min-height: 62px;
+}
+#davebox .dbsay:after {
+  content: ''; position: absolute; left: -10px; top: 14px;
+  width: 0; height: 0;
+  border: 5px solid transparent; border-right-color: #000000;
+}
+#davebox .dbrest { visibility: hidden; }
+#davebox .dbcur { display: inline-block; width: 0; overflow: visible; color: #AA00AA; }   /* no width: the line must not reflow as the cursor moves */
+@media (prefers-reduced-motion: reduce) { #davebox .dbport.up { transform: none; } }
+#tube #davebox, #tube #davebox * { cursor: var(--cur-hand, pointer); }
 
 /* ---- the garden --------------------------------------------------------- */
 .gardenpane { background: #1d1a12; padding: 2px; }
@@ -1653,12 +1440,6 @@ textarea.editor {
   20% { transform: scale(1.2) rotate(45deg); opacity: 0.8; filter: contrast(2) brightness(1.5); }
   100% { transform: scale(3) rotate(90deg); opacity: 0; filter: contrast(1) brightness(1); }
 }
-#degauss.held {
-  animation: dg-flash 1.5s cubic-bezier(0.1, 0.7, 1.0, 0.1) forwards;
-  display: block;
-}
-
-
 /* ---- dragging files (kernel/dnd.js) ---------------------------------------- */
 #dndghost {
   position: absolute; z-index: 2147483000; pointer-events: none; opacity: 0.85;

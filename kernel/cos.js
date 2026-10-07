@@ -67,6 +67,8 @@ const Cos = {
     this.st = got;
     LOGOS[0].svg = (document.getElementById('logo') || { innerHTML: '' }).innerHTML;
     this.applyAll();
+    /* Dave leaves a box on the desktop when the shop window shuts (kernel/dave_box.js); it waits for the window list to say so */
+    import('./dave_box.js').then(m => m.DaveBox.watch()).catch(() => {});
   },
 
   find(cat, id) {
@@ -165,7 +167,7 @@ const Cos = {
       if (!svg) return;
       imgs.push('url("data:image/svg+xml;utf8,' + encodeURIComponent(svg) + '")');
       poss.push(d.pos);
-      sizes.push(d.size);
+      sizes.push(d.size || 'auto');          /* no size: the art's own, which is how the pixel pieces in cos_deco.js are shown, 1 to 1 */
     });
     deco.style.backgroundImage = imgs.join(',');
     deco.style.backgroundPosition = poss.join(',');

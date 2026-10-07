@@ -161,6 +161,13 @@ export function createWindow(opts) {
      given the room. A canvas game that draws at a fixed size is instead kept
      at the size it was built for and scaled to fit, so a 960x540 field is
      never a postage stamp in the middle of a big black pane. */
+  /* A window is "a canvas" when its picture IS the window: a pane that holds one (.gamepane, .godpane,
+     .vidpane: the classes theme.css centres a picture in) or a canvas that is the body's own child. A window
+     that merely has canvases in it (the shop's card thumbnails, Magen's star, a Crayon swatch) is a layout
+     and is given the room, not scaled up like a picture, which is what used to push the shop off its own
+     title bar. */
+  const isCanvasWindow = b => [...b.children].some(c => c.tagName === 'CANVAS' ||
+    c.classList.contains('gamepane') || c.classList.contains('godpane') || c.classList.contains('vidpane'));
   let full = false, saved = null, panX = 0.5, panY = 0.5;
   const fitScaled = () => {
     if (!full || !win.classList.contains('scaled')) return;
@@ -187,7 +194,7 @@ export function createWindow(opts) {
     if (win.classList.contains('hidden')) return;
     if (on) {
       const fluid = body.dataset.fluid === '1';
-      const fixedCanvas = !fluid && !!body.querySelector('canvas');
+      const fixedCanvas = !fluid && isCanvasWindow(body);
       /* the browser's zoom comes off first, so the size measured is the window's own */
       if (fixedCanvas && zoom) zoom.scaled(true);
       saved = { l: win.style.left, t: win.style.top, w: win.style.width, h: win.style.height,

@@ -1,5 +1,5 @@
 import { Cos, COS_CATS } from '../../kernel/cos.js';
-import { DAVE_LINES, DAVE_BROKE } from './lines.js';
+import { DAVE_LINES, DAVE_BROKE, makeHoverTalk } from './lines.js';
 import { drawDave, drawThumb } from './thumbs.js';
 
 /* what a card's button says, and what pressing it does, by what kind of shelf it is on (kernel/cos.js COS_CATS) */
@@ -64,6 +64,7 @@ export default {
     root.appendChild(footEl);
 
     const say = txt => { if (bubbleEl) bubbleEl.textContent = txt; };
+    const hoverTalk = makeHoverTalk();       /* one hover in ten, Dave says something crazy instead of what the card is (lines.js) */
     say(pick(DAVE_LINES));
 
     function foot() {
@@ -122,10 +123,10 @@ export default {
         bt.textContent = buttonText(cat, owned, eq);
 
         card.appendChild(cv); card.appendChild(nm); card.appendChild(pr); card.appendChild(bt);
-        card.title = it.blurb || '';
+        /* no title attribute: the browser would pop up a second box that says again what Dave is already saying */
 
         card.addEventListener('mouseenter', () => {
-          say(it.blurb || it.name);
+          say(hoverTalk(cat, it).text);
           if (cat === 'frame' || cat === 'cursor' || cat === 'scheme') window.Cos.hover(cat, it.id);
         });
         card.addEventListener('mouseleave', () => { window.Cos.hover(null, null); });

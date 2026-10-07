@@ -16,7 +16,7 @@ export default {
       p.className = 'sysdlg';
       const m = document.createElement('div');
       m.className = 'msg';
-      m.textContent = 'THE GLASS. LENS, SCAN PITCH, PHOSPHOR AND BURN-IN ARE\nKNOBS ON THE CHIN OF THE MONITOR, NOT SOFTWARE.';
+      m.textContent = 'THE GLASS. SCAN PITCH, PHOSPHOR AND BURN-IN ARE KNOBS ON\nTHE CHIN OF THE MONITOR, NOT SOFTWARE. DEGAUSS IS PERMANENT.';
       p.appendChild(m);
       const btns = document.createElement('div');
       btns.className = 'btns';

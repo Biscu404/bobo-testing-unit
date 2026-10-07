@@ -3,7 +3,7 @@ import { fs as vfs } from '../../kernel/vfs.js';
 import { CRT, Vol, sfxGain } from '../../kernel/hardware.js';
 import { BEK_T, BEK_T_SRC, BEK_ART_SCALE, BEK_SAVE, BEK_LOT_COST, UI, BEK_ITEMS, BEK_SEED_ORDER,
          BEK_CROPS, BEK_TOOLS, OKS_GRAN_E, AXE_NAME, PICK_NAME, ROD_NAME, BEK_MAPS, BEK_SOLID, BEK_NPCS, BEK_GOATS,
-         BEK_START_KR, BEK_EN_MAX, BEK_STEP_S, BEK_CLOCK_MIN_PER_S, BEK_DAY_START, BEK_DAY_END,
+         BEK_START_KR, BEK_EN_MAX, BEK_STEP_S, BEK_TURN_S, BEK_CLOCK_MIN_PER_S, BEK_DAY_START, BEK_DAY_END,
          BEK_XP_STEP, BEK_XP_LVL_STAMINA, BEK_GRADE_MULT, BEK_PRESV_DAYS, BEK_RARE_CHANCE,
          BEK_FORAGE_DROPS, BEK_FORAGE_BONUS, BEK_REGROW, BEK_GIFT_FR,
          BEK_TALK, BEK_SCENES, BEK_QUESTS, BEK_HOUSE, BEK_DECOR, BEK_FARM_PLOTS, BEK_BARN_PLOT,
@@ -62,6 +62,8 @@ import { makeWalker, sendTo, stepWalker, distance, beside, comesIn, nearestOut, 
 import { inside as insideMap, isCave, snowy, groundOf, solidOf, defaultGround } from './surface.js';
 import { FONT_SM, FONT_LG } from './font.js';
 import { createText } from './text.js';
+import { softCanvas } from './softcv.js';
+import { createSteer, createStride, createSlide, walkKey, DX, DY } from './stride.js';
 import { BORDER, CELL_SM, LINE_SM, LINE_LG, PAD_SM, PAD_LG, GLYPH_SM, ICON_PX,
          HUD_PAD, HUD_GAP, HUD_TXT_DY, HUD_BOT_Y, EN_BAR_W, EN_BAR_H, EN_BAR_X, EN_BAR_Y,
          DROP_W, DROP_H, TIP_W, TIP_H, TIP_X, TIP_Y, TIP_COL2,
@@ -655,6 +657,9 @@ export default {
       }
       let alive = true, raf = null, last = 0;
       const keys = Object.create(null);
+      /* walking (stride.js): the direction keys held, the time banked towards the next tile, and the picture of the walk between two */
+      const steer = createSteer(), stride = createStride(BEK_STEP_S, BEK_TURN_S), slide = createSlide(BEK_STEP_S, BEK_T_SRC);
+      let me = { x: 0, y: 0, sliding: false };                     /* where the player is *shown*, in tiles: set once a frame by camTrack() */
 
       /* ---- helpers ------------------------------------------------------ */
       const M = () => BEK_MAPS[S.map];
@@ -2306,6 +2311,7 @@ export default {
         const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
         if (k === 'F11') { e.preventDefault(); toggleFullscreen(); return; }
         keys[k] = true;
+        { const wk = walkKey(e); if (wk && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) steer.press(wk.id, wk.dir); }
         if (k === ' ' || k === 'Tab' || String(k).indexOf('Arrow') === 0) e.preventDefault();
 
         /* the loft's ending closes back into the same save the house ending
@@ -2441,7 +2447,13 @@ export default {
         if (k >= '1' && k <= '5') { const ix = parseInt(k, 10) - 1; if (BEK_TOOLS[ix] && S.tools[BEK_TOOLS[ix].id]) S.tool = ix; return; }
         if (k === 'r') { const food = Object.keys(S.bag).filter(id => BEK_ITEMS[id].eat && S.bag[id] > 0)[0]; if (!food) { say(TX('INGENTING Å SPISE.', 'NOTHING TO EAT.')); return; } add(food, -1); S.en = Math.min(S.enMax, S.en + BEK_ITEMS[food].eat); sfx.pick(); say(TX('SPISTE ', 'ATE ') + iname(food)); }
       });
-      cv.addEventListener('keyup', e => { const k = e.key.length === 1 ? e.key.toLowerCase() : e.key; keys[k] = false; });
+      cv.addEventListener('keyup', e => {
+        const k = e.key.length === 1 ? e.key.toLowerCase() : e.key; keys[k] = false;
+        const wk = walkKey(e); if (wk) steer.release(wk.id);
+      });
+      /* A key that was down when the canvas lost the focus (a click on another window, alt-tab, a menu) never sends its keyup
+         here, and the player walked on, by himself, until that key was pressed and let go again. */
+      cv.addEventListener('blur', () => { steer.clear(); stride.reset(); for (const k in keys) keys[k] = false; });
       cv.addEventListener('mousedown', ev => { ev.stopPropagation(); cv.focus(); if (mode === 'talk') dlgAdvance(); });
       wrap.addEventListener('mousedown', () => setTimeout(() => cv.focus(), 0));
       setTimeout(() => cv.focus(), 30);
@@ -2514,29 +2526,34 @@ export default {
       /* ---- walking, clock, fishing -------------------------------------- */
       function move(dt) {
         /* An action reads as committed if you cannot walk out of it. Direction
-           keys are still latched into `keys`, so a turn taken during a swing
+           keys are still latched into `steer`, so a turn taken during a swing
            happens the moment it ends. */
         if (swing) return;
-        let dx = 0, dy = 0;
-        if (keys.w || keys.ArrowUp) { dy = -1; S.dir = 1; }
-        else if (keys.s || keys.ArrowDown) { dy = 1; S.dir = 0; }
-        else if (keys.a || keys.ArrowLeft) { dx = -1; S.dir = 2; }
-        else if (keys.d || keys.ArrowRight) { dx = 1; S.dir = 3; }
-        if (!dx && !dy) { S.walk = 0; S.step = 0; return; }
-        S.walk += dt; if (S.walk < BEK_STEP_S) return; S.walk = 0; S.step = (S.step + 1) % 4;
-        const nx = S.px + dx, ny = S.py + dy;
+        const want = steer.want();
+        const n = stride.tick(dt, want, S.dir, stepTo);
+        /* a key pressed at rest turns you on the spot, at once; one pressed in mid-stride waits for the next tile, so the
+           player never faces one way while the picture still walks him another (stepTo() turns him when the tile is taken) */
+        if (want >= 0 && !n && !slide.active()) S.dir = want;
+        if (want < 0 && !slide.active()) S.step = 0;
+      }
+      /* One tile, taken (or bumped into). The rules are the ones the walk always had; what is new is only that the time
+         comes from stride.js (banked, never thrown away) and that a tile taken starts the picture sliding to it. */
+      function stepTo(dir, lead) {
+        S.dir = dir; S.step = (S.step + 1) % 4;
+        const ox = S.px, oy = S.py, om = S.map, nx = ox + DX[dir], ny = oy + DY[dir];
         /* The mouth of the descent. It is not an `exits` entry like every
            other way through the world, and it is the only one that is not,
            because where it goes does not exist yet — the run has no seed
            until you step in. Everything past this square is exits again. */
-        if (S.map === BEK_MINE_MOUTH.map && nx === BEK_MINE_MOUTH.x && ny === BEK_MINE_MOUTH.y) { enterMine(); return; }
+        if (S.map === BEK_MINE_MOUTH.map && nx === BEK_MINE_MOUTH.x && ny === BEK_MINE_MOUTH.y) { slide.drop(); enterMine(); return; }
         const ex = (M().exits || []).filter(x => x.x === nx && x.y === ny)[0];
-        if (ex) { if (ex.need && !gateOK(ex.need)) { say(T(ex.why)); deny(); return; } S.map = ex.to; S.px = ex.tx; S.py = ex.ty; markDisc(ex.to); say(T(BEK_MAPS[S.map].title)); return; }
+        if (ex) { if (ex.need && !gateOK(ex.need)) { say(T(ex.why)); deny(); return; } slide.drop(); S.map = ex.to; S.px = ex.tx; S.py = ex.ty; markDisc(ex.to); say(T(BEK_MAPS[S.map].title)); return; }
         if (nx < 0 || ny < 0 || nx >= COLS() || ny >= ROWS()) return;
         if (solid(S.map, nx, ny)) return;
         if (npcsHere().some(n => n.x === nx && n.y === ny)) return;
         if (S.map === 'farm' && S.animals.some(a => a.x === nx && a.y === ny)) return;
         S.px = nx; S.py = ny;
+        slide.start(om, ox, oy, nx, ny, lead);
         if (S.step % 2 === 0) sfx.step(tileAt(S.map, S.px, S.py));
         for (let i = S.drops.length - 1; i >= 0; i--) {
           const d = S.drops[i];
@@ -2646,8 +2663,9 @@ export default {
         const tag = day ? 'day' : LUT_TAG;
         const k = (g.tag || 'screen') + '|' + tag + '|' + col + '|' + strength;
         if (ditherCache[k]) return ditherCache[k];
-        const c = document.createElement('canvas'); c.width = BEK_DITHER_PX; c.height = BEK_DITHER_PX;
-        const q = c.getContext('2d'); q.fillStyle = day ? DAY_CSS[col] : LUT_CSS[col];
+        /* a memory canvas, never a GPU one: a pattern whose tile is on the card is read back off it on every fill that
+           lands in the terrain cache (see softcv.js) */
+        const { cv: c, g: q } = softCanvas(BEK_DITHER_PX, BEK_DITHER_PX); q.fillStyle = day ? DAY_CSS[col] : LUT_CSS[col];
         for (let j = 0; j < BEK_DITHER_CELL; j++) for (let i = 0; i < BEK_DITHER_CELL; i++)
           if (DITHER[j][i] < strength) q.fillRect(i * BEK_ART_SCALE, j * BEK_ART_SCALE, BEK_ART_SCALE, BEK_ART_SCALE);
         ditherCache[k] = g.createPattern(c, 'repeat'); return ditherCache[k];
@@ -3457,7 +3475,7 @@ export default {
             srcs.push({ px: F.hearths[i], py: F.hearths[i + 1], r: 2.7 * BEK_T * fl, peak: F.hearths[i + 2] });
         }
         const tier = isCave(S.map) ? lampTier() : 0;
-        if (tier) srcs.push({ px: S.px * BEK_T + BEK_T / 2, py: S.py * BEK_T + BEK_T / 2, r: LANTERN[tier].r, peak: LANTERN[tier].peak });
+        if (tier) srcs.push({ px: Math.round(me.x * BEK_T) + BEK_T / 2, py: Math.round(me.y * BEK_T) + BEK_T / 2, r: LANTERN[tier].r, peak: LANTERN[tier].peak });
         const lamp = lampOf(F, COLS() * BEK_T, ROWS() * BEK_T);
         if (!srcs.length && !lampLive) return;
         lampLive = srcs.length > 0;
@@ -3465,7 +3483,7 @@ export default {
                                 { x: camX, y: camY, w: BEK_VIEW_W, h: BEK_VIEW_H });
         if (!patch) return;
         const w = patch.w, h = patch.h;
-        if (!poolCv) { poolCv = document.createElement('canvas'); poolG = poolCv.getContext('2d'); }
+        if (!poolCv) { const sc = softCanvas(1, 1); poolCv = sc.cv; poolG = sc.g; }
         if (poolCv.width !== patch.img.width || poolCv.height < h) { poolCv.width = patch.img.width; poolCv.height = patch.img.height; }
         poolG.putImageData(patch.img, 0, 0, 0, 0, w, h);
         g.drawImage(poolCv, 0, 0, w, h, patch.x, patch.y, w, h);
@@ -3649,6 +3667,11 @@ export default {
          question of how many frames it takes to land, and four or five of them at a few milliseconds each is not a thing the
          eye can find where one at forty is. */
       const REBUILD_BUDGET_MS = 4.5, ROWS_PER_STEP = 3;
+      /* ...and how much more it may pay as the viewport closes on the edge of the picture on screen. A rebuild that has not landed by
+         the time the camera walks off the region is painted whole, in one frame (see terrain()), so a slow frame rate used to turn a
+         gentle walk into a stutter every few tiles: at seven tiles a second the margin is half a second. Two tiles or more to spare
+         and it is the usual few milliseconds; one tile and it is twice that, none and it is three times, which is still a slice. */
+      const rebuildBudget = (F, v) => REBUILD_BUDGET_MS + Math.max(0, 2 - Math.min(v.x0 - F.R.x0, v.y0 - F.R.y0, F.R.x1 - v.x1, F.R.y1 - v.y1)) * 5;
 
       /* the tiles the viewport can show, with one to spare for the strike-frame shake and the half tile at each edge */
       const viewTiles = () => ({ x0: Math.floor(camX / BEK_T) - 1, y0: Math.floor(camY / BEK_T) - 1,
@@ -3767,13 +3790,13 @@ export default {
         const kMap = kGeo + '|' + L.key;
         const k = kMap + '|' + R.x0 + ',' + R.y0 + ',' + R.x1 + ',' + R.y1;
         const F = front();
-        if (k === F.key && !force) { if (job) runJob(REBUILD_BUDGET_MS); return F.cv; }
+        if (k === F.key && !force) { if (job) runJob(covers(F, viewTiles()) ? rebuildBudget(F, viewTiles()) : REBUILD_BUDGET_MS); return F.cv; }
         const ready = F.key && F.kGeo === kGeo && F.mw === mw && covers(F, viewTiles());
         /* a rebuild already running for something older is left to land if what is on screen can be shown meanwhile; the
            newer one starts when it has */
         if (!job || (job.k !== k && !(ready && job.kGeo === kGeo && !force))) job = startJob(k, kGeo, L, R, cols, rows, mw, mh);
         /* a picture that can be shown for now is left on screen while this one is painted; one that cannot is painted at once */
-        runJob(ready && !force ? REBUILD_BUDGET_MS : Infinity);
+        runJob(ready && !force ? rebuildBudget(F, viewTiles()) : Infinity);
         return front().cv;
       }
       /* The ploughed plot and what grows in it live in crops.js — the last
@@ -3826,8 +3849,11 @@ export default {
       const track = (tile, view, max) =>
         Math.max(0, Math.min(max, Math.round(tile * BEK_T + BEK_T / 2 - view / 2)));
       function camTrack() {
-        camX = track(S.px, BEK_VIEW_W, camMaxX(S.map));
-        camY = track(S.py, BEK_VIEW_H, camMaxY(S.map));
+        /* the camera follows where the player is *shown* (a walk is drawn as a slide from tile to tile, stride.js), not the
+           square the step has already put him on: forty pixels a step, seven times a second, was the whole picture jerking */
+        me = slide.at(S.map, S.px, S.py);
+        camX = track(me.x, BEK_VIEW_W, camMaxX(S.map));
+        camY = track(me.y, BEK_VIEW_H, camMaxY(S.map));
         /* The kick on the strike frame — the whole difference between an
            animation and a hit. Kept under three pixels and under two frames,
            because past that it is motion sickness. Applied after the clamp so
@@ -3951,7 +3977,7 @@ export default {
            moving it into this per-frame sort is a separate, much larger
            change to how terrain is cached and out of scope here. */
         const actors = npcsHere().map(n => ({ n: n, y: n.y }));
-        actors.push({ me: 1, y: S.py });
+        actors.push({ me: 1, y: me.y });
         hudHint = interactHint(actors.filter(a => a.n).map(a => a.n));
         BEK_GOATS.filter(gt => gt.map === S.map).forEach(gt => actors.push({ goat: gt, y: gt.y }));
         if (S.map === 'farm') S.animals.forEach(a => actors.push({ animal: a, y: a.y }));
@@ -3968,7 +3994,7 @@ export default {
               ? { kind: kind, u: sw ? Math.min(1, swing.t / swing.len) : 0, dir: S.dir } : null;
             /* two frames of recoil when the answer was no */
             const jx = swing && swing.kind === 'deny' ? ((swing.t * 46) | 0) % 2 ? 2 : -2 : 0;
-            inLight(L, S.px, S.py, () => person(S.px * BEK_T_SRC + 4 + jx, S.py * BEK_T_SRC + 2, S.dir, S.step, PLAYER_HAIR, PLAYER_SHIRT, PLAYER_PANTS, held, (S.bag.ullgenser || 0) > 0));
+            inLight(L, me.x, me.y, () => person(Math.round(me.x * BEK_T_SRC) + 4 + jx, Math.round(me.y * BEK_T_SRC) + 2, S.dir, S.step, PLAYER_HAIR, PLAYER_SHIRT, PLAYER_PANTS, held, (S.bag.ullgenser || 0) > 0));
             return;
           }
           if (a.goat) { goat(a.goat.x * BEK_T_SRC + 1, a.goat.y * BEK_T_SRC + 1, t); return; }
@@ -4365,6 +4391,7 @@ export default {
         if (!alive || !document.body.contains(cv)) { alive = false; Song.stop(); Amb.stop(); return; }
         raf = requestAnimationFrame(frame);
         const dt = Math.min(0.1, (ts - last) / 1000 || 0); last = ts;
+        slide.tick(dt);
         if (!mode) { move(dt); tickFish(dt); sceneWatch(); }
         if (sceneCool > 0) sceneCool -= dt;
         sceneTick(dt); leavingTick(dt); bubblesTick(dt);

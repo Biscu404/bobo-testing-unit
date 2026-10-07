@@ -13,6 +13,7 @@ import { CK_SONGS, CK_HZ } from '../cook/data.js';
 import * as ELE from '../elephant/score.js';
 import * as BEK from '../bekkedal/score.js';
 import * as SB from '../standbattle/score.js';
+import * as AE from '../aftere/score.js';
 import * as Lang from '../../kernel/songtext.js';
 import { unlocked } from '../../kernel/style_track.js';
 import { FILE as STYLE_SONG } from '../../kernel/style_track_plan.js';
@@ -69,6 +70,9 @@ export function stackFolders() {
   const sb = SB.song(Lang);
   out.push(['STAND BATTLE', 'red', [['MORIOH (EXPLORE)', SB.layersFor(0)], ['MORIOH (COMBAT)', SB.layersFor(1)], ['MORIOH (TENSION)', SB.layersFor(2)]]
     .map(([n, lay]) => [n, disc(sb, 'red', 'STAND BATTLE ARENA', lay)])]);
+
+  /* AfterEgypt: the title and the five ways, each with its arrangement filled in (the wind, the locusts and the stone are the flight's) */
+  out.push(['AFTEREGYPT', 'amber', AE.IDS.map(k => [AE.NAMES[k], disc(AE.song(Lang, k), 'amber', 'AFTEREGYPT', AE.DISC_LAYERS)])]);
 
   /* the Garage's own songs: real instruments, bounced by the studio rather than synthesised here */
   out.push(['THE GARAGE', 'white', demoSongs(Lang).map(sg => [sg.title, {

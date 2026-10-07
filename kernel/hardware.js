@@ -1,11 +1,12 @@
 import { Style, Rage } from "./style.js";
 import { Snd } from "./snd.js";
+import { degauss, paintPurity } from "./degauss.js";
+export { degauss };
 export const CRT = {
   lens: 1,
   scan: 2,
   phos: 0,
   burn: false,
-  dgauss: false,
   on: false,
   mus: 0,
   sfx: 0,
@@ -24,6 +25,8 @@ export const DISP = { scan: true, band: true, vig: true };
 window.DISP = DISP;
 
 const LENS_NAME = ['FLAT', 'SOFT', 'FULL'];
+/* The LENS button is disabled: every machine runs at SOFT, the curve it shipped with, whatever an old save says. */
+const LENS_LOCK = 1;
 const PHOS_NAME = ['P1', 'P4', 'P7'];
 const LENS_BOW = [0.0, 0.08, 0.22];
 /* P1 decays in microseconds (crisp, no bloom); P7 smears for a while
@@ -109,30 +112,12 @@ function loadCRT() {
     const raw = localStorage.getItem('templeos.crt.v1');
     if (raw) Object.assign(CRT, JSON.parse(raw));
   } catch (e) {}
-  CRT.lens = Math.max(0, Math.min(2, CRT.lens | 0));
-  CRT.dgauss = !!CRT.dgauss;
+  CRT.lens = LENS_LOCK;
+  delete CRT.dgauss;   /* DEGAUSS was a button once; it is permanent now (kernel/degauss.js) */
   CRT.on = true;
   CRT.vhold = CRT.vhold ?? 5;
   CRT.hhold = CRT.hhold ?? 5;
-  CRT.lens = CRT.lens ?? 1;
   CRT.scan = CRT.scan ?? 2;
-  if (CRT.dgauss) setTimeout(() => {
-    const r = document.getElementById('degauss');
-    if (r) { r.style.display = 'block'; r.classList.add('held'); }
-  }, 60);
-}
-
-export function degauss() {
-  const r = document.getElementById('degauss');
-  if (!r) return;
-  Snd.thunk();
-  Snd.noise(420, { mech: true, freq: 90, q: 0.5, vol: 0.32 });
-  Snd.tone(52, 900, { mech: true, type: 'triangle', to: 30, vol: 0.14 });
-  Snd.tone(104, 700, { mech: true, type: 'sine', to: 61, vol: 0.07, delay: 0.05 });
-  r.style.display = 'block';
-  r.classList.remove('held');
-  void r.offsetWidth;
-  r.classList.add('held');
 }
 
 /* PHOS is persistence, not paint: it sets how far bright pixels bloom/smear
@@ -224,6 +209,7 @@ function paintGlass() {
   fringe.addColorStop(1,    'rgba(60,140,255,0.10)');
   g.fillStyle = fringe;
   g.fillRect(0, 0, W, H);
+  paintPurity(g, W, H);
 
   if (DISP.vig) {
     const vig = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.28,
@@ -273,7 +259,9 @@ function wireChin() {
     if (window.Music && window.Music.sync) window.Music.sync();
     Rage.sync();
   });
-  wirePot('pot-sfx', 'lbl-sfx', 'SFX', v => { CRT.sfx = v; saveCRT(); });
+  /* the bus is set when the speaker wakes, so a knob turned afterwards has to set it again, or a machine that woke with SFX at 0
+     (its default) stays silent until it is relaunched, however far the knob is turned */
+  wirePot('pot-sfx', 'lbl-sfx', 'SFX', v => { CRT.sfx = v; saveCRT(); if (Snd.sfx) Snd.sfx.gain.value = sfxGain(); });
   wirePot('pot-vhold', 'lbl-vhold', 'VHLD', v => { CRT.vhold = v; saveCRT(); applyHold(); });
   wirePot('pot-hhold', 'lbl-hhold', 'HHLD', v => { CRT.hhold = v; saveCRT(); applyHold(); });
 
@@ -294,33 +282,16 @@ function wireChin() {
     });
   }
 
-  if (getEl('k-lens')) getEl('k-lens').addEventListener('click', () => {
-    CRT.lens = (CRT.lens + 1) % 3;
-    labelKnobs();
-    paintGlass();
-    applyLensShape();
-    saveCRT();
-    if (window.Snd && window.Snd.click) window.Snd.click();
-  });
-  
+  /* LENS is disabled (see LENS_LOCK): a button that is shown, dimmed, and does nothing */
+  const lens = getEl('k-lens');
+  if (lens) { lens.disabled = true; lens.title = 'Tube curvature (locked)'; }
+
   if (getEl('k-scan')) getEl('k-scan').addEventListener('click', () => {
     CRT.scan = CRT.scan >= 4 ? 0 : CRT.scan + 1;
     labelKnobs();
     paintGlass();
     saveCRT();
     if (window.Snd && window.Snd.click) window.Snd.click();
-  });
-  
-  if (getEl('k-dgauss')) getEl('k-dgauss').addEventListener('click', () => {
-    if (window.Snd && window.Snd.click) window.Snd.click();
-    CRT.dgauss = !CRT.dgauss;
-    labelKnobs();
-    saveCRT();
-    if (CRT.dgauss) degauss();
-    else {
-      const ring = getEl('degauss');
-      if (ring) { ring.classList.remove('held'); ring.style.display = 'none'; }
-    }
   });
   
   if (getEl('k-phos')) getEl('k-phos').addEventListener('click', () => {

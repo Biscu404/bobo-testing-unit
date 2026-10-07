@@ -33,10 +33,13 @@ node scripts/smoke.mjs  # ~10 min; node scripts/lint-content.mjs; node apps/*/*_
 node scripts/check-drunk.mjs   # the Jäger journey (pure Node): a blackout is inside one bottle, about two minutes away at the very quickest
 node scripts/check-style.mjs   # the style meter against five kinds of player (pure Node)
 node scripts/check-styletrack.mjs # the style meter's recording: how it opens under the delete sound, how it loops, its gains (pure Node)
+node apps/shop/lines_check.js  # Dave's crazy hover lines: the pool, the 1-in-10 rate, no repeats (pure Node); node scripts/check-farewell.mjs his farewell tiers and babble (pure Node)
+node scripts/check-delete.mjs  # the delete reel: a beat a file, 70 ms apart, a tune in C pentatonic that lands on the high C (pure Node)
 node scripts/check-desk.mjs    # where desktop icons go: the grid, the occupancy map, a full desk (pure Node); npm run check:bulk pastes and deletes two hundred files
 node apps/aftere/aftere_check.js # AfterEgypt: a bot flies all five ways across, nothing is asked that the ship cannot fly, the pay climbs (pure Node)
 node apps/garden/garden_check.js # the garden: synergy arithmetic, and how long 99,999 SUN takes three kinds of player, equipped and not (pure Node)
 node apps/bekkedal/life_check.js # what Bekkedal's people do between their posts: chores, sleep, errands, gifts worn (pure Node)
+node apps/aftere/music_check.js # AfterEgypt's score, layers and sky mapping; node apps/aftere/sfx_check.js its effects and the sound of a flight (pure Node)
 node apps/magen/music_check.js # Magen's score, its band's energy and the seams between tunes (pure Node); apps/bekkedal/music_check.js likewise
 npm run check:music     # instruments, the studio, every game's score, and the style meter's recording
 node apps/garage/edit_check.js # the Garage's note, segment and undo logic (pure Node)
@@ -61,12 +64,26 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   picks the variant in the mixer panel (♫).
 - **Mixer.** `kernel/mixer.js` lists only what is running: a channel is offered while a window with its `appId` is open
   (`openWins` carries `appId`; `wm.js` fires `wins-changed`). A new app with music: add a channel to `CHANNELS`, multiply
-  its bus by `window.Mixer.get('<id>')`, and listen for `mixer-changed`.
+  its bus by `window.Mixer.get('<id>')`, and listen for `mixer-changed` (AfterEgypt's `aftere` channel: its tunes follow the slider through the studio channel, its effects are
+  its own bus and are relevelled on `mixer-changed`).
 - **Fullscreen.** Every window has `[□]` (also F11 or a double-click on the title bar). A window whose app lays itself
-  out off its own size sets `fluid: true` (or `body.dataset.fluid = '1'`) and is simply given the room; any other window
-  with a canvas is kept at its built size and scaled to fit; plain DOM windows just fill the desktop.
-- **Drunk.** `kernel/drunk.js` (the bottle app) acts on `#tube` through an inline filter/transform. Never give `#tube` a
-  fill-forwards animation: an animated value beats an inline style, which is what silently killed this effect before.
+  out off its own size sets `fluid: true` (or `body.dataset.fluid = '1'`) and is simply given the room. A window whose
+  picture *is* the window (a `.gamepane`/`.godpane`/`.vidpane`, or a canvas that is the body's own child: `isCanvasWindow`
+  in `wm.js`) is kept at its built size and scaled to fit. Every other window, **including one that merely has canvases
+  in it** (the shop's thumbnails, Magen's star, Crayon's swatches), is a layout and just fills the desktop; it used to be
+  scaled like a picture and ended up over its own title bar. An app whose root *is* the window body (it sets
+  `root.className`, which drops `.wbody`: the shop and Notes) fills it with `flex: 1 1 auto; min-height: 0`, never
+  `height: 100%`: the browser's zoom is applied to that very box and a zoomed 100% is taller than the window.
+- **Drunk.** `kernel/drunk.js` (the bottle app) acts on the **whole interface**: an inline filter/transform on `#room` (case,
+  well, chin and knobs as well as the picture), and the edges closing in and the eyelids are an overlay fixed to the viewport
+  (`#drunkover`, built by `drunk.js`). `#tube` is left to the hold knobs, the saver and the power animation. Never give `#room`
+  a fill-forwards animation: an animated value beats an inline style, which is what silently killed this effect before.
+- **The SFX knob sets the bus when it turns.** `Snd.sfx.gain` is set when the speaker wakes (`snd.js`) *and* by the SFX pot (`hardware.js`); it used to be set
+  only at wake, so a machine that woke with SFX at its default 0 stayed silent however far the knob was turned, until it was relaunched.
+- **The chin.** LENS is a disabled knob: every machine runs at SOFT (`LENS_LOCK` in `hardware.js`, whatever an old save says).
+  DEGAUSS is not a button any more but permanent: purity patches painted into the glass canvas with the scanlines
+  (`kernel/degauss.js`, once per resize, so nothing animated sits over the picture); the terminal's `DEGAUSS` still fires the
+  coil (`#degauss.pulse`, a one-shot flash).
 
 - **Durable storage.** `index.html` loads `kernel/durable.js`, which mirrors every `localStorage` write into IndexedDB
   (`templeos_ls`) and restores it before `kernel/boot.js` loads. Chromium's own localStorage flush can lag by more than
@@ -87,6 +104,13 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   reconcile**, not a rebuild (`kernel/desktop.js` `buildIcons`): an icon whose name and kind are unchanged keeps its element and its
   selection, positions come from one occupancy map (`kernel/desk_grid.js`, pure), icons are CSS sprite classes rather than an `<img>`
   each (`icons_dom.js`). `check-desk.mjs` and `check-bulk.mjs` hold the numbers; the old code took twenty seconds for each step.
+- **Deleting is a reel, not a thump.** `deletePaths` (`fileops.js`) hits the style meter once for the whole pile
+  (`hitPile`), then puts the files in the bin a beat at a time (`gatherTrash` reads the pile once, `commitTrash` moves a
+  slice): `kernel/delete_reel.js` (pure; `node scripts/check-delete.mjs`) plans it, **70 ms between beats, one file a beat
+  until that would pass 3.4 s, then several**, and each beat is a note of a four-phrase tune in C pentatonic (C D E G A: inside
+  C major and D minor, so it never fights the style meter's song) that always lands on the high C, with a chord on the last beat;
+  a lone file is a two-note "dun-dun" (`Snd.reelNote/reelEnd/reelOne` in `style_sfx.js`). Piles queue, Ctrl+Z waits for the one
+  running, and the pile is one undo.
 - **Dragging files** is `kernel/dnd.js` (pointer events, one mechanism for every source). A drop zone is any element with
   `data-drop`: a folder path, `::` (the desktop) or `@trash`. Desktop icons, folder windows and the bin all use it; Ctrl at the
   drop copies, Esc cancels. The shared commands (copy/cut/paste/duplicate/rename/delete/undo/properties/keys) are
@@ -187,6 +211,19 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   from FluidR3_GM like the first thirty; **THE BOTTLE** pours any drink you own (`apps/bottle/drinks.js` builds a whole bottle, label and
   liquor from three colours in `DRINKS`; `Drunk.drink(strength)` counts a measure against the limit in Jägermeisters, 0 for the cordial); **the Elephant** has a wardrobe
   (`apps/elephant/wear.js` draws on the big front-on elephant, `kernel/pet_art.js` on the small side-on one: same twelve things, two pictures).
+- **When the shop window closes Dave leaves a box on the desktop** (`kernel/dave_box.js`; `Cos.boot()` starts its watch). It listens to `wins-changed`: a window with
+  `appId` 'shop' going from none to one snapshots what you own, going from one to none shows the box, so it never shows for a shop never opened, with the set off, or twice for
+  one visit. Its words are `kernel/dave_farewell.js` (pure): seven tiers (`blink` under 4 s with nothing bought, `never`, `nothing`, `little`, `fair`, `lot`, `everything`,
+  chosen from what was bought this visit and what you own; lines may name the item or the total) with a voice per tier. It types its line at ~30 ms a letter over a babble
+  (`kernel/dave_plan.js` is the pure plan: a blip per sounded letter, silence on spaces and stops, a climb on questions, a bark on shouts; `kernel/dave_voice.js` plays it on
+  `Snd.sfx`, silent at SFX 0 or with the set off), stays 2.8 s, and goes; a click skips to the end and then closes it; reduced-motion switches off the bob and the mouth. The
+  box is the machine's, not the app's, so `scripts/check-apps.mjs` dismisses it before it measures leaks. `node scripts/check-farewell.mjs` (pure Node) holds the tiers, the
+  pools and the plan.
+- **A frame's decoration is pixel art on the case, not a share of the monitor** (`kernel/cos_deco.js`; `DECO_SVG` in `cos_data.js` spreads `DECO_NEW`): sized in pixels at 1:1
+  with crisp edges (leave `size` off a deco entry and it is shown at its own size), anchored to a corner or an edge, thin enough to stay on the ~10-30 px ring of plastic round the
+  glass, never over the menu bar, the desktop, the taskbar or a control. `#framedeco` follows the case's rounded corners (`border-radius: var(--case-r)`). Never
+  `preserveAspectRatio="none"` or a percentage size: the old LUNAR LANDER foil was 38% of the monitor each way, stretched, with its second piece not turned round, and covered the
+  File menu, the icons, the clock and the knobs.
 - **The elephant on the desktop** (`kernel/pet.js`, saved as `templeos.pet.v1`) exists once FREE RANGE is bought and he is let out
   of his window (GO OUTSIDE; CALL HIM IN, or his menu, brings him back). He lives in `#desktop` under every window and over every icon,
   walks, sleeps (sooner and longer after 23:00; he wakes if the pointer comes close), talks (some lines read the desk: the icon count, the
@@ -394,11 +431,35 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   `recue()` on every step of the heat. The rotation is `apps/director.js` (each tune about a minute and a half); Shabbat takes ZMIROT in on the next
   bar line and `want(null)` goes on from where it left off. It plays on the studio's `'magen'` channel, so MUS and the taskbar slider set
   how loud. `node apps/magen/music_check.js` (pure Node): bars, notes, the lead on its chords, the energy's steps, the seams.
+  **Its window is a night, not a black box, and every row stands in front of a picture of its own**, as a Cookie Clicker building does.
+  `apps/magen/style.css` is its own stylesheet (linked by the window; the clicker block that was in `kernel/theme.css` is gone): a deep-blue
+  room with a star tile, planks for the ticker, tabs and bottom bar, blue-and-gold plaques for the count, rate, goal and tooltip; the stage's
+  first eras and ground are blue rather than black. `apps/magen/backdrops.js` is the registry and the CSS, `scene_kit.js` + `scene_props.js` the
+  drawing kit (a 160x24 tile that wraps at its edges, whole-pixel rects, ordered dither, VGA16 only) and `scenes_a..e.js` the 77 scenes: one per
+  building, one per hand/kavanah/community/rule/legacy upgrade (tier rows reuse their building's), shared ones for the MITZVOT tab. A tile is
+  drawn once, on first use (and pre-drawn after the window opens), becomes a CSS rule as a `data:` URL and is tiled at 2x with
+  `image-rendering: pixelated`, so strips stay crisp in fullscreen and zoom and cost nothing per frame. A building's owned count is its own
+  icon repeated along a canvas strip (`.mgzone`, repainted only when the pane is rebuilt or resized). Affordable rows are the bare picture, rows
+  you cannot afford have a black dither over them, rows not yet unlocked (or a MITZVAH not yet earned) a blue dither veil. **A new building or
+  upgrade: add its scene to the matching `scenes_*.js` under the same id as in `data.js`** (a missing id falls back to the starfield).
 - `aftere`: `apps/aftere/index.js` - AfterEgypt, five ways across the sky to the third temple (`levels.js`: PILGRIM is the game as it was, then
   SCRIBE, PRIEST, PHARAOH and THE THIRD TEMPLE, each opened by clearing the one before). The tiers add a ship that chases the pointer at a limited
   speed, gaps that wander and breathe, locusts, gusts with a second of warning, a sky that closes in, coins and ankhs (a second chance). Pay climbs from 50 SUN
   to 2,500 plus coins a clear, a first clear and a clear with no hit pay more, and dying in the pillars keeps half the coins. `sim.js` is one run as plain data at a fixed
-  60 Hz (no canvas, no clock), `draw.js` the picture, and `aftere_check.js` flies every tier with a bot and holds the pay ladder to a rising rate a minute.
+  60 Hz (no canvas, no clock, no audio: what happened in a step is listed in `run.ev`, `coin ankh shield dead gap graze gust gust-on gust-off locust win`, with details in
+  `run.info`), `draw.js` the picture, and `aftere_check.js` flies every tier with a bot and holds the pay ladder to a rising rate a minute.
+  **It has a score and a set of effects.** All of D, so anything can fall in under anything: a title tune (NILE DAWN) and one tune per way (FIRST LIGHT hijaz 92, PAPYRUS
+  nahawand 104, THE ZAR phrygian in 6/8 at 120, KING OF THE DUNES hijaz 124, THE THIRD TEMPLE double harmonic 148 in 3+3+2, thirty-two bars), plus three stingers (clear, unlock,
+  death; death ends unresolved on an Eb over a D). Tunes are `tunes.js` (melody and chords as text), `band_early.js` / `band_late.js` (who plays) and `score_parts.js` (the shared
+  layers). Each way is a core that is a tune on its own and layers the run switches while it plays through `ctx.studio.deck('aftere')`: `build` (as the temple nears), `edge` (a
+  heartbeat when the ship is near the stone), `swarm` (locusts), `gust` (the wind, from its warning), `gate` (the last fifth). `danger.js` (pure) turns a run into those five
+  numbers, `music.js` rides the layers with `deck.levels` (fast in, slow out; nothing ever restarts the tune), takes off from bar one, plays a stinger once and brings the title
+  back, and stops when the sound goes off or the window closes. The effects (`sfx_synth.js`, `sfx.js`, all synthesised, pitched into hijaz, on the machine's SFX bus and scaled by
+  the mixer's AFTEREGYPT slider: a coin ping that climbs with its chain, an ankh bell chord, the ring breaking, stone or locust crash, a pluck on the note of each doorway you pass,
+  a close-call tick, the gust's swell and blow that sweeps the way it pushes, a locust buzz that crosses the stereo field, launch, win, first-clear coins, unlock, death, and a quiet
+  air loop that follows the steering) are all driven from `run.ev` by `audio.js`, which is all `index.js` talks to. TheStack has an AFTEREGYPT folder (the title and the five ways).
+  `node apps/aftere/music_check.js` (score, mode, layers, the sky, the controller against a fake deck) and `node apps/aftere/sfx_check.js` (the effects against a strict fake
+  AudioContext, and a whole flight through `audio.js`) are pure Node.
 - `garden`: `apps/garden/index.js` - GARDEN.EXE. Five rooms of twelve pots, each room standing in a pot of its own choice. **What grows where matters**
   (`synergy.js`, pure): HOME room, KIN pot, ROOTED (both), a room's SET pot, a BED of its own kind, MATE species beside it; hover a plant to read exactly what is helping
   it. **The work is taken out late**: drag with the can, the hand or the pull tool to sweep a rack, TEND (SPACE) waters every room and sweeps every plant with a chain
@@ -407,6 +468,10 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   `garden_check.js` runs hours of it as a player who checks in every few minutes: fully equipped, 99,999 SUN is about a quarter of an hour; from nothing, two and a half hours;
   a night away with everything bought brings in about half of it.
 - `shop`: `apps/shop/index.js` - CRAZY DAVE'S, eleven shelves (see **Dave's shop is a set of shelves**). `thumbs.js` draws every card, `lines.js` is what Dave says.
+  **A card has no `title` attribute**: the bubble in the window is the only place Dave describes a thing, and a native tooltip repeated it. **One hover in ten
+  (`CRAZY_RATE`) Dave says one of ~100 crazy lines instead of the card's own blurb** (`makeHoverTalk(rng)`: `DAVE_CRAZY` for anywhere, `DAVE_CRAZY_CAT` per shelf,
+  `DAVE_CRAZY_ITEM` functions that say the card's name and price; never the same line twice running; each at most `SPEECH_MAX` characters so the bubble stays three
+  lines); `node apps/shop/lines_check.js` (pure Node) holds the pool, the rate and the repeats.
 - `crayon`: DRAW.EXE; its extra brushes and layers are Dave's. `elephant`: the big elephant, his five places and songs, and the wardrobe and the door to the desktop.
 - `folder`: a folder window: BACK / UP / path, select (click, Ctrl, Shift, rubber band), drag and drop to move or Ctrl-copy,
   right-click menus, F2/Del/Ctrl+C/X/V/D/A/Z, Enter opens, Backspace goes up. `trash`: the RecycleBin (put back, delete for good,
@@ -437,7 +502,8 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   *charms in notches* (`bench.js`: twelve charms, three starting notches, so a build is a choice), *regions that change
   the rules* (bramble, spores, web, dark) and a *shade* that keeps half your geo where you fell. The rules of a board are
   pure in `board.js` (`node apps/sweeper/board_check.js`); `run.js` is play, `run_draw.js` is the room.
-- `cook`: Jesse (`apps/cook/jesse.js`) is drawn as a person — skin tone, buzzed hair, stubble, the yellow suit and the
+- `cook`: the story (`CK_STORY`/`CK_END` in `data.js`) is the plot of Breaking Bad told plainly, names and all, ten chapters of
+  four or five lines under 60 characters so none wraps; it used to leave every name out. Jesse (`apps/cook/jesse.js`) is drawn as a person — skin tone, buzzed hair, stubble, the yellow suit and the
   respirator round his neck. **That portrait is a third user-requested exception to the 16-colour rule** (a face needs a
   skin tone); nothing else in the app leaves VGA16. On a win he speaks first, in a box that fits what he says, and the
   BATCH COMPLETE panel does not start until he has finished.

@@ -9,6 +9,7 @@ import { Studio } from '../../kernel/studio.js';
 import { createMagenMusic } from './music.js';
 import { VGA16 } from '../../kernel/god.js';
 import { mgIcon, mgUpIcon, mgTierIcon } from './icons.js';
+import { mgBackdrops, mgAchScene } from './backdrops.js';
 import { scopedListeners } from '../lifecycle.js';
 
 /* the machine's own pixel face for everything the star's canvas has to say */
@@ -58,6 +59,8 @@ export default {
         '</div>' +
         '<div class="mgtip"></div>';
       body.appendChild(root);
+      /* a picture behind every row, and the window's own stylesheet (apps/magen/backdrops.js) */
+      const BD = mgBackdrops(root);
 
       const $  = q => root.querySelector(q);
       const cv = $('.mgcv'), g = cv.getContext('2d');
@@ -673,12 +676,13 @@ export default {
         MG_B.forEach((b, i) => {
           /* a building you have never been able to afford stays a rumour */
           const seen = S.own[i] > 0 || S.total >= MG_B[i].cost * 0.35;
-          if (!seen) { h += row('mgrow locked', '<span class="mgq">???</span>'); return; }
+          if (!seen) { h += row('mgrow locked ' + BD.cls(b.id), '<span class="mgq">???</span>'); return; }
           const c = buyN < 0 ? sellBack(i, Math.min(S.own[i], 10)) : cost(i, buyN);
           const can = buyN < 0 ? S.own[i] > 0 : S.mitz >= c;
-          h += '<div class="mgrow' + (can ? ' ready' : ' poor') + '" data-b="' + i + '">' +
+          h += '<div class="mgrow ' + BD.cls(b.id) + (can ? ' ready' : ' poor') + '" data-b="' + i + '">' +
                  icon(b.id) +
                  '<span class="mgnm"><b>' + b.n + '</b><i>' + (buyN < 0 ? '+' : '') + mgFmt(c) + '</i></span>' +
+                 BD.zone(b.id, S.own[i]) +
                  '<span class="mgown">' + S.own[i] + '</span></div>';
         });
         return h;
@@ -707,7 +711,7 @@ export default {
         if (upsShowOwned) {
           if (!own.length) return h + '<div class="mgempty">You have not bought one yet.</div>';
           own.forEach((u, n) => {
-            h += '<div class="mgrow up owned f-' + (u.k === 'tier' ? 'tier' : u.tag.toLowerCase()) +
+            h += '<div class="mgrow up owned ' + BD.cls(u.k === 'tier' ? u.b : u.id) + ' f-' + (u.k === 'tier' ? 'tier' : u.tag.toLowerCase()) +
                  '" data-o="' + n + '">' + upIcon(u) +
                  '<span class="mgnm"><b>' + u.n + '</b><i>' + u.m + '</i></span>' +
                  '<span class="mgtag">' + u.tag + '</span></div>';
@@ -717,7 +721,7 @@ export default {
         if (!list.length) return h + '<div class="mgempty">Nothing to buy. Own more of something.</div>';
         list.forEach((u, n) => {
           const can = S.mitz >= u.c;
-          h += '<div class="mgrow up f-' + (u.k === 'tier' ? 'tier' : u.tag.toLowerCase()) +
+          h += '<div class="mgrow up ' + BD.cls(u.k === 'tier' ? u.b : u.id) + ' f-' + (u.k === 'tier' ? 'tier' : u.tag.toLowerCase()) +
                (can ? ' ready' : ' poor') + '" data-u="' + n + '">' + upIcon(u) +
                '<span class="mgnm"><b>' + u.n + '</b><i>' + mgFmt(u.c) + '</i></span>' +
                '<span class="mgtag">' + u.tag + '</span></div>';
@@ -739,7 +743,7 @@ export default {
                 '(&times;' + kavMult().toFixed(3) + ' with what you have bought)</div>';
         MG_ACH.forEach(a => {
           const on = !!S.ach[a.id];
-          h += '<div class="mgach' + (on ? ' on' : '') + (a.worth0 ? ' zero' : '') + '">' +
+          h += '<div class="mgach ' + BD.cls(mgAchScene(a)) + (on ? ' on' : ' off') + (a.worth0 ? ' zero' : '') + '">' +
                '<b>' + (on ? a.n : '???') + '</b><i>' + a.d + '</i></div>';
         });
         return h;
@@ -781,7 +785,7 @@ export default {
                 (zechPer() * 100) + '%</span></div>';
         MG_LEG.forEach(u => {
           const on = !!S.leg[u.id], can = S.zech >= u.cost;
-          h += '<div class="mgrow leg' + (on ? ' owned' : can ? ' ready' : ' poor') + '" data-l="' + u.id + '">' +
+          h += '<div class="mgrow leg ' + BD.cls(u.id) + (on ? ' owned' : can ? ' ready' : ' poor') + '" data-l="' + u.id + '">' +
                legIcon(u.id) +
                '<span class="mgnm"><b>' + u.n + '</b><i>' + u.m + '</i></span>' +
                '<span class="mgtag">' + (on ? 'HELD' : u.cost + ' Z') + '</span></div>';
@@ -820,6 +824,7 @@ export default {
         pane.innerHTML = (PANES[mode] || paneStore)();
         pane.scrollTop = mode === lastMode ? pane.scrollTop : 0;
         drawIcons();
+        BD.paint(pane);
         root.querySelectorAll('.mgtab').forEach(b => b.classList.toggle('on', b.dataset.t === mode));
         const n = upgradeList().filter(u => S.mitz >= u.c).length;
         const badge = root.querySelector('.mgtab[data-t="ups"] i');
@@ -1066,9 +1071,9 @@ export default {
          loudest thing on screen is always the star. vig is how much black
          goes behind him, which is what keeps gold readable on a bright day. */
       const ERA = [
-        { sky: 0,  top: [1, 4],  hz: [1, 8],   stars: 1.0,  glow: 9,  moon: 1, vig: 0 },
-        { sky: 0,  top: [1, 8],  hz: [9, 4],   stars: 0.8,  glow: 9,  moon: 1, vig: 0 },
-        { sky: 1,  top: [0, 6],  hz: [9, 5],   stars: 0.5,  glow: 9,  moon: 1, vig: 0 },
+        { sky: 1,  top: [0, 4],  hz: [9, 6],   stars: 1.0,  glow: 9,  moon: 1, vig: 0 },
+        { sky: 1,  top: [0, 3],  hz: [9, 7],   stars: 0.8,  glow: 9,  moon: 1, vig: 0 },
+        { sky: 1,  top: [0, 5],  hz: [9, 7],   stars: 0.5,  glow: 9,  moon: 1, vig: 0 },
         { sky: 1,  top: [9, 5],  hz: [6, 6],   stars: 0.22, glow: 11, moon: 0, vig: 2 },
         { sky: 9,  top: [11, 5], hz: [14, 5],  stars: 0.0,  glow: 11, moon: 0, vig: 4 },
         { sky: 11, top: [9, 4],  hz: [14, 5],  stars: 0.0,  glow: 9,  moon: 0, vig: 6 }
@@ -1139,9 +1144,10 @@ export default {
           }
           x += w + 3;
         }
-        R(0, 250, 300, 50, 0);
-        R(0, 250, 300, 1, 8);
-        wash(0, 254, 300, 46, 8, 3);
+        /* the ground is the night's own blue, shaded, not a black slab */
+        R(0, 250, 300, 50, 1);
+        wash(0, 254, 300, 46, 0, 6);
+        R(0, 250, 300, 1, 9);
       }
 
       function drawStage(t, dt) {
@@ -1542,11 +1548,13 @@ export default {
 
       load();
       refreshAll(true);
+      BD.watch(pane); BD.warm();
       raf = requestAnimationFrame(frame);
 
       const watch = setInterval(() => {
         if (document.body.contains(cv)) return;
         clearInterval(watch);
+        BD.dispose();
         alive = false; Song.stop(); save();
         if (raf) cancelAnimationFrame(raf);
       }, 250);

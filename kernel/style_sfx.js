@@ -24,6 +24,27 @@ Object.assign(Snd, {
       this.tone(140, 260, { type: 'sawtooth', to: 35, vol: 0.07 });
     }
   },
+  /* One beat of the delete reel (kernel/delete_reel.js): the tick of a file going and a note of the tune. The higher
+     the rank, the more is stacked on the note, but the note is always the same pitch. */
+  reelNote(hz, tier, accent) {
+    const v = accent ? 0.085 : 0.06;
+    this.noise(16, { freq: 3200, q: 1.8, vol: v * 0.7 });
+    this.tone(hz, 95, { type: 'triangle', vol: v });
+    this.tone(hz * 2, 55, { type: 'square', vol: v * 0.2 });
+    if (tier >= 3) this.tone(hz / 2, 120, { type: 'sawtooth', vol: v * 0.3 });
+  },
+  /* the last beat of a pile: the tune lands on a C major chord */
+  reelEnd() {
+    [1046, 1318, 1568, 2093].forEach((f, i) => this.tone(f, 340, { type: 'triangle', delay: i * 0.018, vol: 0.04 }));
+    this.noise(90, { freq: 2400, q: 1.2, vol: 0.04 });
+  },
+  /* a single file: dun-dun, G and then C a fifth below, with the tick */
+  reelOne(tier) {
+    this.noise(20, { freq: 2800, q: 1.6, vol: 0.06 });
+    this.tone(784, 80, { type: 'triangle', vol: 0.08 });
+    this.tone(523, 190, { type: 'triangle', delay: 0.07, vol: 0.085 });
+    if (tier >= 3) this.tone(262, 200, { type: 'sawtooth', delay: 0.07, vol: 0.03 });
+  },
   /* the promotion sting: a rising fifth, higher every rank */
   rankUp(tier) {
     const base = 330 * Math.pow(1.12, tier);

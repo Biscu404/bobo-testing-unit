@@ -2,7 +2,10 @@
    window, from the Edit menu, from the keyboard. Nothing here knows which of
    those it was called from -- callers hand over paths, and get a toast back. */
 import { fs } from './vfs.js';
-import './vfs_batch.js';
+import { gatherTrash, commitTrash, hitPile } from './vfs_batch.js';
+import { Snd } from './snd.js';
+import { Style } from './style.js';
+import { planReel, chunkItems, melody } from './delete_reel.js';
 import { openWindow, createWindow, toast, askName } from './wm.js';
 import { baseName, dirOf, joinPath, changed } from './vfs_ops.js';
 
@@ -70,14 +73,43 @@ export async function dropInto(paths, dir, copyIt) {
 }
 
 /* ---- delete and undo ---------------------------------------------------------- */
-export async function deletePaths(paths) {
-  const r = await fs.trashMany(paths);
-  if (r.bad.length) say(r.bad[0], true);
-  const n = r.ids.length;
-  if (n) { undo.push(r.ids); say(n > 1 ? n + ' ITEMS IN THE RECYCLE BIN.' : baseName(paths[0]) + ' IS IN THE RECYCLE BIN.'); }
-  return n;
+/* A selection goes into the bin on a reel (kernel/delete_reel.js): the meter is hit once for the whole pile, then the
+   files go a beat at a time, each beat a short cooldown after the one before and each a note of a fast tune, so
+   deleting a lot of files is a melody and not a thump. A single file is a "dun-dun". Piles queue behind each other,
+   and Ctrl+Z waits for the one that is running. The pile is one undo. */
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+let reeling = Promise.resolve();
+
+async function reel(g) {
+  const plan = planReel(g.items.length), tier = Math.max(0, Style.tier);
+  hitPile(g.items[0].path, g.files);
+  if (g.items.length === 1) { Snd.reelOne(tier); await commitTrash(g.items); return; }
+  const tune = melody(plan.steps), beats = chunkItems(g.items, plan.chunk), t0 = performance.now();
+  for (let i = 0; i < beats.length; i++) {
+    Snd.reelNote(tune[i].hz, tier, tune[i].accent);
+    if (i === beats.length - 1) Snd.reelEnd();
+    await commitTrash(beats[i]);
+    const wait = t0 + (i + 1) * plan.gap - performance.now();
+    if (i < beats.length - 1 && wait > 0) await sleep(wait);
+  }
+}
+
+export function deletePaths(paths) {
+  const job = reeling.then(async () => {
+    const g = await gatherTrash(paths);
+    if (g.bad.length) say(g.bad[0], true);
+    const n = g.items.length;
+    if (!n) return 0;
+    await reel(g);
+    undo.push(g.items.map(i => i.id));
+    say(n > 1 ? n + ' ITEMS IN THE RECYCLE BIN.' : baseName(g.items[0].path) + ' IS IN THE RECYCLE BIN.');
+    return n;
+  });
+  reeling = job.catch(() => {});
+  return job;
 }
 export async function undoDelete() {
+  await reeling;
   while (undo.length) {
     const ids = undo.pop();
     const r = await fs.restoreMany(ids);

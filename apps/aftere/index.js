@@ -1,6 +1,8 @@
 import { LEVELS, levelById, payout } from './levels.js';
 import { createRun, stepRun, W, H } from './sim.js';
 import { draw, makeStars } from './draw.js';
+import { createAudio } from './audio.js';
+import { scopedListeners } from '../lifecycle.js';
 
 const PHOS_GLOW = [0.75, 0.40, 0.20, 0.05];
 const STEP_MS = 1000 / 60;
@@ -41,6 +43,11 @@ export default {
     const unlocked = i => i === 0 || !!prog.cleared[LEVELS[i - 1].id];
     if (!unlocked(LEVELS.indexOf(levelById(prog.level)))) prog.level = 'pilgrim';
 
+    /* the sound: the title and the way's tune on the studio's 'aftere' channel, and the effects (audio.js). The mixer's slider for it moves the effects
+       here; the tunes follow it on their own. */
+    const audio = createAudio(ctx);
+    scopedListeners(cv).on(window, 'mixer-changed', ev => { if (!ev.detail || ev.detail.channel === 'aftere') audio.relevel(); });
+
     const ui = { mode: 'ready', stars: makeStars(), phos: 0.75, pay: null, unlocked: '', best: 0, cleared: false };
     let run = null, alive = true, last = 0, acc = 0, aim = null, pointer = null, dir = 0;
     const keys = Object.create(null);
@@ -57,13 +64,14 @@ export default {
       ui.mode = 'ready'; ui.pay = null; ui.unlocked = '';
       ui.best = prog.best[L.id] || 0; ui.cleared = !!prog.cleared[L.id];
       note();
+      audio.menu(); audio.warm(L.id);
     };
     const fly = () => {
       run = createRun(level());
       if (pointer != null) { run.y = pointer; run.aim = pointer; }
       ui.mode = 'run'; ui.pay = null; ui.unlocked = '';
       acc = 0;
-      snd('ok');
+      audio.takeoff(level());
     };
     ready();
 
@@ -77,8 +85,8 @@ export default {
       if (run.won) {
         prog.cleared[L.id] = true;
         if (first && LEVELS[i + 1]) ui.unlocked = LEVELS[i + 1].name;
-        snd('holy');
-      } else { snd('err'); snd('thunk'); }
+      }
+      audio.finish({ won: run.won, first: first && ui.pay.first > 0, unlocked: !!ui.unlocked });
       if (ui.pay.total > 0 && window.Economy) window.Economy.earn(ui.pay.total, 'AFTEREGYPT: ' + (run.won ? 'THE THIRD TEMPLE' : L.name + ' (COINS)'));
       ctx.save('prog', prog);
       note();
@@ -112,7 +120,7 @@ export default {
 
     const state = { raf: null };
     const frame = ts => {
-      if (!alive || !document.body.contains(cv)) { alive = false; return; }
+      if (!alive || !document.body.contains(cv)) { alive = false; audio.stop(); return; }
       state.raf = requestAnimationFrame(frame);
       ui.phos = phos();
       const dt = Math.min(100, ts - (last || ts));
@@ -124,18 +132,21 @@ export default {
           acc -= STEP_MS;
           stepRun(run, { aim, dir });
           aim = null;                                            /* a pointer move is an event; the ship remembers where it was told to go */
-          run.ev.forEach(e => { if (e === 'coin' || e === 'ankh') snd('coin'); else if (e === 'shield') snd('thunk'); });
+          audio.events(run);
           if (run.dead || run.won) finish();
         }
       } else if (ui.mode === 'ready' && pointer != null) { run.y = pointer; run.aim = pointer; }
+      audio.frame(dt / 1000, run, ui.mode);
       draw(g, run, ui);
     };
     state.raf = requestAnimationFrame(frame);
     this._state = state;
+    this._audio = audio;
     this._stop = () => { alive = false; };
   },
   unmount() {
     if (this._stop) this._stop();
+    if (this._audio) this._audio.stop();
     if (this._state && this._state.raf) cancelAnimationFrame(this._state.raf);
   }
 };

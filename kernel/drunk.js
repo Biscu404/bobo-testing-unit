@@ -11,6 +11,12 @@
    Every swallow also lands as a kick that rides over the level and dies away
    in a second, so each measure is felt when it goes down.
 
+   It is the whole interface that is drunk, not just the picture: the filter and
+   the transform go on #room (the case, the well, the chin and the knobs as well
+   as the tube), and the edges closing in and the eyelids are an overlay fixed to
+   the viewport, so nothing on the screen stays sober. (#tube is left alone: the
+   hold knobs, the saver and the power animation own it.)
+
    How drunk that is comes from kernel/drunk_bac.js: a measure takes half a
    minute to arrive and the body clears one every 45 seconds, so the way to the
    floor is a journey of minutes and nothing that is clicked can hurry it. At the
@@ -32,7 +38,7 @@ export const Drunk = {
   kick: 0,
   raf: null,
   blood: newBlood(), out: false,
-  svg: null, lids: null, fx: {},
+  svg: null, over: null, vig: null, lids: null, fx: {},
   /* one measure, drunk; `units` is what it is worth against the Jägermeister the machine was calibrated on (1), 0 for something with nothing in it */
   drink(units = 1) {
     if (units <= 0) { this.kick = Math.max(this.kick, 0.15); this._ensureLoop(); return; }
@@ -65,17 +71,19 @@ export const Drunk = {
     this.svg = h.firstChild;
     document.body.appendChild(this.svg);
     ['dfT', 'dfN', 'dfD', 'dfO', 'dfC'].forEach(id => { this.fx[id] = this.svg.querySelector('#' + id); });
-    const screen = document.getElementById('screen');
-    if (screen && !this.lids) {
+    if (!this.over) {
+      /* one overlay for the whole viewport: the vignette, and the lids */
       const d = document.createElement('div');
-      d.id = 'drunklids';
+      d.id = 'drunkover';
       d.setAttribute('aria-hidden', 'true');
-      d.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:9;display:none';
-      d.innerHTML = '<div style="position:absolute;left:0;right:0;top:0;height:0;background:#000"></div>' +
+      d.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:2000;display:none';
+      d.innerHTML = '<div style="position:absolute;inset:0"></div>' +
+                    '<div style="position:absolute;left:0;right:0;top:0;height:0;background:#000"></div>' +
                     '<div style="position:absolute;left:0;right:0;bottom:0;height:0;background:#000"></div>';
-      const glass = document.getElementById('glass');
-      screen.insertBefore(d, glass || null);
-      this.lids = d;
+      document.body.appendChild(d);
+      this.over = d;
+      this.vig = d.children[0];
+      this.lids = [d.children[1], d.children[2]];
     }
   },
   _ensureLoop() {
@@ -96,11 +104,8 @@ export const Drunk = {
     this.raf = requestAnimationFrame(tick);
   },
   _apply(now) {
-    const screen = document.getElementById('screen');
-    const tube = document.getElementById('tube');
-    if (!tube || !screen) return;
-    /* the power on/off animation owns #tube for its own brief transition */
-    if (screen.classList.contains('collapsing') || screen.classList.contains('off')) { this._clear(); return; }
+    const room = document.getElementById('room');
+    if (!room) return;
     const L = clamp(this.level + this.kick * 0.14, 0, 1), f = this.fx;
     /* the glass bending: waves running through, and a second picture beside the first */
     const warp = L > 0.08 ? (L - 0.05) * 46 : 0;
@@ -117,34 +122,31 @@ export const Drunk = {
     const hue = Math.sin(now / 900) * L * 34;
     const sat = 1 + L * 0.9 + Math.sin(now / 650) * L * 0.2;
     const blur = L * L * 2.4 + this.kick * 1;
-    tube.style.filter = (warp > 0 ? 'url(#drunkfx) ' : '') + 'blur(' + blur.toFixed(2) + 'px) saturate(' + sat.toFixed(2) +
+    room.style.filter = (warp > 0 ? 'url(#drunkfx) ' : '') + 'blur(' + blur.toFixed(2) + 'px) saturate(' + sat.toFixed(2) +
       ') hue-rotate(' + hue.toFixed(1) + 'deg) contrast(' + (1 + L * 0.18).toFixed(2) + ')';
     /* the room tilting, the picture drifting, breathing in and out */
     const rot = Math.sin(now / 1300) * L * 2.4 + Math.sin(now / 470) * L * 0.5;
     const tx = Math.sin(now / 1700) * L * 16, ty = Math.cos(now / 1100) * L * 9;
     const z = 1 + Math.sin(now / 2300) * L * 0.03 + this.kick * 0.012;
-    tube.style.transition = 'none';
-    tube.style.transform = 'scale(var(--tube-zoom, 1)) translate(' + tx.toFixed(1) + 'px,' + ty.toFixed(1) + 'px) rotate(' + rot.toFixed(2) + 'deg) scale(' + z.toFixed(3) + ')';
+    room.style.transform = 'translate(' + tx.toFixed(1) + 'px,' + ty.toFixed(1) + 'px) rotate(' + rot.toFixed(2) + 'deg) scale(' + z.toFixed(3) + ')';
     /* the edges close in, and (late) the lids */
-    screen.style.setProperty('--drunk-vig', 'inset 0 0 ' + (60 + L * 150).toFixed(0) + 'px ' + (L * 46).toFixed(0) + 'px rgba(0,0,0,' + (L * 0.75).toFixed(2) + ')');
-    if (this.lids) {
+    if (this.over) {
+      this.over.style.display = L > 0.12 ? 'block' : 'none';
+      this.vig.style.boxShadow = 'inset 0 0 ' + (60 + L * 150).toFixed(0) + 'px ' + (L * 46).toFixed(0) + 'px rgba(0,0,0,' + (L * 0.75).toFixed(2) + ')';
       let lid = 0;
       if (L > 0.55) {
         const cyc = Math.pow(Math.max(0, Math.sin(now / (2100 - L * 700) + 1)), 7);
         lid = cyc * clamp((L - 0.5) * 1.1, 0, 0.55);
         if (L > 0.9 && Math.sin(now / 5300) > 0.985) lid = 0.62;
       }
-      this.lids.style.display = lid > 0.004 ? 'block' : 'none';
-      if (lid > 0.004) { const h = (lid * 100).toFixed(1) + '%'; this.lids.children[0].style.height = h; this.lids.children[1].style.height = h; }
+      const h = lid > 0.004 ? (lid * 100).toFixed(1) + '%' : '0';
+      this.lids[0].style.height = h; this.lids[1].style.height = h;
     }
-    screen.classList.toggle('drunk', L > 0.12);
   },
   _clear() {
-    const tube = document.getElementById('tube');
-    const screen = document.getElementById('screen');
-    if (tube) { tube.style.filter = ''; tube.style.transform = ''; tube.style.transition = ''; }
-    if (screen) { screen.style.removeProperty('--drunk-vig'); screen.classList.remove('drunk'); }
-    if (this.lids) this.lids.style.display = 'none';
+    const room = document.getElementById('room');
+    if (room) { room.style.filter = ''; room.style.transform = ''; }
+    if (this.over) { this.over.style.display = 'none'; this.lids[0].style.height = '0'; this.lids[1].style.height = '0'; }
   }
 };
 window.Drunk = Drunk;
