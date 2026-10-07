@@ -139,9 +139,10 @@ html, body {
   pointer-events: none;
   z-index: 9999;
 }
-@keyframes hum { 0%, 100% { opacity: 1; } 47% { opacity: 0.97; } 52% { opacity: 1.02; } }
-#glass.live { animation: hum 7s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { #glass.live { animation: none; } }
+/* The hum: the glass breathes by three per cent over seven seconds (hardware.js sets --hum a few times a second). It is a layer over
+   the whole screen, and as a CSS animation, smooth or stepped, the browser re-blended the entire picture every frame for a change
+   nobody can see: with the style meter at its top or two hundred icons on the desktop that was most of what a frame cost. */
+#glass { opacity: var(--hum, 1); }
 
 /* --- the chin: badge, lamp, and the monitor's own buttons ---------------- */
 #chin {
@@ -483,6 +484,11 @@ html, body {
   user-select: none;
 }
 .icon svg { width: 36px; height: 36px; display: block; margin: 0 auto 2px auto; }
+.icon .ico {
+  display: block; width: 36px; height: 36px; margin: 0 auto 2px auto;
+  background-repeat: no-repeat; background-position: center; background-size: 100% 100%; image-rendering: pixelated;
+}
+#icons .icon { contain: layout style; }
 .icon .lbl {
   display: inline-block;
   padding: 0 3px;

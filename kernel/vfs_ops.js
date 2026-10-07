@@ -16,10 +16,18 @@ export const baseName = p => p.slice(p.lastIndexOf('/') + 1);
 export const dirOf = p => { const i = p.lastIndexOf('/'); return i <= 2 ? '::' : p.slice(0, i); };
 export const joinPath = (dir, name) => (dir === '::' || dir === '::/' ? '::/' : dir.replace(/\/$/, '') + '/') + name;
 
+/* announced a moment later, once per folder: a paste of two hundred things, or a loop that renames a hundred,
+   makes one redraw of the desktop and of each folder window instead of two hundred */
+const due = new Set();
+let dueTimer = null;
 function changed(...dirs) {
-  new Set(dirs.filter(Boolean)).forEach(dir => {
-    try { window.dispatchEvent(new CustomEvent('vfs-changed', { detail: { dir } })); } catch (e) {}
-  });
+  dirs.filter(Boolean).forEach(d => due.add(d));
+  if (dueTimer || !due.size) return;
+  dueTimer = setTimeout(() => {
+    dueTimer = null;
+    const now = Array.from(due); due.clear();
+    now.forEach(dir => { try { window.dispatchEvent(new CustomEvent('vfs-changed', { detail: { dir } })); } catch (e) {} });
+  }, 24);
 }
 
 /* ---- the files the machine shipped with ------------------------------------
@@ -36,26 +44,34 @@ async function seedItems() {
   return seedCache;
 }
 const loadMoved = () => { try { return JSON.parse(localStorage.getItem(MOVED_KEY)) || {}; } catch (e) { return {}; } };
-async function track(src, dst) {
+/* pairs of [from, to]: written down in one go, and only when one of them is a file the machine shipped with */
+export async function trackMany(pairs) {
   const seed = await seedItems();
-  const hit = seed.filter(it => it.path === src || it.path.indexOf(src + '/') === 0);
-  if (!hit.length) return;
-  const moved = loadMoved();
-  hit.forEach(it => { moved[it.path] = dst + it.path.slice(src.length); });
-  try { localStorage.setItem(MOVED_KEY, JSON.stringify(moved)); } catch (e) {}
+  if (!seed.length) return;
+  let moved = null;
+  pairs.forEach(([src, dst]) => {
+    const hit = seed.filter(it => it.path === src || it.path.indexOf(src + '/') === 0);
+    if (!hit.length) return;
+    moved = moved || loadMoved();
+    hit.forEach(it => { moved[it.path] = dst + it.path.slice(src.length); });
+  });
+  if (moved) { try { localStorage.setItem(MOVED_KEY, JSON.stringify(moved)); } catch (e) {} }
 }
+const track = (src, dst) => trackMany([[src, dst]]);
 
 /* ---- names ---------------------------------------------------------------- */
-async function uniqueName(dir, name) {
-  if (!(await fs.stat(joinPath(dir, name)))) return name;
+/* the first free "Name (n)" given the names already taken: one listing of the folder, not a question per candidate */
+export function pickName(taken, name) {
+  if (!taken.has(name)) return name;
   const dot = name.lastIndexOf('.');
   const stem = dot > 0 ? name.slice(0, dot) : name, ext = dot > 0 ? name.slice(dot) : '';
-  for (let n = 2; n < 500; n++) {
+  for (let n = 2; n < 100000; n++) {
     const cand = stem + ' (' + n + ')' + ext;
-    if (!(await fs.stat(joinPath(dir, cand)))) return cand;
+    if (!taken.has(cand)) return cand;
   }
   return stem + ' (' + Date.now() + ')' + ext;
 }
+async function uniqueName(dir, name) { return pickName(await fs.names(dir), name); }
 
 function cleanName(name) {
   const n = String(name || '').replace(/[\\/]/g, '').trim();
@@ -119,15 +135,17 @@ async function trash(path) {
 
 async function trashList() {
   const ids = await fs.list(TRASH);
-  const out = [];
-  for (const d of ids) {
-    const dir = TRASH + '/' + d.name;
-    const [kids, from] = await Promise.all([fs.list(dir), fs.read(dir + '/.from')]);
-    if (!kids.length) { await fs.removeQuiet(dir); continue; }
+  const lists = await Promise.all(ids.map(d => fs.list(TRASH + '/' + d.name)));
+  const froms = await fs.readMany(ids.map(d => TRASH + '/' + d.name + '/.from'));
+  const out = [], empty = [];
+  ids.forEach((d, i) => {
+    const dir = TRASH + '/' + d.name, kids = lists[i];
+    if (!kids.length) { empty.push(dir); return; }
     const it = kids[0];
-    out.push({ id: d.name, name: it.name, type: it.type, app: it.app, from: from ? from.content : '::/' + it.name,
+    out.push({ id: d.name, name: it.name, type: it.type, app: it.app, from: froms[i] ? froms[i].content : '::/' + it.name,
                path: dir + '/' + it.name, at: parseInt(d.name, 36) || 0 });
-  }
+  });
+  if (empty.length) await fs.removeManyQuiet(empty);
   return out.sort((a, b) => b.at - a.at);
 }
 

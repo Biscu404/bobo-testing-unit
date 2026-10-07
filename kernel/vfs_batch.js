@@ -1,0 +1,103 @@
+/* Many files at once, as one operation. A selection of two hundred icons dragged to a folder, pasted, duplicated,
+   deleted or put back used to be two hundred separate round trips to the store, each one asking the folder for a free
+   name, writing, removing, writing down where a shipped file went and announcing the change, so every one of them cost
+   a little more than the last and the desktop redrew itself after each. Here a batch reads what it needs once, writes
+   in one transaction, removes in one transaction, and says what changed once.
+   Each function answers { made: [path...], bad: [message...] } and never throws for one bad item. */
+import { fs } from './vfs.js';
+import { Style } from './style.js';
+import { TRASH, baseName, dirOf, joinPath, pickName, trackMany, changed } from './vfs_ops.js';
+
+/* paths into a folder, copied or moved; the names are chosen against the folder's own listing and against each other */
+async function transferMany(srcs, dstDir, copy) {
+  const taken = await fs.names(dstDir);
+  const puts = [], gone = [], pairs = [], made = [], bad = [], from = new Set();
+  for (const src of srcs) {
+    if (from.has(src)) continue;
+    from.add(src);
+    if (src === dstDir || dstDir.indexOf(src + '/') === 0) { bad.push('A FOLDER CANNOT GO INSIDE ITSELF.'); continue; }
+    if (!copy && dirOf(src) === dstDir) { made.push(src); continue; }
+    const ents = await fs.entries(src);
+    if (!ents.length) { bad.push('THAT IS NOT THERE ANY MORE.'); continue; }
+    const name = pickName(taken, baseName(src));
+    taken.add(name);
+    const dst = joinPath(dstDir, name);
+    ents.forEach(([k, v]) => puts.push([dst + k.slice(src.length), v]));
+    if (!copy) { gone.push(src); pairs.push([src, dst]); }
+    made.push(dst);
+  }
+  await fs.putMany(puts);
+  await fs.removeManyQuiet(gone);
+  if (pairs.length) await trackMany(pairs);
+  changed(dstDir, ...gone.map(dirOf));
+  return { made, bad };
+}
+const moveMany = (srcs, dstDir) => transferMany(srcs, dstDir, false);
+const copyMany = (srcs, dstDir) => transferMany(srcs, dstDir, true);
+
+/* a copy of each, next to the original */
+async function duplicateMany(srcs) {
+  const by = new Map();
+  srcs.forEach(p => { const d = dirOf(p); by.set(d, (by.get(d) || []).concat(p)); });
+  const made = [], bad = [];
+  for (const [dir, list] of by) { const r = await transferMany(list, dir, true); made.push(...r.made); bad.push(...r.bad); }
+  return { made, bad };
+}
+
+/* into the bin, as one pile: the meter is hit once, with the number of files that died, because a pile deleted at
+   once is worth more than the same files one by one (kernel/style_model.js) and because two hundred separate hits
+   each did their own sound, their own burst of sparks and their own redraw */
+async function trashMany(paths) {
+  const puts = [], gone = [], pairs = [], ids = [], bad = [], used = new Set(), seen = new Set();
+  let files = 0;
+  for (const path of paths) {
+    if (seen.has(path)) continue;
+    seen.add(path);
+    if (path === '::' || path.indexOf(TRASH) === 0) { bad.push('THAT CANNOT BE DELETED.'); continue; }
+    const ents = await fs.entries(path);
+    if (!ents.length) { bad.push('THAT IS NOT THERE ANY MORE.'); continue; }
+    let id;
+    do { id = Date.now().toString(36) + Math.random().toString(36).slice(2, 5); } while (used.has(id));
+    used.add(id);
+    const dst = TRASH + '/' + id + '/' + baseName(path);
+    puts.push([TRASH + '/' + id + '/.from', { type: 'text', content: path }]);
+    ents.forEach(([k, v]) => { puts.push([dst + k.slice(path.length), v]); if (baseName(k) !== '.keep') files++; });
+    gone.push(path); pairs.push([path, dst]); ids.push(id);
+  }
+  await fs.putMany(puts);
+  await fs.removeManyQuiet(gone);
+  if (pairs.length) await trackMany(pairs);
+  if (ids.length) { try { Style.hit({ name: baseName(gone[0]) }, Math.max(1, files)); } catch (e) {} }
+  changed(TRASH, ...gone.map(dirOf));
+  return { ids, bad };
+}
+
+/* put a group back where each came from */
+async function restoreMany(ids) {
+  const recs = await fs.readMany(ids.map(id => TRASH + '/' + id + '/.from'));
+  const by = new Map(), made = [], bad = [];
+  for (let i = 0; i < ids.length; i++) {
+    const dir = TRASH + '/' + ids[i];
+    const kids = await fs.list(dir);
+    if (!kids.length) { bad.push('THAT IS NOT IN THE BIN ANY MORE.'); continue; }
+    const target = dirOf(recs[i] ? recs[i].content : '::/' + kids[0].name);
+    if (!by.has(target)) by.set(target, []);
+    by.get(target).push({ src: dir + '/' + kids[0].name, dir });
+  }
+  for (const [target, list] of by) {
+    const r = await transferMany(list.map(x => x.src), target, false);
+    made.push(...r.made); bad.push(...r.bad);
+    await fs.removeManyQuiet(list.map(x => x.dir));
+    changed(TRASH, target);
+  }
+  return { made, bad };
+}
+
+/* gone for good: the listed bin entries, in one go */
+async function purgeMany(ids) {
+  await fs.removeManyQuiet(ids.map(id => TRASH + '/' + id));
+  changed(TRASH);
+}
+
+Object.assign(fs, { moveMany, copyMany, duplicateMany, trashMany, restoreMany, purgeMany });
+export { moveMany, copyMany, duplicateMany, trashMany, restoreMany, purgeMany };

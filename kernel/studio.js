@@ -170,7 +170,8 @@ export const Studio = {
     };
     song.tracks.forEach(t => mix.bus(t.id));
     mix.apply(song.tracks, song.bpm);
-    if (o.fadeIn > 0) { mix.master.gain.value = 0.0001; p.fade(1, o.fadeIn); }
+    /* a song queued to begin later fades in from when it begins, not from now */
+    if (o.fadeIn > 0) { mix.master.gain.value = 0.0001; p.fade(1, o.fadeIn, o.startAt); }
     const tick = () => {
       if (!p.playing) return;
       const spb = 60 / song.bpm;

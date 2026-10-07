@@ -57,12 +57,13 @@ export default {
     const selected = () => rows.filter(r => picked.has(r.id));
 
     async function restore(rs) {
-      for (const r of rs) { try { await ctx.fs.trashRestore(r.id); } catch (e) { toast(e.message); } }
+      const done = await ctx.fs.restoreMany(rs.map(r => r.id));
+      if (done.bad.length) toast(done.bad[0]);
       if (rs.length) { toast('PUT BACK ' + rs.length + ' ITEM' + (rs.length === 1 ? '' : 'S') + '.'); if (window.Snd) window.Snd.ok(); }
     }
     async function purge(rs) {
       if (!rs.length) return;
-      for (const r of rs) await ctx.fs.trashPurge(r.id);
+      await ctx.fs.purgeMany(rs.map(r => r.id));
       toast(rs.length + ' ITEM' + (rs.length === 1 ? '' : 'S') + ' GONE FOR GOOD.');
       if (window.Snd) window.Snd.del();
     }
@@ -97,9 +98,9 @@ export default {
             accept: z => z.drop !== '@trash',
             onDrop: async (zone) => {
               if (!zone || zone.drop === '@trash') return;
-              for (const m of mine) {
-                try { await ctx.fs.move(m.path, zone.drop); await ctx.fs.trashPurge(m.id); } catch (e) { toast(e.message); }
-              }
+              const out = await ctx.fs.moveMany(mine.map(m => m.path), zone.drop);
+              if (out.bad.length) toast(out.bad[0]);
+              await ctx.fs.purgeMany(mine.map(m => m.id));
               toast('MOVED ' + mine.length + ' ITEM' + (mine.length === 1 ? '' : 'S') + ' OUT OF THE BIN.');
             }
           });

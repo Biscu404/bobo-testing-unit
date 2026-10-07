@@ -95,17 +95,19 @@ const r = await page.evaluate(async () => {
   const mg = mods.magen.song(L, 'freygish'), bare = JSON.parse(JSON.stringify(mg)), full = JSON.parse(JSON.stringify(mg));
   bare.tracks.forEach(t => { if (t.layer) t.mute = true; });
   out.magen = { layers: [...new Set(mg.tracks.map(t => t.layer))].filter(Boolean).sort().join(), bare: peak(await Studio.render(bare, { level: 0.9, from: 0, to: 16, tail: 1 })).p, full: peak(await Studio.render(full, { level: 0.9, from: 0, to: 16, tail: 1 })).p };
-  const sy = await import('/kernel/symphony.js'), sym = sy.symphony(L), harp = sym.tracks.find(t => t.name === 'HARP').notes;
-  out.sym = { bars: sym.bars, secs: sy.SECONDS, tracks: sym.tracks.length, opening: harp.slice(0, 7).map(n => n[2]).join(), badNotes: sym.tracks.reduce((a, t) => a + (t.notes || []).filter(badNote).length, 0) };
-  /* the whole of it, through the limiter, in bars: what the listener hears, not what is written (a loud mix is flattened to one level
-     by the limiter, so the band is made smaller before it, bar by bar, and this is where that is held to account) */
-  const whole = await Studio.render(sym, { level: 0.5, tail: 2, limit: -6 }), per = Math.round(1.5 * whole.sampleRate), bar = [];
-  const d0 = whole.getChannelData(0), d1 = whole.getChannelData(1);
-  let pk = 0;
-  for (let b = 0; b < 100; b++) { let sum = 0, e = Math.min(d0.length, (b + 1) * per); for (let i = b * per; i < e; i++) { const v = (d0[i] + d1[i]) / 2; sum += v * v; pk = Math.max(pk, Math.abs(d0[i]), Math.abs(d1[i])); } bar.push(Math.sqrt(sum / per)); }
-  const db = (a, z) => { let s = 0; for (let i = a - 1; i < z; i++) s += bar[i]; return 20 * Math.log10(s / (z - a + 1)); };
-  out.symStart = peak(await Studio.render(sym, { level: 0.5, from: 0, to: 32, tail: 1 })).p;
-  out.arc = { peak: pk, intro: db(5, 8), ignition: db(9, 16), question: db(17, 24), answer: db(25, 32), breath: db(33, 36), lift: db(41, 48), low: db(49, 52), climax: db(57, 72), finale: db(73, 88), outro: db(93, 99) };
+  /* the style meter's song: a recording, decoded once, and the opening it is given */
+  const st = await import('/kernel/style_track.js'), plan = await import('/kernel/style_track_plan.js');
+  const t0 = performance.now(), tb = await st.loadTrack(), took = performance.now() - t0;
+  const ch = tb.getChannelData(0), win = Math.round(tb.sampleRate * 5);
+  let first = 0, pk = 0; for (let i = 0; i < ch.length; i++) { const v = Math.abs(ch[i]); if (v > pk) pk = v; if (i < win) first += ch[i] * ch[i]; }
+  out.track = { secs: tb.duration, ch: tb.numberOfChannels, took, peak: pk, first: Math.sqrt(first / win), playing: false, ran: false };
+  await st.StyleTrack.start();
+  await new Promise(r => setTimeout(r, 1200));
+  out.track.playing = !!st.StyleTrack.run && st.StyleTrack.run.srcs.length >= 1;
+  const run = st.StyleTrack.run;
+  out.track.ran = !!run && run.next === 1;
+  st.StyleTrack.stop();
+  out.track.plan = { songAt0: plan.songGain(0), songAtBlend: plan.songGain(plan.BLEND), pass1: plan.pass(1, tb.duration).at };
   return out;
 });
 ok(r.count >= 20, `at least twenty real instruments (${r.count}) and a drum kit of ${r.kit.length} pieces`);
@@ -122,16 +124,13 @@ ok(r.chunked, 'a long song is rendered in stretches and comes out the right leng
 ok(r.scoreCount === 17 && !r.scores.length, `the games' seventeen songs for real instruments are all valid${r.scores.length ? ': ' + r.scores.join(', ') : ''}`);
 ok(r.magen.layers === 'h1,h2,h3' && r.magen.bare > 0.05 && r.magen.full > r.magen.bare * 0.9 && r.magen.full <= 1.0, `Magen's band has three layers; the core alone sounds (${r.magen.bare.toFixed(2)}) and all of it together (${r.magen.full.toFixed(2)}) does not clip`);
 ok(r.layers.includes('combat') && r.layers.includes('explore') && r.layers.includes('tension'), "Stand Battle's score carries its three layers");
-ok(r.sym.bars === 100 && Math.abs(r.sym.secs - 150) < 0.5 && r.sym.tracks >= 12 && r.sym.badNotes === 0, `the symphony is a hundred bars, two and a half minutes, and sound all through (${r.sym.tracks} tracks)`);
-ok(r.sym.opening === '72,76,79,84,88,91,96' && r.symStart > 0.05, 'and it opens on the notes of the delete sound (C E G C E G C) and is audible');
 {
-  const a = r.arc, f = x => x.toFixed(1);
-  ok(a.ignition - a.intro > 6, `the drop hits: the ignition is over 6 dB above the unwrapping's build (${f(a.ignition - a.intro)} dB)`);
-  ok(a.climax - a.question > 4 && a.climax - a.answer > 2 && a.climax - a.ignition > 3, `the climax is the loudest place by a real margin over the tune, its answer and the ignition (${f(a.climax - a.question)} / ${f(a.climax - a.answer)} / ${f(a.climax - a.ignition)} dB)`);
-  ok(a.climax - a.breath > 12 && a.lift - a.breath > 8, `the breath is a breath: ${f(a.climax - a.breath)} dB under the climax`);
-  ok(a.lift - a.low > 5 && a.climax - a.low > 8, `and the minor key comes back small after the lift (${f(a.lift - a.low)} dB under it)`);
-  ok(a.finale >= a.climax - 1.5, `the finale keeps the climax's level (${f(a.finale - a.climax)} dB)`);
-  ok(a.peak < 1.4, `and nothing is thrown past the limiter (peak ${a.peak.toFixed(2)})`);
+  const t = r.track;
+  ok(Math.abs(t.secs - 149.3) < 0.3 && t.ch === 2 && t.peak > 0.5, `the style meter's song decodes whole: ${t.secs.toFixed(1)} s, ${t.ch} channels, peak ${t.peak.toFixed(2)}`);
+  ok(t.took < 8000, `and is ready in ${(t.took / 1000).toFixed(1)} s, not minutes`);
+  ok(t.first > 0.005 && t.first < 0.2, `its first five seconds are quiet enough to sit under the delete sound (rms ${t.first.toFixed(3)})`);
+  ok(t.playing && t.ran, 'the meter starts it: a pass is on the audio clock and is the only one scheduled so far');
+  ok(t.plan.songAt0 === 0 && Math.abs(t.plan.songAtBlend - 1) < 1e-9 && t.plan.pass1 > 120 && t.plan.pass1 < t.secs, `it comes up from nothing over ${5} s and comes round again at ${t.plan.pass1.toFixed(1)} s`);
 }
 
 /* the app */

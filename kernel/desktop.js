@@ -1,12 +1,12 @@
 import { fs as vfs } from './vfs.js';
 import { openWindow, toast } from './wm.js';
-import { SPRITES } from './sprites.js';
-import './sprites_extra.js';
 import { showMenu, hideMenus } from './menus.js';
-import { wireDrop, wirePickers } from './importer.js';
+import { wireDrop, wirePickers, importFiles } from './importer.js';
 import { applyWallpaper, clearWallpaper, hasWallpaper } from './wallpaper.js';
 import { Dnd } from './dnd.js';
 import { Active, wireActive, openItem, deletePaths, newFolderPrompt, restoreSystemFiles } from './fileops.js';
+import { iconEl, spriteFor } from './icons_dom.js';
+import { layout, slotOf, gridOf, cellOf, cellPos, nearestFree } from './desk_grid.js';
 import { itemMenu, spaceMenu } from './filemenus.js';
 import { wireMenubar } from './menubar.js';
 import { joinPath, baseName, TRASH } from './vfs_ops.js';
@@ -14,13 +14,14 @@ import { joinPath, baseName, TRASH } from './vfs_ops.js';
 export { showMenu, hideMenus } from './menus.js';
 export { pickUpload, wireDrop } from './importer.js';
 export { newFolderPrompt } from './fileops.js';
+export { spriteFor };
 
 const ICON_POS_KEY = 'templeos.icons.v1';
-const ICON_W = 84, ICON_H = 78;
 
 let iconPos = {};
 let lastList = [];                /* the most recent desktop item list, name -> item lookups */
 let arrivals = [];                /* where things dragged in from a window should land */
+const iconEls = new Map();        /* name -> the element on the desk, kept from one drawing to the next */
 
 function loadIconPos() {
   try { iconPos = JSON.parse(localStorage.getItem(ICON_POS_KEY)) || {}; }
@@ -29,79 +30,33 @@ function loadIconPos() {
 function saveIconPos() {
   try { localStorage.setItem(ICON_POS_KEY, JSON.stringify(iconPos)); } catch (e) {}
 }
-
-const APP_SPRITES = {
-  hifi: 'disc', notes: 'notes', bottle: 'bottle', elephant: 'elephant',
-  magen: 'magen', cook: 'flask', garden: 'garden', sweeper: 'sweeper',
-  solitaire: 'solitaire', crayon: 'crayon', shop: 'shop', drawings: 'drawings',
-  account: 'account', standbattle: 'arena', garage: 'garage'
-};
-
-export function spriteFor(type, app) {
-  if (type === 'folder')   return SPRITES.folder;
-  if (type === 'image')    return SPRITES.image;
-  if (type === 'video')    return SPRITES.video;
-  if (type === 'terminal') return SPRITES.terminal;
-  if (type === 'bin')      return SPRITES.bin;
-  if (type === 'binfull')  return SPRITES.binfull;
-  if (type === 'song')     return SPRITES.song;
-  if (type === 'app')      return SPRITES[APP_SPRITES[app]] || SPRITES.app;
-  if (type === 'doc')      return SPRITES.doc;
-  if (type === 'code')     return SPRITES.code;
-  return SPRITES.text;
-}
-
-function iconSlot(i) {
+const deskDims = () => {
   const desk = document.getElementById('desktop');
-  const h = (desk && (desk.clientHeight || desk.offsetHeight)) || 600;
-  const rows = Math.max(1, Math.floor((h - 12) / ICON_H));
-  return { x: 8 + Math.floor(i / rows) * ICON_W, y: 8 + (i % rows) * ICON_H };
-}
-
-/* the grid an icon actually lives on: whole cells from the same (8, 8)
-   origin every layout function uses, so nothing can end up between them */
-function cellOf(x, y) {
-  return { c: Math.round((x - 8) / ICON_W), r: Math.round((y - 8) / ICON_H) };
-}
-function cellPos(c, r) {
-  return { x: 8 + c * ICON_W, y: 8 + r * ICON_H };
-}
+  return { w: (desk && desk.clientWidth) || 640, h: (desk && (desk.clientHeight || desk.offsetHeight)) || 600 };
+};
+const iconSlot = i => slotOf(i, deskDims().h);
 
 /* find the nearest free cell to where an icon wants to land, spiralling
    outward until one is clear of every OTHER icon on the desk */
 function freeCell(wantX, wantY, excludeNames) {
-  const desk = document.getElementById('desktop');
-  const dw = (desk && desk.clientWidth) || 640, dh = (desk && desk.clientHeight) || 480;
-  const cols = Math.max(1, Math.floor((dw - 8) / ICON_W));
-  const rows = Math.max(1, Math.floor((dh - 8) / ICON_H));
+  const { w, h } = deskDims(), { cols, rows } = gridOf(w, h);
   const taken = new Set();
   Object.keys(iconPos).forEach(name => {
     if (excludeNames.has(name)) return;
-    const p = iconPos[name];
-    const cell = cellOf(p.x, p.y);
-    taken.add(cell.c + ',' + cell.r);
+    const c = cellOf(iconPos[name].x, iconPos[name].y);
+    taken.add(c.c + ',' + c.r);
   });
   const want = cellOf(wantX, wantY);
-  const c0 = Math.max(0, Math.min(cols - 1, want.c));
-  const r0 = Math.max(0, Math.min(rows - 1, want.r));
-  for (let ring = 0; ring < cols + rows; ring++) {
-    for (let dc = -ring; dc <= ring; dc++) {
-      for (let dr = -ring; dr <= ring; dr++) {
-        if (Math.max(Math.abs(dc), Math.abs(dr)) !== ring) continue;
-        const c = c0 + dc, r = r0 + dr;
-        if (c < 0 || r < 0 || c >= cols || r >= rows) continue;
-        if (taken.has(c + ',' + r)) continue;
-        return cellPos(c, r);
-      }
-    }
-  }
-  return cellPos(c0, r0);
+  const c0 = Math.max(0, Math.min(cols - 1, want.c)), r0 = Math.max(0, Math.min(rows - 1, want.r));
+  const hit = nearestFree(taken, c0, r0, cols, rows);
+  return hit ? cellPos(hit.c, hit.r) : cellPos(c0, r0);
 }
 
 /* ---- what is selected, as the file commands want it ------------------------- */
+const iconsBox = () => document.getElementById('icons');
 const deskIcons = () => Array.prototype.slice.call(document.querySelectorAll('#icons .icon'));
-const clearIconSel = () => deskIcons().forEach(n => n.classList.remove('sel'));
-const selectedIcons = () => deskIcons().filter(n => n.classList.contains('sel'));
+const clearIconSel = () => document.querySelectorAll('#icons .icon.sel').forEach(n => n.classList.remove('sel'));
+const selectedIcons = () => Array.prototype.slice.call(document.querySelectorAll('#icons .icon.sel'));
 const itemOf = name => {
   const it = lastList.find(x => x.name === name);
   return it ? Object.assign({}, it, it.vfs ? { path: joinPath('::', name) } : {}) : null;
@@ -122,6 +77,7 @@ export async function initDesktop() {
   wirePickers();
   wireMarquee(desk);
   wireDrop(desk, () => '::');
+  wireIcons(iconsBox());
   wireDeskContextMenu(desk);
   wireActive(deskEnv);
   window.addEventListener('vfs-changed', ev => {
@@ -158,8 +114,9 @@ function wireDeskContextMenu(desk) {
 /* put every icon back on the grid, left edge first, top to bottom */
 export function arrangeIcons() {
   iconPos = {};
-  deskIcons().forEach((el, i) => {
-    const p = iconSlot(i);
+  const dims = deskDims(), els = deskIcons();
+  els.forEach((el, i) => {
+    const p = slotOf(i, dims.h);
     el.style.left = p.x + 'px';
     el.style.top = p.y + 'px';
     iconPos[el.dataset.name] = p;
@@ -187,135 +144,181 @@ export async function refreshIcons() {
   }
 }
 
+/* The desk is drawn from what changed, not from nothing: an icon whose name and kind are the same keeps its
+   element (and its selection), a new one is made, a gone one is dropped, and only what moved is restyled. With
+   two hundred icons the whole of a redraw is now a listing, one pass of arithmetic and a handful of elements. */
 async function buildIcons() {
-  const iconsContainer = document.getElementById('icons');
-  if (!iconsContainer) return;
+  const box = iconsBox();
+  if (!box) return;
   try {
-    const list = (await vfs.list('::')).map(it => Object.assign(it, { vfs: true }));
-    const bin = await vfs.list(TRASH);
+    const [files, bin] = await Promise.all([vfs.list('::'), vfs.list(TRASH)]);
+    const list = files.map(it => Object.assign(it, { vfs: true }));
     // the terminal and the bin are kernel primitives, not VFS nodes
     list.push({ name: 'TERMINAL', type: 'terminal' });
     list.push({ name: 'RecycleBin', type: bin.length ? 'binfull' : 'bin' });
     lastList = list;
-    const keepSel = new Set(selectedIcons().map(n => n.dataset.name));
 
-    // forget icons for anything that no longer exists, so their old cells
-    // don't stay "taken" forever
+    // forget icons for anything that no longer exists, so their old cells don't stay "taken" forever
     const liveNames = new Set(list.map(it => it.name));
     Object.keys(iconPos).forEach(name => { if (!liveNames.has(name)) delete iconPos[name]; });
 
-    const els = list.map((item, i) => {
-      const el = document.createElement('div');
-      el.className = 'icon' + (keepSel.has(item.name) ? ' sel' : '');
-      el.innerHTML = spriteFor(item.type, item.app);
-      el.dataset.name = item.name;
-      if (item.type === 'folder') el.dataset.drop = joinPath('::', item.name);
-      if (item.type === 'bin' || item.type === 'binfull') el.dataset.drop = '@trash';
+    const stored = {};
+    list.forEach(it => { if (iconPos[it.name]) stored[it.name] = iconPos[it.name]; });
+    const spots = layout(list, stored, arrivals, deskDims());
+    arrivals = arrivals.slice(list.filter(it => !stored[it.name]).length);
+    let moved = false;
 
-      const lbl = document.createElement('div');
-      const span = document.createElement('span');
-      span.className = 'lbl';
-      span.textContent = item.name;
-      lbl.appendChild(span);
-      el.appendChild(lbl);
-
-      const arrival = !iconPos[item.name] && arrivals.length ? arrivals.shift() : null;
-      const want = iconPos[item.name] || arrival || iconSlot(i);
-      const pos = freeCell(want.x, want.y, new Set([item.name]));
-      el.style.left = pos.x + 'px';
-      el.style.top = pos.y + 'px';
+    const order = list.map(item => {
+      const sig = item.type + ':' + (item.app || '');
+      let rec = iconEls.get(item.name);
+      if (!rec || rec.sig !== sig) {
+        rec = { el: iconEl(item), sig, x: null, y: null };
+        if (item.type === 'folder') rec.el.dataset.drop = joinPath('::', item.name);
+        if (item.type === 'bin' || item.type === 'binfull') rec.el.dataset.drop = '@trash';
+        iconEls.set(item.name, rec);
+      }
+      const pos = spots.get(item.name);
+      if (rec.x !== pos.x || rec.y !== pos.y) { rec.el.style.left = pos.x + 'px'; rec.el.style.top = pos.y + 'px'; rec.x = pos.x; rec.y = pos.y; }
+      const old = iconPos[item.name];
+      if (!old || old.x !== pos.x || old.y !== pos.y) moved = true;
       iconPos[item.name] = pos;
-
-      el.addEventListener('dblclick', ev => {
-        ev.stopPropagation();
-        if (window.Snd) window.Snd.open();
-        openItem('::', itemOf(item.name) || item);
-      });
-      el.addEventListener('contextmenu', ev => {
-        ev.preventDefault();
-        ev.stopPropagation();
-        if (!el.classList.contains('sel')) { clearIconSel(); el.classList.add('sel'); }
-        Active.env = deskEnv;
-        openIconContextMenu(ev, item);
-      });
-      wireDeskIcon(el, item);
-      if (item.type === 'folder') wireDrop(el, () => joinPath('::', item.name));
-      return el;
+      return rec.el;
     });
-    iconsContainer.replaceChildren(...els);
-    saveIconPos();
+    iconEls.forEach((rec, name) => { if (!liveNames.has(name)) iconEls.delete(name); });
+
+    const cur = box.children;
+    let same = cur.length === order.length;
+    for (let i = 0; same && i < order.length; i++) if (cur[i] !== order[i]) same = false;
+    if (!same) box.replaceChildren(...order);
+    if (moved) saveIconPos();
   } catch (e) {
     console.error('Failed to load desktop icons', e);
   }
 }
 
+/* One set of listeners for every icon on the desk, on the box that holds them, instead of three or four on each
+   of two hundred. They look at what was hit. */
+function wireIcons(box) {
+  const iconOf = ev => (ev.target && ev.target.closest) ? ev.target.closest('.icon') : null;
+  box.addEventListener('dblclick', ev => {
+    const el = iconOf(ev);
+    if (!el) return;
+    ev.stopPropagation();
+    if (window.Snd) window.Snd.open();
+    const it = itemOf(el.dataset.name);
+    if (it) openItem('::', it);
+  });
+  box.addEventListener('contextmenu', ev => {
+    const el = iconOf(ev);
+    if (!el) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (!el.classList.contains('sel')) { clearIconSel(); el.classList.add('sel'); }
+    Active.env = deskEnv;
+    const it = itemOf(el.dataset.name);
+    if (it) openIconContextMenu(ev, it);
+  });
+  box.addEventListener('pointerdown', ev => { const el = iconOf(ev); if (el) pressIcon(ev, el); });
+  /* files dragged in from the user's own computer, onto a folder icon, go into that folder */
+  const folderUnder = ev => { const el = iconOf(ev); return el && el.dataset.drop && el.dataset.drop.indexOf('::/') === 0 ? el : null; };
+  const hasFiles = ev => ev.dataTransfer && Array.prototype.indexOf.call(ev.dataTransfer.types || [], 'Files') >= 0;
+  box.addEventListener('dragover', ev => {
+    const el = folderUnder(ev);
+    if (!el || !hasFiles(ev)) return;
+    ev.preventDefault(); ev.stopPropagation();
+    ev.dataTransfer.dropEffect = 'copy';
+    box.querySelectorAll('.icon.dropok').forEach(n => { if (n !== el) n.classList.remove('dropok'); });
+    el.classList.add('dropok');
+  });
+  box.addEventListener('dragleave', ev => {
+    const el = folderUnder(ev);
+    if (el && !el.contains(ev.relatedTarget)) el.classList.remove('dropok');
+  });
+  box.addEventListener('drop', ev => {
+    const el = folderUnder(ev);
+    if (!el || !ev.dataTransfer || !ev.dataTransfer.files.length) return;
+    ev.preventDefault(); ev.stopPropagation();
+    if (window.Snd) window.Snd.drop();
+    document.querySelectorAll('.dropok').forEach(n => n.classList.remove('dropok'));
+    importFiles(ev.dataTransfer.files, null, el.dataset.drop);
+  });
+}
+
 /* drag to move (alone or as part of a multi-selection), click to select,
    ctrl/shift-click to add to the selection. Let go over a folder and the
    things go into it; over the recycle bin and they are deleted. */
-function wireDeskIcon(el, item) {
-  el.addEventListener('pointerdown', ev => {
-    if (ev.button !== 0) return;
-    ev.stopPropagation();
-    const add = ev.ctrlKey || ev.metaKey || ev.shiftKey;
-    if (add) {
-      el.classList.toggle('sel');
-      if (window.Snd) window.Snd.select();
-    } else if (!el.classList.contains('sel')) {
-      clearIconSel();
-      el.classList.add('sel');
-      if (window.Snd) window.Snd.select();
-    }
-    Active.env = deskEnv;
+function pressIcon(ev, el) {
+  if (ev.button !== 0) return;
+  ev.stopPropagation();
+  const add = ev.ctrlKey || ev.metaKey || ev.shiftKey;
+  if (add) {
+    el.classList.toggle('sel');
+    if (window.Snd) window.Snd.select();
+  } else if (!el.classList.contains('sel')) {
+    clearIconSel();
+    el.classList.add('sel');
+    if (window.Snd) window.Snd.select();
+  }
+  Active.env = deskEnv;
 
-    const desk = document.getElementById('desktop');
-    const sx = ev.clientX, sy = ev.clientY;
-    const group = selectedIcons().map(n => ({ n, x: n.offsetLeft, y: n.offsetTop }));
-    const files = deskEnv.items();
+  const desk = document.getElementById('desktop');
+  const sx = ev.clientX, sy = ev.clientY;
+  /* every measurement the drag needs is taken now, once: reading a size in the middle of moving two hundred
+     icons makes the browser lay the whole desk out again for each one */
+  const dw = desk.clientWidth, dh = desk.clientHeight;
+  const group = selectedIcons().map(n => ({ n, x: n.offsetLeft, y: n.offsetTop, w: n.offsetWidth, h: n.offsetHeight }));
+  const files = deskEnv.items();
 
-    const snap = () => {
-      const groupNames = new Set(group.map(s => s.n.dataset.name));
-      group.forEach(s => {
-        s.n.classList.remove('dragging');
-        const p = freeCell(s.n.offsetLeft, s.n.offsetTop, groupNames);
-        s.n.style.left = p.x + 'px';
-        s.n.style.top = p.y + 'px';
-        iconPos[s.n.dataset.name] = p;
-        groupNames.delete(s.n.dataset.name);   /* this one has landed; the rest must avoid it too */
-      });
-      saveIconPos();
-      if (window.Snd) window.Snd.drop();
-    };
-    const home = () => group.forEach(s => {
+  const snap = () => {
+    const names = new Set(group.map(s => s.n.dataset.name));
+    const { cols, rows } = gridOf(dw, dh), taken = new Set();
+    Object.keys(iconPos).forEach(name => {
+      if (names.has(name)) return;
+      const c = cellOf(iconPos[name].x, iconPos[name].y);
+      taken.add(c.c + ',' + c.r);
+    });
+    group.forEach(s => {
       s.n.classList.remove('dragging');
-      s.n.style.left = s.x + 'px'; s.n.style.top = s.y + 'px';
+      const want = cellOf(s.n.offsetLeft, s.n.offsetTop);
+      const c0 = Math.max(0, Math.min(cols - 1, want.c)), r0 = Math.max(0, Math.min(rows - 1, want.r));
+      const hit = nearestFree(taken, c0, r0, cols, rows) || { c: c0, r: r0 };
+      taken.add(hit.c + ',' + hit.r);          /* this one has landed; the rest must avoid it too */
+      const p = cellPos(hit.c, hit.r);
+      s.n.style.left = p.x + 'px';
+      s.n.style.top = p.y + 'px';
+      iconPos[s.n.dataset.name] = p;
+      const rec = iconEls.get(s.n.dataset.name);
+      if (rec) { rec.x = p.x; rec.y = p.y; }
     });
+    saveIconPos();
+    if (window.Snd) window.Snd.drop();
+  };
+  const home = () => group.forEach(s => {
+    s.n.classList.remove('dragging');
+    s.n.style.left = s.x + 'px'; s.n.style.top = s.y + 'px';
+  });
 
-    Dnd.begin(ev, {
-      paths: files.map(f => f.path), live: true,
-      accept: z => z.drop !== '::',
-      onStart: () => group.forEach(s => s.n.classList.add('dragging')),
-      onMove: e => {
-        const dx = e.clientX - sx, dy = e.clientY - sy;
-        group.forEach(s => {
-          s.n.style.left = Math.max(0, Math.min(s.x + dx, desk.clientWidth - s.n.offsetWidth)) + 'px';
-          s.n.style.top = Math.max(0, Math.min(s.y + dy, desk.clientHeight - s.n.offsetHeight)) + 'px';
-        });
-      },
-      onDrop: async (zone, e, cancelled) => {
-        if (cancelled) { home(); return; }
-        if (!zone || zone.drop === '::' || !files.length) { snap(); return; }
-        home();
-        if (zone.drop === '@trash') { await deletePaths(files.map(f => f.path)); return; }
-        let n = 0;
-        for (const f of files) {
-          try {
-            if (e.ctrlKey) await vfs.copy(f.path, zone.drop); else await vfs.move(f.path, zone.drop);
-            n++;
-          } catch (err) { toast(err.message); if (window.Snd) window.Snd.err(); }
-        }
-        if (n) { toast((e.ctrlKey ? 'COPIED ' : 'MOVED ') + n + ' ITEM' + (n === 1 ? '' : 'S') + ' TO ' + baseName(zone.drop) + '.'); if (window.Snd) window.Snd.drop(); }
-      }
-    });
+  Dnd.begin(ev, {
+    paths: files.map(f => f.path), live: true,
+    accept: z => z.drop !== '::',
+    onStart: () => group.forEach(s => s.n.classList.add('dragging')),
+    onMove: e => {
+      const dx = e.clientX - sx, dy = e.clientY - sy;
+      group.forEach(s => {
+        s.n.style.left = Math.max(0, Math.min(s.x + dx, dw - s.w)) + 'px';
+        s.n.style.top = Math.max(0, Math.min(s.y + dy, dh - s.h)) + 'px';
+      });
+    },
+    onDrop: async (zone, e, cancelled) => {
+      if (cancelled) { home(); return; }
+      if (!zone || zone.drop === '::' || !files.length) { snap(); return; }
+      home();
+      if (zone.drop === '@trash') { await deletePaths(files.map(f => f.path)); return; }
+      const out = await (e.ctrlKey ? vfs.copyMany : vfs.moveMany)(files.map(f => f.path), zone.drop);
+      const n = out.made.length;
+      if (out.bad.length) { toast(out.bad[0]); if (window.Snd) window.Snd.err(); }
+      if (n) { toast((e.ctrlKey ? 'COPIED ' : 'MOVED ') + n + ' ITEM' + (n === 1 ? '' : 'S') + ' TO ' + baseName(zone.drop) + '.'); if (window.Snd) window.Snd.drop(); }
+    }
   });
 }
 
@@ -331,7 +334,7 @@ function wireMarquee(desk) {
 
     const r = desk.getBoundingClientRect();
     const ox = ev.clientX - r.left, oy = ev.clientY - r.top;
-    let live = false;
+    let live = false, rects = null;
 
     const move = e2 => {
       const cx = e2.clientX - r.left, cy = e2.clientY - r.top;
@@ -344,12 +347,13 @@ function wireMarquee(desk) {
         box.style.width = Math.abs(cx - ox) + 'px';
         box.style.height = Math.abs(cy - oy) + 'px';
       }
+      /* the icons do not move while the band does: measure them once, then it is arithmetic */
+      if (!rects) rects = deskIcons().map(n => ({ n, l: n.offsetLeft, t: n.offsetTop, w: n.offsetWidth, h: n.offsetHeight, on: n.classList.contains('sel') }));
       const mx0 = Math.min(ox, cx), mx1 = Math.max(ox, cx);
       const my0 = Math.min(oy, cy), my1 = Math.max(oy, cy);
-      deskIcons().forEach(n => {
-        const hit = n.offsetLeft < mx1 && n.offsetLeft + n.offsetWidth > mx0 &&
-                    n.offsetTop < my1 && n.offsetTop + n.offsetHeight > my0;
-        n.classList.toggle('sel', hit);
+      rects.forEach(q => {
+        const hit = q.l < mx1 && q.l + q.w > mx0 && q.t < my1 && q.t + q.h > my0;
+        if (hit !== q.on) { q.on = hit; q.n.classList.toggle('sel', hit); }
       });
     };
     const up = () => {
