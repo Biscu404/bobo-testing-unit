@@ -58,7 +58,7 @@ export function createAfterMusic(A) {
       let sg, o;
       if (w.kind === 'run') { sg = scoreOf(S.lang, w.id); o = { fade: 0.25, levels: Object.assign({}, M.lv) }; }
       else if (w.kind === 'sting') { sg = stingOf(S.lang, w.id); o = { fade: 0.1, fadeIn: 0, loop: false }; }
-      else { sg = scoreOf(S.lang, 'title'); o = { fade: 2 }; }
+      else { sg = scoreOf(S.lang, 'title'); o = { fade: 2, fadeIn: 2 }; }
       let p = null;
       try { p = await D.play(sg, o); } catch (e) { p = null; }
       if (mine !== M.calls) return;                                                 /* a newer request has overtaken this one */

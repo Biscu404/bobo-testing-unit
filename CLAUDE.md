@@ -38,6 +38,7 @@ node scripts/check-desk.mjs    # where desktop icons go: the grid, the occupancy
 node apps/aftere/aftere_check.js # AfterEgypt: a bot flies all five ways across, nothing is asked that the ship cannot fly, the pay climbs (pure Node)
 node apps/garden/garden_check.js # the garden: synergy arithmetic, and how long 99,999 SUN takes three kinds of player, equipped and not (pure Node)
 node apps/bekkedal/life_check.js # what Bekkedal's people do between their posts: chores, sleep, errands, gifts worn (pure Node)
+node apps/aftere/music_check.js # AfterEgypt's score, layers and sky mapping; node apps/aftere/sfx_check.js its effects and the sound of a flight (pure Node)
 node apps/magen/music_check.js # Magen's score, its band's energy and the seams between tunes (pure Node); apps/bekkedal/music_check.js likewise
 npm run check:music     # instruments, the studio, every game's score, and the style meter's recording
 node apps/garage/edit_check.js # the Garage's note, segment and undo logic (pure Node)
@@ -62,7 +63,8 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   picks the variant in the mixer panel (♫).
 - **Mixer.** `kernel/mixer.js` lists only what is running: a channel is offered while a window with its `appId` is open
   (`openWins` carries `appId`; `wm.js` fires `wins-changed`). A new app with music: add a channel to `CHANNELS`, multiply
-  its bus by `window.Mixer.get('<id>')`, and listen for `mixer-changed`.
+  its bus by `window.Mixer.get('<id>')`, and listen for `mixer-changed` (AfterEgypt's `aftere` channel: its tunes follow the slider through the studio channel, its effects are
+  its own bus and are relevelled on `mixer-changed`).
 - **Fullscreen.** Every window has `[□]` (also F11 or a double-click on the title bar). A window whose app lays itself
   out off its own size sets `fluid: true` (or `body.dataset.fluid = '1'`) and is simply given the room. A window whose
   picture *is* the window (a `.gamepane`/`.godpane`/`.vidpane`, or a canvas that is the body's own child: `isCanvasWindow`
@@ -428,7 +430,20 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   SCRIBE, PRIEST, PHARAOH and THE THIRD TEMPLE, each opened by clearing the one before). The tiers add a ship that chases the pointer at a limited
   speed, gaps that wander and breathe, locusts, gusts with a second of warning, a sky that closes in, coins and ankhs (a second chance). Pay climbs from 50 SUN
   to 2,500 plus coins a clear, a first clear and a clear with no hit pay more, and dying in the pillars keeps half the coins. `sim.js` is one run as plain data at a fixed
-  60 Hz (no canvas, no clock), `draw.js` the picture, and `aftere_check.js` flies every tier with a bot and holds the pay ladder to a rising rate a minute.
+  60 Hz (no canvas, no clock, no audio: what happened in a step is listed in `run.ev`, `coin ankh shield dead gap graze gust gust-on gust-off locust win`, with details in
+  `run.info`), `draw.js` the picture, and `aftere_check.js` flies every tier with a bot and holds the pay ladder to a rising rate a minute.
+  **It has a score and a set of effects.** All of D, so anything can fall in under anything: a title tune (NILE DAWN) and one tune per way (FIRST LIGHT hijaz 92, PAPYRUS
+  nahawand 104, THE ZAR phrygian in 6/8 at 120, KING OF THE DUNES hijaz 124, THE THIRD TEMPLE double harmonic 148 in 3+3+2, thirty-two bars), plus three stingers (clear, unlock,
+  death; death ends unresolved on an Eb over a D). Tunes are `tunes.js` (melody and chords as text), `band_early.js` / `band_late.js` (who plays) and `score_parts.js` (the shared
+  layers). Each way is a core that is a tune on its own and layers the run switches while it plays through `ctx.studio.deck('aftere')`: `build` (as the temple nears), `edge` (a
+  heartbeat when the ship is near the stone), `swarm` (locusts), `gust` (the wind, from its warning), `gate` (the last fifth). `danger.js` (pure) turns a run into those five
+  numbers, `music.js` rides the layers with `deck.levels` (fast in, slow out; nothing ever restarts the tune), takes off from bar one, plays a stinger once and brings the title
+  back, and stops when the sound goes off or the window closes. The effects (`sfx_synth.js`, `sfx.js`, all synthesised, pitched into hijaz, on the machine's SFX bus and scaled by
+  the mixer's AFTEREGYPT slider: a coin ping that climbs with its chain, an ankh bell chord, the ring breaking, stone or locust crash, a pluck on the note of each doorway you pass,
+  a close-call tick, the gust's swell and blow that sweeps the way it pushes, a locust buzz that crosses the stereo field, launch, win, first-clear coins, unlock, death, and a quiet
+  air loop that follows the steering) are all driven from `run.ev` by `audio.js`, which is all `index.js` talks to. TheStack has an AFTEREGYPT folder (the title and the five ways).
+  `node apps/aftere/music_check.js` (score, mode, layers, the sky, the controller against a fake deck) and `node apps/aftere/sfx_check.js` (the effects against a strict fake
+  AudioContext, and a whole flight through `audio.js`) are pure Node.
 - `garden`: `apps/garden/index.js` - GARDEN.EXE. Five rooms of twelve pots, each room standing in a pot of its own choice. **What grows where matters**
   (`synergy.js`, pure): HOME room, KIN pot, ROOTED (both), a room's SET pot, a BED of its own kind, MATE species beside it; hover a plant to read exactly what is helping
   it. **The work is taken out late**: drag with the can, the hand or the pull tool to sweep a rack, TEND (SPACE) waters every room and sweeps every plant with a chain

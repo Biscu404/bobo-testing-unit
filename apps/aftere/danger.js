@@ -1,7 +1,7 @@
 /* What the run is asking of the music, as five numbers from 0 to 1, read off a run (the sim) and never written to it. Pure: no clock, no audio;
  * `music_check.js` flies it in Node and `music.js` rides the layers of the tune with it.
  *
- *   build   the way across is going: it comes in over the first fifth to the first half of the flight, and stays
+ *   build   the way across is going: it begins a fifth of the way over, is all the way in by half way, and stays
  *   edge    the ship is in the mouth of a gap and close to the stone (or the doorway is coming and it is close to the edge of it)
  *   swarm   locusts are on the screen
  *   gust    the wind has been announced, and while it blows (the warning is a swell: a quarter rising to three quarters, a whole when the push begins)
