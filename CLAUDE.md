@@ -33,6 +33,7 @@ node scripts/smoke.mjs  # ~10 min; node scripts/lint-content.mjs; node apps/*/*_
 node scripts/check-drunk.mjs   # the Jäger journey (pure Node): a blackout is inside one bottle, about two minutes away at the very quickest
 node scripts/check-style.mjs   # the style meter against five kinds of player (pure Node)
 node scripts/check-styletrack.mjs # the style meter's recording: how it opens under the delete sound, how it loops, its gains (pure Node)
+node apps/shop/lines_check.js  # Dave's crazy hover lines: the pool, the 1-in-10 rate, no repeats (pure Node); node scripts/check-farewell.mjs his farewell tiers and babble (pure Node)
 node scripts/check-delete.mjs  # the delete reel: a beat a file, 70 ms apart, a tune in C pentatonic that lands on the high C (pure Node)
 node scripts/check-desk.mjs    # where desktop icons go: the grid, the occupancy map, a full desk (pure Node); npm run check:bulk pastes and deletes two hundred files
 node apps/aftere/aftere_check.js # AfterEgypt: a bot flies all five ways across, nothing is asked that the ship cannot fly, the pay climbs (pure Node)
@@ -77,6 +78,8 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   well, chin and knobs as well as the picture), and the edges closing in and the eyelids are an overlay fixed to the viewport
   (`#drunkover`, built by `drunk.js`). `#tube` is left to the hold knobs, the saver and the power animation. Never give `#room`
   a fill-forwards animation: an animated value beats an inline style, which is what silently killed this effect before.
+- **The SFX knob sets the bus when it turns.** `Snd.sfx.gain` is set when the speaker wakes (`snd.js`) *and* by the SFX pot (`hardware.js`); it used to be set
+  only at wake, so a machine that woke with SFX at its default 0 stayed silent however far the knob was turned, until it was relaunched.
 - **The chin.** LENS is a disabled knob: every machine runs at SOFT (`LENS_LOCK` in `hardware.js`, whatever an old save says).
   DEGAUSS is not a button any more but permanent: purity patches painted into the glass canvas with the scanlines
   (`kernel/degauss.js`, once per resize, so nothing animated sits over the picture); the terminal's `DEGAUSS` still fires the
@@ -208,6 +211,19 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   from FluidR3_GM like the first thirty; **THE BOTTLE** pours any drink you own (`apps/bottle/drinks.js` builds a whole bottle, label and
   liquor from three colours in `DRINKS`; `Drunk.drink(strength)` counts a measure against the limit in Jägermeisters, 0 for the cordial); **the Elephant** has a wardrobe
   (`apps/elephant/wear.js` draws on the big front-on elephant, `kernel/pet_art.js` on the small side-on one: same twelve things, two pictures).
+- **When the shop window closes Dave leaves a box on the desktop** (`kernel/dave_box.js`; `Cos.boot()` starts its watch). It listens to `wins-changed`: a window with
+  `appId` 'shop' going from none to one snapshots what you own, going from one to none shows the box, so it never shows for a shop never opened, with the set off, or twice for
+  one visit. Its words are `kernel/dave_farewell.js` (pure): seven tiers (`blink` under 4 s with nothing bought, `never`, `nothing`, `little`, `fair`, `lot`, `everything`,
+  chosen from what was bought this visit and what you own; lines may name the item or the total) with a voice per tier. It types its line at ~30 ms a letter over a babble
+  (`kernel/dave_plan.js` is the pure plan: a blip per sounded letter, silence on spaces and stops, a climb on questions, a bark on shouts; `kernel/dave_voice.js` plays it on
+  `Snd.sfx`, silent at SFX 0 or with the set off), stays 2.8 s, and goes; a click skips to the end and then closes it; reduced-motion switches off the bob and the mouth. The
+  box is the machine's, not the app's, so `scripts/check-apps.mjs` dismisses it before it measures leaks. `node scripts/check-farewell.mjs` (pure Node) holds the tiers, the
+  pools and the plan.
+- **A frame's decoration is pixel art on the case, not a share of the monitor** (`kernel/cos_deco.js`; `DECO_SVG` in `cos_data.js` spreads `DECO_NEW`): sized in pixels at 1:1
+  with crisp edges (leave `size` off a deco entry and it is shown at its own size), anchored to a corner or an edge, thin enough to stay on the ~10-30 px ring of plastic round the
+  glass, never over the menu bar, the desktop, the taskbar or a control. `#framedeco` follows the case's rounded corners (`border-radius: var(--case-r)`). Never
+  `preserveAspectRatio="none"` or a percentage size: the old LUNAR LANDER foil was 38% of the monitor each way, stretched, with its second piece not turned round, and covered the
+  File menu, the icons, the clock and the knobs.
 - **The elephant on the desktop** (`kernel/pet.js`, saved as `templeos.pet.v1`) exists once FREE RANGE is bought and he is let out
   of his window (GO OUTSIDE; CALL HIM IN, or his menu, brings him back). He lives in `#desktop` under every window and over every icon,
   walks, sleeps (sooner and longer after 23:00; he wakes if the pointer comes close), talks (some lines read the desk: the icon count, the
@@ -452,6 +468,10 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   `garden_check.js` runs hours of it as a player who checks in every few minutes: fully equipped, 99,999 SUN is about a quarter of an hour; from nothing, two and a half hours;
   a night away with everything bought brings in about half of it.
 - `shop`: `apps/shop/index.js` - CRAZY DAVE'S, eleven shelves (see **Dave's shop is a set of shelves**). `thumbs.js` draws every card, `lines.js` is what Dave says.
+  **A card has no `title` attribute**: the bubble in the window is the only place Dave describes a thing, and a native tooltip repeated it. **One hover in ten
+  (`CRAZY_RATE`) Dave says one of ~100 crazy lines instead of the card's own blurb** (`makeHoverTalk(rng)`: `DAVE_CRAZY` for anywhere, `DAVE_CRAZY_CAT` per shelf,
+  `DAVE_CRAZY_ITEM` functions that say the card's name and price; never the same line twice running; each at most `SPEECH_MAX` characters so the bubble stays three
+  lines); `node apps/shop/lines_check.js` (pure Node) holds the pool, the rate and the repeats.
 - `crayon`: DRAW.EXE; its extra brushes and layers are Dave's. `elephant`: the big elephant, his five places and songs, and the wardrobe and the door to the desktop.
 - `folder`: a folder window: BACK / UP / path, select (click, Ctrl, Shift, rubber band), drag and drop to move or Ctrl-copy,
   right-click menus, F2/Del/Ctrl+C/X/V/D/A/Z, Enter opens, Backspace goes up. `trash`: the RecycleBin (put back, delete for good,
