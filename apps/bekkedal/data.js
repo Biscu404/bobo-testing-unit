@@ -467,6 +467,7 @@ export const BEK_FESTIVALS = {
 export const BEK_START_KR = 500;              /* fresh(): what you arrive with */
 export const BEK_EN_MAX = 220;                /* fresh(): the bar, before any of it is earned */
 export const BEK_STEP_S = 0.14;               /* move(): real seconds per tile walked */
+export const BEK_TURN_S = 0.1;                /* move(): how long a key is held before it walks you rather than only turns you (stride.js) */
 export const BEK_CLOCK_MIN_PER_S = 4;         /* tickClock(): in-game minutes per real second */
 export const BEK_DAY_START = 6 * 60;          /* fresh()/newDay(): 06:00 */
 export const BEK_DAY_END = 26 * 60;           /* tickClock(): 02:00, and the day is over */

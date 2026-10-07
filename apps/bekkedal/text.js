@@ -16,6 +16,7 @@
  * another one's canvas.
  */
 import { FONT_GLYPH_W, FONT_GLYPH_H, FONT_ADV, FONT_SM, FONT_GLYPHS, FONT_NOTDEF } from './font.js';
+import { softCanvas } from './softcv.js';
 
 export function createText(g, C) {
   const keys = Object.keys(FONT_GLYPHS);
@@ -28,10 +29,8 @@ export function createText(g, C) {
   function atlas(col, size) {
     const k = col + ':' + size;
     if (cache[k]) return cache[k];
-    const c = document.createElement('canvas');
-    c.width = cells.length * FONT_GLYPH_W * size;
-    c.height = FONT_GLYPH_H * size;
-    const q = c.getContext('2d');
+    /* a memory canvas: it is only ever drawn from (see softcv.js) */
+    const { cv: c, g: q } = softCanvas(cells.length * FONT_GLYPH_W * size, FONT_GLYPH_H * size);
     q.fillStyle = C(col);
     cells.forEach((rows, gi) => {
       const ox = gi * FONT_GLYPH_W * size;
