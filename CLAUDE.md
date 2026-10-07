@@ -33,6 +33,7 @@ node scripts/smoke.mjs  # ~10 min; node scripts/lint-content.mjs; node apps/*/*_
 node scripts/check-drunk.mjs   # the Jäger journey (pure Node): a blackout is inside one bottle, about two minutes away at the very quickest
 node scripts/check-style.mjs   # the style meter against five kinds of player (pure Node)
 node scripts/check-styletrack.mjs # the style meter's recording: how it opens under the delete sound, how it loops, its gains (pure Node)
+node scripts/check-delete.mjs  # the delete reel: a beat a file, 70 ms apart, a tune in C pentatonic that lands on the high C (pure Node)
 node scripts/check-desk.mjs    # where desktop icons go: the grid, the occupancy map, a full desk (pure Node); npm run check:bulk pastes and deletes two hundred files
 node apps/aftere/aftere_check.js # AfterEgypt: a bot flies all five ways across, nothing is asked that the ship cannot fly, the pay climbs (pure Node)
 node apps/garden/garden_check.js # the garden: synergy arithmetic, and how long 99,999 SUN takes three kinds of player, equipped and not (pure Node)
@@ -63,10 +64,21 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   (`openWins` carries `appId`; `wm.js` fires `wins-changed`). A new app with music: add a channel to `CHANNELS`, multiply
   its bus by `window.Mixer.get('<id>')`, and listen for `mixer-changed`.
 - **Fullscreen.** Every window has `[□]` (also F11 or a double-click on the title bar). A window whose app lays itself
-  out off its own size sets `fluid: true` (or `body.dataset.fluid = '1'`) and is simply given the room; any other window
-  with a canvas is kept at its built size and scaled to fit; plain DOM windows just fill the desktop.
-- **Drunk.** `kernel/drunk.js` (the bottle app) acts on `#tube` through an inline filter/transform. Never give `#tube` a
-  fill-forwards animation: an animated value beats an inline style, which is what silently killed this effect before.
+  out off its own size sets `fluid: true` (or `body.dataset.fluid = '1'`) and is simply given the room. A window whose
+  picture *is* the window (a `.gamepane`/`.godpane`/`.vidpane`, or a canvas that is the body's own child: `isCanvasWindow`
+  in `wm.js`) is kept at its built size and scaled to fit. Every other window, **including one that merely has canvases
+  in it** (the shop's thumbnails, Magen's star, Crayon's swatches), is a layout and just fills the desktop; it used to be
+  scaled like a picture and ended up over its own title bar. An app whose root *is* the window body (it sets
+  `root.className`, which drops `.wbody`: the shop and Notes) fills it with `flex: 1 1 auto; min-height: 0`, never
+  `height: 100%`: the browser's zoom is applied to that very box and a zoomed 100% is taller than the window.
+- **Drunk.** `kernel/drunk.js` (the bottle app) acts on the **whole interface**: an inline filter/transform on `#room` (case,
+  well, chin and knobs as well as the picture), and the edges closing in and the eyelids are an overlay fixed to the viewport
+  (`#drunkover`, built by `drunk.js`). `#tube` is left to the hold knobs, the saver and the power animation. Never give `#room`
+  a fill-forwards animation: an animated value beats an inline style, which is what silently killed this effect before.
+- **The chin.** LENS is a disabled knob: every machine runs at SOFT (`LENS_LOCK` in `hardware.js`, whatever an old save says).
+  DEGAUSS is not a button any more but permanent: purity patches painted into the glass canvas with the scanlines
+  (`kernel/degauss.js`, once per resize, so nothing animated sits over the picture); the terminal's `DEGAUSS` still fires the
+  coil (`#degauss.pulse`, a one-shot flash).
 
 - **Durable storage.** `index.html` loads `kernel/durable.js`, which mirrors every `localStorage` write into IndexedDB
   (`templeos_ls`) and restores it before `kernel/boot.js` loads. Chromium's own localStorage flush can lag by more than
@@ -87,6 +99,13 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   reconcile**, not a rebuild (`kernel/desktop.js` `buildIcons`): an icon whose name and kind are unchanged keeps its element and its
   selection, positions come from one occupancy map (`kernel/desk_grid.js`, pure), icons are CSS sprite classes rather than an `<img>`
   each (`icons_dom.js`). `check-desk.mjs` and `check-bulk.mjs` hold the numbers; the old code took twenty seconds for each step.
+- **Deleting is a reel, not a thump.** `deletePaths` (`fileops.js`) hits the style meter once for the whole pile
+  (`hitPile`), then puts the files in the bin a beat at a time (`gatherTrash` reads the pile once, `commitTrash` moves a
+  slice): `kernel/delete_reel.js` (pure; `node scripts/check-delete.mjs`) plans it, **70 ms between beats, one file a beat
+  until that would pass 3.4 s, then several**, and each beat is a note of a four-phrase tune in C pentatonic (C D E G A: inside
+  C major and D minor, so it never fights the style meter's song) that always lands on the high C, with a chord on the last beat;
+  a lone file is a two-note "dun-dun" (`Snd.reelNote/reelEnd/reelOne` in `style_sfx.js`). Piles queue, Ctrl+Z waits for the one
+  running, and the pile is one undo.
 - **Dragging files** is `kernel/dnd.js` (pointer events, one mechanism for every source). A drop zone is any element with
   `data-drop`: a folder path, `::` (the desktop) or `@trash`. Desktop icons, folder windows and the bin all use it; Ctrl at the
   drop copies, Esc cancels. The shared commands (copy/cut/paste/duplicate/rename/delete/undo/properties/keys) are
@@ -437,7 +456,8 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   *charms in notches* (`bench.js`: twelve charms, three starting notches, so a build is a choice), *regions that change
   the rules* (bramble, spores, web, dark) and a *shade* that keeps half your geo where you fell. The rules of a board are
   pure in `board.js` (`node apps/sweeper/board_check.js`); `run.js` is play, `run_draw.js` is the room.
-- `cook`: Jesse (`apps/cook/jesse.js`) is drawn as a person — skin tone, buzzed hair, stubble, the yellow suit and the
+- `cook`: the story (`CK_STORY`/`CK_END` in `data.js`) is the plot of Breaking Bad told plainly, names and all, ten chapters of
+  four or five lines under 60 characters so none wraps; it used to leave every name out. Jesse (`apps/cook/jesse.js`) is drawn as a person — skin tone, buzzed hair, stubble, the yellow suit and the
   respirator round his neck. **That portrait is a third user-requested exception to the 16-colour rule** (a face needs a
   skin tone); nothing else in the app leaves VGA16. On a win he speaks first, in a box that fits what he says, and the
   BATCH COMPLETE panel does not start until he has finished.
