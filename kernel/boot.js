@@ -47,6 +47,17 @@ function drawWordmark() {
   }, 220);
 }
 
+/* The taskbar clock shows the real local time. Nothing used to write to it, so it sat at 00:00:00. */
+function startClock() {
+  const el = document.getElementById('clock');
+  if (!el) return;
+  const two = n => String(n).padStart(2, '0');
+  const tick = () => { const d = new Date(); el.textContent = two(d.getHours()) + ':' + two(d.getMinutes()) + ':' + two(d.getSeconds()); };
+  tick();
+  setInterval(tick, 1000);
+}
+startClock();
+
 let bootDone = false;
 let booting = false;
 let vfsReady = false;

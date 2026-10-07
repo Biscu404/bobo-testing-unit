@@ -11,6 +11,8 @@ import { VGA16 } from '../../kernel/god.js';
 import { mgIcon, mgUpIcon, mgTierIcon } from './icons.js';
 import { mgBackdrops, mgAchScene } from './backdrops.js';
 import { scopedListeners } from '../lifecycle.js';
+import { AUTO_LEVELS, AUTO_UNLOCK, autoUnlocked, autoGap, autoRate, autoNext, owed } from './auto.js';
+import { ratesHtml } from './rates.js';
 
 /* the machine's own pixel face for everything the star's canvas has to say */
 const MGF = "'VT323', 'Courier New', monospace";
@@ -18,7 +20,7 @@ const MGF = "'VT323', 'Courier New', monospace";
 export default {
   open() {
   createWindow({
-    kind: 'app', title: 'Magen', w: 900, h: 590, appId: 'magen',
+    kind: 'app', title: 'Magen', w: 1000, h: 640, appId: 'magen',
     build: body => {
       const root = document.createElement('div');
       root.className = 'mgroot';
@@ -155,6 +157,7 @@ export default {
       const idx = {}; MG_B.forEach((b, i) => idx[b.id] = i);
       const fresh = () => ({
         v: 1, mitz: 0, total: 0, run: 0, clicks: 0, hand: 0,
+        auto: 0, aLvl: 0,               /* presses made by the auto-press (never counted as clicks) and the level held */
         own: MG_B.map(() => 0), tier: MG_B.map(() => 0),
         up: {},                         /* every bought upgrade id */
         ach: {},                        /* every completed mitzvah id */
@@ -267,6 +270,10 @@ export default {
         });
         const add = (u, tag) => out.push({ k: 'up', id: u.id, n: u.n, c: u.cost,
                                            d: u.d, m: u.m, tag: tag });
+        /* the auto-press: earned by a thousand presses by hand, one level on sale at a time */
+        const an = autoNext(S.clicks, S.aLvl);
+        if (an && (S.aLvl === 0 || S.total >= an.cost / 20)) out.push({ k: 'auto', id: an.id, n: an.n, c: an.cost, d: an.d, tag: 'AUTO',
+          m: 'Hold the left button on the star and it presses by itself every ' + an.gap + ' s (' + (1 / an.gap).toFixed(1) + ' a second). Level ' + (S.aLvl + 1) + ' of ' + AUTO_LEVELS.length + '.' });
         MG_CLICK.forEach(u => { if (!upOn(u.id) && S.total >= u.cost / 12) add(u, 'HAND'); });
         MG_KAV.forEach(u => { if (!upOn(u.id) && achCount() >= 5 && S.total >= u.cost / 20) add(u, 'KAVANAH'); });
         MG_DIAS.forEach(u => { if (!upOn(u.id) && specOpen(u)) add(u, 'COMMUNITY'); });
@@ -332,11 +339,11 @@ export default {
         }
         const y = rowY(el);
         S.mitz -= u.c;
-        if (u.k === 'tier') { S.tier[u.i]++; popT[u.i] = 0.7; } else { S.up[u.id] = 1; }
+        if (u.k === 'tier') { S.tier[u.i]++; popT[u.i] = 0.7; } else if (u.k === 'auto') { S.aLvl++; } else { S.up[u.id] = 1; }
         ecoDirty();
         sfx.up(); sfx.whoosh();
         flyer(y, u.k === 'tier' ? 't' : 'u', u.k === 'tier' ? u.b : u.id, u.tier);
-        const col = u.k === 'tier' ? 14 : u.tag === 'HAND' ? 12 : u.tag === 'KAVANAH' ? 13
+        const col = u.k === 'tier' ? 14 : (u.tag === 'HAND' || u.tag === 'AUTO') ? 12 : u.tag === 'KAVANAH' ? 13
                   : u.tag === 'COMMUNITY' ? 11 : 10;
         banner(u.n, u.m, col, null);
         ring(CX, CY, 130, col, 0.7); ring(CX, CY, 96, 15, 0.5);
@@ -527,11 +534,11 @@ export default {
         const tiers = S.tier.map(t => Math.min(t, keptTier));
         const ach = S.ach, leg = S.leg, zech = S.zech + gain, spent = S.spent;
         const asc = S.asc + 1, gold = S.gold, shab = S.shab, args = S.args;
-        const clicks = S.clicks, total = S.total, born = S.born;
+        const clicks = S.clicks, auto = S.auto, total = S.total, born = S.born;
         S = fresh();
         S.ach = ach; S.leg = leg; S.zech = zech; S.spent = spent;
         S.asc = asc; S.gold = gold; S.shab = shab; S.args = args;
-        S.clicks = clicks; S.total = total; S.born = born;
+        S.clicks = clicks; S.auto = auto; S.total = total; S.born = born;
         S.tier = tiers;
         S.baseKav = keepKav;
         if (legOn('l_cand')) S.own[idx.nerot] = 10;
@@ -696,6 +703,8 @@ export default {
                        tag: b.n, d: b.d, m: b.n + ' produce twice as much.' });
           }
         });
+        for (let l = 0; l < S.aLvl; l++) out.push({ k: 'auto', id: AUTO_LEVELS[l].id, n: AUTO_LEVELS[l].n, tag: 'AUTO', d: AUTO_LEVELS[l].d,
+          m: 'Held on the star, it presses every ' + AUTO_LEVELS[l].gap + ' s.' });
         const grab = (arr, tag) => arr.forEach(u => { if (upOn(u.id))
           out.push({ k: 'up', id: u.id, n: u.n, tag: tag, d: u.d, m: u.m }); });
         grab(MG_CLICK, 'HAND'); grab(MG_KAV, 'KAVANAH');
@@ -723,7 +732,7 @@ export default {
           const can = S.mitz >= u.c;
           h += '<div class="mgrow up ' + BD.cls(u.k === 'tier' ? u.b : u.id) + ' f-' + (u.k === 'tier' ? 'tier' : u.tag.toLowerCase()) +
                (can ? ' ready' : ' poor') + '" data-u="' + n + '">' + upIcon(u) +
-               '<span class="mgnm"><b>' + u.n + '</b><i>' + mgFmt(u.c) + '</i></span>' +
+               '<span class="mgnm"><b>' + u.n + '</b><i>' + mgFmt(u.c) + '</i><em>' + u.m + '</em></span>' +
                '<span class="mgtag">' + u.tag + '</span></div>';
         });
         return h;
@@ -757,7 +766,8 @@ export default {
           ['PER SECOND',           mgFmt(mps())],
           ['PER SECOND, RESTED',   mgFmt(rawMps())],
           ['PER PRESS',            mgFmt(clickPower())],
-          ['PRESSES',              String(S.clicks)],
+          ['PRESSES BY HAND',      String(S.clicks)],
+          ['AUTO-PRESSES',         S.aLvl ? mgFmt(S.auto || 0) + ' (level ' + S.aLvl + ')' : autoUnlocked(S.clicks) ? 'not bought' : 'at ' + AUTO_UNLOCK + ' by hand'],
           ['BY HAND',              mgFmt(S.hand)],
           ['BUILDINGS',            String(S.own.reduce((a, b) => a + b, 0))],
           ['UPGRADES',             String(upCount())],
@@ -816,13 +826,19 @@ export default {
 
       let lastMode = null, lastSig = '';
       function refreshAll(force) {
-        const sig = mode + '|' + S.own.join(',') + '|' + S.tier.join(',') + '|' +
+        /* The pane is rebuilt only when what is IN it changes (a row appears, a count moves), never because there is more money:
+           a rebuild throws away the scroll position and the row under the pointer. Prices are updated in place (repriceRows). */
+        const shape = mode === 'store' ? MG_B.map((b, i) => (S.own[i] > 0 || S.total >= b.cost * 0.35) ? 1 : 0).join('')
+                    : mode === 'ups' ? upgradeList().map(u => u.id).join(',')
+                    : mode === 'stats' ? S.total.toExponential(2) : '';
+        const sig = mode + '|' + S.own.join(',') + '|' + S.tier.join(',') + '|' + S.aLvl + '|' +
                     upCount() + '|' + achCount() + '|' + buyN + '|' + S.zech + '|' + upsShowOwned + '|' +
-                    Object.keys(S.leg).length + '|' + S.total.toExponential(2);
+                    Object.keys(S.leg).length + '|' + shape;
         if (!force && sig === lastSig && mode === lastMode) { repriceRows(); return; }
+        const keepTop = mode === lastMode ? pane.scrollTop : 0;
         lastSig = sig; lastMode = mode;
         pane.innerHTML = (PANES[mode] || paneStore)();
-        pane.scrollTop = mode === lastMode ? pane.scrollTop : 0;
+        pane.scrollTop = keepTop;
         drawIcons();
         BD.paint(pane);
         root.querySelectorAll('.mgtab').forEach(b => b.classList.toggle('on', b.dataset.t === mode));
@@ -855,19 +871,22 @@ export default {
       }
 
       /* ---- 32.27 the tooltip ---------------------------------------------- */
-      function showTip(html, ev) {
+      let tipLive = null;                  /* a function that makes the tooltip's html again, while the pointer stays on its subject */
+      function showTip(html, ev, side, live) {
+        tipLive = live || null;
         tip.innerHTML = html;
         tip.style.display = 'block';
         const r = root.getBoundingClientRect();
         /* to the left of the store, over the stage, so it never covers the row
-           you are reading the price of */
-        let x = root.querySelector('.mgright').offsetLeft - tip.offsetWidth - 8;
-        if (x < 4) x = Math.min(ev.clientX - r.left + 18, r.width - tip.offsetWidth - 6);
+           you are reading the price of (and to the right of the stage for things that live on it) */
+        let x = side === 'right' ? root.querySelector('.mgright').offsetLeft + 8
+                                 : root.querySelector('.mgright').offsetLeft - tip.offsetWidth - 8;
+        if (x < 4 || x + tip.offsetWidth > r.width - 4) x = Math.max(4, Math.min(ev.clientX - r.left + 18, r.width - tip.offsetWidth - 6));
         let y = ev.clientY - r.top - 10;
         y = Math.max(4, Math.min(y, r.height - tip.offsetHeight - 6));
         tip.style.left = x + 'px'; tip.style.top = y + 'px';
       }
-      const hideTip = () => { tip.style.display = 'none'; };
+      const hideTip = () => { tip.style.display = 'none'; tipLive = null; };
 
       pane.addEventListener('mousemove', ev => {
         const el = ev.target.closest ? ev.target.closest('.mgrow, .mgach') : null;
@@ -992,11 +1011,21 @@ export default {
          you keep going the more likely the next one is worth seven of them.
          ========================================================================== */
       function critChance() { return Math.min(0.2, 0.02 + combo * 0.006); }
-      function press(ev) {
+      function press(ev, auto) {
         let v = clickPower();
         const crit = Math.random() < critChance();
         if (crit) v *= 7;
-        S.mitz += v; S.total += v; S.run += v; S.hand += v; S.clicks++;
+        S.mitz += v; S.total += v; S.run += v; S.hand += v;
+        /* a press the auto-press makes is not a click: the mitzvot that ask for clicks, and the thousand that open the auto-press, are paid by a hand */
+        if (auto) S.auto = (S.auto || 0) + 1;
+        else {
+          S.clicks++;
+          if (S.clicks === AUTO_UNLOCK) {
+            toast('AUTO-PRESS UNLOCKED. SEE UPGRADES.'); sfx.ach();
+            banner('AUTO-PRESS', 'a thousand by hand. now hold the star', 12, null);
+            ring(CX, CY, 150, 12, 0.9); kick(4, 0.3, 12);
+          }
+        }
         squash = 1; spin = 1;
         combo = Math.min(60, combo + 1); comboT = 0;
         if (combo > (S.bestCombo || 0)) S.bestCombo = combo;
@@ -1053,9 +1082,9 @@ export default {
         }
         if (Math.hypot(mx - CX, my - CY) < 76) press(ev);
       });
-      /* holding the button down keeps pressing, at a rate a hand could manage */
+      /* holding the button down presses for you, but only once the auto-press has been earned and bought (apps/magen/auto.js) */
       let held = false, holdT = 0;
-      cv.addEventListener('mousedown', () => { held = true; holdT = 0.24; });
+      cv.addEventListener('mousedown', () => { held = true; holdT = autoGap(S.aLvl); });
       winL.on(window, 'mouseup', () => { held = false; });
       cv.addEventListener('mouseleave', () => { held = false; });
       let yizT = 0;
@@ -1389,6 +1418,22 @@ export default {
       /* ---- 32.31 the loop -------------------------------------------------- */
       const nEl = $('.mgn'), rEl = $('.mgrate'), bEl = $('.mgbuffs'), aEl = $('.mgact'),
             hEl = $('.mghint'), gEl = $('.mggoal');
+      /* CHESHBON turns the plaque into a ledger: hover it for every rate there is */
+      function ratesModel() {
+        const all = mps(), gm = globalMult(), sh = shabMult(), kv = kavMult(), zc = 1 + S.zech * zechPer();
+        const top = MG_B.map((b, i) => ({ n: b.n, v: S.own[i] * b.mps * bMult(i) * gm * sh })).filter(t => t.v > 0)
+          .sort((a, b) => b.v - a.v).slice(0, 3).map(t => ({ n: t.n, v: t.v, pct: all > 0 ? t.v / all * 100 : 0 }));
+        return { mps: all, raw: rawMps(), resting: S.shabT > 0, perPress: clickPower(), crit: critChance(),
+                 autoLvl: S.aLvl, autoPerSec: autoRate(S.aLvl), autoOpen: autoUnlocked(S.clicks), clicks: S.clicks, autoNeed: AUTO_UNLOCK,
+                 top: top, kav: kv, zech: zc, other: gm / (kv * zc), global: gm,
+                 offline: legOn('l_off') ? 1 : upOn('s_bit') ? 0.8 : 0.4 };
+      }
+      rEl.addEventListener('mousemove', ev => {
+        if (!upOn('s_chesh')) return;
+        const live = () => ratesHtml(ratesModel(), mgFmt);
+        showTip(live(), ev, 'right', live);
+      });
+      rEl.addEventListener('mouseleave', hideTip);
       let raf = null, last = 0, acc = 0, saveT = 0, uiT = 0, achT = 0;
 
       function frame(ts) {
@@ -1441,8 +1486,13 @@ export default {
            idle window is never a still picture */
         idleRing -= step;
         if (idleRing <= 0) { ring(CX, CY, 108, 11, 1.1); idleRing = 4.5 + Math.random() * 2.5; }
-        /* held button: keeps pressing at a rate a hand could actually manage */
-        if (held) { holdT -= step; if (holdT <= 0) { holdT = 0.085; press(null); } }
+        /* held button: the auto-press, once it has been earned and bought, at the rate of its level */
+        if (held && S.aLvl > 0) {
+          if (!isFinite(holdT)) holdT = autoGap(S.aLvl);          /* bought while the button was already down */
+          const o = owed(holdT, step, autoGap(S.aLvl));
+          holdT = o.timer;
+          for (let k = 0; k < o.n; k++) press(null, true);
+        }
         comboT += step; if (comboT > 0.9) { combo = 0; comboT = 0; }
         /* the chain is how much of the band is playing: it leans in as the chain grows and sits back when it breaks */
         Song.chain(combo);
@@ -1476,9 +1526,12 @@ export default {
           uiT = 0;
           nEl.textContent = mgFmt(Math.floor(shownMitz));
           nEl.classList.toggle('big', S.mitz > 1e9);
-          rEl.innerHTML = 'per second: <b>' + mgFmt(rate) + '</b>' +
-            (S.shabT > 0 ? ' <i>(resting)</i>' : '') +
-            (combo >= 5 ? ' <u>crit ' + Math.round(critChance() * 100) + '%</u>' : '');
+          rEl.classList.toggle('ledger', upOn('s_chesh'));
+          rEl.innerHTML = '<span>per second: <b>' + mgFmt(rate) + '</b>' +
+            (S.shabT > 0 ? ' <i>(resting)</i>' : '') + '</span>' +
+            (upOn('s_chesh') ? '<span class="mgmin">per minute: <b>' + mgFmt(rate * 60) + '</b></span>' : '') +
+            (combo >= 5 ? '<span> <u>crit ' + Math.round(critChance() * 100) + '%</u></span>' : '');
+          if (tipLive && tip.style.display === 'block') tip.innerHTML = tipLive();
           /* buffs get a draining bar, because a number counting down is a
              fact and a bar emptying is a feeling */
           bEl.innerHTML = S.buffs.map(b => {

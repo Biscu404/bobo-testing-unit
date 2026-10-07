@@ -5,6 +5,7 @@ import { SCENES_B } from './scenes_b.js';
 import { SCENES_C } from './scenes_c.js';
 import { SCENES_D } from './scenes_d.js';
 import { SCENES_E } from './scenes_e.js';
+import { SCENES_F } from './scenes_f.js';
 import { mgIcon } from './icons.js';
 
 /* ---- the store's backdrops -------------------------------------------------
@@ -24,7 +25,7 @@ import { mgIcon } from './icons.js';
    rebuilt or resized.
    ========================================================================== */
 const HUD_HILLS = K => { K.ridge(9, 3, 2, 0.5, 9); K.ridge(6, 3, 3, 1.7, 3); K.ridge(3, 2, 2, 0.2, 2); K.r(0, 22, 160, 2, 2); };
-const REG = Object.assign({}, SCENES_A, SCENES_B, SCENES_C, SCENES_D, SCENES_E, { hud_hills: HUD_HILLS });
+const REG = Object.assign({}, SCENES_A, SCENES_B, SCENES_C, SCENES_D, SCENES_E, SCENES_F, { hud_hills: HUD_HILLS });
 export const MG_SCENES = Object.keys(REG);
 
 const BAY = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
@@ -109,12 +110,15 @@ export function mgAchScene(a) {
 
 /* ---- the little icons that stand across a building's picture --------------- */
 const IW = 26;
+/* rows are 2.5 times what they were, and so is every icon that stands on one */
+export const ROW_SCALE = 2.5;
+const ZW = Math.round(IW * ROW_SCALE);               /* 65 */
 const atlas = new Map();
 function iconCanvas(bid) {
   let c = atlas.get(bid);
   if (c) return c;
-  c = document.createElement('canvas'); c.width = IW + 2; c.height = IW + 2;
-  const g = c.getContext('2d');
+  const small = document.createElement('canvas'); small.width = IW + 2; small.height = IW + 2;
+  const g = small.getContext('2d');
   /* a hard one-pixel shadow under the picture, then the picture; the three icons that are a
      black square with a drawing in it give the square back so the scene shows round them */
   const pass = (dx, dy, flat) => (x, y, w, h, col) => {
@@ -123,6 +127,10 @@ function iconCanvas(bid) {
     g.fillRect(Math.round(x) + dx, Math.round(y) + dy, Math.max(1, Math.round(w)), Math.max(1, Math.round(h)));
   };
   mgIcon(pass(1, 1, 0), bid); mgIcon(pass(0, 0), bid);
+  /* blown up once, with no smoothing, so a pixel stays a block */
+  c = document.createElement('canvas'); c.width = Math.round((IW + 2) * ROW_SCALE); c.height = Math.round((IW + 2) * ROW_SCALE);
+  const q = c.getContext('2d'); q.imageSmoothingEnabled = false;
+  q.drawImage(small, 0, 0, c.width, c.height);
   atlas.set(bid, c);
   return c;
 }
@@ -134,19 +142,19 @@ function paintZone(z) {
   if (cv.height !== ch) cv.height = ch;
   const g = cv.getContext('2d');
   g.clearRect(0, 0, cw, ch);
-  if (!n || cw < IW) return;
+  if (!n || cw < ZW) return;
   const ic = iconCanvas(z.dataset.bz);
-  const fit = Math.max(1, Math.floor((cw - IW) / 3) + 1);
+  const fit = Math.max(1, Math.floor((cw - ZW) / 8) + 1);
   const draw = Math.min(n, fit, 140);
-  const step = draw > 1 ? Math.min(IW + 3, (cw - IW) / (draw - 1)) : 0;
-  const packed = step < IW;
-  const base = ch - IW - 3;
+  const step = draw > 1 ? Math.min(ZW + 6, (cw - ZW) / (draw - 1)) : 0;
+  const packed = step < ZW;
+  const base = ch - ZW - 6;
   /* far rows first so the near ones stand in front of them */
   for (let k = 2; k >= 0; k--) {
     for (let i = 0; i < draw; i++) {
       const lane = packed ? (i * 5 + (i >> 2)) % 3 : 0;
       if (lane !== k) continue;
-      g.drawImage(ic, Math.round(i * step), Math.max(0, base - k * 4));
+      g.drawImage(ic, Math.round(i * step), Math.max(0, base - k * 10));
     }
   }
 }
