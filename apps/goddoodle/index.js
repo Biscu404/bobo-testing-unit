@@ -15,6 +15,7 @@ export default {
     cv = document.createElement('canvas');
     cv.width = 256; cv.height = 192;
     cv.className = 'godcv';
+    cv.dataset.fit = 'fit';
     pane.appendChild(cv);
     const bar = document.createElement('div');
     bar.className = 'appbar';

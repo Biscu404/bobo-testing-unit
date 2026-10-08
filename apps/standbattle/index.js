@@ -48,6 +48,7 @@ export default {
     const cv = document.createElement('canvas');
     cv.width = W; cv.height = H;
     cv.className = 'gamecv sbcanvas';
+    cv.dataset.fit = 'int';
     cv.tabIndex = 0;
     pane.appendChild(cv);
 

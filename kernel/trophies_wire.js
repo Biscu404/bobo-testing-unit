@@ -12,7 +12,7 @@ export function wire(T) {
   const shelves = () => {
     let all = true;
     Object.keys(COS_CATS).forEach(cat => {
-      const full = COS_CATS[cat].list.every(it => Cos.has(cat, it.id));
+      const full = COS_CATS[cat].list.every(it => it.reward || Cos.has(cat, it.id));
       if (full) S.mark('shelves', cat); else all = false;
     });
     if (all) S.mark('bare', 'all');
@@ -20,7 +20,7 @@ export function wire(T) {
   const refit = () => {
     try { if (Object.keys(DEFAULTS).every(c => Cos.equipped(c) !== DEFAULTS[c] && Cos.has(c, Cos.equipped(c)))) S.mark('refit', 'all'); } catch (e) { /* no shop yet */ }
   };
-  window.addEventListener('cos-changed', ev => { sys.emit('buy', ev.detail || {}); shelves(); refit(); });
+  window.addEventListener('cos-changed', ev => { if (!(ev.detail && ev.detail.reward)) sys.emit('buy', ev.detail || {}); shelves(); refit(); });
   try { Cos.onChange(() => refit()); } catch (e) { /* no shop yet */ }
 
   const apps = new Set();

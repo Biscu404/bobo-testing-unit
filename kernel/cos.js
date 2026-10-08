@@ -1,4 +1,5 @@
-import { FRAMES, LOGOS, CURSORS, SCHEMES, POTS, SPECIES, WALLS, CRAYON, GARAGE, DRINKS, ELEPHANT, DECO_SVG, CUR_HANDMASK } from './cos_data.js';
+import { varsOf, VAR_NAMES, install as installThemes } from './theme_fx.js';
+import { FRAMES, LOGOS, CURSORS, SCHEMES, POTS, SPECIES, WALLS, CRAYON, GARAGE, DRINKS, ELEPHANT, DECO_SVG, CUR_HANDMASK, forSale } from './cos_data.js';
 
 /* `kind`: what owning one of these means. 'look' goes on the machine and is worn one at a time (frame, logo, pointer, scheme);
    'stock' is what the garden grows with (pots, seeds); 'wall' is a picture, set as the background; 'unlock' is something an app
@@ -65,8 +66,10 @@ const Cos = {
       if (cat in def.eq && (!this.find(cat, got.eq[cat]) || !this.has(cat, got.eq[cat], got))) got.eq[cat] = def.eq[cat];
     }
     this.st = got;
+    installThemes(SCHEMES);
     LOGOS[0].svg = (document.getElementById('logo') || { innerHTML: '' }).innerHTML;
     this.applyAll();
+    try { window.addEventListener('trophies-changed', () => this.syncRewards()); window.addEventListener('trophy-earned', ev => { if (ev.detail) this.grantFor(ev.detail.id); }); } catch (e) { /* no window */ }
     /* Dave leaves a box on the desktop when the shop window shuts (kernel/dave_box.js); it waits for the window list to say so */
     import('./dave_box.js').then(m => m.DaveBox.watch()).catch(() => {});
   },
@@ -87,7 +90,7 @@ const Cos = {
 
   buy(cat, id) {
     const it = this.find(cat, id);
-    if (!it || this.has(cat, id)) return false;
+    if (!it || this.has(cat, id) || it.reward) return false;       /* what a trophy gives is not for sale */
     if (!window.Economy.spend(it.price, 'DAVE: ' + it.name)) return false;
     this.st.owned[cat].push(id);
     this.save();
@@ -95,10 +98,35 @@ const Cos = {
     this.tell(cat, id);
     return true;
   },
+  /* ---- what a trophy gives (kernel/cos_rewards.js): an item with `reward: '<trophy id>'` is owned the moment that trophy is earned ---- */
+  rewardOf(trophyId) {
+    const out = [];
+    for (const cat in COS_CATS) COS_CATS[cat].list.forEach(it => { if (it.reward === trophyId) out.push({ cat, it }); });
+    return out;
+  },
+  grantFor(trophyId, quiet) {
+    let n = 0;
+    this.rewardOf(trophyId).forEach(({ cat, it }) => {
+      if (this.has(cat, it.id)) return;
+      this.st.owned[cat].push(it.id); n++;
+      if (!quiet) this.tell(cat, it.id, true);
+    });
+    if (n) this.save();
+    return n;
+  },
+  /* every reward whose trophy is already earned (a save from before the reward, a backfill): silently, at boot and whenever the ledger changes */
+  syncRewards() {
+    const T = window.Trophies;
+    if (!T || !this.st) return 0;
+    let n = 0;
+    for (const cat in COS_CATS) COS_CATS[cat].list.forEach(it => { if (it.reward && T.earned(it.reward) && !this.has(cat, it.id)) { this.st.owned[cat].push(it.id); n++; this.tell(cat, it.id, true); } });
+    if (n) this.save();
+    return n;
+  },
   /* an app that is open hears about a purchase the moment it is made */
-  tell(cat, id) {
+  tell(cat, id, reward) {
     this.subs.forEach(f => { try { f(cat, id); } catch (e) {} });
-    try { window.dispatchEvent(new CustomEvent('cos-changed', { detail: { cat, id } })); } catch (e) {}
+    try { window.dispatchEvent(new CustomEvent('cos-changed', { detail: { cat, id, reward: !!reward } })); } catch (e) {}
   },
   /* a backdrop is also a picture you own: it goes into ::/Home/Backdrops as a file */
   async shelve(it) {
@@ -220,35 +248,26 @@ const Cos = {
     const room = document.getElementById('room');
     if (!room) return;
     const s = this.find('scheme', this.live('scheme')) || SCHEMES[0];
-    this.applySchemeVars(room, s.v);
+    this.applySchemeVars(room, s);
   },
 
-  applySchemeVars(el, v) {
-    el.style.setProperty('--sch-bg', v.bg);
-    el.style.setProperty('--sch-fg', v.fg);
-    el.style.setProperty('--sch-ok', v.ok);
-    el.style.setProperty('--sch-hi', v.hi);
-    el.style.setProperty('--sch-err', v.err);
-    el.style.setProperty('--sch-dim', v.dim);
-    el.style.setProperty('--sch-acc', v.acc);
+  /* a scheme is worn as custom properties on an element: the six inks, the gradient-map filter (kernel/theme_fx.js) and the desktop's colour */
+  applySchemeVars(el, s, forWindow) {
+    const o = varsOf(s, forWindow);
+    for (const k in o) el.style.setProperty(k, o[k]);
   },
 
   /* a window's own scheme overrides whatever's set on #room, for that
      window's subtree only -- CSS custom properties just cascade, so
-     nothing downstream needs to know this happened. Not persisted: it
-     lives with the window instance, the way the ask ("5 apps open, 5
-     different themes") describes it -- open the same app twice and
-     each copy keeps its own. */
+     nothing downstream needs to know this happened. The window itself
+     does not remember (the window manager keeps one choice per app). */
   applyWinScheme(win, schemeId) {
     if (!win) return;
-    if (!schemeId) {
-      ['--sch-bg', '--sch-fg', '--sch-ok', '--sch-hi', '--sch-err', '--sch-dim', '--sch-acc']
-        .forEach(k => win.style.removeProperty(k));
-      return;
-    }
+    if (!schemeId) { VAR_NAMES.forEach(k => win.style.removeProperty(k)); win.classList.remove('themed'); return; }
     const s = this.find('scheme', schemeId);
     if (!s) return;
-    this.applySchemeVars(win, s.v);
+    this.applySchemeVars(win, s, true);
+    win.classList.add('themed');
   },
 
   applyLogo() {

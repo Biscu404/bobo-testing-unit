@@ -2,7 +2,7 @@
    run_draw.js; the board's own rules are in board.js. This file decides what
    a click means, what a larva costs, and what a spell does. */
 import { mk, lay, open, each, around, chordTargets, blocked, hiddenSafe, won as boardWon, flagsUsed, underFlags } from './board.js';
-import { CHARM, SPELLS, SPELL_HINT, spellOpen, maxMasks } from './data.js';
+import { CHARM, SPELLS, SPELL_HINT, spellOpen, maxMasks, modsOf } from './data.js';
 
 export function createRun(env) {
   const node = env.node || null;                 /* null = a classic game */
@@ -11,7 +11,7 @@ export function createRun(env) {
   const has = id => !!(camp && camp.equipped.indexOf(id) >= 0);
   const S = {
     env, node, lv, camp, has, classic: !camp,
-    b: mk(lv.c, lv.r, lv.m), mod: node ? node.mod : null,
+    b: mk(lv.c, lv.r, lv.m), mods: node ? modsOf(node) : [], mod: node && modsOf(node)[0] || null,
     hpMax: camp ? maxMasks(camp.shards) : 0, hp: camp ? camp.hp : 0, blue: 0,
     soul: camp ? camp.soul : 0, shell: false, opened: 0, womb: 0,
     started: false, t0: 0, endT: 0, over: false, won: false, dead: false, overAt: 0,
@@ -43,8 +43,12 @@ export function createRun(env) {
   S.pop = pop;
 
   /* ---- soul, masks ----------------------------------------------------- */
-  const gainSoul = n => { if (camp) S.soul = Math.min(99, S.soul + Math.round(n)); };
-  const focusCost = () => has('deep') ? 44 : has('quick') ? 22 : 33;
+  /* the Underdeep is stingy: a room's `soulK` is what share of the soul an opened tile gives, and its `spellK` what the spells cost (the sums are whole) */
+  const soulK = node && node.soulK || 1, spellK = node && node.spellK || 1;
+  const gainSoul = n => { if (camp) S.soul = Math.min(99, S.soul + Math.round(n * soulK)); };
+  const costOf = base => Math.round(base * spellK);
+  S.cost = kind => costOf(SPELLS[kind].cost);
+  const focusCost = () => costOf(has('deep') ? 44 : has('quick') ? 22 : 33);
   const diveRad = () => has('shaman') ? 2 : 1;
   /* F, Q and E are learnt by clearing the map, a region at a time (data.js SPELL_AT); a classic game has none */
   S.learnt = kind => !!camp && spellOpen(camp, kind);
@@ -55,7 +59,9 @@ export function createRun(env) {
     pop(i, 14, '#c8354a');
     env.snd.chitter(0);
     if (S.classic) { lose(i); return; }
-    const dmg = S.node.boss ? 2 : 1;
+    /* what a larva costs: a room's own `hit` (the Underdeep's is two, a guardian's three), else one, a guardian's two; the iron ward takes one off, never the last */
+    let dmg = S.node.hit || (S.node.boss ? 2 : 1);
+    if (has('ward')) dmg = Math.max(1, dmg - 1);
     S.hits++;
     if (has('stalwart') && !S.shell) {
       S.shell = true; S.say('THE SHELL HOLDS.', '#9fe0ff'); float(i, 'SHELL', '#9fe0ff');
@@ -139,7 +145,7 @@ export function createRun(env) {
      so every later click was another "not enough soul" and the room could not be played on until a right-click happened to cancel it:
      a spell that cannot be cast is now never aimed, and a cast that does not go off lets go of the aim. */
   function cast(kind, i) {
-    const b = S.b, cost = SPELLS[kind].cost;
+    const b = S.b, cost = S.cost(kind);
     if (S.soul < cost) { S.target = null; S.say('NOT ENOUGH SOUL: ' + cost + ' NEEDED.', '#ff9090'); return; }
     if (b.rev[i] || b.def[i]) { S.say('PICK A TILE THAT IS STILL HIDDEN.', '#cfe6ff'); return; }
     S.soul -= cost; S.target = null; S.spells++;
@@ -168,7 +174,7 @@ export function createRun(env) {
   function aim(kind) {
     if (!S.started) { S.say('OPEN A TILE FIRST.'); return false; }
     if (S.target === kind) { S.target = null; return true; }
-    if (S.soul < SPELLS[kind].cost) { S.target = null; S.say(SPELLS[kind].name + ' NEEDS ' + SPELLS[kind].cost + ' SOUL.', '#ff9090'); return false; }
+    if (S.soul < S.cost(kind)) { S.target = null; S.say(SPELLS[kind].name + ' NEEDS ' + S.cost(kind) + ' SOUL.', '#ff9090'); return false; }
     S.target = kind; S.say(SPELLS[kind].name + ': CHOOSE A TILE. RIGHT-CLICK CANCELS.', '#cfe6ff');
     return true;
   }
@@ -211,7 +217,7 @@ export function createRun(env) {
     S.held = true;
     if (!S.started) {
       S.started = true; S.t0 = Date.now(); S.fogAt = performance.now() + 9000;
-      lay(S.b, i, S.mod);
+      lay(S.b, i, S.mods);
     }
     clickOpen(i);
   };
@@ -228,8 +234,14 @@ export function createRun(env) {
   };
 
   /* spores settle every so often on a number that is already open */
+  S.hasMod = m => S.mods.indexOf(m) >= 0;
   S.tick = now => {
-    if (S.over || !S.started || S.mod !== 'spore' || now < S.fogAt) return;
+    if (S.over || !S.started) { S.lastT = now; return; }
+    /* the cold: soul seeps away at 1.6 a second (0.8 with the ember heart), a whole bar in about a minute */
+    const prev = S.lastT || now, dt = Math.min(0.25, Math.max(0, (now - prev) / 1000));
+    S.lastT = now;
+    if (camp && S.hasMod('cold') && S.soul > 0) S.soul = Math.max(0, S.soul - dt * (has('ember') ? 0.8 : 1.6));
+    if (!S.hasMod('spore') || now < S.fogAt) return;
     S.fogAt = now + 8000 + Math.random() * 3000;
     const b = S.b, c = [];
     for (let i = 0; i < b.n; i++) if (b.rev[i] && now > b.rev[i] + 1500 && b.cells[i] && !b.fog[i] && !b.def[i]) c.push(i);

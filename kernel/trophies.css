@@ -1,5 +1,10 @@
 /* The trophy card and the taskbar cup (kernel/trophies_toast.js). Sixteen colours, hard edges. */
-.tcard-host { position: absolute; right: 8px; bottom: 32px; width: 360px; max-width: calc(100% - 16px); z-index: 470; pointer-events: none; }
+.tcard-host { position: absolute; right: 8px; bottom: 32px; width: 360px; max-width: calc(100% - 16px); z-index: 9950; pointer-events: none; }
+/* over everything but the style meter's own layers: the windows, menus and taskbar are all under it. In a run the card is the compact kind and takes no clicks. */
+.tcard-host.held .tcard { pointer-events: none; width: 300px; padding: 5px 8px; }
+.tcard-host.held .tc-desc, .tcard-host.held .tc-more { display: none; }
+.tcard-host.held .tc-cup { width: 30px; height: 30px; }
+.tcard-host.held .tc-name { font-size: 18px; }
 .tcard { position: relative; display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; background: #000000; border: 3px solid #AAAAAA; box-shadow: 4px 4px 0 #000000, 0 0 0 2px #000000;
   color: #FFFFFF; cursor: pointer; pointer-events: auto; animation: tcin 0.34s steps(6, end); overflow: hidden; }
 .tcard.out { opacity: 0; transform: translateX(30px); transition: opacity 0.4s steps(4, end), transform 0.4s steps(4, end); }

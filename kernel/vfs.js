@@ -27,7 +27,7 @@ function getDB() {
 /* bump this whenever assets/seed.json's shape changes (new fields, new
    apps) so a browser that already seeded an older shape gets patched
    instead of silently keeping stale records forever */
-const SEED_VERSION = 7;
+const SEED_VERSION = 8;
 const SEED_VERSION_KEY = 'templeos.vfs.seedVersion';
 /* An app that was renamed: the old seeded icon is carried to the new name (desktop.js carries its place on the desk), so nobody ends up
    with both. Only an untouched app marker moves; anything else at the old path is the user's and stays. */

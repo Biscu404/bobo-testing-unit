@@ -212,6 +212,12 @@ export default {
     root.addEventListener('keyup', ev => keys.keyup(ev));
     root.addEventListener('mousedown', ev => { if (!/input|select|textarea/i.test(ev.target.tagName)) api.focus(); });
     L2.on(window, 'blur', () => keys.releaseAll());
+    /* a song opened from the desktop while the Garage is open: it is opened here, unless this one has changes that would be lost */
+    L2.on(window, 'app-reopen', async ev => {
+      const d = ev.detail; if (!d || d.appId !== 'garage' || !d.args || !d.args.path) return;
+      if (G.dirty) { ctx.toast('SAVE OR CLOSE THE SONG IN THE GARAGE FIRST.'); return; }
+      const rec = await ctx.fs.read(d.args.path); if (rec) api.startSong(L.deserialize(rec.content), d.args.path);
+    });
     whenGone(root, () => { alive = false; cancelAnimationFrame(raf); clearTimeout(saveT); clearTimeout(prefT); clearTimeout(statusT); if (player) player.stop(); player = null; keys.releaseAll(); grid.dispose(); stopAudition(); });
 
     /* ---- start ---------------------------------------------------------------------------------------------- */

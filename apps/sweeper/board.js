@@ -58,12 +58,16 @@ export function lay(b, safe, mod, rnd) {
     each(b, i, j => { if (b.mine[j]) k++; });
     b.cells[i] = k;
   }
-  if (mod === 'bramble' || mod === 'web') {
+  /* `mod` is one rule or several ('web+cold', or the list): a tile is webbed (one in ten), else brambled (eleven in a hundred), never both */
+  const ms = Array.isArray(mod) ? mod : typeof mod === 'string' ? mod.split('+') : [];
+  const pW = ms.indexOf('web') >= 0 ? 0.1 : 0, pB = ms.indexOf('bramble') >= 0 ? 0.11 : 0;
+  if (pW || pB) {
     for (let i = 0; i < b.n; i++) {
-      if (banned[i] || rnd() > (mod === 'bramble' ? 0.11 : 0.1)) continue;
-      if (mod === 'bramble') b.thorn[i] = 1; else b.web[i] = true;
+      if (banned[i]) continue;
+      const r = rnd();
+      if (r < pW) b.web[i] = true; else if (r < pW + pB) b.thorn[i] = 1;
     }
-    if (mod === 'web') unweb(b);
+    if (pW) unweb(b);
   }
 }
 

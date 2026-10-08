@@ -91,7 +91,9 @@ export default {
     refreshStats();
     if (args.edit !== undefined) { openShop(String(args.edit)); if (args.name) shop.setName(args.name); }
     else if (P.data.view === 'puzzles') show('puzzles'); else show('lessons');
-    whenGone(root, () => { lab.destroy(); snd.stop(); P.save(); });
+    const again = ev => { const d = ev.detail; if (d && d.appId === 'holyc' && d.args && d.args.edit !== undefined) { openShop(String(d.args.edit)); if (d.args.name) shop.setName(d.args.name); } };
+    window.addEventListener('app-reopen', again);
+    whenGone(root, () => { window.removeEventListener('app-reopen', again); lab.destroy(); snd.stop(); P.save(); });
     void banner; void CHAPTERS;
   },
   unmount() {}

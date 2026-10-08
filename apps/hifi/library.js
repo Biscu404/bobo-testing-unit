@@ -14,6 +14,7 @@ import * as ELE from '../elephant/score.js';
 import * as BEK from '../bekkedal/score.js';
 import * as SB from '../standbattle/score.js';
 import * as AE from '../aftere/score.js';
+import * as SOL from '../solitaire/score.js';
 import * as Lang from '../../kernel/songtext.js';
 import { unlocked } from '../../kernel/style_track.js';
 import { FILE as STYLE_SONG } from '../../kernel/style_track_plan.js';
@@ -62,6 +63,9 @@ export function stackFolders() {
 
   /* AfterEgypt: the title and the five ways, each with its arrangement filled in (the wind, the locusts and the stone are the flight's) */
   out.push(['AFTEREGYPT', 'amber', AE.IDS.map(k => [AE.NAMES[k], disc(AE.song(Lang, k), 'amber', 'AFTEREGYPT', AE.DISC_LAYERS)])]);
+
+  /* Solitaire's three tunes, with the whole band in */
+  out.push(['SOLITAIRE', 'green', SOL.IDS.map(k => [SOL.NAMES[k], disc(SOL.song(Lang, k), 'green', 'SOLITAIRE')])]);
 
   /* the Garage's own songs: real instruments, bounced by the studio rather than synthesised here */
   out.push(['THE GARAGE', 'white', demoSongs(Lang).map(sg => [sg.title, {

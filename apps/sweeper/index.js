@@ -3,7 +3,7 @@ import { Snd } from '../../kernel/snd.js';
 import { lampDip } from '../../kernel/hardware.js';
 import { scopedListeners, whenGone } from '../lifecycle.js';
 import { makeGfx } from './gfx.js';
-import { CLASSIC, REGIONS, CHARM, START, FINAL, ROOMS, SPELLS, spellOpen, maxMasks } from './data.js';
+import { CLASSIC, REGIONS, CHARM, START, FINAL, FINAL2, ROOMS, SPELLS, spellOpen, maxMasks, baseCount, underOpen } from './data.js';
 import { classicPay, roomPay, isPerfect, perfectPar } from './pay.js';
 import { createRun } from './run.js';
 import { drawRun, CLASSIC_REGION } from './run_draw.js';
@@ -93,7 +93,7 @@ export default {
       run = null;
       const c = camp(); refresh(c);
       set('map', createMap({ camp: c, snd: Snd, openRoom: n => toRun(null, n), openBench: toBench }));
-      made.title.textContent = TITLE + '  --  THE SUNKEN KINGDOM';
+      made.title.textContent = TITLE + '  --  ' + (underOpen(c) && c.last && REGIONS.some(r => r.act === 2 && r.nodes.some(n => n.id === c.last)) ? 'THE UNDERDEEP' : 'THE SUNKEN KINGDOM');
     }
     function toBench(rid) {
       const c = camp(); refresh(c);
@@ -161,15 +161,16 @@ export default {
       if (perfect && (c.perfect[n.id] == null || t < c.perfect[n.id])) c.perfect[n.id] = t;
       Object.keys(SPELLS).forEach(k => { if (!learnt[k] && spellOpen(c, k)) { newSpells.push(k); news.push('YOU HAVE LEARNT ' + SPELLS[k].name + '  [' + SPELLS[k].key + ']'); } });
       let compass = false;
-      if (c.owned.indexOf('compass') < 0 && Object.keys(c.perfect).length >= ROOMS) {
+      if (c.owned.indexOf('compass') < 0 && baseCount(c.perfect) >= ROOMS) {
         c.owned.push('compass'); compass = true; news.push('THE WAYWARD COMPASS IS YOURS. IT WAITS AT THE BENCH.');
       }
       c.hp = S.hp; c.soul = S.soul; c.last = n.id;
-      if (n.id === FINAL) { c.won = true; news.push('THE HOLLOW ONE IS STILL'); }
+      if (n.id === FINAL) { c.won = true; news.push('THE HOLLOW ONE IS STILL'); news.push('SOMETHING UNDER IT HAS STARTED TO MOVE: THE UNDERDEEP IS OPEN.'); }
+      if (n.id === FINAL2) { c.won2 = true; news.push('THE PALE KING IS STILL. THERE IS NOTHING UNDER THE UNDERDEEP.'); }
       S.pay = { secs, geo: geoL, sun: sunL, total: sp.total, news, perfect, par: perfectPar(n) };
       Sweeper.save();
       earn(sp.total, 'DUNGEON SWEEPER: ' + n.name);
-      calls.won(S, secs, { learntBefore: Object.keys(learnt).filter(k => learnt[k]).length, shadeFound, perfect, compass, newSpells, cleared: Object.keys(c.cleared).length });
+      calls.won(S, secs, { learntBefore: Object.keys(learnt).filter(k => learnt[k]).length, shadeFound, perfect, compass, newSpells, cleared: baseCount(c.cleared), under: Object.keys(c.cleared).filter(id => !!id && c.cleared[id] != null).length - baseCount(c.cleared) });
       S.pay.trophies = calls.earned();
     }
     function onDeath(S) {

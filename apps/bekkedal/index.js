@@ -110,6 +110,7 @@ export default {
       const cv = document.createElement('canvas');
       cv.width = BEK_W; cv.height = BEK_H;
       cv.className = 'gamecv bekcv';
+      cv.dataset.fit = 'int';
       cv.tabIndex = 0;
       wrap.appendChild(cv);
 

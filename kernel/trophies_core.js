@@ -49,12 +49,14 @@ export function createTrophies(env) {
   };
   /* a game's mastery seal: derived, so a list that grows never needs its seal told */
   T.masteries = [];
-  T.finalize = masteryOf => {
+  T.finalize = (masteryOf, payOf) => {
     masteryOf.forEach(m => {
       const own = () => [...defs.values()].filter(d => d.app === m.app && !d.legacy && !d.retired);
       const d = { id: 'mastery_' + m.app, app: 'meta', tier: 'S', kind: 'meta', mastery: m.app, name: 'MASTER OF ' + m.name, desc: 'Earn every trophy of ' + m.name + ' that is not a secret or a mirror.',
-        pay: MASTERY_PAY, derive: () => { const l = own().filter(x => !x.secret && !closed(x)); return l.length > 0 && l.every(x => st.earned[x.id]); },
+        pay: MASTERY_PAY, size: () => own().filter(x => !x.secret && !closed(x)).length, derive: () => { const l = own().filter(x => !x.secret && !closed(x)); return l.length > 0 && l.every(x => st.earned[x.id]); },
         progress: () => { const l = own().filter(x => !x.secret && !closed(x)); return [l.filter(x => st.earned[x.id]).length, l.length]; } };
+      /* a seal's pay may be a function of how many trophies it asks for (kernel/trophy_rewards.js): a longer game is a bigger seal */
+      if (payOf) d.pay = payOf(d.size());
       T.register('meta', [d]); T.masteries.push(d);
     });
     evalDerived();
@@ -103,7 +105,7 @@ export function createTrophies(env) {
     st.recent.unshift({ t: st.earned[d.id], kind: 'earn', id: d.id }); st.recent.length = Math.min(st.recent.length, 14);
     if (!quiet && d.pay > 0 && env.pay) safe(() => env.pay(d.pay, 'TROPHY: ' + d.name), 0);
     save();
-    if (!quiet) { queue.push(d.id); if (!T.cardsLive) T.pendingCards.push(d.id); tell('trophy-earned', { id: d.id, app: d.app, tier: d.tier, name: d.name, secret: d.secret, kind: d.kind, mastery: !!d.mastery, held: held > 0 }); }
+    if (!quiet) { queue.push(d.id); if (!T.cardsLive) T.pendingCards.push(d.id); tell('trophy-earned', { id: d.id, app: d.app, tier: d.tier, name: d.name, secret: d.secret, kind: d.kind, mastery: !!d.mastery, epic: !!d.epic, pay: d.pay, held: held > 0 }); }
     tell('trophies-changed', {});
     evalDerived();
     return true;
