@@ -43,31 +43,15 @@
 export const PRIORITY = { ADD: 0, MULTIPLY: 1000, CLAMP: 2000 };
 
 export const EVENT_HOOKS = [
-  'onRunStart', 'onFloorStart', 'onHit', 'onNodeClear', 'onRunEnd',
-  'onDodgeSuccess', 'onParrySuccess', 'onMoveDenied',
-  'onTelegraphStart', 'onPhaseTransition'
+  'onSwing', 'onHit', 'onBlock', 'onWhiff', 'onSidestep', 'onSidestepDodge', 'onThrow', 'onThrowBreak', 'onLaunch', 'onBounce',
+  'onWallSplat', 'onKnockdown', 'onWake', 'onCombo', 'onSpecial', 'onProjectile', 'onDetonate',
+  'onRoundStart', 'onFight', 'onKO', 'onRoundEnd', 'onMatchEnd'
 ];
 
-/* Minimum combat surface required "live and provably mutable" by the
-   Phase 3 mission. onKill/onDamageTaken/onPerfectClash existed as EVENTS
-   before this phase (fired post-hoc, nothing could change from them) and
-   are promoted to EFFECTS here — see the bus.on() note above for why
-   audio.js/fx.js need no changes for that promotion. */
-export const EFFECT_HOOKS = [
-  'onMoveStart', 'onHitResolve', 'onHitLanded', 'onCritCheck', 'onKill',
-  'onDamageIncoming', 'onDamageTaken', 'onStaggerStart', 'onStepStart',
-  'onClashSuccess', 'onPerfectClash', 'onGuardBreak'
-];
-
-/* getMaxPersistence/getMoveSpeed extend the mission's minimum four
-   (getDamage/getMoveFrames/getPoiseDamage/getPersistenceCost) — needed to
-   port the three existing run buffs off their bespoke fighter.js fields
-   (deliverable 6). Tech §2.1: "extend this list as content requires it,
-   but register new hooks in one place." */
-export const QUERY_HOOKS = [
-  'getDamage', 'getMoveFrames', 'getPoiseDamage', 'getPersistenceCost',
-  'getMaxPersistence', 'getMoveSpeed'
-];
+/* The arcade rework keeps the machinery (effects mutate a ctx, queries reduce a value) and the rule that a hook name has one kind, but declares no
+   effect or query hooks: nothing in a fight is rewritten by content any more. */
+export const EFFECT_HOOKS = [];
+export const QUERY_HOOKS = [];
 
 const HOOK_KIND = {};
 EVENT_HOOKS.forEach(h => { HOOK_KIND[h] = 'event'; });

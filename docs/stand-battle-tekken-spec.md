@@ -89,8 +89,8 @@ A move row (`moves.js`) is `[id, name, command, height, startup, active, recover
 * `total = startup − 1 + active + recovery`.
 * `onHit` / `onBlock` is the **frame advantage** when the first active frame connects: (frames until the defender can act) − (frames until the attacker can act). `+4` means the defender is still
   stuck for four frames after the attacker is free.
-* The sim derives the defender's stun from it: **`stun = advantage + (total − contactFrame)`**, and the defender can act on the tick after `stun` frames. A late contact in a long active window
-  therefore gives a *better* advantage than the table, exactly as in the real games.
+* The sim derives the defender's stun from it: **`stun = advantage + (total − the hit's own first frame)`**, and the defender is free on the tick after the stun ends (`T + stun + 1` for a contact on tick `T`;
+  the attacker is free on `T0 + total` for a move begun on `T0`). A contact `k` frames after the hit's first frame therefore leaves an advantage of the table's **plus k**, exactly as in the real games.
 * Multi-hit moves list `hits` with their own frame numbers. Every hit before the last gets `stun = gap + 1` to the next hit, so a string that is meant to connect does; the table's advantage is for the last hit.
 * Pushback, hit-stop, hit reaction and reach are small defaults derived from damage class and overridable in `extras`.
 
@@ -127,11 +127,11 @@ on a fighter who is attacking (startup or active frames) is a **counter hit**: +
 
 ## 7. Sidestep and tracking
 
-A sidestep (`sidestep.up` / `.down`) lasts 14 frames. Frames 1–2 happen in the old lane and the fighter can be hit as normal; on frame 3 the fighter's **lane flips**.
+A sidestep (tap up / tap down) lasts 13 frames. Frames 1–2 happen in the old lane and the fighter can be hit as normal; on frame 3 the fighter's **lane flips**.
 Every attack records the lane it was **aimed at** when it began (the opponent's lane at that frame, and the attacker steps into it); on an active frame it can hit only a defender in
 that lane, unless the hit **tracks**: `track: 'none'` (linear), `'near'`, `'far'`, `'both'`. A tracking hit also connects to a defender who has moved to the lane named.
 So a linear move that is committed when its target sidesteps whiffs, a tracking move catches it, and a sidestepper who is then attacked has been caught in the lane it chose.
-A fighter can attack out of a sidestep from frame 14. A sidestep does not move the fighter along `x`.
+A fighter can act again on frame 14. A sidestep does not move the fighter along `x`.
 
 Because there are only two lanes, the direction of a sidestep is dictated by where you stand (`UP` from the far lane does nothing). Moves are authored with that in mind: roughly one
 move in four tracks, and most of those track only one lane, so which lane you are in is a decision.
@@ -147,10 +147,10 @@ damage, no scaling, no juggle; they end in a knockdown.
 
 * **Combo** = hits on a defender who is in a reaction (stun, air, bounce) since the first hit. Counted by `fight_combo.js`; the counter drops when the defender is free.
 * **Damage scaling** by the hit's place in the combo: `1.00 0.90 0.80 0.70 0.60 0.50 0.45 0.40 0.35 0.30` and 0.30 from the tenth on. Throws and the first hit are always 1.00.
-* **Launch**: a launching hit puts the defender in the air (`vy` 11, gravity 0.55/frame², about 40 frames of air). Hitting an airborne defender is a **juggle**: each juggle hit pops them to
+* **Launch**: a launching hit puts the defender in the air (`vy` 9.5, gravity 0.55/frame², about 35 frames of air). Hitting an airborne defender is a **juggle**: each juggle hit pops them to
   `vy ≥ 6` and counts; after the 3rd juggle hit gravity doubles ("slump") and the 6th hit ends the juggle: they fall and the next hit is a new combo. A juggle hit that is not
   `juggle: true` in its row (slow, big moves) does nothing to a defender in the air.
-* **Bounce**: a `hit: 'bounce'` slams the defender to the floor and they rebound once (`vy` 7). One bounce per combo. A rebound is juggleable like a launch.
+* **Bounce**: a `hit: 'bounce'` slams the defender to the floor and they rebound once (`vy` 6). One bounce per combo. A rebound is juggleable like a launch.
 * **Wall splat**: a launch or a heavy knock-back into a wall (walls stages) pins the defender for 34 frames. The splat deals `splat` damage and **ends the combo**: the counter closes (and the
   trophy/score system is told), the pinned fighter cannot act, and the attacker's next hit starts a new combo scaled from 0.80. Pushing a fighter into the wall with pokes does not splat;
   the row says which moves do (`splat: true`) and a juggle that reaches the wall does.
@@ -163,7 +163,7 @@ damage, no scaling, no juggle; they end in a knockdown.
 ## 10. Rounds
 
 * Best of three: first to **2 round wins**. A round is 60 s (3600 frames, the timer paused during hit-stop and the intro).
-* Round order: `intro` (150 frames: ROUND n, FIGHT!), `fight`, then the **KO beat** (36 sim frames at 0.30 speed = 2.0 s real, the camera pushes in), then the win pose (150 frames), then the next round or the result.
+* Round order: `intro` (150 frames: ROUND n, FIGHT!), `fight`, then the **KO beat** (36 sim frames at 0.30 speed = 2.0 s real; the picture's edges darken), then the win pose (150 frames), then the next round or the result.
 * A round ends on KO, ring-out, or the timer. On the timer the fighter with the higher *percentage* of HP wins; **equal HP, or both KO'd on the same frame, is a draw that counts as a win for both**.
 * If a draw gives both fighters their second win at once, a **final round** is fought (30 s, sudden death). If that is also a draw, whoever dealt more damage in the match wins; if that is equal too, player 1 does.
 

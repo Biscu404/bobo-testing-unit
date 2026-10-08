@@ -33,7 +33,7 @@ function jacket(g, sk, spec, b) {
   }
 }
 
-function paint(g, pose, b) {
+export function paint(g, pose, b) {
   const spec = b.spec;
   const sk = skeleton(spec, pose);
 
@@ -63,6 +63,7 @@ function paint(g, pose, b) {
   /* front arm last, over everything */
   drawLimb(g, sk.armFront, 12, 9.6, 7.8, b.cloth, null, '#05060A');
   hand(g, sk.armFront.wrist.x, sk.armFront.wrist.y, sk.armFront.foreAng, 10.5, b.skin, pose.handFront);
+  if (b.after) b.after(g, sk, pose);
   return sk;
 }
 
