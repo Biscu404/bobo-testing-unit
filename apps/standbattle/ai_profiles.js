@@ -6,8 +6,8 @@ export const TIERS = {
   normal: { reaction: 24, error: 0.16,  punish: 0.35, tech: 0.20, step: 0.10, combo: 2,  aggro: 0.50, think: [16, 50] },
   hard:   { reaction: 18, error: 0.10,  punish: 0.55, tech: 0.35, step: 0.20, combo: 3,  aggro: 0.55, think: [12, 40] }
 };
-/* what the top of a ladder reaches: the next tier up (hard goes on to a player who has played many fighting games) */
-const TOP = { easy: TIERS.normal, normal: TIERS.hard, hard: { reaction: 10, error: 0.04, punish: 0.9, tech: 0.7, step: 0.45, combo: 8, aggro: 0.65, think: [4, 16] } };
+/* what the top of a ladder reaches: EASY's boss plays like NORMAL's first fight, NORMAL's boss plays a little below the human-pace bot, HARD's goes on to a player who has played many fighting games */
+const TOP = { easy: TIERS.normal, normal: { reaction: 19, error: 0.105, punish: 0.535, tech: 0.33, step: 0.19, combo: 3, aggro: 0.55, think: [12, 41] }, hard: { reaction: 10, error: 0.04, punish: 0.9, tech: 0.7, step: 0.45, combo: 8, aggro: 0.65, think: [4, 16] } };
 /* a person at human pace, for the budget bot (budget_bot.js): the middle of the scale, which is where NORMAL's last fight and HARD's first one sit */
 export const HUMAN = { reaction: 18, error: 0.10, punish: 0.55, tech: 0.35, step: 0.20, combo: 3, aggro: 0.55, think: [12, 40] };
 

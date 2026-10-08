@@ -13,7 +13,7 @@ import { createTrainer, resetFight, DUMMIES, MAX_REC } from './training.js';
 import { zToYOffset } from './render_adapter.js';
 import { GROUND_Y } from './constants.js';
 import { RULES, LANE_Z } from './rules.js';
-import { cmdText, advText } from './scene_movelist.js';
+import { cmdText, advText } from './cmd_text.js';
 import { emit } from './trophies_bridge.js';
 
 const DIR = { 1: [-1, 1], 2: [0, 1], 3: [1, 1], 4: [-1, 0], 6: [1, 0], 7: [-1, -1], 8: [0, -1], 9: [1, -1] };

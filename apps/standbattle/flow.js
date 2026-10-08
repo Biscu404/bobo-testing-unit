@@ -23,7 +23,8 @@ export function playFight(app) {
     makeAI: (fight, slot, p) => createAI(fight, slot, p || cfg.profile),
     ais: [null, human2 ? null : cfg.profile],
     onStart: fight => { bridge = wireTrophies(fight, { enemy: S.opponent().id, mode: S.mode, tier: S.tier, mirror: !!S.opponent().mirror, shake: app.meta.shakeEnabled, pad: app.dev.padCount > 0 }); app.bridge = bridge; },
-    onEnd: (match, fight) => { if (bridge) bridge.end(); app.bridge = null; afterFight(app, match, fight); }
+    onEnd: (match, fight) => { if (bridge) bridge.end(); app.bridge = null; afterFight(app, match, fight); },
+    onQuit: () => { if (bridge) bridge.end(); app.bridge = null; app.session = null; }
   }));
 }
 

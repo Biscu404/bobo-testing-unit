@@ -3,19 +3,10 @@ import { skyline, panel, title, text, px } from './ui_kit.js';
 import { PLAYABLE, ROSTER, movelistOf } from './roster.js';
 import { sfxMove } from './audio.js';
 import { emit } from './trophies_bridge.js';
+import { cmdText, advText } from './cmd_text.js';
+export { cmdText, advText };
 
 const ROWS = 14;
-const ARROW = { f: 'F', b: 'B', d: 'D', df: 'D/F', db: 'D/B' };
-export const cmdText = m => {
-  const c = m.cmd;
-  if (c.kind === 'chain') return c.parent.toUpperCase().replace(/_/g, ' ') + ' > ' + btn(c.buttons);
-  const b = btn(c.buttons);
-  if (c.kind === 'motion') return { qcf: 'QCF', qcb: 'QCB', ch: 'CHARGE B~F' }[c.motion] + '+' + b;
-  if (c.kind === 'dash') return 'F,F+' + b;
-  return (c.dir ? ARROW[c.dir] + '+' : '') + b;
-};
-const btn = mask => ['LP', 'RP', 'LK', 'RK'].filter((n, i) => mask & (16 << i)).join('+');
-export const advText = v => (v == null ? '--' : v > 0 ? '+' + v : String(v));
 
 export function movelistScene(app) {
   let who = 0, top = 0, sel = 0;

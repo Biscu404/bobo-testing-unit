@@ -1,3 +1,6 @@
+> **SUPERSEDED.** This spec describes the belt-scroll roguelike prototype that Stand Battle Arena used to be. The game is now an arcade fighter; its design record is
+> `docs/stand-battle-tekken-spec.md`. Nothing below describes code that still exists, and none of it is a contract any more. It is kept for the record.
+
 # Stand Battle Arena — Technical Design Specification
 **Type:** Single-player *JoJo's Bizarre Adventure* roguelike, browser-based (JavaScript / CSS / Canvas)
 **Scope target:** ~40 hours of player content

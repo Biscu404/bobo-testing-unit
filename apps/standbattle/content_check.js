@@ -70,7 +70,12 @@ const ALLOWED = ['reaction', 'error', 'punish', 'tech', 'step', 'combo', 'aggro'
 ok(Object.keys(HUMAN).sort().join() === ALLOWED, 'the budget bot is the same program with a person\'s numbers');
 ok(TIERS.easy.reaction > TIERS.normal.reaction && TIERS.normal.reaction > TIERS.hard.reaction && TIERS.easy.error > TIERS.normal.error && TIERS.normal.error > TIERS.hard.error && TIERS.easy.punish < TIERS.normal.punish && TIERS.normal.punish < TIERS.hard.punish && TIERS.easy.tech < TIERS.hard.tech && TIERS.easy.combo < TIERS.hard.combo, 'the tiers are ordered on every number');
 ok(HUMAN.reaction < TIERS.normal.reaction && HUMAN.reaction >= TIERS.hard.reaction && HUMAN.combo <= 3, 'a person\'s pace is between NORMAL and the top of HARD and routes at most three hits');
-{ const a = ladderProfile('normal', 0, 6), z = ladderProfile('normal', 5, 6); ok(a.reaction === TIERS.normal.reaction && z.reaction === TIERS.hard.reaction && z.error < a.error, 'a ladder ramps from its tier at the first fight to the next at the boss'); }
+['easy', 'normal', 'hard'].forEach(t => {
+  const first = ladderProfile(t, 0, 6), last = ladderProfile(t, 5, 6);
+  let mono = true; for (let k = 1; k < 6; k++) { const p = ladderProfile(t, k - 1, 6), q = ladderProfile(t, k, 6); if (q.reaction > p.reaction || q.error > p.error + 1e-9 || q.punish < p.punish - 1e-9) mono = false; }
+  ok(first.reaction === TIERS[t].reaction && last.reaction <= first.reaction && last.error < first.error && last.punish > first.punish && mono, t + ': a ladder starts at its tier and climbs to a stronger CPU at the boss, never easing on the way');
+});
+ok(ladderProfile('easy', 5, 6).reaction === TIERS.normal.reaction && ladderProfile('normal', 5, 6).reaction <= TIERS.normal.reaction && ladderProfile('normal', 5, 6).reaction >= TIERS.hard.reaction && ladderProfile('hard', 5, 6).reaction < TIERS.hard.reaction, 'EASY ends where NORMAL begins, NORMAL ends between NORMAL and HARD, and HARD goes beyond itself');
 
 /* ---- the save, the table, the keys, the stages ---- */
 (async () => {

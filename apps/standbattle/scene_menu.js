@@ -4,7 +4,7 @@ import { sfxMove, sfxPick, sfxDeny } from './audio.js';
 import { ROSTER, PLAYABLE } from './roster.js';
 
 const MODES = [
-  { label: 'ARCADE', go: 'select', args: { mode: 'arcade' }, note: 'SEVEN FIGHTS AND A BOSS. A SECOND PLAYER CAN JOIN IN.' },
+  { label: 'ARCADE', go: 'select', args: { mode: 'arcade' }, note: 'SIX FIGHTS AND A BOSS. A SECOND PLAYER CAN JOIN IN.' },
   { label: 'VERSUS', go: 'select', args: { mode: 'versus' }, note: 'TWO PEOPLE, ONE KEYBOARD (OR TWO PADS).' },
   { label: 'VERSUS CPU', go: 'select', args: { mode: 'cpu' }, note: 'PICK YOUR OPPONENT. THE TIER IS IN OPTIONS.' },
   { label: 'SURVIVAL', go: 'select', args: { mode: 'survival' }, note: 'ONE ROUND EACH. YOUR LIFE CARRIES OVER.' },

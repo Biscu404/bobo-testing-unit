@@ -7,57 +7,69 @@ Legend as in `games-1.md`: **K** P progression / S skill / E explore / C creativ
 
 ## Stand Battle Arena
 
-**Mechanics found.** One playable Stand (Jotaro / Star Platinum), five moves (JAB, STRIKE, HEAVY, ORA BARRAGE, and the Stand Rush "ORA ORA
-ORA!" gated on Momentum), a defensive triangle that is deliberately three different machines: **Step** (2 charges, 10 invulnerable
-frames, 1.4 s recharge), **Guard** (-70%, drains Persistence, broken by Heavy-tagged hits) and **Clash** (frames 2-8; a *Perfect* Clash is
-frames 2-3 and refunds a Step charge and marks the enemy Break, x1.8); poise and stagger; crits; Momentum/Persistence. Enemies:
-MORIOH DELINQUENT (40 hp), ANGELO (elite, 78 hp, projectiles), an *aggressive* modifier (x1.35 speed) and the boss Killer Queen (200 hp, two
-phases, SHEER HEART ATTACK in the second, a transition line at half health). The run is six nodes (BACK ALLEY, A QUIET STREET with a metal
-cat and a choice of three random run buffs or a heal, SHOPPING STREET, the CAFE rest, BUDOGAOKA PARK, KAMEYU DEPARTMENT STORE). A seeded RNG
-and `headless_harness.js` make a run reproducible. `meta.cleared` is the only thing saved across runs. **Existing achievements: none.**
+**What it is now.** An arcade fighter (see `docs/stand-battle-tekken-spec.md`): four buttons, heights, a throw and a throw break, a sidestep into a second lane, counter hits, juggles, bounces, wall splats, knockdowns with wake-up
+rolls, five fighters and a boss, rounds with a draw that counts for both, a ring-out stage, and six modes (arcade ladder, versus, versus CPU, survival, time attack, training). The earlier 24 trophies belonged to the belt-scroll
+roguelike (Perfect Clash, Step charges, Momentum, run buffs); none of those mechanics exist, so they were reworked into the new ones, and 23 were added. **Existing achievements: none beyond these.**
 
-**How it hooks in without touching the engine.** `hooks.js` already says that `bus.on(name, fn)` is a read-only observer, invoked once with
-the final context after every effect has resolved, and that is how `audio.js` and `fx.js` watch combat without being able to change it. A new
-`apps/standbattle/trophies_bridge.js` subscribes the same way to `onHit`, `onDamageTaken`, `onDodgeSuccess`, `onParrySuccess`,
-`onPerfectClash`, `onStaggerStart`, `onGuardBreak`, `onKill` and `onPhaseTransition`, keeps per-fight counters, and emits at the end of the fight.
-That also keeps the "no buff-specific engine code" rule intact.
+**How it hooks in without touching the engine.** `hooks.js` is a bus of events only: a listener is handed the payload and has nothing to write to, which is how `audio.js`, `fx.js` and the ledger watch a fight without being able to
+change it. `apps/standbattle/trophies_bridge.js` subscribes to `onHit`, `onBlock`, `onThrow`, `onThrowBreak`, `onSidestepDodge`, `onLaunch`, `onBounce`, `onWallSplat`, `onKnockdown`, `onWake`, `onCombo`, `onSpecial`,
+`onDetonate`, `onRoundEnd`, `onKO` and `onMatchEnd`, keeps the per-match counters, and emits one `fight-end` at the end of a match. The flow (`flow.js`) emits the mode events (`ladder-clear`, `timeattack-clear`,
+`survival-end`, `hiscore`, `versus`), and the screens emit `training-open`, `record-play`, `movelist-open`, `rebind` and `debug-on`. `trophy_check.js` plays a witness through the sim for every trophy that a fight can earn and
+checks that a near miss does not.
 
-**Events.** Fight: `fight-end{ won, enemy, node, modifier, secs, hpLeft, damageTaken, maxCombo, maxMomentum, dodges, perfectClashes, staggers,
-guardHits, guardBroke, moveTypes[], finishedBy }`. Run: `phase`, `event-choice{ choice, buff }` from `applyEventChoice`, `node-clear`, `run-end{ cleared, buffs[] }`
-from `advanceNode` and the combat-outcome click. UI: `rebind`, `debug-on`. Per-fight counters are plain fields on `combat`.
+**Events.** Fight: `fight-end{ won, enemy, mode, tier, mirror, secs, damageTaken, lostRound, maxCombo, breaks, dodges, pad, shake }`; round: `round-end{ won, lost, draw, ring, how, full, secs }`, `final-round`; in-fight:
+`throw`, `throw-break`, `dodge`, `counter`, `combo{ hits, juggles }`, `launch{ kind }`, `bounce`, `wall-splat`, `roll`, `special`, `detonate{ who }`, `status{ id }`. Mode: `ladder-clear{ char, tier, continues, secs, score }`,
+`timeattack-clear{ char, secs }`, `survival-end{ wins }`, `hiscore{ rank }`, `versus`. Marks: `won_with` (a fighter won with), `cleared` (a ladder cleared with).
 
 | ID | Name | How | K | T | Proof | Trigger |
 |---|---|---|---|---|---|---|
-| sb_first | STAR PLATINUM, ATTACK | Win a fight. | P | B | - | fight-end{won} |
-| sb_angelo | ANGELO DOWN | Defeat ANGELO in BUDOGAOKA PARK. | P | B | - | fight-end{enemy} |
-| sb_queen | KILLER QUEEN, STOPPED | Defeat Killer Queen and clear Act 1. | P | S | - | run-end{cleared} |
-| sb_phase | I JUST WANT TO LIVE QUIETLY | Push Killer Queen into his second phase. | P | B | - | phase |
-| sb_untouch | UNTOUCHABLE | Win a fight without taking damage. | S | S | sim | fight-end{damageTaken:0} |
-| sb_scratch | NOT A SCRATCH | Defeat Killer Queen without taking damage. | S | G | sim | fight-end{enemy:'killer_queen'} |
-| sb_aggr | TOO FAST TO HIT | Win the SHOPPING STREET fight (aggressive) without taking damage. | S | S | sim | fight-end{modifier} |
-| sb_perfect | ORA, NOT TODAY | Land a Perfect Clash. | S | S | sim | perfect |
-| sb_perfect3 | FRAME PERFECT | Land three Perfect Clashes in one fight. | S | G | tune | fight-end{perfectClashes>=3} |
-| sb_step | STEP STEP | Dodge ten attacks with Step in one fight. | S | S | tune | fight-end{dodges>=10} |
-| sb_poise | BREAK THEIR POISE | Stagger one enemy three times in a fight. | S | B | - | fight-end{staggers>=3} |
-| sb_guard | BRICK WALL | Absorb eight hits with Guard in one fight without a guard break. | S | S | tune | fight-end |
-| sb_momentum | FULL MOMENTUM | Reach 100 Momentum. | S | B | - | fight-end{maxMomentum} |
-| sb_combo | ORA x 20 | Land a 20-hit combo. | S | S | tune | fight-end{maxCombo>=20} |
-| sb_rush | ORA ORA ORA ORA | Defeat an enemy with the Stand Rush. | S | B | - | fight-end{finishedBy:'rush'} |
-| sb_stand | STAND PROUD | Win a fight with 10 HP or less left. | S | S | - | fight-end{hpLeft<=10} |
-| sb_za | ZA WARUDO | Defeat a DELINQUENT in under five seconds. | S | G | tune | fight-end{secs<5} |
-| sb_bare | BARE KNUCKLES | Clear Act 1 without taking a buff: walk away from the cat. | S | G | sim | run-end{buffs:[]} |
-| sb_jab | JUST THE JAB | Win a fight against a DELINQUENT using only JABs. | C | S | - | fight-end{moveTypes} |
-| sb_gifts | THREE GIFTS FROM THE ALLEY | Be given each of the three run buffs, over any number of runs. | E | S | - | set buffs |
-| sb_cat | THE CAT HAS A PAW OF METAL* | Pet the cat. | E | B | - | event-choice{pet} |
-| sb_keys | MY OWN KEYS | Rebind a key. | C | B | - | rebind |
-| sb_debug | HITBOX VISION | Switch on the DEBUG overlay. | J | B | - | debug-on |
-| sb_yare | YARE YARE DAZE* | Lose a fight. | J | B | - | fight-end{!won} |
-
-Notes. Every "without taking damage" is **per fight**; `sb_bare` is per run and a new run is a fresh attempt. `sb_za` quotes the length of the canonical
-time stop; check the Delinquent's HP against the real damage numbers in `moves.js` before fixing it. A run is already reproducible from its seed, so
-the `sim` rows can be proved in the headless harness with a scripted player.
-
----
+| sb_first | FIRST MATCH WON | Win a match in any mode. | P | B | sim | fight-end |
+| sb_round | ROUND ONE | Win a round. | P | B | sim | round-end |
+| sb_arcade | ARCADE: CLEARED | Clear the arcade ladder with any fighter. | P | S | sim | ladder-clear |
+| sb_boss | KILLER QUEEN, STOPPED | Defeat the boss at the end of the arcade ladder. | P | S | sim | fight-end |
+| sb_all5 | FIVE LADDERS | Clear the arcade ladder with each of the five fighters. | P | G | sim | sets: cleared |
+| sb_each | ONE OF EACH | Win a match with each of the five fighters. | E | S | sim | sets: won_with |
+| sb_hard | HARD, AND STILL STANDING | Clear the arcade ladder on HARD. | S | G | sim | ladder-clear |
+| sb_nocont | NO CONTINUES | Clear the arcade ladder without using a continue. | S | S | sim | ladder-clear |
+| sb_flawless | FLAWLESS ROUND | Win a round without taking any damage. | S | S | sim | round-end |
+| sb_perfect | PERFECT MATCH | Win a match without losing a round or taking any damage. | S | G | sim | fight-end |
+| sb_throw | GOT YOU | Land a throw. | E | B | sim | throw |
+| sb_break | NOT TODAY | Break a throw. | S | B | sim | throw-break |
+| sb_break5 | THE TECH MASTER | Break five throws in one match. | S | S | sim | fight-end |
+| sb_dodge | SIDESTEP | Make an attack miss by sidestepping. | S | B | sim | dodge |
+| sb_dodge10 | THE LANE IS A WEAPON | Make ten attacks miss by sidestepping in one match. | S | S | sim | fight-end |
+| sb_counter | COUNTER HIT | Land a counter hit. | S | B | sim | counter |
+| sb_combo5 | FIVE AND COUNTING | Land a combo of five hits. | S | B | sim | combo |
+| sb_combo6 | SIX-HIT COMBO | Land a combo of six hits. | S | S | sim | combo |
+| sb_launch | UP IN THE AIR | Launch a fighter into the air. | E | B | sim | launch |
+| sb_juggle | JUGGLER | Land a combo with at least three juggle hits after a launch. | S | S | sim | combo |
+| sb_bounce | BOUNCE HOUSE | Bounce a fighter off the floor. | E | S | sim | bounce |
+| sb_splat | WALL SPLAT | Pin a fighter to the wall. | E | B | sim | wall-splat |
+| sb_ring | RING OUT | Win a round by ring-out. | E | S | sim | round-end |
+| sb_ringed | OVER THE EDGE | Lose a round by ring-out. | J | B | sim | round-end |
+| sb_draw | A DRAW IS A WIN FOR BOTH | End a round in a draw. | J | B | sim | round-end |
+| sb_final | THE FINAL ROUND | Fight a final round after two drawn rounds. | E | S | sim | final-round |
+| sb_time | THE CLOCK RUNS OUT | Win a round on time. | E | B | sim | round-end |
+| sb_bomb | IT WAS A BOMB ALL ALONG | Blow up a bomb with Kira's DETONATE. | E | S | sim | detonate |
+| sb_drown | AQUA NECKLACE | Land Angelo's AQUA NECKLACE grab. | E | B | sim | status |
+| sb_special | SPECIAL DELIVERY | Land a special move that needs a motion input. | E | B | sim | special |
+| sb_roll | ROLL WITH IT | Get up from a knockdown with a roll. | S | B | sim | roll |
+| sb_surv5 | FIVE AT A TIME | Win five fights in a row in Survival. | P | S | sim | survival-end |
+| sb_surv12 | IRON MAN | Win twelve fights in a row in Survival. | P | G | sim | survival-end |
+| sb_ta | AGAINST THE CLOCK | Clear Time Attack. | P | S | sim | timeattack-clear |
+| sb_tafast | FIVE IN FOUR | Clear Time Attack in under four minutes. | S | G | sim | timeattack-clear |
+| sb_train | IN THE LAB | Open training mode. | E | B | sim | training-open |
+| sb_tape | TAPE IT, LOOP IT | Record the dummy in training and play it back. | C | B | sim | record-play |
+| sb_list | READ THE MOVE LIST | Open the move list. | E | B | sim | movelist-open |
+| sb_versus | TWO PEOPLE, ONE KEYBOARD | Start a two-player versus match. | E | B | sim | versus |
+| sb_hiscore | YOUR INITIALS | Enter your initials in the high-score table. | P | B | sim | hiscore |
+| sb_mirror | THE OTHER YOU | Beat your own fighter in the ladder's mirror match. | E | B | sim | fight-end |
+| sb_rebind | MY KEYS | Change a key binding. | C | B | sim | rebind |
+| sb_pad | PAD, NOT PAPER | Win a match with a gamepad plugged in. | C | B | sim | fight-end |
+| sb_shake | A STEADY CAMERA | Turn SHAKE off and win a match. | C | B | sim | fight-end |
+| sb_debug | HITBOX VISION | Switch on the BOXES overlay. | J | B | sim | debug-on |
+| sb_za* | ZA WARUDO | Win a round in under fifteen seconds. | S | G | sim | round-end |
+| sb_yare* | YARE YARE DAZE | Lose a match. | J | B | sim | fight-end |
 
 ## Bekkedal
 

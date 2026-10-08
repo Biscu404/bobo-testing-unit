@@ -29,10 +29,11 @@ What separates players is frame traps, throw breaks, sidestep reads, combo route
   a recorded loop and the budget bot all produce the same integer, so they are interchangeable and a fight can be replayed from an array of integers.
 * `sim_loop.js` (kept) turns real time into whole frames. Hit-stop is counted in **sim frames** now (it was milliseconds in the juice object), so the headless run and the window agree.
   The KO slow-motion is a speed factor on the loop (`fight.timeScale`), not a change to the sim.
-* The hook bus (`hooks.js`, kept; its tables are replaced) announces what happened: `onHit onBlock onWhiff onThrow onThrowBreak onSidestep onLaunch onBounce onWallSplat onKnockdown onWake
-  onRingOut onCombo onSpecial onRoundStart onRoundEnd onKO onMatchEnd`. Audio, effects and trophies only listen (`bus.on`); none of them can change a fight.
+* The hook bus (`hooks.js`, kept and cut down to what a fight uses) announces what happened: `onSwing onHit onBlock onWhiff onSidestep onSidestepDodge onThrow onThrowBreak onLaunch onBounce onWallSplat
+  onKnockdown onWake onCombo onSpecial onProjectile onDetonate onRoundStart onFight onKO onRoundEnd onMatchEnd`. Audio, effects, juice, the training screen and the trophy ledger only listen (`bus.on`);
+  none of them can change a fight. The old belt-scroller's effect and query hooks (which rewrote numbers) are gone with the content that used them.
 * The status system (`status.js`, kept) carries the two effects that outlive a hit: Killer Queen's **bomb** mark and Angelo's **drowning**.
-* Files stay under 300 lines. The movelists are one file per fighter (`char_*.js`) because 125 move rows do not fit one file; `moves.js` is the row format, the builder and the
+* Files stay under 300 lines. The movelists are one file per fighter (`char_*.js`) because 181 move rows do not fit one file; `moves.js` is the row format, the builder and the
   shared system moves.
 
 ## 3. The stage
@@ -98,19 +99,22 @@ A move row (`moves.js`) is `[id, name, command, height, startup, active, recover
 `framedata_check.js` runs *every* move of every fighter in the sim, once on hit and once on block (and once on a late contact for moves with a long active window), and compares what the
 sim produced with the row: the frame of first contact equals `startup`, the attacker's free tick equals `total`, and the measured advantage equals `onHit` / `onBlock`. It fails on any difference.
 
-Authoring guide (checked as ranges by `fairness_check.js`):
+Authoring guide (held by `fairness_check.js`, which reads every row of every fighter and prints each one that breaks a rule):
 
 | Class | startup | on block | notes |
 |---|---|---|---|
-| jab (high) | 10 | ≥ 0 | the fastest thing a fighter has; nothing is faster than i10 |
-| mid poke | 12–14 | −3 … +1 | |
-| power mid | 15–18 | −7 … −12 | the ones you punish |
-| low | **≥ 14** | −6 … −16 | a low must be reactable |
-| launcher | ≥ 14 | ≤ −12 | always punishable |
-| sweep | ≥ 18 | ≤ −18 | knockdown, very punishable |
-| throw | **≥ 12** | n/a | breakable; beaten by a sidestep and by any faster move |
-| special | ≥ 16 | any | |
-| projectile | ≥ 20 to the first frame | | travels slower than a walk-forward closes |
+| jab (high) | 10 or 11 | ≥ 0 and at most +1 | the fastest thing a fighter has; **nothing is faster than i10**, and a follow-up in a string counts from the string's first button |
+| mid poke | 12–14 | −5 … 0 | |
+| power move | 15 or later | −6 or worse (unless it reaches 50 or less) | the ones you punish |
+| low | **≥ 14** (counted from the first button of its string) | −5 … −17 | a low must be reactable |
+| launcher / knockdown | any | **−12 or worse** | always punishable |
+| sweep | ≥ 17 | ≤ −17 | knockdown, very punishable |
+| anything −11 or worse | | | the defender's jab is quicker than the recovery, so there is always a punish |
+| throw | **≥ 12** | n/a | breakable; beaten by a sidestep and by any faster move; every fighter has three, broken by LP, RP and either |
+| plus on block | jab-class only (i11 or faster), by at most +1 | | nothing else is ever plus on block |
+| reach | a quick strike (i14 or faster) reaches at most 70, nothing more than 110 | | the longest pokes are specials with long startup |
+| thrown thing | ≥ 20 to the first frame; crosses 80 units in 20 frames or more | | slower than a person's reaction |
+| counter move | ≥ i20; its counter window is on the move's own frames | | |
 
 ## 6. Heights, guard, crouch
 
@@ -147,9 +151,10 @@ damage, no scaling, no juggle; they end in a knockdown.
 
 * **Combo** = hits on a defender who is in a reaction (stun, air, bounce) since the first hit. Counted by `fight_combo.js`; the counter drops when the defender is free.
 * **Damage scaling** by the hit's place in the combo: `1.00 0.90 0.80 0.70 0.60 0.50 0.45 0.40 0.35 0.30` and 0.30 from the tenth on. Throws and the first hit are always 1.00.
-* **Launch**: a launching hit puts the defender in the air (`vy` 9.5, gravity 0.55/frame², about 35 frames of air). Hitting an airborne defender is a **juggle**: each juggle hit pops them to
-  `vy ≥ 6` and counts; after the 3rd juggle hit gravity doubles ("slump") and the 6th hit ends the juggle: they fall and the next hit is a new combo. A juggle hit that is not
-  `juggle: true` in its row (slow, big moves) does nothing to a defender in the air.
+* **Launch**: a launching hit puts the defender in the air (`vy` 8.6, gravity 0.33 per frame squared, about 50 frames of air, carried 0.7 away). Hitting an airborne defender is a **juggle**: each juggle hit pops them to
+  `vy` 5.5 and counts; after the 3rd juggle hit gravity doubles ("slump") and the 6th hit ends the juggle: they fall and the next hit is a new combo. A juggle hit that is not
+  `juggle: true` in its row (slow, big moves) does nothing to a defender in the air. `combat_check.js` proves that a launcher connects into a juggle move, that scaling applies hit by hit and that a splat closes the combo; how long a
+  fighter's best route is depends on the frame data and is for training mode to show (the longest found by hand are five to seven hits).
 * **Bounce**: a `hit: 'bounce'` slams the defender to the floor and they rebound once (`vy` 6). One bounce per combo. A rebound is juggleable like a launch.
 * **Wall splat**: a launch or a heavy knock-back into a wall (walls stages) pins the defender for 34 frames. The splat deals `splat` damage and **ends the combo**: the counter closes (and the
   trophy/score system is told), the pinned fighter cannot act, and the attacker's next hit starts a new combo scaled from 0.80. Pushing a fighter into the wall with pokes does not splat;

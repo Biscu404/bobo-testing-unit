@@ -21,8 +21,7 @@ files:
   - assets/**
   - vendor/**
   - electron/**
-  # dev-only files that live next to runtime ones (apps/standbattle/fairness_check.js is
-  # imported at runtime by content_registry.js, so it is deliberately NOT excluded)
+  # dev-only files that live next to runtime ones (nothing in apps/standbattle imports a check, the bot or the harness at run time)
   - "!apps/bekkedal/*_check*.js"
   - "!apps/bekkedal/CLAUDE.md"
   - "!apps/garage/*_check*.js"
@@ -30,8 +29,10 @@ files:
   - "!apps/garden/*_check*.js"
   - "!apps/shop/*_check*.js"
   - "!apps/magen/*_check*.js"
-  - "!apps/standbattle/content_check.js"
+  - "!apps/standbattle/*_check*.js"
+  - "!apps/standbattle/check_kit.js"
   - "!apps/standbattle/headless_harness.js"
+  - "!apps/standbattle/budget_bot.js"
 
 asar: true
 compression: normal
