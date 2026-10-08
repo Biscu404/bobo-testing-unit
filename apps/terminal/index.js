@@ -1,4 +1,5 @@
 import { godWords, godStir, godSeed, godSong } from '../../kernel/god.js';
+import * as tools from '../tools/trophy_calls.js';
 import { Snd } from '../../kernel/snd.js';
 import { Saver } from '../../kernel/saver.js';
 import { degauss } from '../../kernel/hardware.js';
@@ -504,12 +505,12 @@ export default {
         case 'GODWORD': case 'WORD': {
           const n = Math.max(1, Math.min(16, parseInt(arg, 10) || 7));
           godStir();
-          print([godWords(n).join(' ').toUpperCase()], 'l-holy');
+          print([godWords(n).join(' ').toUpperCase()], 'l-holy'); tools.word(arg ? n : 0);
           print(['SEED 0x' + godSeed.toString(16).toUpperCase().padStart(8, '0')], 'l-dim');
           return true;
         }
         case 'GODSONG': case 'SONG': {
-          const n = godSong();
+          const n = godSong(); tools.song();
           print([n + ' NOTES, CHOSEN THE SAME WAY THE WORDS ARE.'], 'l-holy');
           return true;
         }

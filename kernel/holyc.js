@@ -1,5 +1,6 @@
 import { Snd } from './snd.js';
 import { godStir, godNext, godRand, godWords, godSong } from './god.js';
+import { word as toolWord, song as toolSong } from '../apps/tools/trophy_calls.js';
 import { HolyCError, hcLex } from './holyc_lex.js';
 import { hcParse } from './holyc_parse.js';
 import { hcRun as run, hcFormat } from './holyc_run.js';
@@ -23,9 +24,9 @@ const MACHINE = {
   BellRing: a => { Snd.bell(); return Math.trunc(a[0] || 1); },
   Rand: (a, io) => { if (io.hooks.rand) return io.hooks.rand(); godStir(); return godNext() / 4294967296; },
   RandU16: (a, io) => io.hooks.rand ? Math.floor(io.hooks.rand() * 65536) : godRand(65536),
-  GodWord: (a, io) => { const w = godWords(Math.max(1, Math.trunc(a[0] || 1))); io.emit(w.join(' ').toUpperCase() + '\n'); return w.length; },
+  GodWord: (a, io) => { const w = godWords(Math.max(1, Math.trunc(a[0] || 1))); io.emit(w.join(' ').toUpperCase() + '\n'); toolWord(w.length); return w.length; },
   GodDoodle: (a, io) => { if (io.hooks.godDoodle) io.hooks.godDoodle(); return 0; },
-  GodSong: () => godSong()
+  GodSong: () => { toolSong(); return godSong(); }
 };
 
 export function hcRun(ast, out, env, hooks) {

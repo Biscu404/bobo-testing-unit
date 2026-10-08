@@ -1,4 +1,5 @@
 import { createWindow, raise } from '../../kernel/wm.js';
+import { cmosF10 } from '../tools/trophy_calls.js';
 
 const CMOS_ROWS = [
   ['System Time', () => new Date().toTimeString().slice(0, 8)],
@@ -41,6 +42,14 @@ export default {
     p.appendChild(f);
     root.appendChild(p);
 
+    /* the footer's two promises, kept: F10 says there is nothing to save, Esc leaves */
+    p.tabIndex = 0; p.style.outline = 'none';
+    p.addEventListener('keydown', ev => {
+      if (ev.key === 'F10') { ev.preventDefault(); ev.stopPropagation(); cmosF10(); ctx.toast('NOTHING TO SAVE. GOD IS PRESENT.'); }
+      else if (ev.key === 'Escape') { ev.preventDefault(); ctx.close(); }
+    });
+    p.addEventListener('mousedown', () => setTimeout(() => p.focus(), 0));
+    setTimeout(() => p.focus(), 30);
     if (window.Snd && window.Snd.ok) window.Snd.ok();
   }
 };

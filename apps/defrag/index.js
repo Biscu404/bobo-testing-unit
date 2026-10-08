@@ -1,3 +1,4 @@
+import { defragDone } from '../tools/trophy_calls.js';
 let _timer = null;
 
 export default {
@@ -55,7 +56,7 @@ export default {
         }
         if (head >= N) {
           status.textContent = 'DEFRAGMENTATION COMPLETE. 100% \u2014 ' + total + ' CLUSTERS. THE DISK IS AT PEACE.';
-          clearInterval(_timer);
+          clearInterval(_timer); defragDone();
           if (window.Snd) window.Snd.bell();
           return;
         }
