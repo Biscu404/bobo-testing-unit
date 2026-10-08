@@ -141,9 +141,13 @@ const app = await page.evaluate(() => ({ tracks: document.querySelectorAll('.g-c
 ok(app.tracks >= 1 && app.learn && app.keys >= 14, 'the Garage opens with a track, a keyboard and the LEARN button');
 /* the first launch greets you; close the greeting like a person would */
 if (await page.$('.g-modal')) await page.click('.g-modal .g-boxfoot .g-btn:last-child');
-await page.click('.g-learn');
+await page.click('button.g-learn:text-is("LEARN")');
 await page.waitForSelector('.g-lessons .l-item');
 ok((await page.$$('.g-lessons .l-item')).length === 8, 'LEARN offers eight lessons');
+await page.click('.g-lessons .g-go');
+await page.click('button.g-learn:text-is("STUDIO COURSE")');
+await page.waitForSelector('.c-coach .c-item', { timeout: 8000 });
+ok((await page.$$('.c-coach .c-item')).length >= 9, 'STUDIO COURSE lists its chapters and the way to write a song');
 ok(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors[0] : ''));
 await t.close();
 console.log(fails ? fails + ' check(s) FAILED' : 'ALL MUSIC CHECKS PASS');
