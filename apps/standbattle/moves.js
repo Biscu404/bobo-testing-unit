@@ -7,8 +7,10 @@
    connects on its first frame; the sim derives the defender's stun from them (stunFor), which is why a check can hold the table to the sim.
    `anim` names a style in anim_styles.js; the limb is the one the command's button names (LP lead arm, RP rear arm, LK lead leg, RK rear leg).
    `extras` (all optional): track 'none'|'near'|'far'|'both', hit 'stagger'|'launch'|'down'|'bounce', ch 'launch' (a counter hit launches),
-   juggle, splat, oki, hits [[frame, dmg], ...], push [hit, block], stop, lift, stance 'stand'|'run'|'down', stand (the Stand shows), proj {...},
-   brk 'LP'|'RP'|'ANY' (a throw's break button), status {id, stacks}, limb, combo (a string meant to connect), note. Nothing in the sim reads a move id. */
+   juggle, splat, oki, hits [[frame, dmg], ...], push [hit, block], stop, lift, carry (sideways speed of a launch, trip or bounce), stance 'stand'|'run'|'down', stand (the Stand shows), proj {...},
+   brk 'LP'|'RP'|'ANY' (a throw's break button), status {id, stacks}, limb, combo (a string meant to connect), note,
+   proj {speed, life, r, kind, homing, x0} (the hit throws a projectile instead of touching), rev {from, to, dmg} (a counter: a hit that arrives in those frames is taken by the attacker),
+   detonate {dmg} (blows a bomb on the other fighter; needs the mark). Nothing in the sim reads a move id. */
 
 import { parseCmd } from './input_frames.js';
 import { RULES, hitstopFor } from './rules.js';
@@ -38,8 +40,8 @@ export function buildMove(row, owner) {
     juggle: !!x.juggle, splat: !!x.splat, oki: !!x.oki, throw: h === 't' ? { brk: x.brk || 'LP' } : null,
     stance: x.stance || (c.kind === 'dash' ? 'run' : 'stand'), stand: !!x.stand, proj: x.proj || null,
     push: x.push || [Math.max(5, Math.min(18, Math.round(4 + sum * 0.7))), Math.max(7, Math.min(20, Math.round(7 + sum * 0.7)))],
-    stop: x.stop || hitstopFor(sum, launching), lift: x.lift || RULES.LAUNCH_VY, status: x.status || null,
-    combo: !!x.combo, note: x.note || '', special: c.kind === 'motion', chainOnly: c.kind === 'chain'
+    stop: x.stop || hitstopFor(sum, launching), lift: x.lift || RULES.LAUNCH_VY, carry: x.carry || 0, status: x.status || null,
+    combo: !!x.combo, note: x.note || '', rev: x.rev || null, detonate: x.detonate || null, special: c.kind === 'motion', chainOnly: c.kind === 'chain'
   };
 }
 

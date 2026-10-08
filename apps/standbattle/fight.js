@@ -14,6 +14,7 @@ import { createFighter, applyDamage } from './fighter.js';
 import { createInput, pushInput } from './input_frames.js';
 import { stepFighter, holdInside } from './fight_step.js';
 import { detectHits } from './fight_hit.js';
+import { stepProjectiles } from './fight_proj.js';
 import { tickCombo } from './fight_combo.js';
 import { stepStatuses } from './status.js';
 
@@ -30,6 +31,7 @@ export function createFight(cfg) {
     createFighter(cfg.defs[0], 0, mid - half, 0, cfg.defs[0].ml),
     createFighter(cfg.defs[1], 1, mid + half, 0, cfg.defs[1].ml)
   ];
+  if (fight.training) fight.fighters.forEach(f => { f.immortal = true; });
   if (cfg.hp) fight.fighters.forEach((f, k) => { if (cfg.hp[k] != null) f.hp = cfg.hp[k]; });
 
   fight.ringOut = f => { if (fight.phase === 'fight') endRound(1 - f.slot, 'ring'); f.air && (f.air.ko = true); };
@@ -52,7 +54,7 @@ export function createFight(cfg) {
 
   function endRound(winner, how) {
     if (fight.phase !== 'fight') return;
-    fight.result = { winner, how, round: fight.round, hp: fight.fighters.map(f => f.hp), frames: fight.history.length };
+    fight.result = { winner, how, round: fight.round, hp: fight.fighters.map(f => f.hp), clock: fight.clock };
     fight.phase = how === 'time' ? 'end' : 'ko';
     fight.phaseT = 0; fight.koT = 0;
     fight.timeScale = how === 'time' ? 1 : RULES.KO_SPEED;
@@ -105,7 +107,8 @@ export function createFight(cfg) {
   function checkEnd() {
     const [A, B] = fight.fighters;
     if (fight.training) {
-      if (A.hp <= 0 || (!A.comboIn.active && A.hp < A.maxHp && fight.clock % 1 === 0 && A.state === 'idle' && fight.refill)) A.hp = A.maxHp;
+      /* nobody is KO'd in training: a fighter who is out of HP gets it all back once free */
+      [A, B].forEach(f => { if (f.hp <= 1 && !f.comboIn.active && (f.state === 'idle' || f.state === 'down')) f.hp = f.maxHp; });
       return;
     }
     if (A.hp <= 0 || B.hp <= 0) { endRound(A.hp <= 0 && B.hp <= 0 ? -1 : A.hp <= 0 ? 1 : 0, 'ko'); return; }
@@ -123,6 +126,7 @@ export function createFight(cfg) {
     stepFighter(fight, A, B); stepFighter(fight, B, A);
     separate();
     if (live) detectHits(fight);
+    if (fight.projectiles.length) stepProjectiles(fight, live);
     A.statuses.length && stepStatuses(A); B.statuses.length && stepStatuses(B);
     tickCombo(A); tickCombo(B);
   }

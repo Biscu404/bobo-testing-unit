@@ -36,6 +36,7 @@ export function startMove(fight, f, o, m) {
   f.spent = m.hits.map(() => false); f.connected = false; f.walk = 0; f.guard = false; f.crouch = false;
   f.aim = o.lane; f.lane = o.lane; f.lastMove = m; f.laneMissed = false; f.y = 0; f.vy = 0;
   fight.bus.fire('onSwing', { slot: f.slot, move: m });
+  if (m.special) fight.bus.fire('onSpecial', { slot: f.slot, move: m });
 }
 
 export function free(f) { f.state = 'idle'; f.move = null; f.mf = 0; f.stun = 0; f.stunKind = null; f.t = 0; f.air = null; }

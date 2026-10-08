@@ -119,11 +119,19 @@ const { ok, done } = kit('combat');
   const stunLeft = D.stun; run(fight, stunLeft + 2);
   ok(D.state === 'idle', 'the pinned fighter is free again after ' + RULES.SPLAT_FRAMES + ' frames');
 }
-{ // a launched fighter who flies into the wall
+{ // a fighter knocked toward the wall flies into it and is pinned
   const { fight, A, D } = arena('jotaro', 'jotaro', { ax: WORLD.MAX - 80, gap: 40 });
-  D.x = WORLD.MAX - 30;
-  perform(fight, A, 'upper'); run(fight, 60);
-  ok(events(fight, 'onWallSplat').length === 1 || D.state === 'down', 'a launch toward the wall splats or lands');
+  D.x = WORLD.MAX - 12;
+  perform(fight, A, 'heel'); run(fight, 60);
+  ok(events(fight, 'onWallSplat').length === 1, 'a knockdown that carries a fighter into the wall pins them to it');
+}
+{ // a launcher is a launcher: the fighter goes up, and a juggle move can reach them
+  const { fight, A, D } = arena('jotaro', 'jotaro');
+  perform(fight, A, 'upper');
+  let w = 0; while (A.state !== 'idle' && w++ < 80) fight.step(0, 0);
+  ok(D.state === 'air', 'still in the air when the launcher has recovered (' + D.state + ')');
+  const hp = D.hp; perform(fight, A, 'drive'); run(fight, 30);
+  ok(D.hp < hp && events(fight, 'onHit').some(e => e.e.kind === 'juggle'), 'a juggle move connects with the launched fighter (' + (hp - D.hp) + ' damage)');
 }
 
 /* ---- knockdown, wake-up options (spec 9) ------------------------------------------------------------------------------------------------------------- */
@@ -149,7 +157,7 @@ const { ok, done } = kit('combat');
   const { fight, A, D } = arena('jotaro', 'jotaro', { ax: WORLD.MAX - 75, gap: 40, stage: { id: 'park', rule: 'ring' }, training: false, timerFrames: 3600 });
   run(fight, 160);
   A.x = WORLD.MAX - 50; D.x = WORLD.MAX - 4;
-  perform(fight, A, 'upper'); run(fight, 90);
+  perform(fight, A, 'heel'); run(fight, 120);
   ok(fight.result && fight.result.how === 'ring' && fight.result.winner === 0, 'on a ring stage a fighter launched over the edge loses the round');
 }
 

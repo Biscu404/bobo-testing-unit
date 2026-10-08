@@ -14,7 +14,7 @@ import { applyDamage } from './fighter.js';
 import { registerHit, nextScale, beginIfFree } from './fight_combo.js';
 import { launch, juggle, splat } from './fight_air.js';
 import { startThrow } from './fight_throw.js';
-import { applyStatus } from './status.js';
+import { applyStatus, hasStatus, removeStatus } from './status.js';
 
 const THROWABLE = { idle: 1, attack: 1, dash: 1, backdash: 1, sidestep: 1 };
 const HITTABLE = { idle: 1, attack: 1, dash: 1, backdash: 1, sidestep: 1, blockstun: 1, hitstun: 1, wake: 1, roll: 1 };
@@ -36,13 +36,15 @@ function classify(d, m) {
   return 'hit';
 }
 
-export function evalContact(fight, a, d, m, i, origin) {
-  const dx = (d.x - origin) * a.facing;
-  if (dx < -RULES.HURT_HALF || dx - RULES.HURT_HALF > (m.proj ? m.proj.r : m.reach)) return null;
-  if (d.lane !== a.aim && !tracks(m, d.lane)) {
-    if (!a.laneMissed && d.state !== 'ko') { a.laneMissed = true; d.stats.dodges++; fight.bus.fire('onSidestepDodge', { slot: d.slot, move: m }); }
+/* `src` is where the hit comes from: the attacker itself, or a projectile it threw ({ x, facing, aim, laneMissed, proj }) */
+export function evalContact(fight, a, d, m, i, src) {
+  const dx = (d.x - src.x) * src.facing;
+  if (dx < -RULES.HURT_HALF || dx - RULES.HURT_HALF > (src.proj ? m.proj.r : m.reach)) return null;
+  if (d.lane !== src.aim && !tracks(m, d.lane)) {
+    if (!src.laneMissed && d.state !== 'ko') { src.laneMissed = true; d.stats.dodges++; fight.bus.fire('onSidestepDodge', { slot: d.slot, move: m }); }
     return null;
   }
+  if (d.state === 'attack' && d.move.rev && d.mf >= d.move.rev.from && d.mf <= d.move.rev.to && m.h !== 't') return { a, d, m, i, kind: 'reversal', counter: false };
   const kind = classify(d, m);
   if (!kind) return null;
   const counter = kind === 'hit' && d.state === 'attack' && d.mf <= d.move.last.f + d.move.last.n - 1;
@@ -61,6 +63,7 @@ export function applyContact(fight, c) {
   const lastHit = i === m.hits.length - 1;
   a.spent[i] = true; a.connected = true;
   if (c.kind === 'throw') { startThrow(fight, a, d, m); return; }
+  if (c.kind === 'reversal') { reverse(fight, a, d); return; }
   if (c.kind === 'block') {
     d.stats.blocks++;
     d.state = 'blockstun'; d.stun = stunFor(m, i, 'block', false) + 1; d.stunKind = 'block'; d.guard = true; d.move = null; d.mf = 0;
@@ -81,9 +84,9 @@ export function applyContact(fight, c) {
   if (dead) { launch(fight, d, a, { vy: 8, vx: away * 2.2, ko: true }); shown = 'ko'; }
   else if (c.kind === 'juggle') { juggle(fight, d, m, away); shown = 'juggle'; }
   else if (d.state === 'down') shown = 'down';
-  else if (rx === 'launch') launch(fight, d, a, { vy: m.lift, vx: away * 2 });
-  else if (rx === 'down') launch(fight, d, a, { vy: 4, vx: away * 1.6, low: true });
-  else if (rx === 'bounce') launch(fight, d, a, { vy: 2, vx: away * 1, bounce: true });
+  else if (rx === 'launch') launch(fight, d, a, { vy: m.lift, vx: away * (m.carry || RULES.LAUNCH_VX) });
+  else if (rx === 'down') launch(fight, d, a, { vy: 4, vx: away * (m.carry || RULES.TRIP_VX), low: true });
+  else if (rx === 'bounce') launch(fight, d, a, { vy: 2, vx: away * (m.carry || 0.6), bounce: true });
   else {
     d.state = 'hitstun'; d.stun = stunFor(m, i, 'hit', counter) + 1; d.stunKind = counter ? 'counter' : 'hit'; d.hitCrouch = d.crouch;
     d.move = null; d.mf = 0; d.guard = false; d.crouch = false;
@@ -94,6 +97,38 @@ export function applyContact(fight, c) {
   fight.bus.fire('onHit', { slot: a.slot, target: d.slot, move: m, hitIndex: i, dmg, kind: c.kind, counter, combo: d.comboIn.hits, height: m.height, ko: dead, reaction: shown });
 }
 
+/* a counter move that was live when the hit arrived: the one who struck takes it instead (spec 13, the boss's BITES THE DUST) */
+function reverse(fight, a, d) {
+  const rev = d.move.rev, m = d.move;
+  beginIfFree(a);
+  const dmg = rev.dmg, dead = applyDamage(a, dmg);
+  registerHit(fight, d, a, dmg, false);
+  launch(fight, a, d, { vy: 8, vx: d.facing * 2, ko: dead });
+  d.connected = true; d.mf = Math.max(d.mf, rev.to);
+  fight.hitstop = Math.max(fight.hitstop, dead ? RULES.KO_HITSTOP : 12);
+  fight.bus.fire('onHit', { slot: d.slot, target: a.slot, move: m, hitIndex: 0, dmg, kind: 'reversal', counter: true, combo: a.comboIn.hits, height: m.height, ko: dead, reaction: 'launch' });
+}
+
+/* a blown bomb: no reach, no lane, no guard; it needs the mark on the other fighter and leaves nothing if there is none */
+function detonate(fight, a, d, m) {
+  a.spent[0] = true; a.connected = true;
+  if (!hasStatus(d, 'bomb') || d.state === 'ko') return;
+  removeStatus(d, 'bomb');
+  beginIfFree(d);
+  const dmg = Math.max(1, Math.round(m.detonate.dmg * nextScale(d))), dead = applyDamage(d, dmg);
+  registerHit(fight, a, d, dmg, false);
+  if (d.state === 'air') juggle(fight, d, m, a.facing); else launch(fight, d, a, { vy: dead ? 8 : m.lift, vx: a.facing * (dead ? 2.2 : 0.8), ko: dead });
+  fight.hitstop = Math.max(fight.hitstop, dead ? RULES.KO_HITSTOP : m.stop);
+  fight.bus.fire('onDetonate', { slot: d.slot });
+  fight.bus.fire('onHit', { slot: a.slot, target: d.slot, move: m, hitIndex: 0, dmg, kind: 'detonate', counter: false, combo: d.comboIn.hits, height: m.height, ko: dead, reaction: 'launch' });
+}
+
+function spawn(fight, a, m, i) {
+  a.spent[i] = true; a.connected = true;
+  fight.projectiles.push({ owner: a.slot, move: m, i, x: a.x + a.facing * (m.proj.x0 || 20), facing: a.facing, aim: a.aim, speed: m.proj.speed, life: m.proj.life, laneMissed: false, homing: !!m.proj.homing, proj: true, born: fight.clock });
+  fight.bus.fire('onProjectile', { slot: a.slot, move: m });
+}
+
 export function detectHits(fight) {
   const F = fight.fighters, found = [];
   for (let k = 0; k < 2; k++) {
@@ -102,8 +137,10 @@ export function detectHits(fight) {
     const m = a.move;
     for (let i = 0; i < m.hits.length; i++) {
       const h = m.hits[i];
-      if (a.spent[i] || a.mf < h.f || a.mf > h.f + h.n - 1 || m.proj) continue;
-      const c = evalContact(fight, a, d, m, i, a.x);
+      if (a.spent[i] || a.mf < h.f || a.mf > h.f + h.n - 1) continue;
+      if (m.proj) { spawn(fight, a, m, i); continue; }
+      if (m.detonate) { detonate(fight, a, d, m); continue; }
+      const c = evalContact(fight, a, d, m, i, a);
       if (c) found.push(c);
     }
   }

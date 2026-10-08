@@ -15,6 +15,7 @@ import { defOf, ROSTER } from './roster.js';
 import { createRng } from './rng.js';
 import { planInputs } from './input_plan.js';
 import { BIT, RULES } from './rules.js';
+import { applyStatus, hasStatus } from './status.js';
 
 const OWN = 300;
 let checks = 0, fails = [];
@@ -37,9 +38,10 @@ function perform(aId, m, o) {
   const guard = o.kind === 'block' ? guardBits(D, m.h === 'l') : 0;
   if (m.stance === 'down') { A.state = 'down'; A.t = RULES.DOWN_FRAMES + 1; }
   if (o.kind === 'block') for (let k = 0; k < 10; k++) fight.step(0, guard);
-  D.x = A.x + (o.far ? 400 : o.late ? 400 : dist(m));
+  D.x = A.x + (o.far ? 400 : o.late ? 400 : o.gap || dist(m));
+  if (o.bomb) applyStatus(D, 'bomb', 1);
   const chain = []; for (let c = m; c; c = c.cmd.kind === 'chain' ? A.ml.byId.get(c.cmd.parent) : null) chain.unshift(c);
-  let startClock = null, step = (b) => { fight.step(b, guard); if (startClock === null && A.state === 'attack' && A.mf === 1 && A.move === m) startClock = fight.clock; };
+  let startClock = null, startTick = null, step = (b) => { fight.step(b, guard); if (startClock === null && A.state === 'attack' && A.mf === 1 && A.move === m) { startClock = fight.clock; startTick = fight.tick; } };
   planInputs(chain[0], 1).forEach(step);
   for (let k = 1; k < chain.length; k++) {
     const par = chain[k - 1], at = par.last.f + par.last.n;
@@ -59,7 +61,7 @@ function perform(aId, m, o) {
     if (hit && freeA !== null && freeD !== null) break;
     if (!last && A.state === 'idle' && startClock !== null && o.far) { freeA = fight.clock; break; }
   }
-  return { fight, A, D, startClock, last, freeA, freeD, contacts };
+  return { fight, A, D, startClock, startTick, last, freeA, freeD, contacts };
 }
 
 function checkMove(aId, m) {
@@ -67,6 +69,8 @@ function checkMove(aId, m) {
   if (m.h === 't') return checkThrow(aId, m, tag);
   const w = perform(aId, m, { kind: 'whiff', far: true });
   eq(w.freeA - w.startClock, m.total, tag + ' total frames');
+  if (m.detonate) return checkDetonate(aId, m, tag);
+  if (m.proj) checkProjectile(aId, m, tag);
   const kinds = [['hit', 'hit'], ['block', 'block']];
   kinds.forEach(([kind, key]) => {
     if (kind === 'hit' && m.launching) return;
@@ -89,6 +93,32 @@ function checkMove(aId, m) {
       eq(r.last ? r.freeD - r.freeA : 'no contact', m.adv[key] + 1, tag + ' late (1 frame into the active window) on ' + key);
     }
   }
+}
+
+/* a bomb: it needs the mark, it needs no reach, and with the mark it launches; without it nothing happens */
+function checkDetonate(aId, m, tag) {
+  const r = perform(aId, m, { kind: 'hit', bomb: true, gap: 200 });
+  const e = r.fight.events.filter(x => x.e.move === m)[0];
+  eq(e && e.e.reaction, 'launch', tag + ' with the mark launches, from anywhere');
+  eq(e && e.mf, m.startup, tag + ' blows on its startup frame');
+  eq(hasStatus(r.D, 'bomb'), false, tag + ' uses the mark up');
+  const n = perform(aId, m, { kind: 'hit', gap: 200 });
+  eq(n.fight.events.filter(x => x.e.move === m).length, 0, tag + ' with no mark does nothing');
+}
+
+/* a thrown thing hits later the further it has to fly, and the advantage grows by the same frames */
+function checkProjectile(aId, m, tag) {
+  ['hit', 'block'].forEach(key => {
+    if (key === 'hit' && m.launching) return;
+    const r = perform(aId, m, { kind: key, gap: 160 });
+    const e = r.fight.events.filter(x => x.e.move === m)[0];
+    if (!e) { eq('no contact', 'contact', tag + ' far ' + key); return; }
+    const late = e.tick - (r.startTick + m.startup - 1);
+    eq(late > 0, true, tag + ' takes time to arrive (' + late + ' frames)');
+    /* the thrower is only owed the flight while it is still recovering: past the end of its own move the advantage is the stun and no more */
+    const owed = Math.min(late, m.total - m.startup + 1);
+    eq(r.freeD - r.freeA, m.adv[key] + owed, tag + ' on ' + key + ' from far away is the table plus the flight, up to the end of the move (' + owed + ')');
+  });
 }
 
 function checkThrow(aId, m, tag) {

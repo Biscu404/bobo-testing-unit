@@ -32,7 +32,7 @@ export function isFree(f) { return f.state === 'idle'; }
 export function isAirborne(f) { return f.state === 'air' || f.state === 'bounce'; }
 /* the status system and the HP choke point both go through here */
 export function applyDamage(f, amount) {
-  f.hp = Math.max(0, f.hp - amount);
+  f.hp = Math.max(f.immortal ? 1 : 0, f.hp - amount);
   f.hurtFlash = 1;
   return f.hp <= 0;
 }

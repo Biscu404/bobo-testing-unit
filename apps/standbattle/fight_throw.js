@@ -6,6 +6,7 @@ import { RULES, BIT } from './rules.js';
 import { applyDamage } from './fighter.js';
 import { registerHit, beginIfFree } from './fight_combo.js';
 import { launch } from './fight_air.js';
+import { applyStatus } from './status.js';
 
 const BREAK_STUN = 12;
 
@@ -39,6 +40,7 @@ export function landThrow(fight, a, d) {
   const m = d.throwMove, dmg = m.dmg;
   const ko = applyDamage(d, dmg);
   registerHit(fight, a, d, dmg, false);
+  if (m.status && !ko) applyStatus(d, m.status.id, m.status.stacks);
   launch(fight, d, a, { vy: 4, vx: a.facing * 1.6, low: true, ko });
   fight.hitstop = Math.max(fight.hitstop, ko ? RULES.KO_HITSTOP : 8);
   fight.bus.fire('onHit', { slot: a.slot, target: d.slot, move: m, dmg, kind: 'throw', counter: false, combo: d.comboIn.hits, height: 'throw', ko, reaction: 'down' });

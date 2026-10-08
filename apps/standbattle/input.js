@@ -30,8 +30,10 @@ export function createDevices(saved) {
     map, nav,
     single: true,                       /* one human: player 1 answers to both sides of the keyboard */
     padCount: 0,
+    pressCount: 0,                      /* every key or button that went down: the title's "press any key" */
 
     keyDown(code, repeat) {
+      if (!repeat) api.pressCount++;
       if (capture) { const c = capture; capture = null; c(code); return true; }
       let used = false;
       ['p1', 'p2'].forEach((p, k) => {
@@ -72,6 +74,7 @@ export function createDevices(saved) {
         if (pad.buttons[9] && pad.buttons[9].pressed) now.start = true;
         if (pad.buttons[8] && pad.buttons[8].pressed) now.select = true;
         ACTIONS.forEach(a => { if (now[a]) { bits |= ACTION_BIT[a]; if (!padPrev[i][a]) { sticky[slot] |= ACTION_BIT[a]; navFrom(a, 'p' + (slot + 1)); } } });
+        if (ACTIONS.some(a => now[a] && !padPrev[i][a]) || (now.start && !padPrev[i].start)) api.pressCount++;
         if (now.start && !padPrev[i].start) { nav.push({ k: 'start', who: 'p' + (slot + 1) }); nav.push({ k: 'pause', who: 'p' + (slot + 1) }); nav.push({ k: 'confirm', who: 'p' + (slot + 1) }); }
         if (now.select && !padPrev[i].select) nav.push({ k: 'back', who: 'p' + (slot + 1) });
         padPrev[i] = now; padHeld[slot] |= bits;

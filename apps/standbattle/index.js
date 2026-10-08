@@ -1,8 +1,6 @@
 /* Stand Battle Arena — app entry (spec 2). Mounts the shell in app.js behind the TempleOS app contract (mount/unmount, ctx-only I/O). */
 
 import { createApp } from './app.js';
-import { defOf } from './roster.js';
-import { createRng } from './rng.js';
 
 export default {
   id: 'standbattle',
@@ -14,9 +12,7 @@ export default {
   fluid: true,
 
   async mount(root, ctx) {
-    const app = await createApp(root, ctx, a => {
-      a.go('fight', { defs: [defOf('jotaro'), defOf('jotaro', { tint: '#FF6B9E' })], stage: { id: 'street', rule: 'walls' }, humans: [true, false], training: true, rng: createRng('boot') });
-    });
+    const app = await createApp(root, ctx, a => a.go('title'));
     this._app = app;
   },
 
