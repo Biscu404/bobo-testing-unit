@@ -7,6 +7,7 @@ import { BEK_NPCS, BEK_SCENES, BEK_QUESTS, BEK_LOFT, BEK_FESTIVALS, BEK_MAPS } f
 import { spineOpen, wingDone } from './spine.js';
 import { canPlace } from './placement.js';
 import { PLACE_BLOCKS } from './decor.js';
+import { USES } from './trophies.js';
 
 const TR = trophies('bekkedal');
 const guard = f => { try { return f(); } catch (e) { return undefined; } };
@@ -24,7 +25,7 @@ export function createCalls() {
     crafted: (id, cooking) => guard(() => { if (cooking) TR.mark('cook', id); TR.emit('craft', { id: id }); }),
     gift: (npc, tier) => guard(() => { if (tier === 'loved') TR.mark('gifted', npc); TR.emit('gift', { npc: npc, tier: tier }); }),
     bear: () => guard(() => TR.emit('bear', {})),
-    used: what => guard(() => { if (what) TR.mark('use', what); }),
+    used: what => guard(() => { if (what && USES.indexOf(what) >= 0) TR.mark('use', what); }),
     /* a placement was refused: only the one that is refused for walling in a door counts (the same placement would be allowed if the kind did not block) */
     refused(mapDef, placedHere, S, place) {
       guard(() => { if (PLACE_BLOCKS[place.kind] && canPlace(mapDef, placedHere, S.px, S.py, place.x, place.y, 'stol')) TR.emit('place-refused', {}); });

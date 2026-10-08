@@ -27,6 +27,14 @@ function loadIconPos() {
   try { iconPos = JSON.parse(localStorage.getItem(ICON_POS_KEY)) || {}; }
   catch (e) { iconPos = {}; }
   /* DungeonSweeper was Sweeper: it keeps its place on the desk (kernel/vfs.js carries the icon itself) */
+  /* once: a desk that is still the old single column down the left (nobody moved anything) is laid out in zones instead */
+  try {
+    if (!localStorage.getItem('templeos.deskzones.v1')) {
+      localStorage.setItem('templeos.deskzones.v1', '1');
+      const ps = Object.values(iconPos);
+      if (ps.length && ps.every(p => p.x <= 8 + 3 * 84)) iconPos = {};
+    }
+  } catch (e) {}
   if (iconPos.Sweeper && !iconPos.DungeonSweeper) { iconPos.DungeonSweeper = iconPos.Sweeper; delete iconPos.Sweeper; }
 }
 function saveIconPos() {
@@ -146,8 +154,9 @@ export function petMoveIcon(name, wantX, wantY) {
 export function arrangeIcons() {
   iconPos = {};
   const dims = deskDims(), els = deskIcons();
-  els.forEach((el, i) => {
-    const p = slotOf(i, dims.h);
+  const spots = layout(els.map(el => itemOf(el.dataset.name) || { name: el.dataset.name }), {}, [], dims);
+  els.forEach(el => {
+    const p = spots.get(el.dataset.name);
     el.style.left = p.x + 'px';
     el.style.top = p.y + 'px';
     iconPos[el.dataset.name] = p;

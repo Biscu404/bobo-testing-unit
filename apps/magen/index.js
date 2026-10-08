@@ -1072,7 +1072,8 @@ export default {
           if (mx < CX) settleArg(0); else settleArg(1);
           return;
         }
-        if (Math.hypot(mx - CX, my - CY) < 76) press(ev);
+        /* the star is drawn about 60 across but the whole stage is the button: you spend your hours here, so the target is the sky, not the pixels of the star */
+        if (Math.hypot(mx - CX, my - CY) < 146) press(ev);
       });
       /* holding the button down presses for you, but only once the auto-press has been earned and bought (apps/magen/auto.js) */
       let held = false, holdT = 0;

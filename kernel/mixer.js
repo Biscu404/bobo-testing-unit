@@ -23,6 +23,7 @@ const CHANNELS = [
   { id: 'aftere',     n: 'AFTEREGYPT', app: 'aftere' },
   { id: 'solitaire',  n: 'SOLITAIRE',  app: 'solitaire' },
   { id: 'garage',     n: 'THE GARAGE', app: 'garage' },
+  { id: 'solitaire',  n: 'SOLITAIRE',  app: 'solitaire' },
   { id: 'holyc',      n: 'HOLYC.EXE',  app: 'holyc' }
 ];
 
@@ -157,10 +158,12 @@ export const MixerUI = {
   },
   position() {
     if (!this.box || !this.panel) return;
-    const r = this.box.getBoundingClientRect();
+    /* the panel is inside #shell, which is not at the corner of the viewport: its place is the button's, measured from the shell, and it sits
+       wholly above the button (measured from the viewport it used to sit a bar's height too low, over the taskbar it opens from) */
+    const r = this.box.getBoundingClientRect(), o = this.panel.offsetParent ? this.panel.offsetParent.getBoundingClientRect() : { left: 0, top: 0 };
     const pw = this.panel.offsetWidth, ph = this.panel.offsetHeight;
-    this.panel.style.left = Math.max(4, r.right - pw) + 'px';
-    this.panel.style.top = Math.max(4, r.top - ph - 6) + 'px';
+    this.panel.style.left = Math.max(4, r.right - o.left - pw) + 'px';
+    this.panel.style.top = Math.max(4, r.top - o.top - ph - 6) + 'px';
   }
 };
 window.MixerUI = MixerUI;

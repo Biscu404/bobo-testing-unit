@@ -73,7 +73,8 @@ export const SHUTS = { green: FEATURES.SHUTTER_GREEN.cols, blue: FEATURES.SHUTTE
    different houses. */
 export const FACADES = {
   /* the home: dark log under turf, as the farm always was */
-  farm:  [{ x: 6, y: 4, wall: 'log', roof: 'turf', chim: 'stone', door: 'plank', win: 'cross', lantern: 1 }],
+  /* the shack: grey, weathered log under sod, one pane, no chimney (a stove-pipe is not a chimney), no lantern, no flowers, nothing painted. Four squares wide: the smallest house in the valley */
+  farm:  [{ x: 6, y: 4, wall: 'silver', roof: 'turf', door: 'plank', win: 'plain' }],
   town: [
     /* the street of falu red the town was, with a white corner board and green shutters on the best of it */
     { x: 31, y: 7, wall: 'falu', roof: 'tile', chim: 'stone', door: 'green', shut: 'green', win: 'cross' },

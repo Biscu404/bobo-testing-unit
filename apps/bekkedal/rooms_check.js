@@ -61,7 +61,7 @@ for (const id of Object.keys(BEK_ROOMS)) {
   /* windows */
   const wins = BEK_ROOMS[id].windows;
   const winBad = wins.filter(w => g(w.x, w.y) !== 'H' || g(w.x, w.y - 1) !== ' ' || !room(w.x, w.y + 1)).map(w => w.x + ',' + w.y);
-  ok(wins.length >= 3 && winBad.length === 0, id + ': ' + wins.length + ' windows, each in an outer wall with floor in front', winBad.join(' '));
+  ok(wins.length >= 1 && winBad.length === 0, id + ': ' + wins.length + ' windows, each in an outer wall with floor in front', winBad.join(' '));
 
   /* the door: nothing stands on the square you arrive on, and the way in is clear */
   const ex = BEK_MAPS[id].exits[0];
@@ -90,7 +90,7 @@ for (const p of Object.keys(PAPERS)) {
 console.log('\n-- the things that answer --');
 const lines = [];
 const S = { day: 4, min: 600, weather: 'klar', water: 3, met: {}, en: 10, enMax: 100, map: 'farmhouse' };
-const env = { S, say: l => lines.push(l), TX: (a, b) => b, light: () => 0, sfx: { pick() {}, sleep() {}, water() {}, deny() {} } };
+const env = { S, say: l => lines.push(Array.isArray(l) ? l[0] : l), TX: (a, b) => b, light: () => 0, sfx: { pick() {}, sleep() {}, water() {}, deny() {} } };
 const heard = Object.keys(FURN).filter(k => k !== 'window').map(k => { lines.length = 0; const r = furnitureAct({ kind: k, x: 2, y: 3, p: 1 }, env, false); const l = lines[0]; return r && l && (typeof l === 'string' ? l : l.no && l.en) ? null : k; }).filter(Boolean);
 ok(heard.length === 0, 'every piece that answers says something in both languages', heard.join(', '));
 lines.length = 0; ok(furnitureAct(null, env, true) && lines.length === 1, 'a window answers');

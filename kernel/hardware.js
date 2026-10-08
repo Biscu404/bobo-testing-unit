@@ -40,7 +40,7 @@ export function splashGone() {
 }
 
 export function sfxGain() { return Math.pow(CRT.sfx / 10, 1.6) * 1.25; }
-export function musGain() { return Math.pow(CRT.mus / 10, 1.6) * 0.85; }
+export function musGain() { return Math.pow(CRT.mus / 10, 1.25) * 1.2; }
 
 /* the lamp browns out for a fifth of a second whenever an app takes power */
 let lampT = null;
@@ -99,6 +99,7 @@ function labelKnobs() {
   const d = document.getElementById('k-dgauss'); if(d) d.textContent = 'DGAUSS: ' + (CRT.degauss ? 'ON' : 'OFF');
 }
 
+let switchedOff = false;
 function saveCRT() {
   try { localStorage.setItem('templeos.crt.v1', JSON.stringify(CRT)); } catch (e) {}
 }
@@ -111,7 +112,7 @@ function loadCRT() {
   delete CRT.lens;     /* the LENS knob is gone: the glass is flat, whatever an old save says */
   delete CRT.dgauss;   /* an older save of the first DEGAUSS button, which only ever flashed */
   CRT.degauss = CRT.degauss !== false;
-  CRT.on = true;
+  CRT.on = false;      /* the set is always switched off when the app is opened: you press POWER */
   CRT.vhold = CRT.vhold ?? 5;
   CRT.hhold = CRT.hhold ?? 5;
   CRT.scan = CRT.scan ?? 2;
@@ -299,12 +300,13 @@ function wireChin() {
       Style.reset();
       Rage.stop();
       if (window.powerOff) window.powerOff();
+      switchedOff = true;
       saveCRT();
     } else {
       if (window.Snd && window.Snd.click) window.Snd.click();
       if (window.powerOn) window.powerOn();
       saveCRT();
-      sys.emit('power', {});
+      if (switchedOff) sys.emit('power', {});         /* off and on again: switching it on from cold, which is how it opens now, is not the trophy */
     }
   });
 }

@@ -22,6 +22,34 @@ export const cellOf = (x, y) => ({ c: Math.round((x - ORIGIN) / ICON_W), r: Math
 export const cellPos = (c, r) => ({ x: ORIGIN + c * ICON_W, y: ORIGIN + r * ICON_H });
 const key = (c, r) => c + ',' + r;
 
+/* ---- zones: a new desk is not one column down the left, it is four neighbourhoods and a bin ----------------------------------
+   TOOLS top left, FILES (what you make and import) next to them, GAMES top right, DOCS bottom left (the machine's own papers),
+   the bin in the bottom right corner. Each zone is a block of cells that fills left to right, then down; a zone that is
+   full spills into the nearest free cell like anything else. Icons that already have a place keep it. */
+export const GAMES = new Set(['Magen', 'TheCook', 'Garden', 'StandBattleArena', 'DungeonSweeper', 'Sweeper', 'Solitaire', 'Jaeger', 'Bekkedal', 'Elephant', 'AfterEgypt']);
+export const DOCS = new Set(['TheBibel.TXT', 'AutoExec.HC', 'Welcome.DD', 'Adam', 'Compiler']);
+export const TOOLS = new Set(['TERMINAL', 'Trophies', 'Notes', 'HolyC', 'Garage', 'TheStack', 'Crayon', 'MyDrawings', 'Dave']);
+export function zoneOf(it) {
+  if (it.type === 'bin' || it.type === 'binfull') return 'bin';
+  if (GAMES.has(it.name)) return 'games';
+  if (TOOLS.has(it.name) || it.type === 'terminal') return 'tools';
+  if (DOCS.has(it.name)) return 'docs';
+  return 'files';
+}
+/* the first cell of each zone and how wide it is, for a grid of cols x rows */
+export function zoneBox(zone, cols, rows) {
+  const w = Math.max(1, Math.min(cols, zone === 'games' ? 3 : zone === 'tools' ? 2 : zone === 'docs' ? 3 : 4));
+  switch (zone) {
+    case 'games': return { c0: Math.max(0, cols - w), r0: 0, w };
+    case 'tools': return { c0: 0, r0: 0, w };
+    case 'docs':  return { c0: 0, r0: Math.max(0, rows - 2), w };
+    case 'bin':   return { c0: cols - 1, r0: rows - 1, w: 1 };
+    default:      return { c0: Math.min(cols - 1, 3), r0: 0, w };
+  }
+}
+/* the n-th cell of a zone, left to right then down */
+export const zoneCell = (zone, n, cols, rows) => { const b = zoneBox(zone, cols, rows); return { c: b.c0 + (n % b.w), r: b.r0 + Math.floor(n / b.w) }; };
+
 /* the nearest free cell to (c0, r0) inside the grid, ring by ring (the border of each ring only); null if there is none */
 export function nearestFree(taken, c0, r0, cols, rows) {
   const free = (c, r) => c >= 0 && r >= 0 && c < cols && r < rows && !taken.has(key(c, r));
@@ -49,7 +77,8 @@ export function layout(items, stored, arrivals, dims) {
   const taken = new Set(), out = new Map(), want = new Map();
   const clampCell = p => { const c = cellOf(p.x, p.y); return { c: Math.max(0, Math.min(cols - 1, c.c)), r: Math.max(0, Math.min(rows - 1, c.r)) }; };
   const arr = arrivals ? arrivals.slice() : [];
-  const needs = [];
+  const needs = [], zn = {}, zslot = [];
+  items.forEach((it, i) => { const z = zoneOf(it); zslot[i] = zoneCell(z, zn[z] = (zn[z] == null ? 0 : zn[z] + 1), cols, rows); });
   items.forEach((it, i) => {
     const st = stored[it.name];
     if (st) {
@@ -61,7 +90,7 @@ export function layout(items, stored, arrivals, dims) {
   });
   let piled = 0;
   needs.forEach(([it, i]) => {
-    const w = want.get(it.name) || clampCell((arr.length ? arr.shift() : null) || slotOf(i, dims.h));
+    const w = want.get(it.name) || (arr.length ? clampCell(arr.shift()) : { c: Math.min(cols - 1, zslot[i].c), r: Math.min(rows - 1, zslot[i].r) });
     const cell = nearestFree(taken, w.c, w.r, cols, rows);
     if (cell) { taken.add(key(cell.c, cell.r)); out.set(it.name, cellPos(cell.c, cell.r)); return; }
     const p = cellPos(cols - 1, rows - 1), k = (piled++ % (PILE_MAX + 1)) * PILE_STEP;

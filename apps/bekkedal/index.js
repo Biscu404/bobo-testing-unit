@@ -62,6 +62,7 @@ import { lifeFor } from './life.js';
 import { fogLevel, FOG_BLOCK } from './fog.js';
 import { helloFor } from './hellos.js';
 import { createTyper } from './typer.js';
+import { BEK_WORLD } from './maps.js';
 import { topicMenu, topicOf, topicDialogue } from './asks.js';
 import { lateExtra, warningFor, nightOf, pilfer, napPhase, NAP_TOTAL, NAP, zCount, vignette } from './sleep.js';
 import { newChop, chopTick, chopStrike, chopAbandoned } from './chop.js';
@@ -596,6 +597,12 @@ export default {
           const [x, y] = k.split(',').map(Number);
           if (base('farm', x, y) !== 'f' && !inPlot(x, y)) delete s.soil[k];
         });
+        /* a thing you placed whose square is not ground any more (the cabin became a small shack, and what stood in its old rooms is in the dark) goes back in the bag */
+        Object.keys(s.placed).forEach(k => {
+          const i = k.indexOf(':'), mp = k.slice(0, i), [x, y] = k.slice(i + 1).split(',').map(Number);
+          if (!BEK_MAPS[mp] || isMineId(mp)) return;
+          if (!walkable(mp, x, y)) { const rec = s.placed[k]; s.bag[rec.item] = (s.bag[rec.item] || 0) + 1; delete s.placed[k]; }
+        });
         /* the three map-keyed tables, each against the glyphs it can sit on */
         const KINDS = { felled: 'YG', mined: 'OQ', picked: 'p' };
         Object.keys(KINDS).forEach(tbl => {
@@ -1015,6 +1022,39 @@ export default {
          since the list is filtered by S.disc. Sigrid and Gunnar say as much
          (BEK_TALK). */
       const BEK_HOME = { setra: [10, 6], vidda: [20, 14] };
+      /* THE MAP lists every place outdoors: the ones you have been to are open and take you there for a cost by how far it is, the rest are shut ("???") until you
+         have walked into them once, and a place behind a gate (the vidda's cold, the mine's dark) is as shut to the map as it is to the road. Where it sets you down
+         is the square a neighbouring map's seam lands you on (the setra and the vidda keep the two squares they always had). */
+      const MAP_PLACES = Object.keys(BEK_MAPS).filter(m => !BEK_MAPS[m].inside && !isMineId(m) && BEK_WORLD.at[m]);
+      function landing(m) {
+        if (BEK_HOME[m]) return BEK_HOME[m];
+        for (const id of Object.keys(BEK_MAPS)) { const e = (BEK_MAPS[id].exits || []).find(x => x.to === m); if (e) return [e.tx, e.ty]; }
+        return null;
+      }
+      function gateInto(m) {
+        for (const id of Object.keys(BEK_MAPS)) { const e = (BEK_MAPS[id].exits || []).find(x => x.to === m && x.need); if (e) return e; }
+        return null;
+      }
+      /* tiles between the middles of two places, off where the seams put them (maps.js BEK_WORLD) */
+      function mapDist(a, b) {
+        const mid = id => { const at = BEK_WORLD.at[id], c = mapCols(id), r = mapRows(id); return [at[0] + c / 2, at[1] + r / 2]; };
+        const p = mid(a), q = mid(b);
+        return Math.abs(p[0] - q[0]) + Math.abs(p[1] - q[1]);
+      }
+      function mapCost(a, b) {
+        if (b === 'setra' || b === 'vidda') return { en: 10, min: 40 };         /* up the mountain: hours of climbing, as it always was */
+        const d = mapDist(a, b);
+        return { en: Math.min(10, Math.floor(d / 14)), min: Math.max(10, Math.round(d * 0.5)) };
+      }
+      function mapList() {
+        const list = MAP_PLACES.filter(m => m !== S.map && landing(m)).sort((a, b) => mapDist(S.map, a) - mapDist(S.map, b));
+        const names = list.map(m => {
+          if (!S.disc[m]) return TX('??? — IKKE FUNNET ENNÅ', '??? — NOT FOUND YET');
+          const c = mapCost(S.map, m);
+          return T(BEK_MAPS[m].title) + '   ' + TX('−' + c.en + ' ENERGI ', '−' + c.en + ' EN ') + '+' + c.min + TX(' MIN', ' MIN');
+        });
+        return { list: list, names: names, sel: 0 };
+      }
       /* S.disc is "places you have been", read by the travel menu and by about
          a dozen chat lines. A floor of the descent is not a place in that
          sense — its id carries a run seed, so every one of them would be a new
@@ -1216,11 +1256,14 @@ export default {
               (lost ? TX('  EN SKJÆRE TOK ' + lost + ' KR.', '  A MAGPIE TOOK ' + lost + ' KR.') : ''));
           return;
         }
-        /* out of the cabin door and onto the yard track, whichever bed you went to sleep in — the same square the
-           farmhouse sets you down on when you walk out of it */
-        S.map = 'farm'; S.px = 8; S.py = 8; S.dir = 0;
+        /* You wake where you lay down. Asleep in a bed indoors, that is the room, on the square beside the bed you faced (nap.at), looking
+           at it: it used to carry you out of the door and onto the yard track, which is not what waking up in your own bed is. A nap that
+           was not in a bed (a bench, the ground) is not here: those are handled above or leave you where you stood. */
+        const inBed = nap && nap.bed && nap.at && nap.at.map === S.map && M().inside;
+        if (inBed) { S.px = nap.at.x; S.py = nap.at.y; S.dir = [[0, 1], [0, -1], [-1, 0], [1, 0]].findIndex(d => nap.at.x + d[0] === nap.bed.x && nap.at.y + d[1] === nap.bed.y); if (S.dir < 0) S.dir = 0; }
+        else { S.map = 'farm'; S.px = 8; S.py = 8; S.dir = 0; }
         sfx.sleep();
-        say(TX('DAG ' + S.day + '. ', 'DAY ' + S.day + '. ') +
+        say(TX('DAG ' + S.day + '. ', 'DAY ' + S.day + '. ') + (inBed ? TX('DU VÅKNER I SENGA. ', 'YOU WAKE IN YOUR BED. ') : '') +
             (night.kind === 'late' ? TX('EN KORT NATT.', 'A SHORT NIGHT.')
              : S.weather === 'regn' ? TX('REGN I DAG.', 'RAIN TODAY.')
              : S.weather === 'take' ? TX('TÅKE I DAG.', 'FOG TODAY.') : TX('GOD MORGEN.', 'GOOD MORNING.')));
@@ -1468,9 +1511,9 @@ export default {
           if (anim) return tendAnimal(anim);
         }
         /* the things in a house that answer when faced (furniture_act.js): a prop on the square in front, or a window in the wall */
-        { const fp = propMap.get(f.x + ',' + f.y), fw = roomWindowAt(S.map, f.x, f.y), env = { S: S, say: say, sfx: sfx, TX: TX, light: () => lighting().dark };
+        { const fp = propMap.get(f.x + ',' + f.y), fw = roomWindowAt(S.map, f.x, f.y), env = { S: S, say: objectBox, sfx: sfx, TX: TX, light: () => lighting().dark };
           const fAct = (p, w) => { const done = furnitureAct(p, env, w); if (done) tro.used(w ? 'window' : p && FURN[p.kind] && FURN[p.kind].act); return done; };
-          if ((fp || fw) && fAct(fp, env, !!fw)) return;
+          if ((fp || fw) && fAct(fp, !!fw)) return;
           /* facing the piece under a window or a clock (the sink, a nightstand, a counter): what hangs on the wall above it answers */
           const hi = furnAbove(f);
           if (hi && fAct(hi.prop, env, hi.win)) return; }
@@ -1949,6 +1992,11 @@ export default {
         { no: '[Han rekker deg et bær. Du tar imot.]', en: '[He offers you a berry. You take it.]' },
         { no: '[Han går tilbake til feiingen. Kosten forklarer han aldri.]', en: '[He goes back to sweeping. The broom he never explains.]' }
       ];
+      /* a thing in a room that answers is a small dialogue box with its name on it (furniture_act.js), not a line in the status bar */
+      function objectBox(lines, label) {
+        dlg = { lines: lines.slice(), i: 0, npc: null, label: label || null };
+        mode = 'talk';
+      }
       function talkTo(npc) {
         if (npc.bear) {
           sfx.bear(); tro.bear();
@@ -2380,9 +2428,9 @@ export default {
 
       /* ---- fast travel -------------------------------------------------- */
       function openTravel() {
-        const list = Object.keys(S.disc).filter(m => BEK_HOME[m] && m !== S.map);
-        if (!list.length) { say(TX('INGEN STEDER Å DRA ENNÅ.', 'NOWHERE TO GO YET.')); return; }
-        travel = { list: list, sel: 0 }; mode = 'travel';
+        if (!BEK_WORLD.at[S.map]) { say(TX('GÅ UT FØRST.', 'GO OUTSIDE FIRST.')); return; }
+        if (!Object.keys(S.disc).some(m => MAP_PLACES.indexOf(m) >= 0 && m !== S.map)) { say(TX('INGEN STEDER Å DRA ENNÅ. GÅ UT OG SE DEG OM.', 'NOWHERE TO GO YET. WALK OUT AND LOOK AROUND.')); return; }
+        travel = mapList(); mode = 'travel';
       }
       function doTravel() {
         /* the hoist at the mouth. No energy: what the shortcut buys is that
@@ -2399,9 +2447,13 @@ export default {
         }
         const m = travel.list[travel.sel];
         if (!m) { mode = ''; travel = null; return; }
-        if (S.en < 10) { say(TX('FOR SLITEN TIL Å GÅ.', 'TOO TIRED TO WALK.')); deny(); return; }
-        S.en -= 10; S.min += 40;
-        S.map = m; S.px = BEK_HOME[m][0]; S.py = BEK_HOME[m][1]; S.dir = 0;
+        if (!S.disc[m]) { say(TX('DU HAR IKKE VÆRT DER ENNÅ. GÅ DIT FØRST.', 'YOU HAVE NOT BEEN THERE YET. WALK THERE ONCE FIRST.')); deny(); return; }
+        const gate = gateInto(m);
+        if (gate && !gateOK(gate.need)) { say(T(gate.why)); deny(); return; }
+        const cost = mapCost(S.map, m), home = landing(m);
+        if (S.en < cost.en) { say(TX('FOR SLITEN TIL Å GÅ.', 'TOO TIRED TO WALK.')); deny(); return; }
+        S.en -= cost.en; S.min += cost.min;
+        S.map = m; S.px = home[0]; S.py = home[1]; S.dir = 0;
         markDisc(m); mode = ''; travel = null; sfx.step(tileAt(S.map, S.px, S.py)); say(T(BEK_MAPS[m].title));
       }
 
@@ -4155,7 +4207,7 @@ export default {
             /* two frames of recoil when the answer was no */
             const jx = swing && swing.kind === 'deny' ? ((swing.t * 46) | 0) % 2 ? 2 : -2 : 0;
             /* asleep: on its back in the bed under the quilt, or in the grass in what they stood up in (sleep.js) */
-            if (nap && !nap.woke) {
+            if (nap && (!nap.woke || (nap.bed && nap.t < NAP.out + NAP.hold + NAP.in * 0.55))) {       /* a sleeper in a bed is still in it while the morning opens, then sits up beside it */
               const lx = nap.bed ? nap.bed.x : nap.at.x, ly = nap.bed ? nap.bed.y : nap.at.y;
               inLight(L, lx, ly, () => lying(lx * BEK_T_SRC, ly * BEK_T_SRC, PLAYER_HAIR, PLAYER_SHIRT, PLAYER_PANTS, nap.bed ? WAR[1] : -1, Math.floor(t * 1.4) % 2));
               spots.me = nap.sp = { x: lx * BEK_T_SRC + 6, y: ly * BEK_T_SRC + 2 };
@@ -4409,7 +4461,7 @@ export default {
           if (name === 'offer') offer = { label: { no: 'BÅT', en: 'BOAT' }, kr: 400, npc: BEK_NPCS[3] };
           /* the same list openTravel() would build — BEK_HOME is what decides
              which places the menu still offers, not S.disc on its own */
-          if (name === 'travel') travel = { list: Object.keys(S.disc).filter(m => BEK_HOME[m]), sel: 0 };
+          if (name === 'travel') travel = mapList();
           if (name === 'end') S.ending = 4.2;
           if (name === 'fish') fish = { phase: 'reel', t: 4, pos: 0.42, sp: 'orret', tackle: null,
                                         z0: 0.34, z1: 0.66, prog: 0.2, overT: 0, underT: 0, ft: 0, jerkT: 0.4,
@@ -4551,6 +4603,9 @@ export default {
         },
         /* A plain snapshot of the fields a fishing test cares about. */
         state: () => JSON.parse(JSON.stringify({ bag: S.bag, legend: S.legend, xp: S.xp, kr: S.kr })),
+        /* where the player is and what is open, and a way to mark a place as found (the harness for the sleep, the boxes and THE MAP) */
+        snap: () => ({ map: S.map, px: S.px, py: S.py, dir: S.dir, day: S.day, mode: mode, label: dlg && dlg.label ? T(dlg.label) : null, disc: Object.keys(S.disc), travel: travel ? travel.names : null }),
+        found: ids => { (ids || []).forEach(m => { S.disc[m] = 1; }); return Object.keys(S.disc); },
         /* FURNISHING, from the harness. Grants the item (so a functional
            test does not first have to play through a whole shop visit),
            stands the player at (x, y) on `mapId` (or leaves them where they

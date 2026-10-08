@@ -16,7 +16,7 @@ export const KIND_CHIP = { progress: 'P', skill: 'S', explore: 'E', creative: 'C
 const GRACE_DAYS = 1;
 
 export function createTrophies(env) {
-  const fresh = () => ({ v: 1, earned: {}, stats: {}, sets: {}, streaks: {}, days: [], seen: { near: {}, revealed: {} }, recent: [], pinned: null, lang: 'en' });
+  const fresh = () => ({ v: 1, earned: {}, stats: {}, sets: {}, streaks: {}, days: [], seen: { near: {}, revealed: {} }, recent: [], pinned: null, pins: [], lang: 'en' });
   let st = fresh();
   try { const r = env.read && env.read(); if (r && typeof r === 'object' && r.v === 1) st = Object.assign(fresh(), r, { seen: Object.assign({ near: {}, revealed: {} }, r.seen || {}) }); } catch (e) { /* a save that will not read: start clean, the host keeps a copy */ }
   const defs = new Map(), byEvent = {}, byStat = {}, bySet = {}, byStreak = {}, byPoll = {}, derived = [];
@@ -197,7 +197,18 @@ export function createTrophies(env) {
   /* a counter found in an old save: set silently, nothing earned by it (the ids the save proves were awarded already) */
   T.seed = (app, key, v) => { try { const s = bag(st.stats, app); if (v > (s[key] || 0)) { s[key] = v; save(); } } catch (e) { /* never into the game */ } };
   T.seedSet = (app, key, v) => { try { const s = bag(st.sets, app); const a = s[key] || (s[key] = []); if (a.indexOf(v) < 0) { a.push(v); save(); } } catch (e) { /* never into the game */ } };
-  T.pin = id => { st.pinned = id || null; save(); tell('trophies-changed', {}); };
+  /* pins: any number (up to PIN_MAX) are kept; pinning one that is pinned lets it go. `pinned` is the newest, for the title bar. */
+  const PIN_MAX = 12;
+  const pinList = () => { if (!Array.isArray(st.pins)) st.pins = st.pinned ? [st.pinned] : []; return st.pins; };
+  T.isPinned = id => pinList().indexOf(id) >= 0;
+  T.pinsList = () => pinList().map(id => defs.get(id)).filter(Boolean);
+  T.pin = id => {
+    const a = pinList();
+    if (!id) { st.pins = []; st.pinned = null; }
+    else if (a.indexOf(id) >= 0) { a.splice(a.indexOf(id), 1); st.pinned = a[a.length - 1] || null; }
+    else { a.push(id); if (a.length > PIN_MAX) a.shift(); st.pinned = id; }
+    save(); tell('trophies-changed', {});
+  };
   T.reset = () => { st = fresh(); T.st = st; save(); };
   T.save = save;
   return T;

@@ -14,7 +14,7 @@ pg.on('pageerror', e => errors.push(String(e)));
 
 await pg.addInitScript(() => { window.AudioContext = window.webkitAudioContext = function () { throw new Error('no audio'); }; });
 await pg.goto(URL, { waitUntil: 'domcontentloaded' });
-await pg.evaluate(() => { if (window.powerOn) window.powerOn(); });
+await pg.waitForFunction(() => typeof window.powerOn === 'function'); await pg.evaluate(() => window.powerOn());
 await pg.waitForSelector('#bootcursor', { timeout: 30000 });
 await pg.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: '~', code: 'Backquote', bubbles: true, cancelable: true })));
 await pg.waitForSelector('#shell', { state: 'visible', timeout: 15000 });
@@ -26,17 +26,17 @@ let fails = 0;
 const ok = (cond, label, detail) => { if (cond) { console.log('OK   ' + label + (detail ? '   ' + detail : '')); return; } fails++; console.log('FAIL ' + label + (detail ? '   ' + detail : '')); };
 const dbg = (sel, arg) => pg.evaluate(sel, arg);
 
-/* ---- furnish the farmhouse: chairs, a table, a rug, a bed, a shelf, a
+/* ---- furnish the shack (the first house, id farmhouse): chairs, a table, a rug, a bed, a shelf, a
    lamp, a wall hanging, a dresser — every indoor category the task lists,
    placed by hand through the real startPlace()/canPlace()/confirmPlace(). */
 const spots = [
-  ['stol', 3, 3], ['bord', 6, 4], ['matte', 3, 6], ['seng', 6, 3],   /* free floor in the bedroom of the furnished cabin: the bed, the nightstands and the rug have their own squares */
-  ['hylle', 3, 5], ['lampe', 7, 3], ['veggbilde', 8, 3], ['kommode', 3, 7]
+  ['stol', 9, 5], ['bord', 12, 6], ['matte', 10, 8], ['seng', 13, 7],   /* free floor in the shack: the cot, the stove, the table and the trunk have their own squares */
+  ['hylle', 10, 5], ['lampe', 14, 7], ['veggbilde', 11, 5], ['kommode', 9, 8]
 ];
 await dbg(() => window.__bekDebug.teleport('farmhouse', 12, 8));
 const lightsBefore = await dbg(() => window.__bekDebug.lights());
 let r = await dbg(([id, x, y]) => window.__bekDebug.furnish(id, 'farmhouse', x, y), spots[0]);
-ok(!!r.placed['farmhouse:3,3'], 'chair placed in the farmhouse', JSON.stringify(r.placed['farmhouse:3,3']));
+ok(!!r.placed['farmhouse:9,5'], 'chair placed in the farmhouse', JSON.stringify(r.placed['farmhouse:9,5']));
 for (const [id, x, y] of spots.slice(1)) {
   r = await dbg(([id, x, y]) => window.__bekDebug.furnish(id, null, x, y), [id, x, y]);
   ok(!!r.placed['farmhouse:' + x + ',' + y], id + ' placed', JSON.stringify(r.placed['farmhouse:' + x + ',' + y]));
@@ -49,12 +49,12 @@ ok(raw.length > lightsBefore.length, 'lightSources() grows once the lamp is plac
    lightsBefore.length + ' -> ' + raw.length);
 
 /* pick one back up and move it */
-const before = await dbg(() => window.__bekDebug.placedAt('farmhouse', 3, 3));
+const before = await dbg(() => window.__bekDebug.placedAt('farmhouse', 9, 5));
 ok(!!before, 'the chair is really there before pick-up', JSON.stringify(before));
-const pu = await dbg(() => window.__bekDebug.pickup(3, 3));
-ok(!pu.placed['farmhouse:3,3'], 'picking up removes the old tile', JSON.stringify(pu.note));
-const moved = await dbg(() => window.__bekDebug.furnish('stol', null, 10, 3));
-ok(moved.placed['farmhouse:10,3'], 'and it can be set down somewhere else', JSON.stringify(moved.placed['farmhouse:10,3']));
+const pu = await dbg(() => window.__bekDebug.pickup(9, 5));
+ok(!pu.placed['farmhouse:9,5'], 'picking up removes the old tile', JSON.stringify(pu.note));
+const moved = await dbg(() => window.__bekDebug.furnish('stol', null, 14, 6));
+ok(moved.placed['farmhouse:14,6'], 'and it can be set down somewhere else', JSON.stringify(moved.placed['farmhouse:14,6']));
 
 /* ---- outdoors: fence run + adjacency autotile, gate, path, bench, planter, scarecrow, sign */
 const farmSpots = [['gjerde', 2, 2], ['gjerde', 3, 2], ['gjerde', 4, 2], ['grind', 5, 2],
@@ -93,7 +93,7 @@ ok(!placedFlags[3], 'the fourth side, which would seal the player in, is refused
    decor (BEK_DECOR's own "never changes walkability" rule). */
 const walkGjerde = await dbg(() => window.__bekDebug.walkable('farm', 2, 2));
 ok(!walkGjerde, 'a placed fence tile is solid to move()', JSON.stringify(walkGjerde));
-const walkFurniture = await dbg(() => window.__bekDebug.walkable('farmhouse', 6, 4));
+const walkFurniture = await dbg(() => window.__bekDebug.walkable('farmhouse', 12, 6));
 ok(!!walkFurniture, 'a placed table stays walkable, same as authored decor', JSON.stringify(walkFurniture));
 
 console.log('\n' + (fails ? fails + ' FAILED' : 'All FURNISHING functional checks pass.') + (errors.length ? '\nPAGE ERRORS: ' + errors.join(' | ') : ''));

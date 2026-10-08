@@ -433,6 +433,9 @@ export const CURSORS = [
   { id: 'jade',   name: 'JADE',        price: 150, blurb: 'Green and a little smug.',         mask: CUR_ARROW, o: '#000000', f: '#55FF55' },
   { id: 'plasma', name: 'PLASMA',      price: 190, blurb: 'It was a sign. Now it is a pointer.', mask: CUR_ARROW, o: '#AA00AA', f: '#FF55FF' },
   { id: 'ankh',   name: 'THE ANKH',    price: 380, blurb: 'Points at nothing. Means everything.', mask: CUR_ANKH, o: '#0000AA', f: '#55FFFF', hx: 5, hy: 1 },
+  { id: 'laurel', name: 'LAUREL',      price: 0, earn: 'mastery_magen', secret: true, blurb: 'A white pointer with a gold edge. Every mitzvah in the star.', mask: CUR_ARROW, o: '#AA5500', f: '#FFFFFF' },
+  { id: 'cupcur', name: 'THE CUP',     price: 0, earn: 'mastery_solitaire', secret: true, blurb: 'A pointer in gold, for winning every way Solitaire can be won.', mask: CUR_STAR, o: '#AA5500', f: '#FFFF55', hx: 5, hy: 0 },
+  { id: 'hive',   name: 'HIVE',        price: 0, earn: 'mastery_sweeper', secret: true, blurb: 'A claw with a yellow glow. Every room, perfect or not.', mask: CUR_PINCER, o: '#000000', f: '#FFFF55' },
   { id: 'star',   name: 'FALLING STAR',price: 460, blurb: 'Make a wish. Click it. It is not that kind.', mask: CUR_STAR, o: '#AA5500', f: '#FFFF55', hx: 5, hy: 0 }
 ];
 export const SCHEMES = [
@@ -457,7 +460,18 @@ export const SCHEMES = [
   { id: 'mint',   name: 'MINT',        price: 220, blurb: 'Cool, and a little medicinal.',
     v: { bg: '#06150f', fg: '#D8FFEA', ok: '#55FFB0', hi: '#FFFFFF', err: '#FF8070', dim: '#4D9577', acc: '#80FFD0' } },
   { id: 'dusk',   name: 'DUSK',        price: 260, blurb: 'The hour after the sun goes and before the lights come on.',
-    v: { bg: '#140a24', fg: '#F0D8FF', ok: '#FF9A5A', hi: '#FFE08A', err: '#FF5A8A', dim: '#A079B9', acc: '#FFB0A0' } }
+    v: { bg: '#140a24', fg: '#F0D8FF', ok: '#FF9A5A', hi: '#FFE08A', err: '#FF5A8A', dim: '#A079B9', acc: '#FFB0A0' } },
+  /* under the counter: Dave gives these for a game's mastery seal (`earn`), they are never for sale and show as ??? until they are yours */
+  { id: 'ember',  name: 'BENCH EMBER',  price: 0, earn: 'mastery_cook', secret: true, blurb: 'Warm orange on a char-black bench. From the Cook, for finishing the Cook.',
+    v: { bg: '#140800', fg: '#FFD9A8', ok: '#FF8A2A', hi: '#FFF0A0', err: '#FF4A2A', dim: '#B0743A', acc: '#FFB060' } },
+  { id: 'harvest', name: 'HARVEST',     price: 0, earn: 'mastery_garden', secret: true, blurb: 'Soil, straw and a little light. Every plant, every pot.',
+    v: { bg: '#0f0a04', fg: '#EAD9A0', ok: '#9ACD50', hi: '#FFE070', err: '#E0663A', dim: '#A08C50', acc: '#D8C060' } },
+  { id: 'nile',   name: 'NILE AT DAWN', price: 0, earn: 'mastery_aftere', secret: true, blurb: 'Blue water and gold sand, from the five ways across.',
+    v: { bg: '#031422', fg: '#F6E7B0', ok: '#5CC8E8', hi: '#FFF4C8', err: '#FF7A5A', dim: '#5E9AB0', acc: '#8FE0F0' } },
+  { id: 'valley', name: 'VALLEY MORNING', price: 0, earn: 'mastery_bekkedal', secret: true, blurb: 'Fjord blue and barn red. Everything in Bekkedal, done.',
+    v: { bg: '#07121a', fg: '#E6EEF2', ok: '#7CC070', hi: '#FFFFF0', err: '#E8604A', dim: '#7A94A6', acc: '#9CC8E0' } },
+  { id: 'signal', name: 'SIGNAL RED',   price: 0, earn: 'mastery_standbattle', secret: true, blurb: 'A stand\'s worth of red on black. Every fight won.',
+    v: { bg: '#100303', fg: '#FFE0E0', ok: '#FF6A6A', hi: '#FFFFFF', err: '#FF2A2A', dim: '#C07878', acc: '#FF9A9A' } }
 ];
 /* buff is a set of multipliers the equipped pot lends to every plant in the
    garden: grow speeds up how fast a plant reaches its next stage, yield
@@ -634,6 +648,11 @@ export const ELEPHANT = [
 
 /* what Dave does not sell (kernel/cos_rewards.js): on the same shelves, after everything that is for sale */
 FRAMES.push(...FRAMES_R); LOGOS.push(...LOGOS_R); CURSORS.push(...CURSORS_R); SCHEMES.push(...SCHEMES_R); ELEPHANT.push(...ELEPHANT_R); DRINKS.push(...DRINKS_R);
-[FRAMES, LOGOS, CURSORS, SCHEMES, WALLS].forEach(l => l.sort((a, b) => (a.reward ? 1 : 0) - (b.reward ? 1 : 0) || a.price - b.price));
+const unsold = a => (a.reward || a.earn) ? 1 : 0;
+[FRAMES, LOGOS, CURSORS, SCHEMES, WALLS].forEach(l => l.sort((a, b) => unsold(a) - unsold(b) || a.price - b.price));
 /* the items that are for sale: a count of "everything Dave has" never includes what only a trophy can give */
-export const forSale = list => list.filter(it => !it.reward);
+export const forSale = list => list.filter(it => !it.reward && !it.earn);
+
+/* Solitaire's trophies each give one thing for the table (apps/solitaire/cosmetics.js): earned, never bought */
+import { ITEMS as SOL_ITEMS } from '../apps/solitaire/cosmetics.js';
+export const SOLITAIRE = SOL_ITEMS.map(i => ({ id: i.id, sub: i.sub, name: i.name, blurb: i.blurb, earn: i.earn, price: 0 }));

@@ -36,6 +36,7 @@ $TR-$
 
 $TR,"THINGS TO PRESS"$
 $MA,"OPEN THE GARAGE",LM="@open:garage"$     make music, 20+ real instruments
+$MA,"THE TOUR OF WHAT THIS HAS",LM="@welcome"$  every tool, with a button each
 $MA,"OPEN THE TERMINAL",LM="@open:terminal"$  type commands
 $MA,"RESTORE SYSTEM FILES",LM="@restore"$     bring back anything that was deleted
 $TR-$
@@ -56,7 +57,8 @@ $TR-$
 
 $TR,"WINDOWS"$
 $FG,11$[Z]$FG$ zoom this window, bigger or smaller, and remember it.
-$FG,11$[T]$FG$ a colour scheme for just this window.
+$FG,11$[T]$FG$ a colour scheme for just this window. On a game it dresses the frame
+                  and the bar only; the game's own picture is never recoloured.
 $FG,11$[_]$FG$ tuck it into the taskbar.  $FG,11$[□]$FG$ fill the desktop (or F11).
 $FG,11$[X]$FG$ close.
 $TR-$

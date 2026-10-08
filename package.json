@@ -34,7 +34,8 @@
     "check:trophies": "node scripts/check-trophies.mjs",
     "check:contrast": "node scripts/check-contrast.mjs",
     "check:theme": "node scripts/check-theme.mjs",
-    "check:props": "node scripts/check-props.mjs"
+    "check:props": "node scripts/check-props.mjs",
+    "check:drop": "node scripts/check-drop.mjs"
   },
   "devDependencies": {
     "electron": "^44.5.1",

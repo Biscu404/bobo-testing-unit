@@ -57,8 +57,14 @@ await page.addInitScript(() => {
    never be blamed on the next */
 async function freshBoot() {
   await page.goto(t.url, { waitUntil: 'domcontentloaded' });
-  await page.evaluate(() => { if (window.powerOn) window.powerOn(); });
-  await page.waitForSelector('#bootcursor', { state: 'attached', timeout: 30000 });
+  await page.waitForFunction(() => typeof window.powerOn === 'function'); await page.evaluate(() => window.powerOn());
+  /* a profile that has never run owes the long boot (ten seconds of timers on a normal machine); a loaded Windows runner
+     stretches those timers, so allow far more than 30 s and say what the screen was doing if it still does not arrive */
+  try { await page.waitForSelector('#bootcursor', { state: 'attached', timeout: 120000 }); }
+  catch (e) {
+    const seen = await page.evaluate(() => (document.getElementById('bios') || {}).textContent || '(no bios text)').catch(() => '(page gone)');
+    throw new Error('boot never reached PRESS [~] TO ENTER; errors so far: ' + JSON.stringify(errors) + '; bios: ' + String(seen).slice(-300));
+  }
   await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: '~', code: 'Backquote', bubbles: true, cancelable: true })));
   await page.waitForSelector('#shell', { state: 'visible', timeout: 15000 });
   await page.waitForTimeout(800);

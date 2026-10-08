@@ -109,6 +109,9 @@ export function createDialogue(A, GG, C) {
       plate(DLG_PORT_X, DLG_PLATE_Y, DLG_PORT_W, DLG_PLATE_H, npc.n);
     }
     let y = DLG_Y + PAD_LG;
+    /* a thing that answers (a bookcase, a window) has no face: its name is the first row, in yellow, and the rest is what it says */
+    const labelled = !npc && dlg.label;
+    if (labelled) { text(T(dlg.label), tx, y, 14, FONT_SM); y += LINE_LG; }
     const hint = (str) => text(str, DLG_X + DLG_W - PAD_LG - textW(str, FONT_SM),
                                DLG_Y + DLG_H - PAD_LG - GLYPH_SM, 8, FONT_SM);
     /* what is being said is typed (typer.js): `ty.n` letters of it are on show, and the answers wait until the question is out */
@@ -127,7 +130,7 @@ export function createDialogue(A, GG, C) {
     const line = T(dlg.lines[dlg.i]) || '';
     const cur = revealRows(wrapText(line, tw, FONT_LG), line, ty.n);
     const nxt = ty.done && dlg.lines[dlg.i + 1] ? revealRows(wrapText(T(dlg.lines[dlg.i + 1]), tw, FONT_LG), T(dlg.lines[dlg.i + 1]), 1e9) : [];
-    let used = 0;
+    let used = labelled ? 1 : 0;
     for (const r of cur) { if (used >= DLG_BODY_LINES) break; richRow(r.text, r.n, r.inAct, tx, y, 15, ACT_COL, FONT_LG); y += LINE_LG; used++; }
     for (const r of nxt) { if (used >= DLG_BODY_LINES) break; richRow(r.text, r.n, r.inAct, tx, y, 8, ACT_COL_DIM, FONT_LG); y += LINE_LG; used++; }
     hint(ty.done ? 'SPACE' : '...');

@@ -486,7 +486,7 @@ export const BEK_RARE_CHANCE = 0.1;           /* pickFishSpecies(): the base one
    now, which would be a press (a point of stamina earns about seven), so a day has a stomach: past this many points of
    *bought* food you are full and eating does nothing. A dish you cooked yourself is not counted — that is its whole point. */
 export const BEK_FOOD_DAY_CAP = 130;
-export const BEK_REGROW = { birch: 6, gran: 9, vein: 3, flower: 1 };
+export const BEK_REGROW = { birch: 14, gran: 21, vein: 9, flower: 1 };
 
 /* ---- 27.1b tools ---------------------------------------------------------
    Five tools on one cycle. The axe and the pick also carry a *tier*, stored
@@ -860,71 +860,21 @@ export const BEK_DECOR = {
        valley that is a way through rather than a piece of scenery */
     { x: 12, y: 23, kind: 'ladder' }
   ],
-  /* THE CABIN: where the work happens, and a place to come back to from it. Every piece stands where a person would put it: the bed
-     against the wall with a window either side and a table at each side of its head, the wardrobe in the corner, the chair and the
-     lamp together, the sofa facing the fire with the low table between, the kitchen along the one wall that has a window over the
-     sink, the table in the middle of the room with a chair at every side of it. `c` is the cloth (blue, red, green), `w` what is on
-     a nightstand (lamp, candle, book), `o` which way a chair faces (0 south, 1 north, 2 east, 3 west), `p` which picture, `h` which
-     half of the chimney breast. The glyphs under the big pieces are in the map (maps_valley.js); rooms.js says what each room is
-     made of. */
+  /* THE SHACK: where you start, and it is poor. One room eight squares by five. A cot with a candle beside it and a trunk is all that is kept, the stove
+     in the corner with the wood beside it, a table (two boards on two trestles) with the one chair, the coat on a nail, the boots and the broom by the
+     door, a basket on the floor, and the one window over the table. Nothing is a pair: there is one of everything, because one person lives here. */
   farmhouse: [
-    /* the bedroom */
-    { x: 4,  y: 2,  kind: 'bed2', c: 'blue' },
-    { x: 3,  y: 2,  kind: 'nightstand', w: 'lamp' },
-    { x: 6,  y: 2,  kind: 'nightstand', w: 'book' },
-    { x: 7,  y: 2,  kind: 'trunk' },
-    { x: 2,  y: 2,  kind: 'dresser' },
-    { x: 7,  y: 1,  kind: 'picture', p: 0 },
-    { x: 2,  y: 7,  kind: 'armchair', c: 'red' },
-    { x: 2,  y: 8,  kind: 'floorlamp' },
-    { x: 3,  y: 8,  kind: 'plant' },
-    { x: 6,  y: 8,  kind: 'wardrobe' },
-    /* the sitting room */
-    { x: 9,  y: 2,  kind: 'bookcase' },
-    { x: 14, y: 2,  kind: 'bookcase' },
-    { x: 10, y: 2,  kind: 'nightstand', w: 'lamp' },
-    { x: 13, y: 2,  kind: 'nightstand', w: 'candle' },
-    { x: 11, y: 1,  kind: 'breast', h: 0 },
-    { x: 12, y: 1,  kind: 'breast', h: 1 },
-    { x: 11, y: 2,  kind: 'hearthstone', h: 0 },
-    { x: 12, y: 2,  kind: 'hearthstone', h: 1 },
-    { x: 9,  y: 4,  kind: 'armchair', c: 'red' },
-    { x: 14, y: 4,  kind: 'armchair', c: 'red' },
-    { x: 11, y: 5,  kind: 'coffeetable' },
-    { x: 10, y: 7,  kind: 'sofa', c: 'red' },
-    { x: 12, y: 3,  kind: 'cat' },
-    { x: 9,  y: 8,  kind: 'plant' },
-    { x: 14, y: 8,  kind: 'plant' },
-    /* the kitchen: one run along the north wall, the window over the sink, the table in the middle */
-    { x: 16, y: 2,  kind: 'pantry' },
-    { x: 17, y: 2,  kind: 'counter' },
-    { x: 18, y: 2,  kind: 'sink' },
-    { x: 19, y: 2,  kind: 'counter' },
-    { x: 20, y: 2,  kind: 'stove' },
-    { x: 21, y: 2,  kind: 'counter' },
-    { x: 17, y: 1,  kind: 'wallshelf' },
-    { x: 19, y: 1,  kind: 'wallshelf' },
-    { x: 21, y: 1,  kind: 'clock' },
-    { x: 18, y: 5,  kind: 'dtable', c: 'blue' },
-    { x: 18, y: 4,  kind: 'chair', o: 0 },
-    { x: 19, y: 4,  kind: 'chair', o: 0 },
-    { x: 18, y: 6,  kind: 'chair', o: 1 },
-    { x: 19, y: 6,  kind: 'chair', o: 1 },
-    { x: 21, y: 8,  kind: 'plant' },
-    { x: 16, y: 7,  kind: 'basket' },
-    /* the hall: coats and boots by the door, a bench either side of it, the stairs' worth of pictures on the wall */
-    { x: 3,  y: 9,  kind: 'coatrack' },
-    { x: 5,  y: 9,  kind: 'picture', p: 0 },
-    { x: 7,  y: 9,  kind: 'mirror' },
-    { x: 16, y: 9,  kind: 'picture', p: 1 },
-    { x: 18, y: 9,  kind: 'clock' },
-    { x: 20, y: 9,  kind: 'coatrack' },
-    { x: 2,  y: 10, kind: 'plant' },
-    { x: 21, y: 10, kind: 'plant' },
-    { x: 8,  y: 12, kind: 'hallbench' },
-    { x: 14, y: 12, kind: 'hallbench' },
-    { x: 11, y: 12, kind: 'mat' },
-    { x: 10, y: 12, kind: 'boots' }
+    { x: 8,  y: 5,  kind: 'bed1', c: 'sand' },
+    { x: 9,  y: 6,  kind: 'nightstand', w: 'candle' },
+    { x: 15, y: 5,  kind: 'stove' },
+    { x: 14, y: 5,  kind: 'firewood' },
+    { x: 13, y: 5,  kind: 'basket' },
+    { x: 11, y: 7,  kind: 'coffeetable' },
+    { x: 11, y: 8,  kind: 'chair', o: 1 },
+    { x: 15, y: 8,  kind: 'trunk' },
+    { x: 8,  y: 9,  kind: 'coat' },
+    { x: 13, y: 9,  kind: 'boots' },
+    { x: 15, y: 9,  kind: 'broom' }
   ],
   /* HOME: the house by the water, built to be quiet in. A single bed in a room with a window and the rods on the wall; one long room
      with the hearth at one end and the kitchen at the other, the sofa facing the fire, the table by the window, a desk in the corner
@@ -953,7 +903,6 @@ export const BEK_DECOR = {
     { x: 11, y: 4,  kind: 'coffeetable' },
     { x: 10, y: 7,  kind: 'sofa', c: 'blue' },
     { x: 14, y: 5,  kind: 'armchair', c: 'blue' },
-    { x: 13, y: 3,  kind: 'cat' },
     { x: 9,  y: 8,  kind: 'plant' },
     /* the kitchen, in the corner, the window over the sink; the table by the window */
     { x: 16, y: 2,  kind: 'counter' },
@@ -1632,7 +1581,7 @@ export const BEK_LOFT_STAGES = [
     props: [{ x: 2, y: 2, kind: 'lamp' }, { x: 21, y: 12, kind: 'broom' }] },
   { id: 'st2', at: 32, t: { no: 'GOLVET OG OVNEN', en: 'THE FLOOR AND THE STOVE' },
     grant: { enMax: 10 }, gt: { no: '+10 UTHOLDENHET', en: '+10 STAMINA' },
-    props: [{ x: 2, y: 7, kind: 'coat' }, { x: 21, y: 7, kind: 'firewood' }, { x: 13, y: 6, kind: 'cat' }] },
+    props: [{ x: 2, y: 7, kind: 'coat' }, { x: 21, y: 7, kind: 'firewood' }, { x: 13, y: 6, kind: 'basket' }] },
   { id: 'st3', at: 48, t: { no: 'SVALGANGEN', en: 'THE UPPER GALLERY' },
     grant: { enMax: 10 }, gt: { no: '+10 UTHOLDENHET', en: '+10 STAMINA' },
     props: [{ x: 6, y: 2, kind: 'picture' }, { x: 16, y: 2, kind: 'crockery' }, { x: 2, y: 12, kind: 'jars' }] }

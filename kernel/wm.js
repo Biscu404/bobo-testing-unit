@@ -12,6 +12,7 @@ import { sys } from './trophy_hook.js';
 let zTop = 100;
 let cascadeN = 0;
 export const openWins = [];
+export const GAME_IDS = new Set(['bekkedal', 'standbattle', 'magen', 'aftere', 'cook', 'solitaire', 'sweeper', 'garden', 'bottle', 'defrag']);
 const TITLE_COLORS = {
   folder:   { bar: '#55FFFF', border: '#00AAAA' },
   text:     { bar: '#FFFF55', border: '#AA5500' },
@@ -75,6 +76,8 @@ export function createWindow(opts) {
   win.style.top  = pos.y + 'px';
 
   if (opts.kind === 'panic') win.classList.add('panic');
+  /* a game's window: a theme dresses its frame and its bar, never the art inside (kernel/theme.css, "game windows") */
+  if (opts.appId && GAME_IDS.has(opts.appId)) win.dataset.game = '1';
 
   const skin = TITLE_COLORS[opts.kind] || TITLE_COLORS.text;
   win.style.borderColor = skin.border;
@@ -544,3 +547,5 @@ export function askName(title, def, cb) {
   return h;
 }
 // appending to wm.js
+
+window.toast = toast;

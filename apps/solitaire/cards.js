@@ -1,6 +1,7 @@
 /* SOLITAIRE'S CARDS: the four lanes (the suits), the ranks, and every picture on a card, drawn onto any 2D context. It used to live inside the window's closure; it is a
    module of its own so that the window paints with it and so does the folder of props a mastered Solitaire leaves on the desktop (apps/solitaire/props.js).
    `makeCards(g, { back, suitMode })` hands back { drawCard, roundRect, laneVis }: `back()` is which of the three card backs (0 to 2), `suitMode()` is 4, 2 or 'distinct'. */
+import { BACK_BASE, drawBackArt } from './cosmetics.js';
 export const LANES = [
   { id: 0, name: 'MID',     red: true,  c: '#c8283c', c2: '#8b1020', ink: '#ffffff', champ: 'ZED' },
   { id: 1, name: 'BOT',     red: true,  c: '#a83e10', c2: '#6a2406', ink: '#ffffff', champ: 'TALON' },
@@ -140,9 +141,9 @@ export function makeCards(g, o) {
       g.shadowColor = 'rgba(0,0,0,0.45)'; g.shadowBlur = 4; g.shadowOffsetY = 2;
     }
     if (!c.up) {
-      const b = back() % 3;
+      const bid = o.backId ? o.backId() : ['hex', 'silk', 'rune'][back() % 3], b = bid === 'hex' ? 0 : bid === 'silk' ? 1 : bid === 'rune' ? 2 : -1;
       roundRect(x, y, CW, CH, 5);
-      g.fillStyle = b === 0 ? '#16283c' : b === 1 ? '#2a2030' : '#20261c';
+      g.fillStyle = BACK_BASE[bid];
       g.fill();
       g.shadowColor = 'transparent';
       g.strokeStyle = 'rgba(255,255,255,0.35)';
@@ -151,7 +152,9 @@ export function makeCards(g, o) {
       g.save();
       roundRect(x + 5, y + 5, CW - 10, CH - 10, 3);
       g.clip();
-      if (b === 0) {
+      if (b < 0) {
+        drawBackArt(g, bid, x, y, CW, CH);
+      } else if (b === 0) {
         g.strokeStyle = '#39a0c8';
         for (let i = -CH; i < CW; i += 9) {
           g.beginPath(); g.moveTo(x + i, y); g.lineTo(x + i + CH, y + CH); g.stroke();

@@ -275,7 +275,7 @@ export function createMenus(A, GG, C) {
       const label = travel.names ? travel.names[i] : BEK_MAPS[mp].title;
       text((travel.sel === i ? '> ' : '  ') + T(label), bx, y + i * LINE_SM, travel.sel === i ? 15 : 7, FONT_SM);
     });
-    text(travel.hint ? T(travel.hint) : TX('SPACE — GÅ (−10, +40min)', 'SPACE — WALK (−10, +40min)'),
+    text(travel.hint ? T(travel.hint) : TX('SPACE — GÅ  ·  ESC — LUKK', 'SPACE — GO  ·  ESC — CLOSE'),
          bx, TRAVEL_Y + TRAVEL_H - PAD_SM - GLYPH_SM, 8, FONT_SM);
   }
   /* Sleep used to be drawn inline in index.js's draw(), the one panel that

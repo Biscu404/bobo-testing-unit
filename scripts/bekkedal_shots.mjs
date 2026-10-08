@@ -59,7 +59,7 @@ const WHERE = {
   farm: [14, 9], town: [23, 15], lake: [12, 9], forest: [14, 18], enga: [14, 13],
   setra: [14, 12], vidda: [28, 12], gruva: [20, 12], fjord: [9, 12],
   /* stood out of the way of the table, so the props on it are in the shot */
-  farmhouse: [11, 11], lakehouse: [11, 11]
+  farmhouse: [12, 8], lakehouse: [11, 11]
 };
 
 const shots = [];
@@ -231,7 +231,7 @@ await page.addInitScript(() => {
    page and only closes and reopens the app window, which is the difference
    between three seconds a shot and one. */
 await page.goto(URL_BASE, { waitUntil: 'domcontentloaded' });
-await page.evaluate(() => { if (window.powerOn) window.powerOn(); });
+await page.waitForFunction(() => typeof window.powerOn === 'function'); await page.evaluate(() => window.powerOn());
 await page.waitForSelector('#bootcursor', { timeout: 30000 });
 await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: '~', code: 'Backquote', bubbles: true, cancelable: true })));
 await page.waitForSelector('#shell', { state: 'visible', timeout: 15000 });

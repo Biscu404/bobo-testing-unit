@@ -370,7 +370,7 @@ function playAct1(maxDays) {
     /* and to bed */
     clear(g);
     s = g.read();
-    const bed = faceFrom('farmhouse', c => c === 'b', { x: 2, y: 3 })[0];
+    const bed = faceFrom('farmhouse', c => c === 'b', { x: 9, y: 7 })[0];
     for (let tries = 0; tries < 2 && g.read().day === day; tries++) {
       if (walkTo(g, bed, 900) == null) continue;
       g.hold(bed.face, 2);

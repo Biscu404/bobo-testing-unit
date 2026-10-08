@@ -46,6 +46,7 @@ async function boot(app) {
   const external = [], errors = [];
   page.on('request', (q) => { const u = q.url(); if (!/^(templeos:|data:|blob:)/.test(u)) external.push(u); });
   page.on('pageerror', (e) => errors.push(e.message));
+  await page.waitForFunction(() => typeof window.powerOn === 'function'); await page.evaluate(() => window.powerOn());
   await page.waitForSelector('#bootcursor', { state: 'attached', timeout: 30000 });   /* added in the same step as the key listener */
   await page.keyboard.press('Backquote');        /* the boot screen waits for ~, and nothing else */
   await page.waitForSelector('#icons .icon', { timeout: 30000 });

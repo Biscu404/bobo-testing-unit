@@ -40,9 +40,9 @@ export const VALLEY = {
       'TggggggggggggggggggggggggggggggggggggggggggT',
       'Tgggggggggggggggg,gggggggggggggggggYgggggggT',
       'Tggggggggggg,gggggggggggggggggYggggGggggTggT',
-      'TgggggRRRRRgggggggggggggg,ggggggggYggggY,TgT',
-      'TgggggHHHHHgg,ggggffffffffffg,gggggY,,,Y,,gT',
-      'TgggggHHDHH.....ggffffffffffggggg,,YYY,,Y,gT',
+      'TgggggRRRRggggggggggggggg,ggggggggYggggY,TgT',
+      'TgggggHHHHggg,ggggffffffffffg,gggggY,,,Y,,gT',
+      'TgggggHHDH......ggffffffffffggggg,,YYY,,Y,gT',
       'Tggggggg....K...ggffffffffffggggg,,G,T,,,T,T',
       'T...............ggffffffffffggggggY,,,,T,,,T',
       'Tgg......gggggggggffffffffffggg,gggY,,,,,YgT',
@@ -64,7 +64,7 @@ export const VALLEY = {
       'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTgg.ggTTTTT'
     ],
     exits: [],
-    door: { x: 8, y: 6, to: 'farmhouse', tx: 11, ty: 12 }
+    door: { x: 8, y: 6, to: 'farmhouse', tx: 11, ty: 9 }
   },
   town: {
     title: 'BEKKEDAL',
@@ -193,30 +193,31 @@ export const VALLEY = {
      the kitchen run, `c` a nightstand, trunk, plant or lamp, `J` a chair, armchair, sofa or bench, `n` a table, `z` the rug, `v` the
      hearth. `world_check.js` fails on a solid glyph in a made room that no piece covers, and on a piece with no glyph under it.
 
-     The two houses are different houses, not one plan twice. The cabin is three rooms and a hall: a bedroom, a sitting room with a
-     hearth, a kitchen that is used, and a flagstone hall with the coats. The house by the water is a sleeping room off one long room
-     that runs from the hearth to the door, with the kitchen in the corner and the table by the window. */
+     The two houses are different houses, not one plan twice. The shack is where you start and it is poor: one room eight squares by
+     five, a cot, a stove, a table with one chair and a window, in the same 24x15 frame as the rest (the black round it is the dark
+     outside a small house). The house by the water, which you build, is a sleeping room off one long room that runs from the hearth
+     to the door, with the kitchen in the corner and the table by the window: it is the one the game is working toward. */
   farmhouse: {
-    title: { no: 'HYTTA', en: 'THE CABIN' },
+    title: { no: 'HYTTA', en: 'THE SHACK' },
     inside: true,
     rows: [
       '                        ',
-      ' HHHHHHHHHHHHHHHHHHHHHH ',
-      ' HucccccHucvvcuHuuuuuuH ',
-      ' HiibbiiHiiiiiiHiiiiiiH ',
-      ' HiiiiiiHJzzzzJHiiJJiiH ',
-      ' HiizzzziiznnziiiinniiH ',
-      ' HiizzzziizzzziiiiJJiiH ',
-      ' HJiiiiiHiJJJiiHiiiiiiH ',
-      ' HcciiuuHciiiicHiiiiicH ',
-      ' HHHHHHHHiiiiiiHHHHHHHH ',
-      ' HciiiiiiiiiiiiiiiiiicH ',
-      ' HizzzzzzzzzzzzzzzzzziH ',
-      ' HiiiiiiJiiiiiJiiiiiiiH ',
-      ' HHHHHHHHHHDHHHHHHHHHHH ',
+      '                        ',
+      '                        ',
+      '                        ',
+      '       HHHHHHHHHH       ',
+      '       HbiiiiiiuH       ',
+      '       HbciiiiiiH       ',
+      '       HiiinniiiH       ',
+      '       HiiiJiiicH       ',
+      '       HiiiiiiiiH       ',
+      '       HHHHDHHHHH       ',
+      '                        ',
+      '                        ',
+      '                        ',
       '                        '
     ],
-    exits: [{ x: 11, y: 13, to: 'farm', tx: 8, ty: 7 }]
+    exits: [{ x: 11, y: 10, to: 'farm', tx: 8, ty: 7 }]
   },
   lakehouse: {
     title: { no: 'HJEMME', en: 'HOME' },

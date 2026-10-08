@@ -84,7 +84,7 @@ export const ASK_HAKON = {
         ['A stool.', ['A stool. Three legs, never four. Four rock.'], 'stool'],
         ['Nothing. Just curious.', ['Fair. [He goes on planing.]'], 'curious']],
       { when: S => S.season === VINTER }),
-    topic('spring', 'It smells of new sawdust in here.',
+    topic('spring', 'It smells of new sawdust over here.',
       ['It does. The first of the year, when the logs come down off the hill. Nothing else smells like it.'],
       'Do you wait for it?', [
         ['I love that smell too.', ['[He looks at you properly.] You do? Most people say it is only wood.'], 'love', { fr: 1, mood: 'warm' }],

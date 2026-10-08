@@ -1,4 +1,5 @@
 /* CRAZY DAVE — the picture on every card, and Dave himself. One canvas per card, 116 x 60, whole pixels. */
+import { BACK_BASE, drawBackArt, drawTable } from '../solitaire/cosmetics.js';
 import { drawPlant } from '../garden/art.js';
 import { thumbMini } from '../../kernel/pet_art.js';
 import { sampleStroke } from '../crayon/brushes.js';
@@ -144,12 +145,32 @@ function drawShelf(g, cv, cat, it) {
   return false;
 }
 
+/* a back, a table or a win from the Solitaire shelf, at card size */
+function solThumb(g, it) {
+  if (it.sub === 'back') {
+    g.fillStyle = '#0a0c10'; g.fillRect(0, 0, 116, 60);
+    g.save(); g.translate(38, 2); g.scale(0.5, 0.5);
+    g.fillStyle = BACK_BASE[it.id]; g.fillRect(0, 0, 80, 112);
+    g.strokeStyle = 'rgba(255,255,255,0.35)'; g.strokeRect(0, 0, 80, 112);
+    g.beginPath(); g.rect(5, 5, 70, 102); g.clip();
+    drawBackArt(g, it.id, 0, 0, 80, 112); g.restore();
+  } else if (it.sub === 'table') {
+    g.save(); g.scale(116 / 880, 60 / 600); drawTable(g, it.id, 880, 600, 20); g.restore();
+    g.fillStyle = '#f2efe6'; g.fillRect(18, 12, 14, 20); g.fillRect(38, 12, 14, 20);
+  } else {
+    g.fillStyle = '#0f1218'; g.fillRect(0, 0, 116, 60);
+    for (let i = 0; i < 9; i++) { const a = i * 0.7; g.fillStyle = i % 2 ? '#f2efe6' : '#c8283c'; g.fillRect(Math.round(58 + Math.cos(a) * (8 + i * 5)), Math.round(30 + Math.sin(a) * (4 + i * 2.6)), 8, 11); }
+    g.fillStyle = '#ffd68c'; g.fillRect(56, 26, 4, 4);
+  }
+}
 export function drawThumb(cv, cat, it) {
   const g = cv.getContext('2d');
   if (!g) return;
   g.imageSmoothingEnabled = false;
   g.fillStyle = '#000000';
   g.fillRect(0, 0, 116, 60);
+  if (it.secret && !(window.Cos && window.Cos.has(cat, it.id))) { g.fillStyle = '#111111'; g.fillRect(0, 0, 116, 60); g.fillStyle = '#555555'; g.font = '40px "VT323", monospace'; g.textAlign = 'center'; g.fillText('?', 58, 44); return; }
+  if (cat === 'solitaire') { solThumb(g, it); return; }
   if (drawShelf(g, cv, cat, it)) return;
   if (cat === 'frame') {
     /* a little monitor, in the frame's own plastic */

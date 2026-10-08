@@ -1,5 +1,5 @@
 import { varsOf, VAR_NAMES, install as installThemes } from './theme_fx.js';
-import { FRAMES, LOGOS, CURSORS, SCHEMES, POTS, SPECIES, WALLS, CRAYON, GARAGE, DRINKS, ELEPHANT, DECO_SVG, CUR_HANDMASK, forSale } from './cos_data.js';
+import { FRAMES, LOGOS, CURSORS, SCHEMES, POTS, SPECIES, WALLS, CRAYON, GARAGE, DRINKS, ELEPHANT, SOLITAIRE, DECO_SVG, CUR_HANDMASK, forSale } from './cos_data.js';
 
 /* `kind`: what owning one of these means. 'look' goes on the machine and is worn one at a time (frame, logo, pointer, scheme);
    'stock' is what the garden grows with (pots, seeds); 'wall' is a picture, set as the background; 'unlock' is something an app
@@ -15,7 +15,8 @@ export const COS_CATS = {
   crayon:  { list: CRAYON,   label: 'CRAYON',    kind: 'unlock', app: 'crayon',   appName: 'THE CRAYON' },
   garage:  { list: GARAGE,   label: 'GARAGE',    kind: 'unlock', app: 'garage',   appName: 'THE GARAGE' },
   drink:   { list: DRINKS,   label: 'DRINKS',    kind: 'unlock', app: 'bottle',   appName: 'THE BOTTLE' },
-  elephant:{ list: ELEPHANT, label: 'ELEPHANT',  kind: 'unlock', app: 'elephant', appName: 'THE ELEPHANT' }
+  elephant:{ list: ELEPHANT, label: 'ELEPHANT',  kind: 'unlock', app: 'elephant', appName: 'THE ELEPHANT' },
+  solitaire:{ list: SOLITAIRE, label: 'SOLITAIRE', kind: 'unlock', app: 'solitaire', appName: 'SOLITAIRE' }
 };
 
 
@@ -52,7 +53,7 @@ const Cos = {
   boot() {
     const def = {
       owned: { frame: ['beige'], logo: ['temple'], cursor: ['stock'], scheme: ['vga'], pot: ['terra'], seed: ['sunshoot'],
-               wall: [], crayon: [], garage: [], drink: ['jager'], elephant: [] },
+               wall: [], crayon: [], garage: [], drink: ['jager'], elephant: [], solitaire: [] },
       eq:    { frame: 'beige', logo: 'temple', cursor: 'stock', scheme: 'vga', pot: 'terra' }
     };
     const got = { ...def, ...(JSON.parse(localStorage.getItem('templeos.cosm')) || {}) };
@@ -90,11 +91,20 @@ const Cos = {
 
   buy(cat, id) {
     const it = this.find(cat, id);
-    if (!it || this.has(cat, id) || it.reward) return false;       /* what a trophy gives is not for sale */
+    if (!it || this.has(cat, id) || it.reward || it.earn) return false;       /* what a trophy gives is not for sale */
     if (!window.Economy.spend(it.price, 'DAVE: ' + it.name)) return false;
     this.st.owned[cat].push(id);
     this.save();
     if (COS_CATS[cat].kind === 'wall') this.shelve(it);
+    this.tell(cat, id);
+    return true;
+  },
+  /* a gift: something a trophy hands over (kernel/rewards.js). Returns true only when it is new. */
+  grant(cat, id) {
+    const it = this.find(cat, id);
+    if (!it || this.has(cat, id)) return false;
+    (this.st.owned[cat] || (this.st.owned[cat] = [])).push(id);
+    this.save();
     this.tell(cat, id);
     return true;
   },

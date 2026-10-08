@@ -16,7 +16,7 @@ const CELLS = 20;
 export function renderCard(T, d, o) {
   o = o || {};
   const s = state(T, d), hidden = d.secret && s !== 'done', fresh = isNew(T, d);
-  const c = el('div', 'tr-card w-' + wearOf(d) + ' ' + s + (hidden ? ' hidden' : '') + (T.st.pinned === d.id ? ' pinned' : '') + (d.legacy ? ' mirror' : '') + (d.epic ? ' epic' : '') + (d.mastery ? ' seal' : '') + (fresh ? ' fresh' : ''));
+  const c = el('div', 'tr-card w-' + wearOf(d) + ' ' + s + (hidden ? ' hidden' : '') + (T.isPinned(d.id) ? ' pinned' : '') + (d.legacy ? ' mirror' : '') + (d.epic ? ' epic' : '') + (d.mastery ? ' seal' : '') + (fresh ? ' fresh' : ''));
   c.dataset.id = d.id; c.tabIndex = -1; c.setAttribute('role', 'listitem');
   const plate = el('div', 'tr-plate'), icon = el('div', 'tr-cup'); icon.innerHTML = cup(hidden ? 'secret' : wearOf(d), s !== 'done');
   plate.appendChild(icon);
@@ -49,7 +49,7 @@ export function renderCard(T, d, o) {
   /* the open half of a card */
   const more = el('div', 'tr-more');
   const btn = (label, fn) => { const b = el('button', 'tr-b', label); b.addEventListener('mousedown', ev => { if (ev.button !== 0) return; ev.stopPropagation(); fn(); }); return b; };
-  more.appendChild(btn(T.st.pinned === d.id ? 'UNPIN' : 'PIN', () => o.pin && o.pin(d.id)));
+  more.appendChild(btn(T.isPinned(d.id) ? 'UNPIN' : 'PIN', () => o.pin && o.pin(d.id)));
   const app = appOf(d.app);
   if (app && o.open) more.appendChild(btn('GO PLAY', () => o.open(app)));
   (d.reward || []).forEach(r => more.appendChild(btn('SEE ' + r.name, () => o.shop && o.shop(r.cat))));

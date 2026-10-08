@@ -62,7 +62,7 @@ export const ASK_OLAV = {
       ['She sleeps. I put her on trestles under a tarp, and I tell her it is only until the thaw. She does not believe me.'],
       'Do you miss it?', [
         ['I would.', ['Every day. [Softly.] But the thaw always comes.'], 'miss', { fr: 1 }],
-        ['It sounds restful.', ['It is. I mend rope and listen to the stove.'], 'rest'],
+        ['It sounds restful.', ['It is. I mend rope and listen to the water.'], 'rest'],
         ['Could I help mend rope?', ['[He brightens.] Oh, could you? You would be the first in years.'], 'rope', { fr: 1, mood: 'warm' }]],
       { when: S => S.season === VINTER }),
     topic('quay', 'Do you get many visitors?',

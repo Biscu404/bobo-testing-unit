@@ -169,6 +169,8 @@ window.powerOff = function() {
 window.powerOn = function() {
   if (CRT.on) return;
   CRT.on = true;
+  const ph = document.getElementById('powerhint'); if (ph) ph.remove();
+  const pb = document.getElementById('power'); if (pb) pb.classList.remove('callme');
   const screen = document.getElementById('screen');
   if (screen) screen.classList.remove('off', 'collapsing');
   const lamp = document.getElementById('lamp');
@@ -210,6 +212,7 @@ function dismissSplash() {
   try { Trophies.boot(); } catch(e) {}
   setTimeout(() => runAutoExec().catch(() => {}), 1800);        /* AutoExec.HC runs at boot */
   try { MixerUI.mount(); } catch(e) {}
+  try { import('./welcome.js').then(m => m.Welcome.firstTime()); } catch(e) {}
   try { Hold.apply(); } catch(e) {}
   try { Saver.watch(); } catch(e) {}
   try { wireKonami(); } catch(e) {}
@@ -228,6 +231,17 @@ const start = () => {
     const lamp = document.getElementById('lamp');
     if (lamp) lamp.classList.add('on');
     window.runBoot();
+  } else {
+    /* the set is always off when the app opens: say how to switch it on */
+    const screen = document.getElementById('screen');
+    if (screen && !document.getElementById('powerhint')) {
+      const h = document.createElement('div');
+      h.id = 'powerhint';
+      h.innerHTML = 'THE SET IS OFF.<br>PRESS THE <b>\u23FB</b> POWER BUTTON<br>BELOW THE SCREEN.';
+      screen.appendChild(h);
+    }
+    const pw = document.getElementById('power');
+    if (pw) pw.classList.add('callme');
   }
 };
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
