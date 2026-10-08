@@ -5,6 +5,7 @@ import { fs as vfs } from '../../kernel/vfs.js';
 import { lampDip } from '../../kernel/hardware.js';
 import { cardsPay, winPay, dealPay } from './pay.js';
 import { whenGone } from '../lifecycle.js';
+import * as tro from './trophy_calls.js';
 
 
 const SOL_KEY = 'templeos.solitaire';
@@ -67,7 +68,7 @@ export default {
   const FAN_UP = 26, FAN_DN = 12;
 
   let cv, g, info;
-  let stock, waste, found, tab, moves, dealing, won, drag, bounce, redeals;
+  let stock, waste, found, tab, moves, dealing, won, drag, bounce, redeals, tally = tro.newTally();
   let raf = null, mx = 0, my = 0, autoT = null, payShown = 0, payTarget = 0, settled = true;
 
   const made = createWindow({
@@ -120,6 +121,7 @@ export default {
   function settle() {
     if (settled || won) { settled = true; return; }
     settled = true;
+    tro.abandoned(tally, moves);
     const n = home();
     if (n > 0 && window.Economy) { window.Economy.earn(dealPay(n, moves, false), 'SOLITAIRE: ' + n + ' CARDS HOME'); setTimeout(() => Snd.coin(), 150); }
   }
@@ -132,7 +134,7 @@ export default {
       const t = cards[i]; cards[i] = cards[j]; cards[j] = t;
     }
     stock = cards; waste = []; found = [[], [], [], []]; tab = [[], [], [], [], [], [], []];
-    moves = 0; won = false; drag = null; bounce = null; redeals = 0; payShown = 0; payTarget = 0; settled = false;
+    moves = 0; won = false; drag = null; bounce = null; redeals = 0; payShown = 0; payTarget = 0; settled = false; tally = tro.newTally();
     clearInterval(autoT);
     const now = performance.now();
     let k = 0;
@@ -200,6 +202,7 @@ export default {
     Solitaire.st.won++;
     if (!Solitaire.st.bestMoves || moves < Solitaire.st.bestMoves) Solitaire.st.bestMoves = moves;
     Solitaire.save();
+    tro.won(tally, moves, redeals, Solitaire.st.back % 3);
     Snd.fanfare();
     window.Economy.earn(payTarget, 'SOLITAIRE: WON IN ' + moves + ' MOVES');
     setTimeout(() => Snd.coin(), 400);
@@ -283,7 +286,7 @@ export default {
 
     /* the auto-complete button, when the board is trivially solvable */
     if (autoReady() && px > W - 190 && px < W - 14 && py > H - 40 && py < H - 8) {
-      Snd.click();
+      Snd.click(); tally.auto = true;
       autoT = setInterval(() => {
         let did = false;
         for (let col = 0; col < 7 && !did; col++) {
@@ -358,7 +361,7 @@ export default {
       }
     }
     if (placed) {
-      moves++;
+      moves++; tro.moved(drag.cards.length);
       Snd.snap();
       flipUnder(drag.from);
       checkWon();
@@ -651,7 +654,9 @@ export default {
     }
 
     /* the auto-complete offer */
-    if (autoReady()) {
+    const offer = autoReady();
+    tro.watch(tally, found, offer);
+    if (offer) {
       g.fillStyle = '#1b2740';
       g.fillRect(W - 190, H - 40, 176, 32);
       g.strokeStyle = '#7fe0ff';
@@ -682,7 +687,7 @@ export default {
         anyLive = true;
         drawCard(b.c, Math.round(b.x), Math.round(b.y), false);
       });
-      if (!anyLive) bounce = null;
+      if (!anyLive) { bounce = null; tro.cascadeEnded(); }
       g.fillStyle = '#ffd68c';
       g.font = '34px "VT323", monospace';
       g.textAlign = 'center';
