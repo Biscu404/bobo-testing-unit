@@ -607,7 +607,7 @@ export default {
         g.fillRect(x0, y0, Math.max(1 / K, dv((x | 0) + (w | 0)) - x0), Math.max(1 / K, dv((y | 0) + (h | 0)) - y0));
       };
       /* the dimmest inks are for panels, not for reading: when they are words they are lifted */
-      const LIFT = { [HFP.screw]: '#7d8494', [HFP.lcdDim]: '#4cc088', '#153f2a': '#2f8a5c', [HFP.brush]: '#a3acbc', [HFP.amberDim]: '#c08a30' };
+      const LIFT = { [HFP.screw]: '#7d8494', [HFP.lcdDim]: '#4cc088', '#153f2a': '#46b27e', [HFP.brush]: '#a3acbc', [HFP.amberDim]: '#c08a30' };
       const FACE = '"VT323", "Courier New", monospace', FS = 1.7;
       const TXT = (t, x, y, c, size, align) => {
         g.fillStyle = LIFT[c] || c; g.font = Math.round((size || 8) * FS) + 'px ' + FACE;
@@ -642,7 +642,7 @@ export default {
         if (on) { g.globalAlpha = 0.35; R(x - 2, y - 2, 5, 5, col); g.globalAlpha = 1; }
       }
       function button(id, x, y, w, h, label, active, col) {
-        bevel(x, y, w, h, active ? HFP.brush : HFP.case_, active ? HFP.brushHi : HFP.panel, HFP.black);
+        bevel(x, y, w, h, active ? LIFT[HFP.brush] : HFP.case_, active ? HFP.brushHi : HFP.panel, HFP.black);
         TXT(label, x + w / 2, y + h / 2 + 3, active ? HFP.black : HFP.brushHi, 7, 'center');
         hits.push({ k: 'btn', id: id, x: x, y: y, w: w, h: h });
       }

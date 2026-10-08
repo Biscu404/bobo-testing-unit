@@ -488,6 +488,8 @@ html, body {
 .icon .ico {
   display: block; width: 36px; height: 36px; margin: 0 auto 2px auto;
   background-repeat: no-repeat; background-position: center; background-size: 100% 100%; image-rendering: pixelated;
+  /* a faint plate, so a dark picture (the bin, the terminal, the sweeper) is still a shape on a dark or a blue desktop */
+  background-color: rgba(255, 255, 255, 0.13); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.22);
 }
 #icons .icon { contain: layout style; }
 .icon .lbl {
@@ -498,8 +500,10 @@ html, body {
   overflow: hidden;
   text-overflow: clip;
   white-space: nowrap;
+  /* a hard black edge: the name must read on a photograph as well as on blue */
+  text-shadow: 1px 0 0 #000000, -1px 0 0 #000000, 0 1px 0 #000000, 0 -1px 0 #000000;
 }
-.icon.sel .lbl { background: #FFFFFF; color: #000000; }
+.icon.sel .lbl { background: #FFFFFF; color: #000000; text-shadow: none; }
 
 #taskbar {
   position: absolute;
@@ -599,7 +603,7 @@ html, body {
       #FFFFFF 62%, #FFFFFF 73%,
       transparent 73%);
 }
-.tbtn.min { color: #555555; font-style: normal; }
+.tbtn.min { color: #333333; border-style: dashed; font-style: normal; }
 
 /* folder window contents */
 .folderpane {
@@ -610,7 +614,7 @@ html, body {
   gap: 4px;
   min-height: 100%;
 }
-.emptynote { color: #555555; padding: 10px; }
+.emptynote { color: #AAAAAA; padding: 10px; }
 
 /* text editor */
 textarea.editor {
@@ -678,7 +682,7 @@ textarea.editor {
 }
 .popmenu .mi { padding: 1px 10px; cursor: pointer; white-space: nowrap; }
 .popmenu .mi:hover { background: #000000; color: #FFFF55; }
-.popmenu .mi.off, .popmenu .mi.off:hover { color: #555555; background: #AAAAAA; cursor: default; }
+.popmenu .mi.off, .popmenu .mi.off:hover { color: #000000; opacity: 0.62; background: transparent; cursor: default; }
 .popmenu .sep { height: 1px; background: #555555; margin: 2px 4px; }
 
 /* --- status line --------------------------------------------------------- */
@@ -822,7 +826,7 @@ textarea.editor {
    that is a game rather than a document. */
 .ckcv { cursor: pointer; width: 630px; height: auto; max-height: none; outline: 0; }
 .ckpane { background: #05070a; }
-.ckbar .appbtn:disabled { background: #555555; color: #000000; cursor: default; }
+.ckbar .appbtn:disabled { background: transparent; color: var(--sch-dim, #AAAAAA); border-color: var(--sch-dim, #AAAAAA); border-style: dashed; cursor: default; }
 .ckbar .ckheat { background: #FF5555; }
 .ckbar .ckcool { background: #55FFFF; }
 .ckinfo { color: #55FFFF; }
@@ -959,22 +963,22 @@ textarea.editor {
         border-bottom: 1px solid #555555; flex: 0 0 auto; flex-wrap: wrap; }
 .ntop .appbtn { padding: 1px 6px; }
 .nsep { width: 1px; height: 16px; background: #555555; margin: 0 3px; }
-.nsel { background: #000000; color: #55FF55; border: 1px solid #555555; font: 11px 'Courier New', monospace; padding: 1px 2px; }
-.nstat { color: #FFFF55; font: 11px 'Courier New', monospace; padding-left: 6px; white-space: nowrap; }
+.nsel { background: #000000; color: #55FF55; border: 1px solid #555555; font: 13px 'Courier New', monospace; padding: 1px 2px; }
+.nstat { color: #FFFF55; font: 13px 'Courier New', monospace; padding-left: 6px; white-space: nowrap; }
 .nbody { flex: 1 1 auto; display: flex; min-height: 0; }
 .nside { width: 170px; flex: 0 0 170px; border-right: 1px solid #555555; display: flex; flex-direction: column; min-height: 0; }
 .nfind { background: #000000; color: #55FF55; border: 0; border-bottom: 1px solid #555555;
-         font: 11px 'Courier New', monospace; padding: 4px; outline: 0; }
-.nfind::placeholder { color: #555555; }
+         font: 13px 'Courier New', monospace; padding: 4px; outline: 0; }
+.nfind::placeholder { color: #AAAAAA; }
 .nlist { flex: 1 1 auto; overflow: auto; }
 .nrow { display: flex; justify-content: space-between; gap: 4px; padding: 3px 6px; cursor: pointer;
-        font: 12px 'Courier New', monospace; color: var(--phos-dim); border-bottom: 1px solid #111111; }
+        font: 14px 'Courier New', monospace; color: var(--phos-dim); border-bottom: 1px solid #111111; }
 .nrow:hover { background: #0000AA; color: var(--phos); }
 .nrow.on { background: #00AAAA; color: #000000; }
 .nrt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.nrc { color: #555555; }
+.nrc { color: #AAAAAA; }
 .nrow.on .nrc { color: #000000; }
-.nempty { padding: 8px; color: #555555; font: 11px 'Courier New', monospace; }
+.nempty { padding: 8px; color: #AAAAAA; font: 13px 'Courier New', monospace; }
 .nmain { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .ntitle { background: #000000; color: #FFFF55; border: 0; border-bottom: 1px solid #555555;
           font: bold 15px 'Courier New', monospace; padding: 5px 8px; outline: 0; flex: 0 0 auto; }
@@ -989,14 +993,14 @@ textarea.editor {
 .nread .nh3 { color: #55FF55; font-weight: bold; }
 .nread .nli { color: var(--phos-dim); }
 .nread .ntask { color: #FFFF55; }
-.nread .ntask.done { color: #555555; text-decoration: line-through; }
+.nread .ntask.done { color: #AAAAAA; text-decoration: line-through; }
 .nlink { color: #55FFFF; cursor: pointer; text-decoration: underline; }
 .nlink:hover { background: #00AAAA; color: #000000; }
 .nlink.dead { color: #FF5555; }
 .nback { flex: 0 0 auto; border-top: 1px solid #555555; padding: 4px 6px; max-height: 92px; overflow: auto;
-         font: 11px 'Courier New', monospace; }
-.nbl { color: #555555; margin-right: 6px; }
-.nbnone { color: #333333; margin-right: 8px; }
+         font: 13px 'Courier New', monospace; }
+.nbl { color: #AAAAAA; margin-right: 6px; }
+.nbnone { color: #AAAAAA; margin-right: 8px; }
 .nchip { display: inline-block; margin: 1px 4px 1px 0; padding: 0 5px; border: 1px solid #555555;
          color: #55FF55; cursor: pointer; }
 .nchip:hover { background: #00AA00; color: #000000; }
@@ -1005,7 +1009,7 @@ textarea.editor {
 .notesroot.graphing .nmain { display: none; }
 .ngraph.on { display: block; }
 .ngcv { width: 100%; height: 100%; display: block; background: #07090c; cursor: grab; }
-.nghint { position: absolute; left: 8px; bottom: 6px; color: #555555; font: 10px 'Courier New', monospace;
+.nghint { position: absolute; left: 8px; bottom: 6px; color: #AAAAAA; font: 12px 'Courier New', monospace;
           pointer-events: none; }
 .jagpane { background: #150d06; }
 
@@ -1128,6 +1132,7 @@ textarea.editor {
 #tube #toast       { background: var(--sch-bg, #000000); color: var(--sch-ok, #55FF55); border-color: var(--sch-ok, #55FF55); }
 #tube .popmenu     { background: var(--sch-dim, #AAAAAA); color: var(--sch-bg, #000000); border-color: var(--sch-fg, #FFFFFF); }
 #tube .popmenu .mi:hover { background: var(--sch-bg, #000000); color: var(--sch-hi, #FFFF55); }
+#tube .popmenu .mi.off, #tube .popmenu .mi.off:hover { background: transparent; color: var(--sch-bg, #000000); }
 #tube .sysdlg      { color: var(--sch-fg, #FFFFFF); }
 
 /* ==========================================================================
@@ -1172,15 +1177,15 @@ textarea.editor {
   min-width: 190px;
 }
 .mixrow { display: flex; align-items: center; gap: 6px; }
-.mixlbl { flex: 0 0 78px; color: #000000; font-size: 13px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.mixlbl { flex: 0 0 78px; color: #000000; font-size: 15px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .mixslider { flex: 1 1 auto; }
-.mixhead { color: #000000; font-size: 12px; border-bottom: 1px solid #555555; letter-spacing: 1px; }
-.mixsub { color: #555555; font-size: 12px; }
+.mixhead { color: #000000; font-size: 14px; border-bottom: 1px solid #555555; letter-spacing: 1px; }
+.mixsub { color: #333333; font-size: 14px; }
 .mixpicks { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
 .mixpick { background: #000000; color: #AAAAAA; border: 1px solid #555555; font: inherit; font-size: 13px; padding: 1px 4px; cursor: pointer; }
 .mixpick:hover { color: #FFFFFF; border-color: #FFFFFF; }
 .mixpick.on { background: #55FFFF; color: #000000; border-color: #000000; }
-.mixpct { flex: 0 0 30px; color: #000000; font-size: 12px; text-align: right; }
+.mixpct { flex: 0 0 34px; color: #000000; font-size: 14px; text-align: right; }
 #sunbox canvas { width: 14px; height: 14px; display: block; image-rendering: pixelated; }
 #sundigits { display: flex; height: 20px; overflow: hidden; line-height: 20px; }
 #sundigits .dg { width: 10px; text-align: center; position: relative; height: 20px; }
@@ -1324,6 +1329,8 @@ textarea.editor {
 .gtip .gl2 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .gardenpane { position: relative; }
 .appbar.wrap { flex-wrap: wrap; row-gap: 2px; }
+/* a bar whose key hints are longer than the window is wide says all of them, on a second line, rather than losing the end */
+.appbar.hint .godword { white-space: normal; overflow: visible; flex: 1 1 260px; }
 /* The line under the garden is one box of one fixed height (a header line and two of text), whatever is under the pointer:
    a box that grew and shrank with the text moved the whole picture up and down as the pointer crossed the plants. */
 .gtip { box-sizing: border-box; flex: none; height: 56px; overflow: hidden; padding: 2px 6px; color: var(--sch-fg, #FFFFFF); background: var(--sch-bg, #000000); border-top: 1px solid var(--sch-dim, #555555); font-size: 16px; line-height: 1.05; }
@@ -1334,7 +1341,7 @@ textarea.editor {
 .gbench .gbrow .tx { color: var(--sch-fg, #FFFFFF); flex: 1; font-size: 15px; line-height: 1; }
 .gbench .gbrow.own .nm { color: var(--sch-ok, #55FF55); }
 .gbench .gbrow .sw { width: 8px; height: 8px; flex: none; }
-.gbench .appbtn:disabled { background: #555555; color: #000000; cursor: default; }
+.gbench .appbtn:disabled { background: transparent; color: var(--sch-dim, #AAAAAA); border-color: var(--sch-dim, #AAAAAA); border-style: dashed; cursor: default; }
 
 /* ---- the sweeper -------------------------------------------------------- */
 .sweeppane { background: #06070d; padding: 3px; }
@@ -1357,9 +1364,9 @@ textarea.editor {
   border: 1px solid #1a1a1a; padding: 0 4px; cursor: pointer; text-align: left;
 }
 .drawtools .tl.on { background: #e8e2d4; color: #1a1a1a; }
-.drawtools .hd { color: #6b6357; font-size: 15px; margin-top: 3px; }
-.drawtools .tl.locked { background: #3a352d; color: #8a8272; }
-.drawtools .tl.locked::after { content: ' $'; color: #b23a2a; }
+.drawtools .hd { color: #b0a690; font-size: 15px; margin-top: 3px; }
+.drawtools .tl.locked { background: #3a352d; color: #cfc6b0; }
+.drawtools .tl.locked::after { content: ' $'; color: #ff8a70; }
 .drawlayers .lyrow { display: flex; gap: 2px; margin-bottom: 2px; }
 .drawlayers .lypick { flex: 1 1 auto; }
 .drawlayers .lyeye { flex: 0 0 34px; text-align: center; padding: 0; }
@@ -1450,7 +1457,7 @@ textarea.editor {
 .win-folder.dndhot, #desktop.dndhot { outline: 3px dashed #55FF55; outline-offset: -5px; }
 .win-trash.dndhot { outline: 3px dashed #FF5555; outline-offset: -5px; }
 #icons .icon.dragging { z-index: 2147482000; }
-.popmenu .mi .k { float: right; margin-left: 22px; color: #555555; }
+.popmenu .mi .k { float: right; margin-left: 22px; color: #333333; }
 .popmenu .mi:hover .k { color: #AAAAAA; }
 
 /* ---- zoom button on the title bar (kernel/zoom.js) --------------------------- */

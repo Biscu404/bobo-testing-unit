@@ -31,7 +31,8 @@
     "check:petlines": "node scripts/check-petlines.mjs",
     "check:rooms": "node apps/bekkedal/rooms_check.js",
     "check:sun": "node scripts/check-sun.mjs",
-    "check:trophies": "node scripts/check-trophies.mjs"
+    "check:trophies": "node scripts/check-trophies.mjs",
+    "check:contrast": "node scripts/check-contrast.mjs"
   },
   "devDependencies": {
     "electron": "^44.5.1",

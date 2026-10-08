@@ -12,7 +12,7 @@
 .g-btn:hover { background: #FFFFFF; }
 .g-btn:active { border-color: #555555 #FFFFFF #FFFFFF #555555; }
 .g-btn.on { background: #FFFF55; border-color: #AA5500 #FFFF55 #FFFF55 #AA5500; }
-.g-btn:disabled { background: #555555; color: #888888; cursor: default; border-color: #777 #333 #333 #777; }
+.g-btn:disabled { background: #000000; color: #AAAAAA; cursor: default; border: 2px dashed #AAAAAA; }
 .g-play { background: #55FF55; min-width: 92px; }
 .g-play.on { background: #FF5555; }
 .g-rec.on { background: #FF5555; }
@@ -70,7 +70,7 @@
 .g-wk { flex: 1; background: #FFFFFF; border-right: 2px solid #000; display: flex; align-items: flex-end; justify-content: center; color: #555; font-size: 14px; cursor: pointer; touch-action: none; }
 .g-wk.root { background: #FFFF99; }
 .g-wk.down { background: var(--c, #55FF55); }
-.g-wk.off { background: #555555; cursor: default; color: #333; }
+.g-wk.off { background: #555555; cursor: default; color: #AAAAAA; }
 .g-bk { position: absolute; top: 0; height: 52px; background: #000; border: 1px solid #555; cursor: pointer; z-index: 2; touch-action: none; }
 .g-bk.down { background: #555555; }
 .g-bk.off { background: #222222; cursor: default; border-color: #222; }
@@ -108,7 +108,7 @@
 .g-menu { position: absolute; z-index: 80; background: #000; border: 2px solid #FFFFFF; min-width: 250px; padding: 2px; }
 .g-mitem { display: flex; justify-content: space-between; gap: 18px; padding: 1px 8px; cursor: pointer; color: #FFFFFF; }
 .g-mitem:hover { background: #5555FF; }
-.g-mitem.off { color: #555555; cursor: default; }
+.g-mitem.off { color: #888888; cursor: default; }
 .g-mitem.off:hover { background: transparent; }
 .g-mitem i { font-style: normal; color: #AAAAAA; }
 .g-menurule { height: 2px; background: #555; margin: 3px 0; }

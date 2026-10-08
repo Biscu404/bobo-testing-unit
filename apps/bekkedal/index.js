@@ -114,7 +114,7 @@ export default {
       wrap.appendChild(cv);
 
       const bar = document.createElement('div');
-      bar.className = 'appbar';
+      bar.className = 'appbar wrap hint';
       const bSave = document.createElement('button'); bSave.className = 'appbtn'; bSave.textContent = 'SAVE';
       const bLoad = document.createElement('button'); bLoad.className = 'appbtn'; bLoad.textContent = 'LOAD';
       const bLang = document.createElement('button'); bLang.className = 'appbtn';

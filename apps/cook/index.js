@@ -715,7 +715,7 @@ export default {
           for (let k = 0; k < Math.min(8, r.uses); k++) {
             R(X + 26 + k * 5, Y + 36, 4, 8, k < st.uses[i] ? r.c : 8);
           }
-          txt(String(i + 1), X + 64, Y + 38, 8, '9px monospace');
+          txt(String(i + 1), X + 64, Y + 38, 7, '9px monospace');
         });
       }
 
@@ -731,12 +731,12 @@ export default {
         txt(L.sub, 8, 21, 7, '9px monospace');
         g.restore();
         const over = st.steps - L.par;
-        txt('POURS', 262, 4, 8, '9px monospace');
+        txt('POURS', 262, 4, 7, '9px monospace');
         txt(st.steps + ' / ' + L.par, 262, 15, over > 0 ? 12 : over === 0 ? 14 : 10, 'bold 13px monospace');
         /* the burner, when there is one */
         if (L.heat || L.cool) {
           const nm = ['COLD', 'WARM', 'HOT'][st.temp], cl = [11, 7, 12][st.temp];
-          txt('BURNER', 330, 4, 8, '9px monospace');
+          txt('BURNER', 330, 4, 7, '9px monospace');
           txt(nm, 330, 15, cl, 'bold 13px monospace');
           for (let i = 0; i < 3; i++) R(384 + i * 9, 16, 7, 10, i <= st.temp ? cl : 8);
           if (tempFlash > 0) wash(0, 0, 420, 320, st.temp >= 2 ? 12 : 11, Math.round(tempFlash * 4));
@@ -885,7 +885,7 @@ export default {
         R(10, by, 400, bh, 0);
         R(10, by, 400, 2, 11); R(10, by + bh - 2, 400, 2, 11);
         R(10, by, 2, bh, 11); R(408, by, 2, bh, 11);
-        txt(ch ? 'CHAPTER ' + (storyIx + 1) : 'THE LAST BATCH', 210, by + 8, 8, '9px monospace', 'center');
+        txt(ch ? 'CHAPTER ' + (storyIx + 1) : 'THE LAST BATCH', 210, by + 8, 7, '9px monospace', 'center');
         txt(title, 210, by + 19, 14, 'bold 14px monospace', 'center');
         /* the lines type themselves out, and clicking once finishes them */
         const show = Math.floor(storyT * 34);
@@ -895,7 +895,7 @@ export default {
           n += l.length;
           if (cut > 0) txt(l.slice(0, cut), 22, by + 41 + i * 14, 15, '10px monospace');
         });
-        if (storyT > 2.2) txt('SPACE', 210, by + bh - 14, Math.floor(t * 2) % 2 ? 11 : 8, '9px monospace', 'center');
+        if (storyT > 2.2) txt('SPACE', 210, by + bh - 14, Math.floor(t * 2) % 2 ? 11 : 7, '9px monospace', 'center');
       }
 
       function drawMenu(t) {
@@ -1150,11 +1150,11 @@ export default {
             txt('BATCH COMPLETE', 210, 104, 15, 'bold 15px monospace', 'center');
             const shown = Math.min(pur, winT * 60);
             txt(shown.toFixed(1) + '%', 210, 128, pur >= 99 ? 11 : 14, 'bold 30px monospace', 'center');
-            txt('purity', 210, 162, 8, '10px monospace', 'center');
+            txt('purity', 210, 162, 7, '10px monospace', 'center');
             txt(st.steps + ' pours, par ' + L.par + (resets ? ', ' + resets + ' resets' : ''),
                 210, 180, 7, '10px monospace', 'center');
             txt('$' + Math.round(pur * 1000 * L.id).toLocaleString(), 210, 196, 10, '12px monospace', 'center');
-            if (winT > 1.4) txt('SPACE', 210, 212, Math.floor(t * 2) % 2 ? 11 : 8, '10px monospace', 'center');
+            if (winT > 1.4) txt('SPACE', 210, 212, Math.floor(t * 2) % 2 ? 11 : 7, '10px monospace', 'center');
           }
         }
 

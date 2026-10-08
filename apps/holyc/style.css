@@ -16,7 +16,7 @@
 .hc-b { font: inherit; font-size: 18px; background: #AAAAAA; color: #000000; border: 2px solid; border-color: #FFFFFF #555555 #555555 #FFFFFF; padding: 0 10px; line-height: 24px; cursor: pointer; white-space: nowrap; text-transform: uppercase; }
 .hc-b:hover { background: #FFFFFF; }
 .hc-b:active { border-color: #555555 #FFFFFF #FFFFFF #555555; }
-.hc-b:disabled { background: #555555; color: #AAAAAA; cursor: default; }
+.hc-b:disabled { background: #000000; color: #AAAAAA; cursor: default; border: 2px dashed #AAAAAA; }
 .hc-b.sm { padding: 0 7px; font-size: 16px; line-height: 20px; }
 .hc-b.go { background: #55FF55; }
 .hc-b.run { background: #55FF55; min-width: 90px; font-size: 20px; }
@@ -91,7 +91,7 @@
 .hc-hn { color: #FF55FF; margin-right: 8px; font-weight: normal; }
 .hc-ok { color: #55FF55; font-size: 22px; margin-top: 8px; min-height: 22px; }
 .hc-cfoot { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-top: 2px solid #555555; background: #000000; flex: none; flex-wrap: wrap; }
-.hc-banner { position: absolute; left: 12px; right: 12px; top: 56px; z-index: 5; padding: 8px 12px; background: #00AA00; color: #FFFFFF; border: 3px solid #55FF55; font-size: 22px; letter-spacing: 2px; text-align: center; animation: hcbanner 0.35s steps(4, end); }
+.hc-banner { position: absolute; left: 12px; right: 12px; top: 56px; z-index: 5; padding: 8px 12px; background: #00AA00; color: #000000; border: 3px solid #55FF55; font-size: 22px; letter-spacing: 2px; text-align: center; animation: hcbanner 0.35s steps(4, end); }
 .hc-banner.big { background: #0000AA; color: #FFFF55; border-color: #FFFF55; font-size: 26px; }
 .hc-banner.out { opacity: 0; transition: opacity 0.5s; }
 @keyframes hcbanner { 0% { transform: translateY(-14px); opacity: 0; } 100% { transform: none; opacity: 1; } }
@@ -129,7 +129,7 @@
 .hc-gut { width: 40px; flex: none; overflow: hidden; background: #000000; color: #AAAAAA; text-align: right; padding: 6px 6px 6px 0; font-size: 18px; line-height: 22px; user-select: none; }
 .hc-gut div { height: 22px; }
 .hc-gut .err { color: #FFFFFF; background: #AA0000; }
-.hc-gut .warn { color: #000000; background: #AA5500; }
+.hc-gut .warn { color: #FFFFFF; background: #AA5500; }
 .hc-gut .cur { color: #000000; background: #55FFFF; }
 .hc-edbody { position: relative; flex: 1; min-width: 0; overflow: hidden; }
 .hc-hl, .hc-ta { position: absolute; inset: 0; margin: 0; border: 0; padding: 6px 8px; font: inherit; font-size: 18px; line-height: 22px; letter-spacing: 0; tab-size: 2; white-space: pre; overflow: auto; word-wrap: normal; }

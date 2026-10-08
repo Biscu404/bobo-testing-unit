@@ -46,6 +46,7 @@ node apps/magen/auto_check.js # Magen's auto-press ladder, its unlock at 1,000 p
 node apps/magen/music_check.js # Magen's score, its band's energy and the seams between tunes (pure Node); apps/bekkedal/music_check.js likewise
 npm run check:music     # instruments, the studio, every game's score, and the style meter's recording
 npm run check:sun       # the SUN budget: every game's real pay tables through a model of an hour of playing it, held to a band (docs/sun-economy.md)
+npm run check:contrast  # every colour scheme, every stylesheet pair, and (in the shell) every app and its tabs and canvases measured for contrast; `--pure` skips the shell
 npm run check:trophies # the ledger: the engine, all 385 trophies, what they pay, the terminal's view (pure Node); node apps/{aftere,standbattle,bottle}/trophy_check.js, node apps/notes/links_check.js
 node apps/holyc/holyc_check.js # HOLYC.EXE: the language, the stage, all thirty-four lesson steps and fifty-six puzzles proved against their model answers (pure Node)
 node apps/sweeper/run_check.js # Dungeon Sweeper: a bot does random things in every room and then finishes it; spells, flags, the compass, the pay (pure Node)
@@ -258,6 +259,13 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   with a few ways of waking. His bubble grows upward from his head (it used to grow down over it). **Called in with no window open** (GO BACK INSIDE, or CALL HIM IN from nowhere),
   he opens the elephant's window himself, waits for it, and walks in.
 
+- **Readability is checked, not hoped for** (`scripts/check-contrast.mjs`, probes in `scripts/lib/contrast.mjs`). Informative text is 4.5:1 or better against what is really behind it, a control that is
+  switched off 3:1; `#555555` is a border and a fill on this machine, **never a text colour on black** (it is 2.8:1: use `#AAAAAA`, and `#333333` on the light grey of a menu or the mixer). **A disabled button is hollow and
+  dashed** (`transparent`/black with the dim ink and a dashed edge, never grey-on-grey: `.appbtn:disabled`, `.g-btn:disabled`, `.hc-b:disabled`), a minimised window's button is dashed, an off menu item is
+  the menu's own ink at 62 %. **Dave's colour schemes keep all six inks at 4.5:1** (`dim` is lifted in every dark scheme; `scripts/check-contrast.mjs` holds it). A desktop icon sits on a faint plate and its
+  name has a hard black edge, so a dark picture and a name are both legible on a photograph. Text drawn on a canvas is measured too (the check wraps `fillText` and reads the pixels under the words
+  before they are drawn), so a game's dim label goes in the machine's light grey, not its dark one. A bar of key hints that is longer than its window wraps (`.appbar.hint`) rather than losing its end.
+  An app that draws its own pixel font (Bekkedal, Stand Battle) is checked by eye: give a line over a picture an outline (`text(..., { outline })`).
 - **Trophies.** `TROPHIES.EXE` (desktop icon `::/Trophies`, help page TROPHIES, terminal `TROPHIES [GAME]`, `TROPHY <NAME>`, `TROPHIES OPEN`) is the machine's ledger: 385 trophies in
   eighteen areas (the machine, every game and tool, HOLYC.EXE, and a meta area of its own), 19 of them secret, about 16,400 SUN if every one is earned once. **The engine is pure**
   (`kernel/trophies_core.js`, `createTrophies(env)`; Node runs all of it in `scripts/check-trophies.mjs`) and a trophy is a definition with exactly one of five ways to be earned:

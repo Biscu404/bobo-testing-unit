@@ -61,6 +61,10 @@ jobs:
         run: eval $XV npm run check:apps
       - name: Listener cleanup keeps behaviour
         run: eval $XV npm run check:listeners
+      - name: The trophy ledger (pure)
+        run: npm run check:trophies
+      - name: Everything can be read (schemes, stylesheets, every app and its tabs)
+        run: eval $XV npm run check:contrast
 
       # ---- the product ----
       - name: Build installer

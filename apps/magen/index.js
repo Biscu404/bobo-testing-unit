@@ -1329,7 +1329,7 @@ export default {
           R(275, 264, 2, 5, 8);
         }
         g.font = '15px ' + MGF; g.textBaseline = 'top';
-        g.fillStyle = C(8); g.fillText('yahrzeit', 252, 292);
+        g.fillStyle = C(7); g.fillText('yahrzeit', 252, 292);
         g.textBaseline = 'alphabetic';
 
         /* the banner, sweeping in from the left and out to the right */

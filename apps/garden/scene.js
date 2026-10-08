@@ -122,7 +122,7 @@ function tabs(g, V) {
     g.fillRect(t.x, t.y, t.w, t.h);
     g.strokeStyle = active ? '#fff4a0' : room.unlocked ? '#cfcfcf' : '#888888';
     g.lineWidth = 1; g.strokeRect(t.x + 0.5, t.y + 0.5, t.w - 1, t.h - 1);
-    g.fillStyle = active ? '#3a2c08' : room.unlocked ? '#e8e2d4' : '#9a9a9a';
+    g.fillStyle = active ? '#3a2c08' : room.unlocked ? '#e8e2d4' : '#e0e0e0';
     g.font = '10px monospace';
     g.fillText(room.unlocked ? rd.name : (rd.price + ' SUN'), t.x + t.w / 2, t.y + 14);
     if (room.unlocked && room.drip) { g.fillStyle = active ? '#2a5a98' : '#6aa8e8'; g.fillRect(t.x + t.w - 6, t.y + 3, 3, 3); }

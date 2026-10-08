@@ -117,7 +117,7 @@ export function drawRoll(g, api, v, st) {
   const cx = beatX(v, G.cursor);
   if (cx >= GUT && cx <= W) { g.fillStyle = '#FFFF55'; for (let y = RULER; y < v.bottom; y += 6) g.fillRect(Math.round(cx), y, 1, 3); g.fillRect(Math.round(cx) - 3, RULER - 6, 7, 3); g.fillRect(Math.round(cx) - 1, RULER - 3, 3, 3); }
   if (st.head >= 0) { const x = beatX(v, st.head); if (x >= GUT && x < W) { g.fillStyle = '#FFFFFF'; g.fillRect(Math.round(x), 0, 2, H); } }
-  if (v.beats > v.visBeats || v.rows.length > v.visRows) { g.fillStyle = '#888'; g.fillText('WHEEL: UP/DOWN   SHIFT+WHEEL: SIDEWAYS   CTRL+WHEEL: ZOOM', GUT + 8, v.bottom - 9); }
+  if (v.beats > v.visBeats || v.rows.length > v.visRows) { g.fillStyle = '#BBBBBB'; g.fillText('WHEEL: UP/DOWN   SHIFT+WHEEL: SIDEWAYS   CTRL+WHEEL: ZOOM', GUT + 8, v.bottom - 9); }
 }
 
 /* the whole song, small, with the part in view outlined: click or drag it to go there */

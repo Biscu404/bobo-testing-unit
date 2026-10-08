@@ -10,9 +10,9 @@ import * as tro from './trophy_calls.js';
 
 const SOL_KEY = 'templeos.solitaire';
 const LANES = [
-  { id: 0, name: 'MID',     red: true,  c: '#c8283c', c2: '#8b1020', ink: '#ffd8dc', champ: 'ZED' },
-  { id: 1, name: 'BOT',     red: true,  c: '#e0622a', c2: '#96380e', ink: '#ffe2cc', champ: 'TALON' },
-  { id: 2, name: 'TOP',     red: false, c: '#3f6a9e', c2: '#20364f', ink: '#d6e6f8', champ: 'LEE SIN' },
+  { id: 0, name: 'MID',     red: true,  c: '#c8283c', c2: '#8b1020', ink: '#ffffff', champ: 'ZED' },
+  { id: 1, name: 'BOT',     red: true,  c: '#c4501c', c2: '#7c2c08', ink: '#ffffff', champ: 'TALON' },
+  { id: 2, name: 'TOP',     red: false, c: '#3f6a9e', c2: '#20364f', ink: '#ffffff', champ: 'LEE SIN' },
   { id: 3, name: 'SUPPORT', red: false, c: '#4a3060', c2: '#241635', ink: '#e0d4f0', champ: 'JAX' }
 ];
 const RANK_TXT = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];

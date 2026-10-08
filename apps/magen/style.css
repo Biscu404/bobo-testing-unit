@@ -76,7 +76,7 @@
 .mgact { width: 288px; font-size: 20px; min-height: 26px; padding: 1px 2px; text-align: center; margin-top: 2px; color: #FFFFFF;
          background: #AA5500 var(--mg-wood, none); border: 2px solid; border-color: #FFFF55 #000000 #000000 #FFFF55; }
 .mgshab { color: #FFFF55; }
-.mgshab.lit { background: #00AA00; color: #FFFFFF; border: 1px solid #FFFF55; padding: 0 6px; cursor: pointer; }
+.mgshab.lit { background: #00AA00; color: #000000; border: 1px solid #FFFF55; padding: 0 6px; cursor: pointer; }
 .mgshab.lit:hover { background: #FFFF55; color: #000000; text-shadow: none; }
 .mgsoon { color: #FFFFFF; }
 
