@@ -9,8 +9,8 @@
      derive        a rule over the other trophies (the meta set, the masteries)
    Everything an app does is `scope(app)`; every call catches its own exceptions, so a broken rule can never reach a person's run. The save is one object
    (templeos.trophies.v1): earned (id -> time), stats, sets, streaks, days, seen. Nothing in it belongs to a game's own save, so starting a game again takes nothing away. */
-export const TIER_PAY = { B: 100, S: 350, G: 1200 };
-export const MASTERY_PAY = 2500;
+export const TIER_PAY = { B: 15, S: 40, G: 100 };
+export const MASTERY_PAY = 150;
 export const TIERS = ['B', 'S', 'G'];
 export const KIND_CHIP = { progress: 'P', skill: 'S', explore: 'E', creative: 'C', meta: 'M', joke: 'J' };
 const GRACE_DAYS = 1;
@@ -49,12 +49,14 @@ export function createTrophies(env) {
   };
   /* a game's mastery seal: derived, so a list that grows never needs its seal told */
   T.masteries = [];
-  T.finalize = masteryOf => {
+  T.finalize = (masteryOf, payOf) => {
     masteryOf.forEach(m => {
       const own = () => [...defs.values()].filter(d => d.app === m.app && !d.legacy && !d.retired);
       const d = { id: 'mastery_' + m.app, app: 'meta', tier: 'S', kind: 'meta', mastery: m.app, name: 'MASTER OF ' + m.name, desc: 'Earn every trophy of ' + m.name + ' that is not a secret or a mirror.',
-        pay: MASTERY_PAY, derive: () => { const l = own().filter(x => !x.secret && !closed(x)); return l.length > 0 && l.every(x => st.earned[x.id]); },
+        pay: MASTERY_PAY, size: () => own().filter(x => !x.secret && !closed(x)).length, derive: () => { const l = own().filter(x => !x.secret && !closed(x)); return l.length > 0 && l.every(x => st.earned[x.id]); },
         progress: () => { const l = own().filter(x => !x.secret && !closed(x)); return [l.filter(x => st.earned[x.id]).length, l.length]; } };
+      /* a seal's pay may be a function of how many trophies it asks for (kernel/trophy_rewards.js): a longer game is a bigger seal */
+      if (payOf) d.pay = payOf(d.size());
       T.register('meta', [d]); T.masteries.push(d);
     });
     evalDerived();
@@ -103,7 +105,7 @@ export function createTrophies(env) {
     st.recent.unshift({ t: st.earned[d.id], kind: 'earn', id: d.id }); st.recent.length = Math.min(st.recent.length, 14);
     if (!quiet && d.pay > 0 && env.pay) safe(() => env.pay(d.pay, 'TROPHY: ' + d.name), 0);
     save();
-    if (!quiet) { queue.push(d.id); if (!T.cardsLive) T.pendingCards.push(d.id); tell('trophy-earned', { id: d.id, app: d.app, tier: d.tier, name: d.name, secret: d.secret, kind: d.kind, mastery: !!d.mastery, held: held > 0 }); }
+    if (!quiet) { queue.push(d.id); if (!T.cardsLive) T.pendingCards.push(d.id); tell('trophy-earned', { id: d.id, app: d.app, tier: d.tier, name: d.name, secret: d.secret, kind: d.kind, mastery: !!d.mastery, epic: !!d.epic, pay: d.pay, held: held > 0 }); }
     tell('trophies-changed', {});
     evalDerived();
     return true;

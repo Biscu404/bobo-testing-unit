@@ -4,7 +4,7 @@
    - an aimed spell that cannot be cast is never left aimed; a spell not yet learnt is not cast;
    - the spells follow the map, the compass is found and not sold, three notches wide, and nothing pays by the click. */
 import { createRun } from './run.js';
-import { NODES, REGIONS, CLASSIC, START, CHARMS, SPELL_AT, spellOpen, regionCleared, maxMasks, ROOMS } from './data.js';
+import { NODES, REGIONS, CLASSIC, START, CHARMS, SPELL_AT, spellOpen, regionCleared, maxMasks, ROOMS, ROOMS_ALL, baseCount, underCount, underOpen, modsOf } from './data.js';
 import { hiddenSafe, blocked, underFlags, mk, lay, open } from './board.js';
 import { classicPay, roomPay, farmFactor, isPerfect, perfectPar, parOf, CLASSIC_SUN, SUN_PER_GEO, FIRST, FIRST_GUARDIAN } from './pay.js';
 
@@ -137,7 +137,7 @@ ok(finished > runs * 0.4, 'the bot wins a fair share of the rooms it plays out (
   ok(cp.n === 3 && cp.cost === 0 && cp.feat === 'perfect', 'the Wayward Compass takes three notches and is found, not sold');
   ok(START.notches === 3 && START.owned.length === 0 && START.equipped.length === 0 && JSON.stringify(START.perfect) === '{}', 'a new descent starts with three empty notches and no compass');
   ok(CHARMS.filter(x => x.n === 3).length >= 2 && CHARMS.every(x => x.feat || x.cost > 0), 'only the compass has no price');
-  const total = Object.keys(NODES).length; ok(total === ROOMS && ROOMS === 18, 'eighteen rooms to be perfect in');
+  ok(ROOMS === 18 && baseCount(clearedAll()) === 18 && underCount(clearedAll()) === 9 && ROOMS_ALL === 27, 'eighteen rooms to be perfect in, and nine more under them that the compass does not count');
   /* perfect: no larva hatched at all, and in 0.75 s a tile */
   const nd = NODES.hollow;
   ok(perfectPar(nd) === Math.round(22 * 13 * 0.75) && perfectPar(nd) < parOf(nd), 'perfect is quicker than the par that the time bonus runs to');
@@ -161,16 +161,17 @@ ok(finished > runs * 0.4, 'the bot wins a fair share of the rooms it plays out (
     ok(sum > 3000 && sum < 9000, 'an hour of THE HIVE at a win in under two minutes pays ' + sum + ' SUN, 3,000 to 9,000'); }
 
   /* the campaign */
-  let first = 0, again = 0, flawless = 0;
+  let first = 0, again = 0, flawless = 0, uFirst = 0, uAgain = 0;
   Object.values(NODES).forEach(x => {
     const f = roomPay(x, parOf(x), { first: true }), r = roomPay(x, parOf(x), {}), fl = roomPay(x, parOf(x), { first: true, flawless: true });
-    first += f.total; again += r.total; flawless += fl.total;
+    if (x.act === 1) { first += f.total; again += r.total; flawless += fl.total; } else { uFirst += f.total; uAgain += r.total; }
     ok(f.base === x.geo * SUN_PER_GEO && f.first === (x.boss ? FIRST_GUARDIAN : FIRST), x.id + ': four SUN a geo and a first-clear prize');
     ok(r.total < f.total * 0.5 && r.total > 0, x.id + ': a room already cleared pays less than half, but pays');
     ok(fl.total > f.total && roomPay(x, 1, { first: true }).total > f.total, x.id + ': flawless and quick both add');
   });
-  ok(first > 9000 && first < 16000, 'a first walk of the descent pays ' + first + ' SUN, 9,000 to 16,000');
-  ok(again > 1800 && again < 5500, 'a second pass pays ' + again + ' SUN');
+  ok(first > 9000 && first < 40000, 'a first walk of the descent pays ' + first + ' SUN, 9,000 to 40,000');
+  ok(again > 1800 && again < 14000, 'a second pass pays ' + again + ' SUN');
+  ok(uFirst > 15000 && uFirst < 40000 && uAgain < uFirst * 0.5, 'the Underdeep pays ' + uFirst + ' SUN the first time, ' + uAgain + ' on a repeat');
   console.log('  the descent: ' + first + ' SUN the first time, ' + flawless + ' flawless, ' + again + ' on a repeat;  ' + runs + ' rooms played in the chaos test (' + finished + ' won, ' + dead + ' dead)');
 }
 

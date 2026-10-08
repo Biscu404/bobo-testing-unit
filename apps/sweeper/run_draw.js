@@ -29,7 +29,7 @@ export function drawRun(G, S, regionOf, now) {
 
   const hover = S.over ? -1 : S.hover;
   for (let i = 0; i < b.n; i++) tile(G, S, rg, i, hover, now);
-  if (S.mod === 'lantern') darkness(G, S, hover);
+  if (S.hasMod('lantern')) darkness(G, S, hover);
   if (S.has('compass') && S.started) tallies(G, S);
   if (S.target && hover >= 0) {
     const rad = S.target === 'dive' ? S.diveRad() : 0;
@@ -57,7 +57,7 @@ function hud(G, S, rg, now) {
     geo(G, 856, 12, 4); G.T(String(S.camp.geo), 944, 36, '#f2e2b0', 30, 'right');
     for (let n = 0; n < S.camp.notches; n++) notch(G, 800 + n * 20, 50, 3.5, n < used(S));
     G.T(S.node.name, 478, 30, '#e8e2d4', 28, 'center');
-    const md = S.mod && MODS[S.mod] ? '  ' + MODS[S.mod].name : '';
+    const md = S.mods.length ? '  ' + S.mods.map(m => MODS[m] ? MODS[m].name : m).join('+') : '';
     G.T('LARVAE ' + S.left() + '   ' + clock(S) + md, 478, 58, p.glow, 22, 'center');
   } else {
     mask(G, 20, 10, 5, 'full');
@@ -143,7 +143,7 @@ function darkness(G, S, hover) {
   const b = S.b, T = S.tile, hx = hover >= 0 ? hover % b.c : -99, hy = hover >= 0 ? Math.floor(hover / b.c) : -99;
   for (let i = 0; i < b.n; i++) {
     const d = Math.hypot((i % b.c) - hx, Math.floor(i / b.c) - hy);
-    const a = Math.min(0.94, Math.max(0, (d - 2.2) / 2.6));
+    const a = Math.min(0.94, Math.max(0, (d - 2.2 - (S.has('lens') ? 2 : 0)) / 2.6));
     if (a < 0.03) continue;
     G.a(Math.round(a * 8) / 8 * 0.97); G.R(S.bx + (i % b.c) * T, S.by + Math.floor(i / b.c) * T, T, T, '#000');
   }
@@ -171,7 +171,7 @@ function particles(G, S) {
 function bottom(G, S, now) {
   G.a(0.7); G.R(0, 604, 960, 36, '#04050a'); G.a(1);
   if (S.camp) {
-    const keys = [['F', 'focus', S.focusCost()], ['Q', 'scry', SPELLS.scry.cost], ['E', 'dive', SPELLS.dive.cost]];
+    const keys = [['F', 'focus', S.focusCost()], ['Q', 'scry', S.cost('scry')], ['E', 'dive', S.cost('dive')]];
     keys.forEach((k, i) => {
       const x = 14 + i * 150, known = S.learnt(k[1]), ok = known && S.soul >= k[2] && S.started, on = S.target && SPELLS[S.target].key === k[0];
       G.R(x, 610, 142, 24, on ? '#9fe0ff' : ok ? '#2c3a52' : known ? '#1a2030' : '#0c0e14');

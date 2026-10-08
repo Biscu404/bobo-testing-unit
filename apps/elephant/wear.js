@@ -4,7 +4,8 @@
  * Clothes go on in four passes, because the elephant is drawn back to front and a cape is behind him while a hat is on top:
  *   'back'   behind the body (the cape)         'feet'   over the feet (boots)
  *   'body'   over the body, under the head (the riding blanket)
- *   'front'  over everything: the cape's collar, scarf and bow tie, glasses, hats
+ *   'neck'   over the head, under the trunk: the cape's collar, scarf and bow tie (the trunk hangs in front of them)
+ *   'front'  over everything: glasses, hats
  * `k` is the drawing kit of the window ({ R, B, oval }); `env` is { br } the breath he is taking, so a hat rides his head.
  * The little desktop elephant has his own pictures of the same twelve things (kernel/pet_art.js). */
 
@@ -45,6 +46,12 @@ const HEAD = {
     R(226, 84 + e.br, 5, 5, 14); R(246, 68 + e.br, 4, 4, 14); R(236, 52 + e.br, 3, 3, 15); R(256, 90 + e.br, 3, 3, 15);
     R(250, 38 + e.br, 8, 6, 0); R(251, 39 + e.br, 6, 4, 1);
   },
+  /* a ring of light a hand's width over the head, with two sparks on it: a reward (kernel/cos_rewards.js), not for sale */
+  halo(k, e) {
+    const { R } = k;
+    ring(R, 240, 74 + e.br, 44, 10, 5, 0); ring(R, 240, 74 + e.br, 42, 8, 3, 14);
+    R(212, 66 + e.br, 14, 2, 15); R(262, 80 + e.br, 6, 2, 12); R(238, 62 + e.br, 3, 3, 15); R(190, 74 + e.br, 3, 3, 15); R(288, 70 + e.br, 3, 3, 15);
+  },
   crown(k, e) {
     const { R, B } = k;
     [[210, 64, 9, 24], [236, 56, 9, 32], [261, 64, 9, 24]].forEach(p => { R(p[0] - 1, p[1] + e.br, p[2] + 2, p[3] + 2, 0); R(p[0], p[1] + 1 + e.br, p[2], p[3], 14); R(p[0], p[1] + 1 + e.br, 3, p[3], 15); });
@@ -72,21 +79,29 @@ const FACE = {
     for (let i = 0; i < 9; i++) R(279 + (i % 2) * 3, 160 + e.br + i * 6, 3, 5, 14);
   }
 };
+/* Round the throat: drawn after the head and before the trunk ('neck' pass), and below the tusks (they end at y 217), so the wings come out each
+   side of the trunk and the trunk hangs in front of the knot; nothing white sits on top of the red. */
 const NECK = {
   bowtie(k, e) {
     const { R, B } = k;
-    B(209, 205 + e.br, 30, 20, 0, 4); B(241, 205 + e.br, 30, 20, 0, 4);
-    B(211, 207 + e.br, 26, 16, 12, 4); B(243, 207 + e.br, 26, 16, 12, 4);
-    R(213, 209 + e.br, 20, 2, 4); R(245, 209 + e.br, 20, 2, 4);
-    B(233, 207 + e.br, 14, 16, 0, 3); B(235, 209 + e.br, 10, 12, 4, 2);
+    B(207, 219 + e.br, 31, 20, 0, 4); B(242, 219 + e.br, 31, 20, 0, 4);
+    B(209, 221 + e.br, 27, 16, 12, 4); B(244, 221 + e.br, 27, 16, 12, 4);
+    R(211, 223 + e.br, 21, 2, 4); R(248, 223 + e.br, 21, 2, 4);
+    B(233, 221 + e.br, 14, 16, 0, 3); B(235, 223 + e.br, 10, 12, 4, 2);
+  },
+  /* on the left of his chest, on a red ribbon, so the trunk does not hang over it: for hearing all two hundred things he has to say */
+  medal(k, e) {
+    const { R, B, oval } = k;
+    B(192, 211 + e.br, 20, 28, 0, 3); B(194, 213 + e.br, 16, 24, 12, 3); R(199, 213 + e.br, 6, 24, 15); R(194, 213 + e.br, 3, 24, 4);
+    oval(202, 248 + e.br, 12, 12, 0); oval(202, 248 + e.br, 10, 10, 14); oval(202, 248 + e.br, 6, 6, 6); R(200, 244 + e.br, 4, 8, 14); R(197, 247 + e.br, 10, 3, 14); R(196, 241 + e.br, 5, 3, 15);
   },
   scarf(k, e) {
     const { R, B } = k;
-    B(186, 197 + e.br, 108, 20, 0, 7); B(188, 199 + e.br, 104, 16, 12, 6);
-    for (let i = 0; i < 6; i++) R(198 + i * 17, 199 + e.br, 7, 16, 15);
-    B(193, 210 + e.br, 24, 48, 0, 4); B(195, 212 + e.br, 20, 44, 12, 3);
-    for (let j = 0; j < 3; j++) R(195, 220 + e.br + j * 12, 20, 5, 15);
-    for (let i = 0; i < 5; i++) R(196 + i * 4, 256 + e.br, 2, 6, 14);
+    B(184, 211 + e.br, 112, 20, 0, 7); B(186, 213 + e.br, 108, 16, 12, 6);
+    for (let i = 0; i < 6; i++) R(196 + i * 17, 213 + e.br, 7, 16, 15);
+    B(191, 224 + e.br, 24, 42, 0, 4); B(193, 226 + e.br, 20, 38, 12, 3);
+    for (let j = 0; j < 3; j++) R(193, 233 + e.br + j * 11, 20, 5, 15);
+    for (let i = 0; i < 5; i++) R(194 + i * 4, 265 + e.br, 2, 5, 14);
   }
 };
 const BODY = {
@@ -98,18 +113,24 @@ const BODY = {
     for (let i = 0; i < 12; i++) R(176 + i * 11, 224 + e.br, 4, 9, 14);
   }
 };
+/* a cloak hanging from his shoulders and flaring out behind him, so what shows is a bell shape each side of the body and the hem under it */
 const BACK = {
   cape(k, e) {
-    const { R, B } = k;
-    B(142, 146 + e.br, 196, 118, 0, 30); B(144, 148 + e.br, 192, 114, 5, 28);
-    R(150, 255 + e.br, 180, 5, 12); R(144, 148 + e.br, 3, 100, 13);
+    const { R } = k;
+    for (let y = 150; y < 262; y += 2) {
+      const hw = Math.round(58 + (y - 150) * 0.52);
+      R(240 - hw - 1, y + e.br, hw * 2 + 2, 2, 0); R(240 - hw, y + e.br, hw * 2, 2, 5);
+      R(240 - hw, y + e.br, 3, 2, 13); R(240 + hw - 3, y + e.br, 3, 2, 1);
+    }
+    for (let i = 0; i < 4; i++) for (let y = 170; y < 256; y += 2) { const hw = Math.round(58 + (y - 150) * 0.52); R(240 - hw + 18 + i * (hw * 2 - 36) / 3, y + e.br, 2, 2, 1); }
+    R(125, 258 + e.br, 230, 5, 0); R(126, 259 + e.br, 228, 3, 12);
   }
 };
 const COLLAR = {
   cape(k, e) {
     const { R, B } = k;
-    B(192, 196 + e.br, 96, 18, 0, 7); B(194, 198 + e.br, 92, 14, 15, 6);
-    for (let i = 0; i < 7; i++) R(202 + i * 13, 202 + e.br, 4, 7, 0);
+    B(190, 210 + e.br, 100, 18, 0, 7); B(192, 212 + e.br, 96, 14, 15, 6);
+    for (let i = 0; i < 7; i++) R(202 + i * 13, 216 + e.br, 4, 7, 0);
   }
 };
 const BOOTS = (k) => {
@@ -124,10 +145,11 @@ const BOOTS = (k) => {
 export function drawWear(layer, wear, k, env) {
   const w = wear || {};
   if (layer === 'back') { if (w.body === 'cape') BACK.cape(k, env); return; }
+  /* 'neck': what is round the throat goes on after the head and BEFORE the trunk, so the trunk hangs in front of the knot and the
+     collar (it used to be drawn last, over the trunk, which put the bow tie on top of it) */
+  if (layer === 'neck') { if (w.body === 'cape') COLLAR.cape(k, env); if (w.neck && NECK[w.neck]) NECK[w.neck](k, env); return; }
   if (layer === 'feet') { if (w.feet === 'boots') BOOTS(k, env); return; }
   if (layer === 'body') { if (w.body === 'blanket') BODY.blanket(k, env); return; }
-  if (w.body === 'cape') COLLAR.cape(k, env);
-  if (w.neck && NECK[w.neck]) NECK[w.neck](k, env);
   if (w.face && FACE[w.face]) FACE[w.face](k, env);
   if (w.head && HEAD[w.head]) HEAD[w.head](k, env);
 }

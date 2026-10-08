@@ -36,8 +36,10 @@ node scripts/check-styletrack.mjs # the style meter's recording: how it opens un
 node apps/shop/lines_check.js  # Dave's crazy hover lines: the pool, the 1-in-10 rate, no repeats (pure Node); node scripts/check-farewell.mjs his farewell tiers and babble (pure Node)
 node scripts/check-petlines.mjs # the desktop elephant's words: 77 idle lines, 19 goodbyes, wakings, no repeats, all lowercase and in his voice (pure Node)
 node apps/bekkedal/rooms_check.js # Bekkedal's two houses as made rooms: zones, furniture on its footprint, repeating patterns, what answers (pure Node)
+node scripts/check-theme.mjs   # every colour scheme as a whole look: the gradient ramp is monotonic and legible (pure Node); npm run check:props (shell) makes every game's prop folder and reads the files back
+node apps/sweeper/hard_check.js # the Underdeep is hard and a build answers it: a bot plays bare and built (pure Node); node apps/solitaire/music_check.js its score, layers and energy
 node scripts/check-delete.mjs  # the delete reel: a beat a file, 70 ms apart, a tune in C pentatonic that lands on the high C (pure Node)
-node scripts/check-props.mjs   # the trophies on the desktop: gravity, stacking, window edges, rest (pure Node)
+node scripts/check-drop.mjs    # the trophies on the desktop: gravity, stacking, window edges, rest (pure Node)
 node apps/solitaire/music_check.js # Solitaire's score (pure Node); node apps/solitaire/cosmetics_check.js its gifts, one per trophy (pure Node)
 node scripts/check-desk.mjs    # where desktop icons go: the zones, the grid, the occupancy map, a full desk (pure Node); npm run check:bulk pastes and deletes two hundred files
 node apps/aftere/aftere_check.js # AfterEgypt: a bot flies all five ways across, nothing is asked that the ship cannot fly, the pay climbs (pure Node)
@@ -49,7 +51,7 @@ node apps/magen/music_check.js # Magen's score, its band's energy and the seams 
 npm run check:music     # instruments, the studio, every game's score, and the style meter's recording
 npm run check:sun       # the SUN budget: every game's real pay tables through a model of an hour of playing it, held to a band (docs/sun-economy.md)
 npm run check:contrast  # every colour scheme, every stylesheet pair, and (in the shell) every app and its tabs and canvases measured for contrast; `--pure` skips the shell
-npm run check:trophies # the ledger: the engine, all 385 trophies, what they pay, the terminal's view (pure Node); node apps/{aftere,standbattle,bottle}/trophy_check.js, node apps/notes/links_check.js
+npm run check:trophies # the ledger: the engine, all 394 trophies, what they pay, the terminal's view (pure Node); node apps/{aftere,standbattle,bottle}/trophy_check.js, node apps/notes/links_check.js
 node apps/holyc/holyc_check.js # HOLYC.EXE: the language, the stage, all thirty-four lesson steps and fifty-six puzzles proved against their model answers (pure Node)
 node apps/sweeper/run_check.js # Dungeon Sweeper: a bot does random things in every room and then finishes it; spells, flags, the compass, the pay (pure Node)
 node apps/garage/edit_check.js # the Garage's note, segment and undo logic (pure Node)
@@ -74,9 +76,8 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
 - **Desktop icons sit in zones** (`kernel/desk_grid.js`: `zoneOf`, `zoneBox`): tools top left, your own files beside them, the games top right, the machine's papers bottom left, the bin in the bottom right corner. A zone fills left to right and then down; an icon that already has a place keeps it, and a desk that was still the old single column is laid out in zones once (`templeos.deskzones.v1`). `ARRANGE ICONS` uses the same zones. `scripts/check-desk.mjs` holds it.
 - **Pinned trophies** (`kernel/trophies_pins.js`): any number (12) can be pinned in the ledger (`PIN` on a card, double-click, Enter; `T.pin`, `T.isPinned`, `T.pinsList`). A small square sits under the menu bar at the right of the glass, over every window and program (`.pinbox`, z-index 8000); hovering it lists the pinned trophies with their exact condition and live progress, and a click on one finds it in the ledger. No pins, no square.
 - **A colour scheme dresses a game's window only at the frame** (`data-game` on the window, set by `wm.js` from `GAME_IDS`; `kernel/theme.css`, "game windows"): its title bar and edge take the scheme's frame colour (`--theme-frame`, `--theme-edge`) and its bar a line of the accent (`--theme-line`); the scheme variables are put back to VGA inside the body, so no pane, canvas or label of a game ever picks a scheme up and the game's own art and colours are what the game made. The machine's own windows (terminal, notes, the ledger) are still dressed in full. A new game adds its id to `GAME_IDS`.
-- **The elephant can be carried into an app** (`kernel/pet.js`, `kernel/pet_guest.js`): drop him on any window but his own and he stands in it (his coordinates become the window's), walks about in it, has words for the app (`BY_APP`, a generic pool) and answers a poke (a click: he hops, says a line, and the window hears a `pet-poke` event on its element, which an app may listen for). He cheers on a trophy, can be picked up and put anywhere, and when the window closes he is put back on the desktop where it was. Never saved: a launch starts him on the desk. `BACK TO THE DESKTOP` is in his menu.
 - **Rewards** (`kernel/rewards.js`): a shelf item with `earn: '<trophy id>'` is never for sale; it is given the moment its trophy is earned (and at boot for one earned before), `Cos.grant`, with a line from Dave. Solitaire's fourteen trophies each give one thing for the table (`apps/solitaire/cosmetics.js`: a card back, a table, an ending for a win; Dave's SOLITAIRE shelf; the BACK, TABLE and WIN buttons of the game cycle what you own), and each game's mastery seal opens a secret scheme or pointer (shown as `???` until it is yours). **Trophy pay is by effort**: 100 / 350 / 1,200 SUN and 2,500 for a seal, about 171,000 SUN over all of it (`TIER_PAY`, `MASTERY_PAY` in `kernel/trophies_core.js`).
-- **The trophy box** (`kernel/trophy_box.js`, `kernel/trophy_props.js`, `apps/trophybox`): the first gold trophy or mastery seal puts `::/TrophyBox` on the desktop, once. In it the big trophies are cups; drag one out and it is an object on the desktop with weight and a hitbox: gravity, a bounce (a seal is heavy, a cup light), stacking, standing on the top edge of a window (a one-way platform), the walls, being thrown. It sleeps when it is at rest. Double-click one, or drop it on the box, to put it back. `stepWorld` is pure and held by `node scripts/check-props.mjs`.
+- **The trophy box** (`kernel/trophy_box.js`, `kernel/trophy_drop.js`, `apps/trophybox`): the first gold trophy or mastery seal puts `::/TrophyBox` on the desktop, once. In it the big trophies are cups; drag one out and it is an object on the desktop with weight and a hitbox: gravity, a bounce (a seal is heavy, a cup light), stacking, standing on the top edge of a window (a one-way platform), the walls, being thrown. It sleeps when it is at rest. Double-click one, or drop it on the box, to put it back. `stepWorld` is pure and held by `node scripts/check-drop.mjs`.
 - **Lobby music.** The boot always plays the hymn, whatever the LOBBY switch says; on the desktop the switch and MUS
   govern it. `kernel/music_variants.js` builds four moods of the *same notes* (HYMN, MELLOW, DYNAMIC, GLITCH) as
   plain specs; the lobby plays them live (`kernel/music.js`) and TheStack presses the same specs as discs. The listener
@@ -276,8 +277,8 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   name has a hard black edge, so a dark picture and a name are both legible on a photograph. Text drawn on a canvas is measured too (the check wraps `fillText` and reads the pixels under the words
   before they are drawn), so a game's dim label goes in the machine's light grey, not its dark one. A bar of key hints that is longer than its window wraps (`.appbar.hint`) rather than losing its end.
   An app that draws its own pixel font (Bekkedal, Stand Battle) is checked by eye: give a line over a picture an outline (`text(..., { outline })`).
-- **Trophies.** `TROPHIES.EXE` (desktop icon `::/Trophies`, help page TROPHIES, terminal `TROPHIES [GAME]`, `TROPHY <NAME>`, `TROPHIES OPEN`) is the machine's ledger: 385 trophies in
-  eighteen areas (the machine, every game and tool, HOLYC.EXE, and a meta area of its own), 19 of them secret, about 171,000 SUN if every one is earned once (100 / 350 / 1,200, a seal 2,500). **The engine is pure**
+- **Trophies.** `TROPHIES.EXE` (desktop icon `::/Trophies`, help page TROPHIES, terminal `TROPHIES [GAME]`, `TROPHY <NAME>`, `TROPHIES OPEN`) is the machine's ledger: 394 trophies in
+  eighteen areas (the machine, every game and tool, HOLYC.EXE, and a meta area of its own), 19 of them secret, about 135,000 SUN if every one is earned once (most of it in the completionist trophies below). **The engine is pure**
   (`kernel/trophies_core.js`, `createTrophies(env)`; Node runs all of it in `scripts/check-trophies.mjs`) and a trophy is a definition with exactly one of five ways to be earned:
   `on + when` (an event and a predicate over its payload), `stat` (a counter or a best: `add`, `max`), `sets` (how many different things were marked), `streak` (in a row, a failure
   resets) or `poll` (a question the game asks at a checkpoint), plus `derive` for the seals. Tier pays 15 / 40 / 100 SUN (`B`/`S`/`G`) and a game's **mastery seal** (every trophy
@@ -297,6 +298,28 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   backfill** (`kernel/trophies_backfill.js`, each game's `backfill(read)`): a machine that has already done a thing is credited without a card, from the old save's own keys. The
   store is `templeos.trophies.v1` (a damaged one is kept as `.bak`). **The owner's birthday is the 23rd of July** (`sys_birthday`, THE DAY, a secret gold): the machine has to be opened on it.
   Design record and every threshold: `docs/achievements/`. Checks: `npm run check:trophies`, plus `apps/{aftere,standbattle,bottle}/trophy_check.js` and `apps/notes/links_check.js`.
+
+## How the machine behaves (the last pass)
+- **Windows stack in a bounded range** (`raise()`/`compactZ()` in `kernel/wm.js`): z-index never grows without limit, so a menu, a toast or the trophy card can never fall behind a window that was
+  raised enough times. **Most apps open once** (`MULTI` in `wm.js` lists the ones that may open twice: terminal, editor, viewer, folder, a HOLYC program): opening one that is already open raises it
+  (`reopen()`, an `app-reopen` event; `openNew()` is the explicit way to get a second).
+- **Colour schemes are whole looks** (`kernel/theme_fx.js`): a scheme is a gradient map (an SVG filter, `--th-filter`) that lays the scheme's ramp over every window, the menu bar, the taskbar, the icons and
+  the desktop, so a scheme changes the machine and not six variables. `[T]` on a window (menu: the machine's scheme, or one for that app, remembered per app in `templeos.wintheme.v1`) wears the same look on one window.
+  A window keeps its own VGA inks under the filter (`.win`), never double-themed. `node scripts/check-theme.mjs` holds every scheme's ramp.
+- **A game's picture fills its window** (`kernel/canvas_fit.js`): a canvas with `data-fit` (AfterEgypt, Goddoodle, Cook, Stand Battle, Bekkedal) is sized by the window manager to the largest size of its aspect ratio
+  the room can hold (`data-fit="int"` keeps whole-pixel multiples in a window), again on resize, fullscreen and zoom. A new canvas game sets `data-fit` rather than a fixed pixel size.
+- **Icon names wrap**: a desktop/folder icon has no plate behind it, its name wraps on as many lines as it needs and breaks at CamelCase and after `.`/`-`/`_` (`breakable()` in `kernel/icons_dom.js`).
+- **The desktop elephant goes where you are** (`kernel/pet_visit.js`, pure, held by `scripts/check-petlines.mjs`; played by `kernel/pet.js`): most of the time he walks into the window you are using, wanders about
+  inside it over the top of the picture (never in the way of a click), says something about *that* app, cheers when a trophy lands, naps in a corner late at night, follows you to the next app and drops out where he stood when it closes.
+- **The elephant's clothes have layers** (`apps/elephant/wear.js`, `kernel/pet_art.js`): things at the neck (bow tie, scarf, medal) are drawn after the body and *before the trunk*, so the trunk is never covered;
+  hats sit on the head line (`HAT_LIFT`); the cape hangs from `wear.body === 'cape'`.
+- **Big trophies pay in things, and a mastered game leaves its props.** `kernel/trophy_rewards.js` (pure) lists what the completions are worth (hundreds to thousands of SUN; a mastery seal 500 and a hundred a trophy; the
+  whole ledger the most) and which trophies also give an item for Dave's shelves that is **not for sale** (`kernel/cos_rewards.js`, `reward: '<trophy id>'`, dim on the shelf with what earns it, owned the moment it is earned:
+  `Cos.grantFor/syncRewards`). A mastery also makes a desktop folder of every picture the game is made of as real PNGs (`kernel/trophy_props.js`, written once, `templeos.props.v1`; each game lists its props in
+  `apps/<id>/props.js` with `apps/prop_kit.js`; the terminal's `PROPS <GAME>` makes it again). **Trophy cards overlay whatever is open** (`kernel/trophies_toast.js` over the windows, never held behind a run: `hold()` only delays
+  the *sound* inside a flight/bench/blackout, the card is shown at once).
+- **TROPHIES.EXE is a living ledger** (`apps/trophies/hero.js`: a ring that fills with the ledger, the cups, the SUN paid, the next one to go for; `cards.js`: tier plates with a cup, padlock, a bar of cells and the pay;
+  `rewards.js`: the REWARDS tab, with the items and folders and how far each is).
 
 ### Writing music (for Claude, and anyone else)
 Music is data, not oscillator code. A song is `{ v, title, bpm, key, scale, bars, beats, swing, tracks: [{ id, name, inst, vol, pan,
@@ -627,6 +650,18 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   need Shift still works) and heard from the document whenever TheStack is the front window and nothing is being typed into (a click on the title bar
   or the taskbar moves focus off the canvas, and the digits used to go to the desktop). A preset puts a bypassed EQ in circuit, and it is the curve the next
   discs inherit unless a disc has an EQ of its own saved with it, so a track change does not put the flat curve back.
+- `solitaire`: `apps/solitaire/index.js` (cards in `cards.js`, props in `props.js`). **It has a soundtrack** (`score.js`: three sixteen-bar tunes for the studio's real instruments, a slow swung card-table shuffle with an unresolved minor
+  seventh, a wurlitzer on the off-beats, a walking bass and a clarinet over it; the mood of a poker-and-jokers game's main theme, written from scratch). `music.js` is the director's rotation plus an `energy` (0 to 2) that the cards
+  that are home pull up and a new deal lets down, riding two layers with `deck.levels`; a win brings the whole table in. It plays on the studio's `'solitaire'` channel (the mixer lists it while the window is open).
+- `sweeper` also has **ACT TWO, THE UNDERDEEP** (`data.js`, `act: 2`, nine rooms and three guardians under the Hollow One, kept out of the compass's eighteen): every larva costs two masks, the boards are dense, the rules are stacked and
+  the cold drains soul; bare, almost nobody gets through, and the charms (iron ward, lifeblood heart, stalwart shell, ember heart, the Underdeep's own three) only fit together in the notches if you choose them well.
+  `node apps/sweeper/hard_check.js` plays bare and built and holds that; `check-sun.mjs` carries its pay as its own rows.
+- `bibel`: `apps/bibel/index.js` - **THE BIBEL**, a book reader. Cover, a table of contents that ticks the chapters read, and pages (`pager.js`: the text is one flow in CSS columns as tall as the window, a spread is one
+  or two columns, a page turn is a shift by whole columns; resize and A-/A+ re-lay it out and come back to the same chapter). Arrows/PgUp/PgDn/Space turn, Home/End, C contents, +/- size; the place, the size and what is read are
+  kept through `ctx.save('bibel.v1')`; `fluid`. **The text is `apps/bibel/text_a..d.js`, ordered by `text.js`** (preface, Part One: eight chapters of the beginnings; Part Two: eleven chapters, the most absurd story of each
+  religion told once and in full; Part Three: the one chapter every account agrees on; colophon), about five times the length of the old desktop file. **Its voice is the rule for any line added:** scripture written by
+  people who believe every word, grave, exact and in order, with deadpan specifics; the absurdity is in the *content* and the Bibel never winks at itself. `::/TheBibel` is the app, `::/TheBibel.TXT` the same text flat
+  (`plainText()`; an untouched old one is replaced on first open).
 - `trophies`: `apps/trophies/index.js` - **TROPHIES.EXE**, the ledger (see **Trophies**). Eighteen areas down the left (the machine first, then each game, then the ledger's own meta area), the cards of the chosen area
   nearest to completion first, each with its tier frame, its exact condition, a live progress bar and what it pays; a secret is `???` and a rumour until it is found; filters (all, open, done), kinds
   (progression, skill, explore, creative, joke), a search, EN or EN+NO for Bekkedal's bilingual ones, and a pin whose progress is echoed in the title bar. A seal lights when every trophy of a game is

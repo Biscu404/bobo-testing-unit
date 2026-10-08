@@ -5,6 +5,7 @@ import { Snd } from './snd.js';
 import { lampDip } from './hardware.js';
 import { Cos } from './cos.js';
 import { attachZoom } from './zoom.js';
+import { attachFit } from './canvas_fit.js';
 import { Studio } from './studio.js';
 import { sys } from './trophy_hook.js';
 
@@ -42,9 +43,21 @@ function nextCascade(w, h) {
   return { x: x, y: y };
 }
 
+/* Windows live in the band Z_BASE..Z_MAX, below the menu bar and taskbar (400), the pop-up menus (450) and the trophy card (470). raise() used to
+   add one to the counter on every mousedown for ever, so after a few hundred clicks a window sat over the menus: a right-click menu opened *behind*
+   the thing that was clicked. A window that is already in front is left alone, and when the band is full the windows are renumbered in their order. */
+const Z_BASE = 100, Z_MAX = 380;
+function compactZ() {
+  const live = openWins.slice().sort((a, b) => (+a.win.style.zIndex || 0) - (+b.win.style.zIndex || 0));
+  live.forEach((o, i) => { o.win.style.zIndex = Z_BASE + 1 + i; });
+  zTop = Z_BASE + live.length;
+}
 export function raise(win) {
-  zTop++;
-  win.style.zIndex = zTop;
+  if (!(+win.style.zIndex && +win.style.zIndex === zTop)) {
+    if (zTop >= Z_MAX) compactZ();
+    zTop++;
+    win.style.zIndex = zTop;
+  }
   openWins.forEach(o => o.btn.classList.toggle('active', o.win === win));
 }
 
@@ -92,33 +105,41 @@ export function createWindow(opts) {
 
   bar.appendChild(t);
 
+  /* [T]: this window's own scheme. The choice is kept per app (templeos.wintheme.v1), so the next time that app opens it wears it again. */
   let winScheme = null;
+  const THEME_KEY = 'templeos.wintheme.v1';
+  const themes = () => { try { return JSON.parse(localStorage.getItem(THEME_KEY)) || {}; } catch (e) { return {}; } };
+  const wear = id => {
+    winScheme = id || null;
+    Cos.applyWinScheme(win, winScheme);
+    th && th.classList.toggle('on', !!winScheme);
+    const app = (rec && rec.appId) || opts.appId;
+    if (app) { const m = themes(); if (winScheme) m[app] = winScheme; else delete m[app]; try { localStorage.setItem(THEME_KEY, JSON.stringify(m)); } catch (e) { /* kept for this sitting */ } }
+  };
+  let th = null;
   if (opts.appId) {
-    const th = document.createElement('span');
+    th = document.createElement('span');
     th.className = 'th';
     th.textContent = '[T]';
-    th.title = opts.appId && GAME_IDS.has(opts.appId) ? 'WINDOW THEME. Dresses this window\'s frame and bar. The game itself is never recoloured.' : 'WINDOW THEME. Pick a colour scheme for just this window.';
+    th.title = 'WINDOW THEME. Dress just this window in one of your colour schemes. It remembers.';
     th.addEventListener('mousedown', async ev => {
       ev.stopPropagation();
+      if (ev.button !== 0) return;
       if (window.Snd) window.Snd.click();
       const { showMenu } = await import('./desktop.js');
       const schemes = Cos.owned('scheme');
-      const items = [{ label: winScheme ? 'SYSTEM DEFAULT' : '> SYSTEM DEFAULT', run: () => {
-        winScheme = null;
-        Cos.applyWinScheme(win, null);
-      } }, { sep: true }];
+      const items = [{ label: winScheme ? 'SYSTEM DEFAULT' : '> SYSTEM DEFAULT', run: () => wear(null) }, { sep: true }];
       schemes.forEach(id => {
-        const s = Cos.find('scheme', id);
-        if (!s) return;
-        items.push({ label: (winScheme === id ? '> ' : '') + s.name, run: () => {
-          winScheme = id;
-          Cos.applyWinScheme(win, id);
-        } });
+        const sc = Cos.find('scheme', id);
+        if (!sc) return;
+        items.push({ label: (winScheme === id ? '> ' : '') + sc.name, run: () => wear(id) });
       });
+      if (schemes.length < 2) items.push({ sep: true }, { label: 'ONLY ONE SCHEME. DAVE HAS MORE...', run: () => openWindow('shop', { tab: 'scheme' }).catch(() => {}) });
       const r = th.getBoundingClientRect();
       showMenu(document.getElementById('ctxmenu'), r.left, r.bottom, items);
     });
     bar.appendChild(th);
+    { const mine = themes()[opts.appId]; if (mine && Cos.has('scheme', mine)) setTimeout(() => wear(mine), 0); }
   }
 
   bar.appendChild(mbtn);
@@ -225,6 +246,7 @@ export function createWindow(opts) {
     requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
   }
   const toggleFull = () => setFull(!full);
+  const fit = attachFit(win, body, () => full);
   fbtn.addEventListener('mousedown', ev => { ev.stopPropagation(); toggleFull(); });
   bar.addEventListener('dblclick', ev => {
     if (ev.target === x || ev.target === mbtn || ev.target === fbtn || ev.target.className === 'th' || ev.target.className === 'z') return;
@@ -276,6 +298,7 @@ export function createWindow(opts) {
     document.removeEventListener('keydown', onKey);
     window.removeEventListener('resize', fitScaled);
     if (zoom) zoom.dispose();
+    fit.dispose();
     document.removeEventListener('mousemove', onMove);
     document.removeEventListener('mouseup', onUp);
     Snd.close();
@@ -340,8 +363,35 @@ export function createWindow(opts) {
   return { win: win, body: body, title: t, btn: btn, close: closeWin };
 }
 
+/* Most apps are one thing and open once: a second click on the Elephant brings the first to the front (from the taskbar if it is put away), it
+   does not make a second elephant. Only the apps that are about a file or a place can be open several times: a folder, a terminal, a text in the
+   editor, a picture in the viewer, and an installed HolyC program's own player. An app that was asked something by the second click (the shop's shelf,
+   the ledger's trophy, a song for the Garage) hears it as an 'app-reopen' event with the args. */
+const MULTI = { placeholder: 1, folder: 1, terminal: 1, editor: 1, viewer: 1 };
+const opening = new Set();
+const isMulti = (appId, args) => !!MULTI[appId] || (appId === 'holyc' && !!(args && args.run));
+function reopen(rec, appId, args) {
+  if (rec.win.classList.contains('hidden')) rec.btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+  else { raise(rec.win); Snd.select(); }
+  try { window.dispatchEvent(new CustomEvent('app-reopen', { detail: { appId: appId, args: args || {}, rec: rec } })); } catch (e) { /* nobody is listening */ }
+}
+
 export async function openWindow(appId, args = {}) {
   if (!registry[appId]) throw new Error('App not found');
+  if (!isMulti(appId, args)) {
+    const there = openWins.find(r => r.appId === appId);
+    if (there) { reopen(there, appId, args); return; }
+    if (opening.has(appId)) return;                       /* a double click: the first is still being made */
+    opening.add(appId);
+    try { return await openNew(appId, args); } finally { opening.delete(appId); }
+  }
+  /* the same folder, text or picture twice is the same window */
+  const same = args && args.path && appId !== 'terminal' ? openWins.find(r => r.appId === appId && r.title === args.path) : null;
+  if (same) { reopen(same, appId, args); return; }
+  return openNew(appId, args);
+}
+
+async function openNew(appId, args) {
   const mod = await registry[appId]();
   const app = mod.default;
   if (app.open) {

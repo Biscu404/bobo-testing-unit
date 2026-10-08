@@ -1,36 +1,98 @@
-/* Solitaire's score, for the studio's real instruments: two card-room tunes, sixteen bars each, a core that is a tune on its own
-   and two layers the game rides while it plays (`h1` once a quarter of the deck is home, `h2` once half is).
-   LAMPLIGHT (G major, a music box over an electric piano) and FELT (C major, swung, a piano over an upright bass). `node apps/solitaire/music_check.js`. */
-import { bassPattern, comp, memo, scale } from '../scorekit.js';
+/* Solitaire's music: three tunes for the studio's real instruments, in the mood of a card table late at night.
+ *
+ * Slow and swung, a little sleazy and a little warm: a wurlitzer leaning on the off-beats, an electric bass that walks and then stops to let a
+ * clarinet sing a blues tune over the top, a brushed kit that is more a heartbeat than a beat. It is not a copy of anything: it is the same
+ * *kind* of room as a certain poker-and-jokers game's main theme (a slow shuffle, a minor seventh that never quite resolves, a melody that
+ * sounds like it was thought of while shuffling) written from scratch for this machine's instruments.
+ *
+ * Every tune is sixteen bars, a core that is a whole tune on its own and two layers that the game rides the level of (apps/solitaire/music.js,
+ * deck.levels): the more of the pack that is home, the more of the band is in the room.
+ *
+ *   the core   clarinet lead, wurlitzer on the off-beats, a walking electric bass, a ride and a stick (a heartbeat), an organ held under it all
+ *   h1         vibes an octave over the lead and a muted trumpet answering it, and a shaker: the first aces are home and somebody has looked up
+ *   h2         the full kit swinging, a sax in thirds under the tune, a second wurlitzer on the one: the table is full and the cards are flying
+ *
+ * Three tunes, three keys that are a fifth apart (C, G and D minor) so any can follow any on a downbeat with a seam that is just a
+ * change of colour. `ORDER` is the rotation; the director (apps/director.js) changes tune on a bar line, never mid-phrase.
+ */
+import { memo, scale, harmonize, octaveUp, bassPattern, comp } from '../scorekit.js';
 
-export const IDS = ['lamplight', 'felt'];
-export const NAMES = { lamplight: 'LAMPLIGHT', felt: 'FELT' };
+export const IDS = ['smallblind', 'riverdeal', 'lasthand'];
+export const ORDER = ['smallblind', 'riverdeal', 'lasthand'];
+export const NAMES = { smallblind: 'SMALL BLIND', riverdeal: 'RIVER DEAL', lasthand: 'LAST HAND' };
+export const LAYERS = ['h1', 'h2'];
 export const BARS = 16;
-const T = (name, inst, notes, o) => Object.assign({ name, inst, notes }, o);
-const D = (name, drums, o) => Object.assign({ name, drums }, o);
 
-const TUNES = {
-  lamplight: { bpm: 76, key: 'G', swing: 0, inst: 'musicbox', ch: ['G', 'Em', 'C', 'D', 'G', 'Em', 'Am', 'D', 'C', 'G', 'Am', 'D', 'G', 'Em', 'C', 'G'],
-    lead: 'B4:q D5:q G5:h | E5:q D5:q B4:h | C5:q E5:q G5:q E5:q | F#5:h. D5:q | B4:q D5:q G5:q B5:q | A5:q G5:q E5:h | C5:q E5:q A5:q E5:q | F#5:q D5:q A4:h | ' +
-          'E5:q G5:q C6:h | D5:q B4:q G4:h | A4:q C5:q E5:q C5:q | D5:q F#5:q A5:h | G5:q F#5:q E5:q D5:q | B4:q E5:q G5:h | E5:q D5:q C5:h | G4:w' },
-  felt: { bpm: 96, key: 'C', swing: 0.3, inst: 'piano', ch: ['C', 'Am', 'F', 'G', 'C', 'Am', 'Dm', 'G', 'F', 'C', 'Dm', 'G', 'C', 'F', 'G', 'C'],
-    lead: 'E5:e G5 C6:q G5:q E5:q | E5:e A5 C6:q A5:h | C5:e F5 A5:q F5:q C5:q | D5:e G5 B5:q G5:h | C6:q B5:e C6 G5:h | A5:q E5:q C5:h | D5:e F5 A5:q F5:q D5:q | B4:q D5:q G5:h | ' +
-          'A5:q C6:q A5:h | G5:q E5:q C5:h | F5:e A5 D6:q A5:q F5:q | G5:q B5:q D6:h | E5:e G5 C6:q E6:h | C6:q A5:q F5:h | D5:q G5:q B5:h | C6:w' }
+const C_MIN = [0, 2, 3, 5, 7, 8, 10], G_MIN = [7, 9, 10, 0, 2, 3, 5], D_MIN = [2, 4, 5, 7, 9, 10, 0];
+const BAR = (...b) => b;
+
+export const TUNES = {
+  smallblind: {
+    title: 'SMALL BLIND', bpm: 88, beats: 4, swing: 0.55, key: 'C', pcs: C_MIN, lead: 'clarinet', answer: 'trumpet',
+    chords: 'Cm7 Cm7 Fm7 Fm7 Cm7 Cm7 G7 G7 Abmaj7 Abmaj7 Fm7 G7 Cm7 Fm7 G7 G7',
+    melody: BAR('r:e G4 Bb4:q C5:e Bb4 G4:q', 'Eb5:q. D5:e C5:q Bb4', 'Ab4:e C5 Eb5:q D5:e C5 Ab4:q', 'G4:h r:q Bb4:e C5',
+                'C5:q Bb4:e G4 Bb4:q G4', 'Eb4:q G4:e Bb4 C5:h', 'D5:q. B4:e G4:q B4', 'D5:h F5:q D5',
+                'Eb5:q. C5:e Ab4:q C5', 'Eb5:e D5 C5:q Bb4:h', 'Ab4:q C5:e Eb5 F5:q Eb5', 'D5:q B4 G4:e B4 D5:q',
+                'C5:q. Bb4:e G4:q Eb4', 'F4:q Ab4:e C5 Eb5:q C5', 'D5:q F5:e D5 B4:q G4', 'C5:h. r:q'),
+    bass: [[0, 0.9, 'r'], [1.5, 0.4, 'r', 0.5], [2, 0.9, '5'], [3, 0.9, '8', 0.6]], stabs: [1.5, 3.5],
+    kit: { kick: 'x.......x.o.....', snare: '....x.......x...', hat: 'o.o.o.o.o.o.o.o.' },
+    tick: { ride: 'x..xx..xx..xx..x', stick: '....o.......o...' }
+  },
+  riverdeal: {
+    title: 'RIVER DEAL', bpm: 80, beats: 4, swing: 0.6, key: 'G', pcs: G_MIN, lead: 'clarinet', answer: 'trumpet',
+    chords: 'Gm7 Gm7 Cm7 Cm7 Gm7 Gm7 D7 D7 Ebmaj7 Ebmaj7 Cm7 D7 Gm7 Cm7 D7 D7',
+    melody: BAR('D5:q. Bb4:e G4:q Bb4', 'D5:e Eb5 D5:q Bb4:h', 'Eb5:q. D5:e C5:q G4', 'C5:h Eb5:q D5',
+                'Bb4:q D5:e F5 D5:q Bb4', 'G4:h. r:q', 'A4:q. C5:e F#5:q D5', 'A4:h r:e C5 D5:q',
+                'G5:q. F5:e Eb5:q D5', 'Bb4:h Eb5:q Bb4', 'C5:q Eb5:e G5 F5:q Eb5', 'D5:q F#5 A5:h',
+                'G5:q. F5:e D5:q Bb4', 'Eb5:q C5:e G4 C5:q Eb5', 'F#5:q D5:e A4 C5:q D5', 'G4:h. r:q'),
+    bass: [[0, 0.9, 'r'], [1, 0.4, 'r', 0.45], [2, 0.9, '5'], [3.5, 0.4, '5', 0.5]], stabs: [1, 3],
+    kit: { kick: 'x.....x.x.......', snare: '....x.......x...', hat: 'x.o.x.o.x.o.x.o.' },
+    tick: { ride: 'x.x.x.x.x.x.x.x.', stick: '....o...o.......' }
+  },
+  lasthand: {
+    title: 'LAST HAND', bpm: 94, beats: 4, swing: 0.5, key: 'D', pcs: D_MIN, lead: 'clarinet', answer: 'trumpet',
+    chords: 'Dm7 Dm7 Gm7 Gm7 Dm7 Dm7 A7 A7 Bbmaj7 Bbmaj7 Gm7 A7 Dm7 Gm7 A7 A7',
+    melody: BAR('A4:e D5 F5:q E5:e D5 A4:q', 'G5:q. F5:e E5:q D5', 'Bb4:q D5:e G5 F5:q D5', 'Bb4:h r:q A4:e Bb4',
+                'D5:q. E5:e F5:q A5', 'G5:e F5 E5:q D5:h', 'C#5:q E5:e G5 E5:q C#5', 'A4:h r:q E5',
+                'D5:q. F5:e Bb5:q A5', 'G5:h F5:q D5', 'G5:e F5 D5:q Bb4:q G4', 'C#5:q E5 G5:e A5 G5:q',
+                'A5:q. G5:e F5:q E5', 'D5:q Bb4:e G4 Bb4:q D5', 'E5:q C#5:e A4 C#5:q E5', 'D5:h. r:q'),
+    bass: [[0, 0.9, 'r'], [1.5, 0.4, '5', 0.5], [2.5, 0.4, 'r', 0.5], [3, 0.9, '5', 0.6]], stabs: [1.5, 3],
+    kit: { kick: 'x...x.......x...', snare: '....x.......x..o', hat: 'o.o.o.o.o.o.o.o.' },
+    tick: { ride: 'x..x..x.x..x..x.', stick: '....o.......o...' }
+  }
 };
-const make = memo((L, id) => {
-  const t = TUNES[id], ch = t.ch;
-  const arp = (base, k) => scale(L.chordLine(ch, 4, 'arp', base), k);
+
+/* the tune's notes as the studio keeps them: [[start, dur, midi, vel]] */
+export const melodyOf = (L, id) => L.parseNotes(TUNES[id].melody.join(' | '));
+
+const track = (name, inst, notes, o) => Object.assign({ name, inst, notes }, o);
+const layer = (t, name) => Object.assign(t, { layer: name });
+const drums = (name, d, o) => Object.assign({ name, drums: d }, o);
+
+function band(L, id) {
+  const d = TUNES[id], bpb = d.beats, ch = d.chords.split(' '), lead = melodyOf(L, id);
+  /* the answer: the lead's last two beats of each pair of bars, an octave up, muted, so the trumpet speaks where the clarinet has stopped */
+  const answer = lead.filter(n => { const b = Math.floor(n[0] / bpb); return b % 2 === 1 && n[0] - b * bpb >= 2; }).map(n => [n[0], n[1], n[2] + 12, n[3] * 0.8]);
+  const third = harmonize(lead, d.pcs, -2);
   const tracks = [
-    T('LEAD', t.inst, t.lead, { vol: 0.62, reverb: 0.4, pan: 0.1 }),
-    T('KEYS', 'epiano', comp(L, ch, 4, [0, 2], 55, 1.8, 0.4), { vol: 0.4, reverb: 0.3, pan: -0.2 }),
-    T('BASS', 'upright', bassPattern(L, ch, 4, [[0, 1.8, 'r', 0.8], [2, 1.8, '5', 0.6]], 38), { vol: 0.62, reverb: 0.1 }),
-    D('BRUSH', { stick: '..x...x...x...x.', kick: 'x.......x.......' }, { vol: 0.3, reverb: 0.1, layer: 'h1' }),
-    T('PLUCK', 'pizz', comp(L, ch, 4, [1, 3], 60, 0.3, 0.5), { vol: 0.34, reverb: 0.2, pan: 0.3, layer: 'h1' }),
-    T('SPARKLE', 'glock', arp(72, 0.4), { vol: 0.3, reverb: 0.5, pan: 0.25, layer: 'h2' }),
-    T('STRINGS', 'strings', scale(L.chordLine(ch, 4, 'pad', 52), 0.4), { vol: 0.3, reverb: 0.55, pan: 0.2, layer: 'h2' })
+    /* the core */
+    track('LEAD', d.lead, scale(lead, 1.1), { vol: 0.8, reverb: 0.32, pan: -0.1 }),
+    track('WURLITZER', 'epiano', scale(comp(L, ch, bpb, d.stabs, 58, 0.42, 0.7), 0.85), { vol: 0.52, reverb: 0.22, pan: -0.3, eq: undefined }),
+    track('BASS', 'bass', bassPattern(L, ch, bpb, d.bass, 36), { vol: 0.74, reverb: 0.04 }),
+    track('ORGAN', 'organ', scale(L.chordLine(ch, bpb, 'pad', 52), 0.34), { vol: 0.3, reverb: 0.35, pan: 0.3 }),
+    drums('HEARTBEAT', d.tick, { vol: 0.34, reverb: 0.1 }),
+    /* h1: the first aces are home */
+    layer(track('VIBES', 'vibes', octaveUp(lead, 96, 0.62), { vol: 0.46, reverb: 0.4, pan: 0.25 }), 'h1'),
+    layer(track('ANSWER', d.answer, answer, { vol: 0.5, reverb: 0.3, pan: 0.35 }), 'h1'),
+    layer(drums('SHAKER', { shaker: 'x.x.x.x.x.x.x.x.' }, { vol: 0.3, reverb: 0.08 }), 'h1'),
+    /* h2: the table is full */
+    layer(drums('KIT', d.kit, { vol: 0.6, reverb: 0.12 }), 'h2'),
+    layer(track('SAX', 'sax', scale(third, 0.9), { vol: 0.46, reverb: 0.3, pan: 0.3 }), 'h2'),
+    layer(track('WURLITZER 2', 'epiano', scale(comp(L, ch, bpb, [0], 62, 0.9, 0.6), 0.8), { vol: 0.36, reverb: 0.25, pan: -0.15 }), 'h2')
   ];
-  return L.buildSong({ title: NAMES[id], bpm: t.bpm, key: t.key, scale: 'major', swing: t.swing, bars: BARS, tracks });
-});
+  tracks.forEach(t => { if (t.eq === undefined) delete t.eq; });
+  return L.buildSong({ title: d.title, bpm: d.bpm, key: d.key, scale: 'minor', bars: BARS, beats: bpb, swing: d.swing, tracks });
+}
+
+const make = memo((L, id) => band(L, id));
 export const song = (L, id) => make(L, id);
-/* how much of the deck is home (0..52) -> the layers */
-export const levelsFor = n => ({ h1: n >= 13 ? 1 : 0, h2: n >= 26 ? 1 : 0 });

@@ -17,7 +17,7 @@ export const TROPHIES = [
   t('bt_designated', 'DESIGNATED DRIVER', 'S', 'C', 'Drink a whole bottle of the cordial: ' + BOTTLE_MEASURES + ' measures of it.', rule.stat('cordial', BOTTLE_MEASURES)),
   t('bt_flight3', 'A SMALL FLIGHT', 'B', 'E', 'Drink a measure of three different drinks.', rule.sets('tasted', 3)),
   t('bt_flight6', 'A FLIGHT', 'S', 'E', 'Drink a measure of six different drinks.', rule.sets('tasted', 6)),
-  t('bt_flight9', 'THE WHOLE SHELF', 'G', 'E', 'Drink a measure of every drink Dave sells.', rule.sets('tasted', DRINKS.length)),
+  t('bt_flight9', 'THE WHOLE SHELF', 'G', 'E', 'Drink a measure of every drink Dave sells.', rule.sets('tasted', DRINKS.filter(d => !d.reward).length)),
   t('bt_lights', 'LIGHTS OUT', 'B', 'J', 'Pass out once.', on('blackout')),
   secret('bt_dreams', 'NINE DREAMS', 'G', 'E', 'The machine has nine dreams. It does not repeat itself until it has had them all.', 'See all nine blackout scenes.', rule.sets('scenes', SCENES_TOTAL))
 ];

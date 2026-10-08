@@ -7,7 +7,7 @@ export function createTitle(env) {
   const T = { sel: 0, hits: [] };
   const rg = REGIONS[0];
   const items = () => [
-    { id: 'camp', label: env.hasCamp() ? 'CONTINUE THE DESCENT' : 'BEGIN THE DESCENT', sub: 'CAMPAIGN  /  THE SUNKEN KINGDOM  /  18 ROOMS  /  PAYS SUN' },
+    { id: 'camp', label: env.hasCamp() ? 'CONTINUE THE DESCENT' : 'BEGIN THE DESCENT', sub: 'CAMPAIGN  /  18 ROOMS + THE UNDERDEEP  /  PAYS SUN' },
     ...CLASSIC.map(l => ({ id: l.id, label: l.name + '   ' + l.c + 'x' + l.r, sub: 'CLASSIC  /  ' + l.m + ' LARVAE  /  ' + CLASSIC_SUN[l.id] + ' SUN' + (env.best(l.id) != null ? '  /  BEST ' + env.best(l.id) + 's' : '') }))
   ];
   T.draw = (G, now) => {

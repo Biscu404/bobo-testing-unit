@@ -95,10 +95,16 @@ const LO = 1500, HI = 12000;
 }
 /* the campaign: eighteen rooms, a first walk of about four hours, then repeats at 40 % */
 {
-  let first = 0, again = 0;
-  Object.values(NODES).forEach(n => { first += roomPay(n, parOf(n) * 0.8, { first: true }).total; again += roomPay(n, parOf(n) * 0.8, {}).total; });
+  let first = 0, again = 0, uFirst = 0, uAgain = 0;
+  Object.values(NODES).forEach(n => {
+    const f = roomPay(n, parOf(n) * 0.8, { first: true }).total, a = roomPay(n, parOf(n) * 0.8, {}).total;
+    if (n.act === 2) { uFirst += f; uAgain += a; } else { first += f; again += a; }
+  });
   row('SWEEPER THE DESCENT', 'a first walk: eighteen rooms and six guardians in 4 hours', first / 4, 2000, 5000);
   row('SWEEPER THE DESCENT AGAIN', 'the same eighteen rooms again in 2.5 hours, at 40 %', again / 2.5, 800, 3000);
+  /* the Underdeep needs a build and many tries: nine rooms and three guardians, about eight hours the first time (most of it spent losing masks), a long afternoon again */
+  row('SWEEPER THE UNDERDEEP', 'a first walk: nine rooms and three guardians in 8 hours', uFirst / 8, 1500, 4500);
+  row('SWEEPER THE UNDERDEEP AGAIN', 'the same nine rooms again in 4 hours, at 40 %', uAgain / 4, 500, 2500);
   ok(SUN_PER_GEO === 4, 'SWEEPER: four SUN a geo');
 }
 
@@ -111,16 +117,19 @@ const LO = 1500, HI = 12000;
   ok(copied < all * 0.5 && SEEN_SHARE === 0.25, 'HOLYC.EXE: looking up every answer pays less than half');
 }
 
-/* THE LEDGER: every trophy pays once, by tier (100 / 350 / 1,200 SUN) and a seal 2,500, so the whole of it is a fixed sum that does not grow with playing. It used to pay 15 / 40 / 100,
-   which for a trophy that takes half an hour to five hours was nothing; now the ledger is the long road: more than the shelves, spread over hundreds of hours. Mirrors (the Cook's and Magen's own) pay nothing a second time. */
+/* THE LEDGER: every trophy pays once, by tier (15 / 40 / 100 SUN), a game's mastery seal and its completionist trophies far more (kernel/trophy_rewards.js: the whole of an app is
+   hours of play, so it is paid like hours of play), so the whole of it is a fixed sum that does not grow with playing. Mirrors (the Cook's and Magen's own) pay nothing a second time.
+   It is most of a shop's worth, spread over the life of the machine: the big sums are the ones that take a whole game to earn, never a first evening. */
 const LEDGER = (() => {
   const T = createTrophies({ read: () => null, write: () => {}, pay: () => {}, announce: () => {} });
   registerAll(T);
   const all = [...T.defs.values()].filter(d => !d.legacy);
-  return { n: all.length, sun: all.reduce((a, d) => a + d.pay, 0), top: Math.max(...all.map(d => d.pay)) };
+  const small = all.filter(d => d.pay <= 100);
+  return { n: all.length, sun: all.reduce((a, d) => a + d.pay, 0), top: Math.max(...all.map(d => d.pay)), small: small.reduce((a, d) => a + d.pay, 0), nSmall: small.length };
 })();
-ok(LEDGER.n > 350 && LEDGER.sun > 80000 && LEDGER.sun < 260000, 'the ledger is ' + LEDGER.n + ' trophies and ' + LEDGER.sun + ' SUN, between 80,000 and 260,000');
-ok(LEDGER.top <= 2500, 'no trophy pays more than the 2,500 of a mastery seal (' + LEDGER.top + ')');
+ok(LEDGER.n > 350 && LEDGER.sun > 100000 && LEDGER.sun < 160000, 'the ledger is ' + LEDGER.n + ' trophies and ' + LEDGER.sun + ' SUN, between 100,000 and 160,000');
+ok(LEDGER.top <= 25000, 'no trophy pays more than 25,000 (' + LEDGER.top + ')');
+ok(LEDGER.small > 8000 && LEDGER.small < 22000, 'the ordinary trophies (100 SUN or under, ' + LEDGER.nSmall + ' of them) stay a small slice of the shelves: ' + LEDGER.small + ' SUN');
 
 /* ---- the shop: what there is to buy, and how long it is to buy it ------------------------------------------------------------------ */
 {

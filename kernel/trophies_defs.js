@@ -1,6 +1,7 @@
 /* Every trophy there is, in one place: the machine's own (trophies_system*.js) and each app's own list (apps/<id>/trophies.js). The kernel only imports data. The game ids
    and names below are also what a mastery seal is made from. A new app with trophies is one import and one line in APPS. */
 import { SYSTEM_A } from './trophies_system.js';
+import { applyRewards, masteryPay } from './trophy_rewards.js';
 import { SYSTEM_B, META, GAMES, TOYS } from './trophies_system2.js';
 import { TROPHIES as SWEEPER, backfill as sweeperBackfill } from '../apps/sweeper/trophies.js';
 import { TROPHIES as SOLITAIRE, backfill as solitaireBackfill } from '../apps/solitaire/trophies.js';
@@ -48,6 +49,7 @@ export function registerAll(T) {
   APPS.forEach(a => T.register(a[0], a[2]));
   T.register('meta', META);
   /* a mastery for each game, and for HOLYC.EXE (a thing to be finished) */
-  T.finalize(GAMES.concat(['holyc']).map(id => ({ app: id, name: NAMES[id] })));
+  T.finalize(GAMES.concat(['holyc']).map(id => ({ app: id, name: NAMES[id] })), masteryPay);
+  applyRewards(T);
   void TOYS;
 }

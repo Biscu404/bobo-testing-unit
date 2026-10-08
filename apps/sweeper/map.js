@@ -2,7 +2,7 @@
    would draw it: ink on dark vellum, each region a hand-cut blot, rooms as
    little boxes joined by corridors, a pin where there is a bench, a skull
    where there is a guardian, and a ghost where you left your geo. */
-import { REGIONS, NODES, MODS, CHARM, SPELLS, SPELL_HINT, ROOMS, spellOpen } from './data.js';
+import { REGIONS, NODES, MODS, CHARM, SPELLS, SPELL_HINT, ROOMS, ROOMS_ALL, spellOpen, modName, REGIONS_OF, baseCount, underCount, underOpen } from './data.js';
 import { SUN_PER_GEO, FIRST, FIRST_GUARDIAN } from './pay.js';
 import { rng } from './gfx.js';
 import { mix, mask, vessel, geo, bench, skull, shade, notch } from './art.js';
@@ -15,7 +15,11 @@ export const regionOpen = (camp, rg) => rg.nodes.some(n => nodeOpen(camp, n));
 
 export function createMap(env) {
   const camp = env.camp;
-  const M = { sel: camp.last && NODES[camp.last] ? camp.last : firstOpen(camp), hits: [] };
+  const M = { sel: camp.last && NODES[camp.last] ? camp.last : firstOpen(camp), hits: [], page: 1 };
+  /* the map has two pages: the descent, and under it the Underdeep (opened by the Hollow One). It opens on the page of the last room you were in. */
+  M.page = M.sel && NODES[M.sel] && NODES[M.sel].act === 2 && underOpen(camp) ? 2 : 1;
+  const regs = () => REGIONS_OF(M.page);
+  const nodesHere = () => Object.keys(NODES).filter(id => NODES[id].act === M.page);
   const R = rng(4242), dots = Array.from({ length: 260 }, () => [R() * 960, R() * 640, R()]);
   const pos = id => id.indexOf('bench:') === 0 ? benchAt(id.slice(6)) : NODES[id].at;
   const benchAt = rid => REGIONS.find(r => r.id === rid).bench;
@@ -27,37 +31,48 @@ export function createMap(env) {
     /* the frame, doubled */
     G.R(8, 8, 944, 2, INK); G.R(8, 630, 944, 2, INK); G.R(8, 8, 2, 624, INK); G.R(950, 8, 2, 624, INK);
     G.R(14, 14, 932, 1, '#5d665f'); G.R(14, 625, 932, 1, '#5d665f'); G.R(14, 14, 1, 612, '#5d665f'); G.R(945, 14, 1, 612, '#5d665f');
-    header(G, camp, now);
-    REGIONS.forEach(rg => blob(G, rg, regionOpen(camp, rg)));
-    REGIONS.forEach(rg => rg.nodes.forEach(n => n.req.forEach(r => corridor(G, NODES[r].at, n.at, camp.cleared[r] != null))));
-    REGIONS.forEach(rg => { if (regionOpen(camp, rg)) benchPin(G, M, rg, camp, M.sel === 'bench:' + rg.id, now); });
-    REGIONS.forEach(rg => rg.nodes.forEach(n => room(G, M, n, camp, M.sel === n.id, now)));
-    compass(G, camp);
+    header(G, camp, now, M.page);
+    tabs(G, M, camp, now);
+    /* the Hollow One's room is the way down: on the Underdeep's page the corridor starts from the descent's last room, drawn at the edge */
+    regs().forEach(rg => blob(G, rg, regionOpen(camp, rg)));
+    regs().forEach(rg => rg.nodes.forEach(n => n.req.forEach(r => { if (NODES[r].act === M.page) corridor(G, NODES[r].at, n.at, camp.cleared[r] != null); else stairs(G, n.at, camp.cleared[r] != null); })));
+    regs().forEach(rg => { if (regionOpen(camp, rg)) benchPin(G, M, rg, camp, M.sel === 'bench:' + rg.id, now); });
+    regs().forEach(rg => rg.nodes.forEach(n => room(G, M, n, camp, M.sel === n.id, now)));
+    compass(G, camp, M.page);
     abilities(G, camp);
     card(G, M.sel, camp);
-    G.T('ARROWS: MOVE    ENTER: ENTER / REST    C: CHARMS    ESC: BACK', 480, 612, '#7d877f', 20, 'center');
+    G.T('ARROWS: MOVE    ENTER: ENTER / REST    C: CHARMS    TAB: THE OTHER PAGE    ESC: BACK', 480, 612, '#7d877f', 20, 'center');
   };
 
-  const open = id => id.indexOf('bench:') === 0 ? regionOpen(camp, REGIONS.find(r => r.id === id.slice(6))) : nodeOpen(camp, NODES[id]);
+  const turn = pg => {
+    if (pg === M.page) return;
+    if (pg === 2 && !underOpen(camp)) { env.snd.err(); return; }
+    M.page = pg; env.snd.click();
+    const here = nodesHere();
+    if (!M.sel || (M.sel.indexOf('bench:') === 0 ? !regs().some(r => r.id === M.sel.slice(6)) : !NODES[M.sel] || NODES[M.sel].act !== pg)) M.sel = here.find(id => nodeOpen(camp, NODES[id]) && camp.cleared[id] == null) || here[0];
+  };
+  const open = id => id.indexOf('page:') === 0 ? true : id.indexOf('bench:') === 0 ? regionOpen(camp, REGIONS.find(r => r.id === id.slice(6))) : nodeOpen(camp, NODES[id]);
   const go = id => {
+    if (id.indexOf('page:') === 0) { turn(+id.slice(5)); return; }
     if (!open(id)) { env.snd.err(); return; }
     env.snd.click();
     if (id.indexOf('bench:') === 0) env.openBench(id.slice(6)); else { camp.last = id; env.openRoom(NODES[id]); }
   };
   M.mouse = (type, ev, lx, ly) => {
     const h = M.hits.find(q => lx >= q.x && lx <= q.x + q.w && ly >= q.y && ly <= q.y + q.h);
-    if (type === 'move') { if (h && open(h.id)) M.sel = h.id; return; }
+    if (type === 'move') { if (h && h.id.indexOf('page:') !== 0 && open(h.id)) M.sel = h.id; return; }
     if (type === 'down' && h) { M.sel = h.id; go(h.id); }
   };
   M.key = ev => {
     const k = ev.key;
     if (k === 'Enter') { go(M.sel); return true; }
     if (k === 'c' || k === 'C') { env.openBench(camp.bench); return true; }
+    if (k === 'Tab') { turn(M.page === 1 ? 2 : 1); return true; }
     const dir = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[k];
     if (!dir) return false;
     const [cx, cy] = pos(M.sel);
     let best = null, bd = 1e9;
-    const ids = Object.keys(NODES).concat(REGIONS.map(r => 'bench:' + r.id)).filter(i => i !== M.sel && open(i));
+    const ids = nodesHere().concat(regs().map(r => 'bench:' + r.id)).filter(i => i !== M.sel && open(i));
     ids.forEach(i => {
       const [x, y] = pos(i), dx = x - cx, dy = y - cy, along = dx * dir[0] + dy * dir[1];
       if (along <= 4) return;
@@ -76,8 +91,8 @@ function firstOpen(camp) {
   return 'stair';
 }
 
-function header(G, camp, now) {
-  G.T('THE SUNKEN KINGDOM', 480, 52, '#e8e2d4', 46, 'center');
+function header(G, camp, now, page) {
+  G.T(page === 2 ? 'THE UNDERDEEP' : 'THE SUNKEN KINGDOM', 480, 52, '#e8e2d4', 46, 'center');
   G.R(300, 62, 360, 2, INK); G.R(468, 58, 24, 10, VELLUM); G.R(474, 60, 12, 6, INK);
   vessel(G, 56, 52, 22, camp.soul / 99, now);
   for (let i = 0; i < camp.maxHp; i++) mask(G, 94 + i * 30, 24, 2.6, i < camp.hp ? 'full' : 'empty');
@@ -130,8 +145,25 @@ function benchPin(G, M, rg, camp, sel, now) {
   if (sel) { G.R(x - 15, y - 11, 30, 2, '#fff'); G.R(x - 15, y + 9, 30, 2, '#fff'); }
   M.hits.push({ id: 'bench:' + rg.id, x: x - 16, y: y - 12, w: 32, h: 24 });
 }
-function compass(G, camp) {
-  const x = 70, y = 520, found = Object.keys(camp.perfect || {}).length;
+/* the two pages as tabs under the title; the second is locked until the Hollow One is still */
+function tabs(G, M, camp, now) {
+  [[1, 'THE DESCENT', 300], [2, 'THE UNDERDEEP', 482]].forEach(([pg, label, x]) => {
+    const on = M.page === pg, locked = pg === 2 && !underOpen(camp), w = 178, y = 74;
+    G.R(x, y, w, 24, on ? '#26324f' : '#0b0e14'); G.R(x, y, w, 2, on ? '#fff' : locked ? '#3a423c' : INK);
+    G.T(locked ? 'LOCKED' : label, x + w / 2, y + 18, on ? '#fff' : locked ? '#6a746d' : INK, 18, 'center');
+    if (pg === 2 && !locked && !on && Math.sin(now / 350) > 0 && camp.cleared.hollow != null && underCount(camp.cleared) === 0) G.R(x + w - 10, y + 6, 6, 6, '#ffd68c');
+    M.hits.push({ id: 'page:' + pg, x, y, w, h: 24 });
+  });
+}
+/* a stair down from the descent, at the left edge of the Underdeep's page */
+function stairs(G, to, done) {
+  const c = done ? '#b9c4bd' : '#6a746d', x1 = MX + to[0], y1 = MY + to[1];
+  G.R(MX + 4, y1 - 1, Math.max(0, x1 - MX - 4), 3, c);
+  for (let i = 0; i < 4; i++) G.R(MX + 4 + i * 5, y1 - 14 + i * 5, 10, 3, c);
+  G.T('THE STAIR', MX + 4, y1 - 26, c, 16);
+}
+function compass(G, camp, page) {
+  const x = 70, y = 520, found = baseCount(camp.perfect);
   G.R(x - 1, y - 28, 3, 56, INK); G.R(x - 28, y - 1, 56, 3, INK);
   G.R(x - 6, y - 6, 12, 12, VELLUM); G.R(x - 3, y - 3, 6, 6, INK);
   G.T('N', x, y - 34, INK, 20, 'center');
@@ -162,8 +194,8 @@ function card(G, sel, camp) {
   const n = NODES[sel], rg = REGIONS.find(r => r.id === n.region);
   G.T(n.name, 676, 490, n.boss ? '#ffb0a0' : '#e8e2d4', 26);
   G.T(rg.name + (n.boss ? '  / GUARDIAN' + (n.shard ? ' + SHARD' : '') : ''), 676, 512, rg.pal.ink, 18);
-  G.T(n.c + ' x ' + n.r + '   ' + n.m + ' LARVAE', 676, 536, '#cfd8e0', 20);
-  G.T(n.mod ? MODS[n.mod].name : 'PLAIN GROUND', 676, 558, n.mod ? rg.pal.glow : '#8794aa', 20);
+  G.T(n.c + ' x ' + n.r + '   ' + n.m + ' LARVAE' + (n.hit > 1 ? '   -' + n.hit + ' / HIT' : ''), 676, 536, '#cfd8e0', 20);
+  G.T(n.mod ? modName(n) : 'PLAIN GROUND', 676, 558, n.mod ? rg.pal.glow : '#8794aa', n.mod && modName(n).length > 22 ? 16 : 20);
   const best = camp.cleared[n.id];
   const sun = n.geo * SUN_PER_GEO + (n.boss ? FIRST_GUARDIAN : FIRST);
   G.T(best != null ? 'BEST ' + best + 's' + (camp.perfect[n.id] != null ? '  PERFECT ' + camp.perfect[n.id] + 's' : '') : 'PAYS ' + n.geo + ' GEO  ' + sun + ' SUN', 676, 582, best != null ? (camp.perfect[n.id] != null ? '#ffd68c' : '#9fe0ff') : '#f2e2b0', 20);

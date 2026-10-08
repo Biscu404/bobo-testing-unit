@@ -1,10 +1,15 @@
-/* The trophy card, and the little cup on the taskbar. A trophy gets a card of its own, not the one-line toast that file operations share: anchored over the taskbar at the right
+/* THE CARD IS OVER THE APP. It is anchored inside the window you are using (its bottom-right corner, above everything else on the machine: windows, menus and the
+   taskbar are all under it), and it comes the moment the trophy does, in a run, a fight or a bench as well: while a run is on (`hold`) it is the compact kind (the name and the
+   SUN, no description) and it takes no clicks, so it can never be in the way of the game under it; the full card is for when you are free to read it. It used to wait for the
+   end of the run, so a trophy never seemed to arrive where you were.
+   The trophy card, and the little cup on the taskbar. A trophy gets a card of its own, not the one-line toast that file operations share: anchored over the taskbar at the right
    (beside the SUN counter), 4.2 seconds, a frame in the tier's colour, the cup, the name, the exact condition, and the SUN. One card at a time, up to four waiting; more than four
    fold into one card that says how many. A trophy is recorded the instant it happens; only the card waits, while a run, a fight, a blackout or the boot is on (`hold`), and is shown
    on release (or three seconds after the end screen). A joke is allowed to interrupt, because that is the joke. The sound is a figure on the SFX bus (silent at SFX 0): three rising
    notes of C major pentatonic for bronze, four for silver, four and a shimmer for gold; a lower, slower figure for a secret; the style meter's top chord (C6 G6 C7 G7) for a seal.
    `prefers-reduced-motion`: no slide and no sparkle, the card appears and goes. The card is an aria-live region and says its tier aloud. */
 import { cup, wearOf, TIER_NAME } from '../apps/trophy_art.js';
+import { openWins } from './wm.js';
 
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
 const SHOW_MS = 4200, GAP_MS = 350, MAX_WAIT = 4;
@@ -31,6 +36,17 @@ export function makeToast(T, o) {
   T.sound = sound;
 
   /* ---- the card ----------------------------------------------------------------------------------------------------------------- */
+  /* over the window in use: its bottom-right corner, inset; with none open, the corner of the desktop it always was */
+  function place() {
+    if (!host) return;
+    const shell = document.getElementById('shell'); if (!shell) return;
+    const act = openWins.find(r => r.btn.classList.contains('active') && !r.win.classList.contains('hidden'));
+    const sr = shell.getBoundingClientRect(), k = shell.offsetWidth ? sr.width / shell.offsetWidth : 1;
+    if (!act) { host.style.right = '8px'; host.style.bottom = '32px'; host.style.left = ''; host.style.top = ''; return; }
+    const wr = act.win.getBoundingClientRect(), W = Math.min(host.offsetWidth || 360, 360);
+    const right = Math.max(8, (sr.right - wr.right) / k + 12), bottom = Math.max(30, (sr.bottom - wr.bottom) / k + 12);
+    host.style.left = ''; host.style.top = ''; host.style.right = Math.round(Math.min(right, shell.offsetWidth - W - 8)) + 'px'; host.style.bottom = Math.round(bottom) + 'px';
+  }
   function ensure() {
     if (host && host.isConnected) return host;
     const shell = document.getElementById('shell'); if (!shell) return null;
@@ -53,8 +69,11 @@ export function makeToast(T, o) {
   }
   function show(d, extra) {
     const h = ensure(); if (!h) return;
+    if (!extra && d.reward && d.reward.length) extra = 'REWARD: ' + d.reward.map(r => r.name).join(', ') + '  (ON DAVE\'S SHELVES)';
     clearTimeout(timer);
     h.innerHTML = ''; cur = paint(d, extra); h.appendChild(cur);
+    h.classList.toggle('held', T.held() > 0);                       /* mid-run: compact, and no clicks */
+    place();
     sound(d);
     timer = setTimeout(() => hide(false), SHOW_MS);
   }
@@ -65,7 +84,6 @@ export function makeToast(T, o) {
   }
   function next() {
     if (cur || !waiting.length) return;
-    if (T.held() > 0) { const j = waiting.findIndex(id => T.get(id) && T.get(id).kind === 'joke'); if (j < 0) return; const id = waiting.splice(j, 1)[0]; return setTimeout(() => show(T.get(id)), GAP_MS); }
     if (waiting.length > MAX_WAIT) {
       const n = waiting.length; waiting = [];
       show({ id: 'many', name: n + ' TROPHIES', desc: 'Open TROPHIES.EXE to see them.', tier: 'S', kind: 'meta', pay: 0 }); return;

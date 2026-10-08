@@ -16,7 +16,8 @@ export function won(S, secs, o) {
       if (S.lv.id === 'h') TR.streak('deepWins', true);
     } else {
       TR.max('clearedRooms', o.cleared);
-      if (S.mod) TR.mark('mods', S.mod);
+      if (o.under != null) TR.max('underRooms', o.under);
+      (S.mods || []).forEach(m => { if (m !== 'cold') TR.mark('mods', m); });
       if (o.perfect) TR.mark('perfectRooms', S.node.id);
       (c.equipped || []).forEach(id => TR.mark('charmWins', id));
     }
@@ -24,7 +25,7 @@ export function won(S, secs, o) {
     TR.emit('win', {
       classic: classic, lv: classic ? S.lv.id : null, node: S.node ? S.node.id : null, secs: secs, par: classic ? S.lv.par : parOf(S.node),
       flags: S.flagsPlaced, boss: !!(S.node && S.node.boss), maskLoss: S.maskLoss, hits: S.hits, spells: S.spells, learnt: o.learntBefore || 0,
-      hpLeft: S.hp, mod: S.mod, charms: c ? c.equipped.slice() : [], webBlocks: S.webBlocks, shadeFound: !!o.shadeFound,
+      hpLeft: S.hp, mod: S.mod, mods: S.mods || [], act: S.node ? S.node.act : 0, charms: c ? c.equipped.slice() : [], webBlocks: S.webBlocks, shadeFound: !!o.shadeFound,
       shards: c ? c.shards : 0, perfect: !!o.perfect, owned: c ? c.owned.length : 0
     });
     if (o.compass) { TR.emit('compass', {}); TR.emit('bench', { owned: c.owned.length }); }

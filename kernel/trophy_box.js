@@ -1,6 +1,6 @@
 /* The trophy box is handed over by the first big trophy: a gold one, or a game's mastery seal. It arrives as an icon on the desktop (an app record, `::/TrophyBox`), once ever --
    if you throw it away it is yours to put back from the bin, it does not come again. The big trophies are then cups inside it (apps/trophybox), and the ones you have left
-   out on the desktop are brought back at boot (kernel/trophy_props.js). */
+   out on the desktop are brought back at boot (kernel/trophy_drop.js). */
 import { fs } from './vfs.js';
 import { toast } from './wm.js';
 
@@ -19,6 +19,6 @@ export async function startBox(T) {
   const have = () => T.earnedList(big).length > 0;
   if (!given() && have()) await hand(true);
   window.addEventListener('trophy-earned', ev => { const d = ev.detail && T.get(ev.detail.id); if (d && big(d) && !given()) hand(false); });
-  const props = await import('./trophy_props.js');
+  const props = await import('./trophy_drop.js');
   props.TrophyProps.boot();
 }

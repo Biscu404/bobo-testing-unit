@@ -58,6 +58,7 @@ export default {
       const winL = scopedListeners(cv);
       cv.width = Math.round(420 * RES); cv.height = Math.round(320 * RES);
       cv.className = 'gamecv ckcv';
+      cv.dataset.fit = 'fit';
       cv.tabIndex = 0;
       wrap.appendChild(cv);
 

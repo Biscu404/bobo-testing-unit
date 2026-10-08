@@ -14,7 +14,7 @@ import { petIcons, petMoveIcon } from './desktop.js';
 import { openWindow, openWins } from './wm.js';
 import { dressed as trophyDressed, event as trophy } from '../apps/elephant/trophy_calls.js';
 import { ELEPHANT } from './cos_data.js';
-import { guestLine, pickFrom, ENTER, LEAVE, CHEER, POKE } from './pet_guest.js';
+import { pickTarget, VISIT_RATE, ENTER, WATCH, CHEER, BIG_CHEER, NAP, LEAVE, FOLLOW, OUT_WHEN_SHUT } from './pet_visit.js';
 import { LINES, PUSH_LINES, GOODBYES_DAY, GOODBYES_NIGHT, WAKES, WAKES_NEAR, HOME_LINES, DOOR_LINES, choose } from './pet_lines.js';
 
 const KEY = 'templeos.pet.v1', S = 2, SW = MINI_W * S, SH = MINI_H * S, FOOT = 56 * S;
@@ -27,17 +27,16 @@ let st = { out: false, wear: {}, x: 200, y: 260, last: null };
 try { st = Object.assign(st, JSON.parse(localStorage.getItem(KEY)) || {}); st.wear = st.wear || {}; } catch (e) { /* a fresh one */ }
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ out: st.out, wear: st.wear, x: Math.round(P.x), y: Math.round(P.y), last: st.last })); } catch (e) {} };
 
-const P = { x: st.x, y: st.y, dir: 1, mode: 'idle', t: 0, wait: 2, to: null, job: null, say: 0, lastPush: 0, down: null, near: false, jump: null, step: 0, snore: 0 };
-let el = null, cv = null, g = null, bub = null, raf = null, last = 0, drawAt = 0, ptr = { x: -999, y: -999 }, raw = { x: -9999, y: -9999 }, hooked = false;
-/* A guest: carried into an app's window he stands in it (coordinates are the window's own), walks about inside it, has words for the app,
-   answers a poke, and when the window closes he is put back on the desktop where it was. Never saved: a launch starts him on the desk. */
-let host = null, hostApp = null, hostWatch = null, lastGuest = '';
+const P = { k: 2, x: st.x, y: st.y, dir: 1, mode: 'idle', t: 0, wait: 2, to: null, job: null, say: 0, lastPush: 0, down: null, near: false, jump: null, step: 0, snore: 0 };
+/* a visit: he is inside the window `rec` (V.x, V.y are his top-left inside its frame), at one pixel to the pixel */
+const V = { rec: null, x: 0, y: 0, to: null, sub: 'idle', t: 0, wait: 0, follow: 0, abs: null, look: 0 };
+let el = null, cv = null, g = null, bub = null, raf = null, last = 0, drawAt = 0, ptr = { x: -999, y: -999 }, hooked = false;
 const subs = [];
 const desk = () => document.getElementById('desktop');
 const owned = () => !!(window.Cos && window.Cos.has('elephant', 'pet'));
 const tell = () => { subs.forEach(f => { try { f(); } catch (e) {} }); wardrobeNow(); };
 /* the trophies ask what he wears and what is owned whenever either may have changed */
-function wardrobeNow() { try { const all = ELEPHANT.filter(i => i.slot !== 'free').every(i => window.Cos && window.Cos.has('elephant', i.id)); trophyDressed(st.wear, all); } catch (e) { /* never into the desk */ } }
+function wardrobeNow() { try { const all = ELEPHANT.filter(i => i.slot !== 'free' && !i.reward).every(i => window.Cos && window.Cos.has('elephant', i.id)); trophyDressed(st.wear, all); } catch (e) { /* never into the desk */ } }
 const snd = (...a) => { try { window.Snd.tone(...a); } catch (e) {} };
 const pick = a => a[Math.floor(Math.random() * a.length)];
 
@@ -61,13 +60,13 @@ function speak(txt, secs) {
 }
 
 /* ---- the world he walks in ----------------------------------------------------------------------------------------------- */
-const room = () => { const d = host || desk(); return { w: d ? d.clientWidth : 800, h: d ? d.clientHeight : 600 }; };
-const origin = () => (host || desk()).getBoundingClientRect();
+const room = () => { const d = desk(); return { w: d ? d.clientWidth : 800, h: d ? d.clientHeight : 600 }; };
 const clampX = x => { const { w } = room(); return Math.max(-20, Math.min(w - SW + 20, x)); };
 const clampY = y => { const { h } = room(); return Math.max(30, Math.min(h - SH - 4, y)); };
 const goTo = (x, y, why) => { P.to = { x: clampX(x), y: clampY(y) }; P.mode = 'walk'; P.job = why || null; };
 
 function pose() {
+  if (P.mode === 'visit') return V.sub === 'walk' ? 'walk' : V.sub === 'cheer' ? 'hop' : V.sub === 'nap' ? 'sleep' : 'stand';
   if (P.mode === 'sleep') return 'sleep';
   if (P.mode === 'push') return 'push';
   if (P.mode === 'walk' || P.mode === 'home') return 'walk';
@@ -88,8 +87,7 @@ function goodbye() {
   snd(330, 420, { type: 'triangle', to: 196, vol: 0.016 });
 }
 function sleep() { trophy('sleep'); P.mode = 'sleep'; P.t = 0; P.wait = 25 + Math.random() * 45; P.snore = 1; speak('...', 1.6); }
-function guestSay() { const t = guestLine(hostApp, lastGuest); lastGuest = t; return t; }
-function talk() { P.mode = 'talk'; P.t = 0; P.wait = 5.6; speak(host ? guestSay() : line(LINES)); }
+function talk() { P.mode = 'talk'; P.t = 0; P.wait = 5.6; speak(line(LINES)); }
 function hop() { P.mode = 'hop'; P.t = 0; P.wait = 0.9; snd(660, 50, { type: 'triangle', to: 880, vol: 0.02 }); }
 function pushIcon() {
   const list = petIcons();
@@ -98,9 +96,105 @@ function pushIcon() {
   P.lastPush = performance.now();
   goTo(ic.x - SW + 34, ic.y + ICON_H - FOOT - 2, { kind: 'push', name: ic.name, ix: ic.x, iy: ic.y });
 }
+/* ---- going to where you are (kernel/pet_visit.js is who, and what he says) -------------------------------------------------------- */
+const MW = () => MINI_W * P.k, MH = () => MINI_H * P.k;
+function setScale(k) {
+  P.k = k;
+  if (!el) return;
+  el.style.width = cv.style.width = MW() + 'px'; el.style.height = cv.style.height = MH() + 'px';
+}
+function recAbs(rec) {
+  const d = desk();
+  if (!d || !rec || !rec.win.isConnected) return null;
+  const r = rec.win.getBoundingClientRect(), o = d.getBoundingClientRect(), bar = rec.win.querySelector('.titlebar');
+  return { x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height, th: bar ? bar.offsetHeight : 20 };
+}
+const winsNow = () => openWins.map(r => ({ appId: r.appId, hidden: r.win.classList.contains('hidden'), active: r.btn.classList.contains('active'), z: +r.win.style.zIndex || 0, rec: r }));
+const visitTarget = () => { const t = pickTarget(winsNow()); return t ? t.rec : null; };
+const poolFor = (table, appId) => (table[appId] || []).concat(table._ || []);
+function startVisit(rec) {
+  const r = recAbs(rec);
+  if (!r) return wander();
+  const { w } = room(), mid = P.x + SW / 2;
+  const fits = side => side < 0 ? r.x - SW >= -20 : r.x + r.w + SW <= w + 20;
+  let side = mid < r.x + r.w / 2 ? -1 : 1;
+  if (!fits(side) && fits(-side)) side = -side;
+  const job = { kind: 'visit', rec: rec, side: side };
+  /* a window as wide as the desk has no outside to walk round to: straight in */
+  if (!fits(-1) && !fits(1)) { P.job = job; return enterWindow(rec, side); }
+  const feet = Math.max(r.y + r.th + 40, Math.min(r.y + r.h - 12, P.y + FOOT));
+  goTo(side < 0 ? r.x - SW + 4 : r.x + r.w - 4, feet - FOOT, job);
+}
+function enterWindow(rec, side) {
+  const r = recAbs(rec);
+  if (!r || !el || rec.win.classList.contains('hidden')) { P.mode = 'idle'; P.t = 0; P.wait = 2; P.job = null; return; }
+  V.rec = rec; V.follow = 0; V.to = null; V.sub = 'idle'; V.t = 0; V.wait = 1.4;
+  setScale(1);
+  V.x = side < 0 ? 6 : r.w - MINI_W - 6; V.y = Math.max(r.th + 4, r.h - MINI_H - 8);
+  P.mode = 'visit'; P.job = null; P.dir = side < 0 ? 1 : -1;
+  el.style.pointerEvents = 'none';                     /* he is over the app now: a click goes through him to what you are playing */
+  speak(line(poolFor(ENTER, rec.appId)), 4.5);
+  snd(262, 90, { type: 'triangle', to: 392, vol: 0.016 });
+}
+function leaveVisit(say) {
+  if (!V.rec) return;
+  const a = V.abs || { x: P.x, y: P.y };
+  V.rec = null; V.sub = 'idle';
+  setScale(2);
+  if (el) { el.style.pointerEvents = ''; el.style.zIndex = ''; }
+  if (bub) bub.style.zIndex = '';
+  P.x = a.x + MINI_W / 2 - SW / 2; P.y = a.y + 56 - FOOT;
+  P.mode = 'idle'; P.t = 0; P.wait = 1 + Math.random() * 2; P.job = null;
+  if (say) speak(line(say), 3.6);
+}
+function visitAction(r) {
+  const late = lateHour();
+  const w = [['walk', 5], ['say', 3.2], ['nap', late ? 3 : 0.35], ['hop', 0.7], ['stay', 2]];
+  let x = Math.random() * w.reduce((a, b) => a + b[1], 0), c = 'stay';
+  for (const [k, v] of w) { if ((x -= v) < 0) { c = k; break; } }
+  V.t = 0;
+  if (c === 'walk') {
+    V.to = { x: 4 + Math.random() * Math.max(0, r.w - MINI_W - 8), y: Math.max(r.th + 4, r.h - MINI_H - 8 - (Math.random() < 0.3 ? Math.random() * Math.max(0, r.h * 0.35) : 0)) };
+    V.sub = 'walk';
+  } else if (c === 'say') { V.sub = 'idle'; V.wait = 5.5; speak(line(poolFor(WATCH, V.rec.appId)), 5); }
+  else if (c === 'nap') { V.sub = 'nap'; V.wait = 18 + Math.random() * 30; speak(line(NAP), 3.6); }
+  else if (c === 'hop') { V.sub = 'cheer'; V.wait = 0.9; snd(660, 50, { type: 'triangle', to: 880, vol: 0.014 }); }
+  else { V.sub = 'idle'; V.wait = 3 + Math.random() * 5; }
+}
+function visitTick(dt) {
+  const rec = V.rec, r = recAbs(rec);
+  if (!r || rec.win.classList.contains('hidden')) return leaveVisit(r ? null : OUT_WHEN_SHUT);
+  V.t += dt;
+  const tgt = visitTarget();
+  if (tgt && tgt !== rec) { V.follow += dt; if (V.follow > 3.5) { leaveVisit(FOLLOW); startVisit(tgt); return; } } else V.follow = 0;
+  if (V.sub === 'walk' && V.to) {
+    const dx = V.to.x - V.x, dy = V.to.y - V.y, d = Math.hypot(dx, dy);
+    if (d < 2) { V.sub = 'idle'; V.t = 0; V.wait = 2 + Math.random() * 5; V.to = null; }
+    else { V.x += dx / d * 30 * dt; V.y += dy / d * 30 * dt * 0.7; if (Math.abs(dx) > 1) P.dir = dx > 0 ? 1 : -1; }
+  } else if (V.t > V.wait) {
+    if (V.sub === 'nap') { V.sub = 'idle'; V.t = 0; V.wait = 1.5; speak('...back. what did i miss', 2.6); }
+    else visitAction(r);
+  }
+  V.x = Math.max(4, Math.min(r.w - MINI_W - 4, V.x)); V.y = Math.max(r.th + 2, Math.min(r.h - MINI_H - 2, V.y));
+  P.x = r.x + V.x; P.y = r.y + V.y; V.abs = { x: P.x, y: P.y };
+  const z = (+rec.win.style.zIndex || 100) + 1;
+  el.style.zIndex = z; if (bub) bub.style.zIndex = z + 1;
+}
+/* a trophy is earned while he is in the window: the card slides over the app, and he hops (a big one, a seal, a gold, makes him need a moment) */
+try {
+  window.addEventListener('trophy-earned', ev => {
+    if (P.mode !== 'visit' || !el) return;
+    const d = ev.detail || {};
+    V.sub = 'cheer'; V.t = 0; V.wait = 1.6;
+    speak(line(d.mastery || d.tier === 'G' ? BIG_CHEER : CHEER), 4.4);
+    snd(523, 90, { type: 'triangle', to: 784, vol: 0.02 });
+  });
+} catch (e) { /* no window */ }
+
 function think() {
   const sleepy = lateHour();
-  const canPush = !host && performance.now() - P.lastPush > 150000 && petIcons().length > 2;
+  { const tgt = visitTarget(); if (tgt && Math.random() < VISIT_RATE * (sleepy ? 0.6 : 1)) return startVisit(tgt); }
+  const canPush = performance.now() - P.lastPush > 150000 && petIcons().length > 2;
   const w = [['walk', 5], ['sleep', sleepy ? 6 : 1.4], ['talk', 2.2], ['push', canPush ? 1.4 : 0], ['hop', 0.7], ['stay', 1.5]];
   let r = Math.random() * w.reduce((a, b) => a + b[1], 0), c = 'stay';
   for (const [k, v] of w) { if ((r -= v) < 0) { c = k; break; } }
@@ -115,7 +209,6 @@ function tick(ts) {
   const dt = Math.min(0.1, (ts - (last || ts)) / 1000);
   last = ts;
   P.t += dt;
-  { const o = origin(); ptr = { x: raw.x - o.left, y: raw.y - o.top }; }
   if (P.say > 0) { P.say -= dt; if (P.say <= 0 && bub) bub.style.display = 'none'; }
 
   if (P.mode === 'walk' || P.mode === 'home') {
@@ -140,15 +233,20 @@ function tick(ts) {
     else if (P.t > P.wait) { P.mode = 'idle'; P.t = 0; P.wait = 1.5; speak(line(WAKES), 3.2); }
   } else if (P.mode === 'goodbye') {
     if (P.t > P.wait) sleep();
+  } else if (P.mode === 'visit') {
+    visitTick(dt);
   } else if (P.mode === 'idle' || P.mode === 'talk' || P.mode === 'hop') {
+    /* every few seconds, if there is a window in use, go and see it (he does not wait for his next big decision) */
+    V.look += dt;
+    if (V.look > 3) { V.look = 0; const tgt = visitTarget(); if (tgt && P.t > 0.8 && Math.random() < 0.55) { startVisit(tgt); return; } }
     if (P.t > P.wait) think();
   }
   if (!el) return;                                   /* he went in on this very frame */
-  if (P.mode !== 'carried') { P.x = clampX(P.x); P.y = clampY(P.y); }
+  if (P.mode !== 'carried' && P.mode !== 'visit') { P.x = clampX(P.x); P.y = clampY(P.y); }
 
   el.style.transform = 'translate(' + Math.round(P.x) + 'px,' + Math.round(P.y) + 'px)';
   cv.style.transform = P.dir < 0 ? 'scaleX(-1)' : '';
-  if (bub && bub.style.display !== 'none') bub.style.transform = 'translate(' + Math.round(Math.min(room().w - 240, Math.max(4, P.x + SW / 2 - 40))) + 'px,' + Math.round(Math.max(2, P.y + 6 - bubH)) + 'px)';
+  if (bub && bub.style.display !== 'none') bub.style.transform = 'translate(' + Math.round(Math.min(room().w - 240, Math.max(4, P.x + MW() / 2 - 40))) + 'px,' + Math.round(Math.max(2, P.y + 6 - bubH)) + 'px)';
   if (ts - drawAt > 80) { drawAt = ts; drawMini(g, { pose: pose(), t: ts / 1000, wear: st.wear, think: P.mode === 'talk' }); }
 }
 
@@ -165,6 +263,7 @@ function arrive() {
     }
     vanish(); return;
   }
+  if (j && j.kind === 'visit') { enterWindow(j.rec, j.side); return; }
   if (j && j.kind === 'push') { P.dir = 1; P.mode = 'push'; P.t = 0; snd(120, 90, { type: 'triangle', to: 90, vol: 0.03 }); return; }
   P.mode = 'idle'; P.t = 0; P.wait = 1.5 + Math.random() * 4; P.job = null; save();
 }
@@ -185,7 +284,7 @@ function wire() {
   });
   el.addEventListener('pointermove', ev => {
     const d = P.down; if (!d) return;
-    if (!d.moved && Math.hypot(ev.clientX - d.px, ev.clientY - d.py) > 5) { d.moved = true; leaveHost(true); el.style.zIndex = 9000; bub.style.zIndex = 9001; P.mode = 'carried'; P.job = null; speak('oh. put me down gently, pal. there we go', 3); snd(300, 60, { type: 'triangle', vol: 0.02 }); }
+    if (!d.moved && Math.hypot(ev.clientX - d.px, ev.clientY - d.py) > 5) { d.moved = true; P.mode = 'carried'; P.job = null; speak('oh. put me down gently, pal. there we go', 3); snd(300, 60, { type: 'triangle', vol: 0.02 }); }
     if (d.moved) {
       const r = desk().getBoundingClientRect();
       P.x = ev.clientX - r.left - SW / 2; P.y = ev.clientY - r.top - SH / 2;
@@ -195,16 +294,9 @@ function wire() {
     const d = P.down; if (!d) return;
     P.down = null;
     try { el.releasePointerCapture(ev.pointerId); } catch (e) { /* already let go */ }
-    if (d.moved) {
-      trophy('picked-up'); el.style.zIndex = ''; bub.style.zIndex = '';
-      const into = winAt(ev.clientX, ev.clientY);
-      if (into) { enterHost(into, ev.clientX, ev.clientY); return; }
-      P.x = clampX(P.x); P.y = clampY(P.y); P.mode = 'hop'; P.t = 0; P.wait = 0.8; speak('thank you, friend', 2.5); save(); return;
-    }
+    if (d.moved) { trophy('picked-up'); P.x = clampX(P.x); P.y = clampY(P.y); P.mode = 'hop'; P.t = 0; P.wait = 0.8; speak('thank you, friend', 2.5); save(); return; }
     if (P.mode === 'sleep') { P.mode = 'idle'; P.t = 0; P.wait = 2; speak('i wasn\'t asleep. i was thinking', 3.5); return; }
-    trumpet(); hop();
-    if (host) { try { host.dispatchEvent(new CustomEvent('pet-poke', { detail: { appId: hostApp } })); } catch (e) { /* the app has no ears */ } speak(Math.random() < 0.35 ? pickFrom(POKE) : guestSay(), 4.5); return; }
-    speak(Math.random() < 0.4 ? 'hello, friend' : line(LINES), 4.5);
+    trumpet(); hop(); speak(Math.random() < 0.4 ? 'hello, friend' : line(LINES), 4.5);
   };
   el.addEventListener('pointerup', end);
   el.addEventListener('pointercancel', end);
@@ -214,58 +306,13 @@ function wire() {
       { label: 'SAY SOMETHING', run: () => { P.job = null; talk(); } },
       { label: 'LIE DOWN', run: () => { P.job = null; goodbye(); } },
       { label: 'TRUMPET', run: () => { trumpet(); hop(); } },
-      { label: 'PUT THE LAST ICON BACK', off: !st.last || !!host, run: () => Pet.putBack() },
-      ...(host ? [{ label: 'BACK TO THE DESKTOP', run: () => leaveHost(false) }] : []),
+      { label: 'PUT THE LAST ICON BACK', off: !st.last, run: () => Pet.putBack() },
       { sep: true },
       { label: 'GO BACK INSIDE', run: () => Pet.home() }
     ]);
   });
 }
 function trumpet() { snd(196, 380, { type: 'sawtooth', to: 392, vol: 0.03 }); snd(392, 300, { type: 'triangle', delay: 0.16, vol: 0.03 }); }
-
-/* ---- guest of an app ------------------------------------------------------------------------------------------------------------ */
-/* the open window under a point (not his own window, not a minimised one), topmost first */
-function winAt(x, y) {
-  const stack = document.elementsFromPoint(x, y);
-  for (const n of stack) {
-    const w = n.closest && n.closest('#desktop .win');
-    if (!w || w.classList.contains('hidden') || w.style.display === 'none') continue;
-    const rec = openWins.find(r => r.win === w);
-    if (rec && rec.appId === 'elephant') continue;
-    return { win: w, appId: rec ? rec.appId : null };
-  }
-  return null;
-}
-function enterHost(into, cx, cy) {
-  const o = into.win.getBoundingClientRect();
-  host = into.win; hostApp = into.appId;
-  into.win.appendChild(el); into.win.appendChild(bub);
-  el.classList.add('guest'); bub.classList.add('guest');
-  P.x = cx - o.left - SW / 2; P.y = cy - o.top - SH / 2;
-  P.x = clampX(P.x); P.y = clampY(P.y);
-  P.mode = 'hop'; P.t = 0; P.wait = 1; P.job = null;
-  speak(Math.random() < 0.5 ? pickFrom(ENTER) : guestSay(), 4);
-  clearInterval(hostWatch);
-  hostWatch = setInterval(() => { if (!host || !document.body.contains(host)) leaveHost(false, true); }, 400);
-  save();
-}
-/* back on the desktop: where he stands now, or (the window is gone) where it was */
-function leaveHost(carried, closed) {
-  if (!host) return;
-  const d = desk(), o = d.getBoundingClientRect();
-  let ax = raw.x - o.left - SW / 2, ay = raw.y - o.top - SH / 2;
-  if (!carried) {
-    const h = host.isConnected ? host.getBoundingClientRect() : null;
-    if (h) { ax = h.left - o.left + P.x; ay = h.top - o.top + P.y; }
-    else { ax = Math.max(0, Math.min(d.clientWidth - SW, P.x + 80)); ay = P.y; }
-  }
-  host = null; hostApp = null; clearInterval(hostWatch); hostWatch = null;
-  el.classList.remove('guest'); bub.classList.remove('guest');
-  d.appendChild(el); d.appendChild(bub);
-  P.x = ax; P.y = ay;
-  if (!carried) { P.x = clampX(P.x); P.y = clampY(P.y); P.mode = 'hop'; P.t = 0; P.wait = 1; speak(pickFrom(LEAVE), 3.5); save(); }
-}
-window.addEventListener('trophy-earned', () => { if (host && el && P.mode !== 'carried') { hop(); speak(pickFrom(CHEER), 3.5); } });
 
 /* ---- coming and going ------------------------------------------------------------------------------------------------------------ */
 function build() {
@@ -278,11 +325,11 @@ function build() {
   bub = document.createElement('div'); bub.id = 'petsay';
   d.appendChild(el); d.appendChild(bub);
   wire();
-  if (!hooked) { hooked = true; document.addEventListener('mousemove', ev => { raw = { x: ev.clientX, y: ev.clientY }; }); }
+  if (!hooked) { hooked = true; document.addEventListener('mousemove', ev => { const r = desk().getBoundingClientRect(); ptr = { x: ev.clientX - r.left, y: ev.clientY - r.top }; }); }
   last = 0; raf = requestAnimationFrame(tick);
 }
 function vanish() {
-  host = null; hostApp = null; clearInterval(hostWatch); hostWatch = null;
+  V.rec = null; P.k = 2;
   if (raf) cancelAnimationFrame(raf); raf = null;
   if (el) { el.remove(); bub.remove(); }
   el = cv = g = bub = null;
@@ -351,7 +398,7 @@ export const Pet = {
      if it will not open he walks off the nearest edge as he always did */
   home() {
     if (!el) { st.out = false; save(); tell(); return; }
-    if (host) leaveHost(false);
+    if (P.mode === 'visit') leaveVisit(null);
     if (P.mode === 'home' || P.mode === 'door') return;
     P.job = null;
     const walkOff = () => {

@@ -1,5 +1,5 @@
 /* TROPHYBOX.EXE -- the big trophies (every gold one and every mastery seal) live in here as cups on a shelf. Press one and drag it out of the window and it is on the desktop:
-   it falls, has weight and a hitbox, lands on the floor, on the others and on the top edge of a window (kernel/trophy_props.js). Double-click one out there to put it back, or drop it on
+   it falls, has weight and a hitbox, lands on the floor, on the others and on the top edge of a window (kernel/trophy_drop.js). Double-click one out there to put it back, or drop it on
    this window. The box itself is handed over by the first gold trophy or seal (kernel/trophy_box.js). */
 import { cup, wearOf, TIER_NAME } from '../trophy_art.js';
 

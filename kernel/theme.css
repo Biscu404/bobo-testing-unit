@@ -446,7 +446,7 @@ html, body {
 #desktop {
   position: absolute;
   top: 25px; bottom: 25px; left: 0; right: 0;
-  background: #0000AA;
+  background: var(--sch-desk, #0000AA);
   overflow: hidden;
   cursor: default;
 }
@@ -488,18 +488,21 @@ html, body {
 .icon .ico {
   display: block; width: 36px; height: 36px; margin: 0 auto 2px auto;
   background-repeat: no-repeat; background-position: center; background-size: 100% 100%; image-rendering: pixelated;
-  /* a faint plate, so a dark picture (the bin, the terminal, the sweeper) is still a shape on a dark or a blue desktop */
-  background-color: rgba(255, 255, 255, 0.13); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.22);
 }
 #icons .icon { contain: layout style; }
 .icon .lbl {
-  display: inline-block;
+  display: block;
+  box-sizing: border-box;
+  max-width: 84px;
+  margin: 0 auto;
   padding: 0 3px;
   color: var(--phos);
-  max-width: 90px;
-  overflow: hidden;
-  text-overflow: clip;
-  white-space: nowrap;
+  /* the name wraps on as many lines as it needs (a cell is 78px tall: three lines of 14px still sit in it) */
+  font-size: 17px;
+  line-height: 14px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   /* a hard black edge: the name must read on a photograph as well as on blue */
   text-shadow: 1px 0 0 #000000, -1px 0 0 #000000, 0 1px 0 #000000, 0 -1px 0 #000000;
 }
@@ -1274,6 +1277,11 @@ textarea.editor {
 .shopcard .nm { color: var(--phos); font-size: 17px; text-align: center; line-height: 1; }
 .shopcard .pr { color: #FFFF55; font-size: 17px; }
 .shopcard.owned .pr { color: #55FF55; }
+.shopcard.reward { border-style: dashed; border-color: #AA55AA; }
+.shopcard.reward canvas { filter: brightness(0.55) saturate(0.6); }
+.shopcard.earned { border-color: #FFFF55; }
+.shopcard .rw { color: #FF55FF; font-size: 13px; text-align: center; line-height: 1; max-width: 118px; min-height: 13px; }
+.shopcard.earned .rw { color: #FFFF55; }
 .shopcard .bt {
   width: 100%; text-align: center; background: #AAAAAA; color: #000000;
   border: 1px solid var(--phos, #FFFFFF); font-size: 16px; line-height: 1.1;
@@ -1504,22 +1512,14 @@ textarea.editor {
 .pinnum { color: #AAAAAA; font-size: 15px; }
 .pinfoot { color: #AAAAAA; font-size: 14px; margin-top: 4px; }
 
-/* ---- game windows ------------------------------------------------------------------------------------------------------------
-   A colour scheme dresses the machine's own windows in full. A game's window (data-game, set by wm.js from GAME_IDS) takes only its
-   FRAME (the title bar and the edge) and one line of accent on its bar; everything inside keeps the machine's palette and the game's
-   own art, whatever scheme is worn. The scheme variables are put back to VGA inside the body, so no pane, canvas or label of a game
-   can pick a scheme up; the accent is --theme-line, which is already safe against black (a light scheme gives the plain grey). */
-#room[data-themed] .win[data-game] > .titlebar, .win[data-game][data-themed] > .titlebar { background: var(--theme-frame, #FF55FF) !important; }
-#room[data-themed] .win[data-game], .win[data-game][data-themed] { border-color: var(--theme-edge, #AA00AA) !important; }
-.win[data-game] .wbody {
-  --sch-bg: #000000; --sch-fg: #FFFFFF; --sch-ok: #55FF55; --sch-hi: #FFFF55; --sch-err: #FF5555; --sch-dim: #AAAAAA; --sch-acc: #55FFFF;
-}
-#room[data-themed] .win[data-game] .appbar, .win[data-game][data-themed] .appbar { border-top: 2px solid var(--theme-line, #555555); }
-#room[data-themed] .win[data-game] .appbtn.on, .win[data-game][data-themed] .appbtn.on { border-color: var(--theme-line, #FFFF55); }
-
-/* the elephant as a guest in an app's window: above the app, his own coordinates inside the window */
-#pet.guest { z-index: 60; }
-#petsay.guest { z-index: 61; }
+/* ---- THE SCHEME IS A WHOLE LOOK (kernel/theme_fx.js) -----------------------------------------------------------------------------------
+   --th-filter is `none` on the default scheme and url(#th-<id>) on any other: set on #room by the scheme the machine wears, and again on one
+   window by its [T], which wins for that window's subtree. Every surface reads it, so a scheme recolours the title bars, the games' canvases, the
+   pictures, the menu bar, the taskbar, the icons and the elephant, not just the rules that read the six inks. (The desktop's own colour is
+   --sch-desk; a wallpaper picture is the user's own and is left alone.) */
+.win, #menubar, #taskbar, #icons, #pet, #deskvid { filter: var(--th-filter, none); }
+/* a window keeps the VGA inks whatever the room wears: the filter, not the variables, is what dresses it (see varsOf in theme_fx.js) */
+.win { --sch-bg: #000000; --sch-fg: #FFFFFF; --sch-ok: #55FF55; --sch-hi: #FFFF55; --sch-err: #FF5555; --sch-dim: #AAAAAA; --sch-acc: #55FFFF; }
 
 /* trophies left on the desktop (kernel/trophy_props.js): under the windows, over the icons */
 #trophyprops { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
