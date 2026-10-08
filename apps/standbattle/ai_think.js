@@ -19,7 +19,7 @@ function threat(b) {
     }
   }
   fight.projectiles.forEach(p => {
-    if (p.owner === o.slot) { const mm = p.move; out.push({ m: mm, mf: 0, eta: Math.max(0, Math.ceil((Math.abs(p.x - b.me.x) - 27) / p.speed)), recover: false, remaining: 0, last: 0, proj: true, key: p }); }
+    if (p.owner === o.slot && fight.clock - p.born >= P.reaction) { const mm = p.move; out.push({ m: mm, mf: 0, eta: Math.max(0, Math.ceil((Math.abs(p.x - b.me.x) - 27) / p.speed)), recover: false, remaining: 0, last: 0, proj: true, key: p }); }
   });
   return out.sort((x, y) => (x.eta == null ? 99 : x.eta) - (y.eta == null ? 99 : y.eta))[0] || null;
 }

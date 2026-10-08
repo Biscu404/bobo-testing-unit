@@ -20,7 +20,7 @@ export default [
   ['shin',     'SHIN KICK',      'd+LK',   'l', 15, 1, 19, 3, -8, 7, 58, 'lowkick',    {}],
   ['sweep',    'LONG SWEEP',     'd+RK',   'l', 20, 2, 30, null, -21, 13, 66, 'sweep',    { hit: 'down', track: 'both' }],
   ['upper',    'UPPERCUT',       'df+RP',  'm', 16, 1, 29, null, -13, 14, 56, 'uppercut', { hit: 'launch' }],
-  ['riseknee', 'RISING KNEE',    'df+LK',  'm', 18, 1, 26,  2, -11, 11, 52, 'knee',      {juggle: true, ch: 'launch' }],
+  ['riseknee', 'RISING KNEE',    'df+LK',  'm', 18, 1, 26, 2, -12, 11, 52, 'knee',      {juggle: true, ch: 'launch' }],
   ['charge',   'LUNGING PUNCH',  'ff+RP',  'm', 19, 2, 25,  7, -10, 14, 72, 'lunge',     { juggle: true }],
   ['rock',     'ROCK TOSS',      'qcf+LP', 'm', 22, 1, 26,  3, -6, 10, 60, 'finger',     { proj: { speed: 3.4, life: 80, r: 12, kind: 'rock' } }],
   ['lowrock',  'ROLLING ROCK',   'qcf+RP', 'l', 24, 1, 28,  2, -8,  9, 60, 'lowkick',    { proj: { speed: 2.6, life: 90, r: 12, kind: 'rock' } }],

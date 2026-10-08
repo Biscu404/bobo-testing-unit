@@ -17,7 +17,7 @@ export default [
   ['slap_knee',    'SLAP, KNEE',       'slap>LK',     'm', 9, 1, 20, 4, -6, 11, 46, 'knee',     {}],
   ['d_jab',    'LOW JAB',        'd+LP',   'm', 11, 1, 14,  4, -1,  5, 42, 'jab',        {}],
   ['gut',      'UPPER SLASH',    'd+RP',   'm', 15, 1, 21,  5, -7, 12, 48, 'gutpunch',   {}],
-  ['trip',     'TRIP',           'd+LK',   'l', 13, 1, 17, 5, -6, 10, 58, 'lowkick',    {}],
+  ['trip',     'TRIP',           'd+LK',   'l', 14, 1, 17, 5, -6, 10, 58, 'lowkick',    {}],
   ['sweep',    'LOW SWEEP',      'd+RK',   'l', 17, 2, 28, null, -17, 14, 64, 'sweep',    { hit: 'down', track: 'both' }],
   ['slide',    'SLIDE',          'db+LK',  'l', 15, 2, 24, 2, -12, 12, 66, 'lowkick',    {}],
   ['flip',     'FLIP KICK',      'df+RP',  'm', 16, 1, 28, null, -13, 18, 54, 'uppercut', { hit: 'launch' }],

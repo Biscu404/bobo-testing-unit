@@ -37,7 +37,7 @@ export const STYLES = {
                             strike: { s: [1.65, -0.15], o: [-0.15, -0.15], chestRot: -0.55, hipRot: 0.6, headRot: -0.2, hipX: 1 } },
   sidekick:   { kind: 'leg', wind: { s: [0.9, -1.8], o: [-0.2, -0.2], chestRot: -0.1, hipRot: 0.3 },
                             strike: { s: [1.4, 0.0], o: [-0.15, -0.15], chestRot: -0.75, hipRot: 0.5, hipX: 2.4 } },
-  knee:       { kind: 'leg', wind: { s: [0.35, -0.5], o: [-0.2, -0.2], chestRot: 0.0 },
+  knee:       { kind: 'leg', wind: { s: [-0.55, -1.0], o: [-0.2, -0.2], chestRot: -0.18, hipY: 2 },
                             strike: { s: [1.55, -1.6], o: [-0.15, -0.15], chestRot: 0.3, hipY: -1, hipX: 3 } },
   spinheel:   { kind: 'leg', wind: { s: [-0.3, -1.2], o: [-0.2, -0.2], chestRot: 0.4, hipRot: -0.5, squashX: 0.9 },
                             strike: { s: [1.7, -0.1], o: [-0.15, -0.15], chestRot: -0.6, hipRot: 0.9, hipX: 2, squashX: 1.1 } },
