@@ -16,6 +16,7 @@ import { openCourse } from './course.js';
 import { bandMenu } from './band.js';
 import { keyboard } from './hotkeys.js';
 import { whenGone, scopedListeners } from '../lifecycle.js';
+import { createCalls } from './trophy_calls.js';
 
 export default {
   id: 'garage',
@@ -44,6 +45,7 @@ export default {
     const hist = makeHistory();
     let player = null, raf = 0, alive = true, saveT = 0, statusT = 0;
     const api = { G, ctx, root, lang: L, studio: S, hist, player: () => player, clip: () => CLIP.data };
+    api.trophy = createCalls(api);                       /* what the trophies are told (trophy_calls.js) */
     const nameOf = id => { const i = S.ins.find(id); return i ? i.name : id.toUpperCase(); };
     api.instrumentName = nameOf;
     api.snapStep = () => snapBeats(G.song, G.snap);
@@ -73,6 +75,7 @@ export default {
     const persistSoon = () => { clearTimeout(saveT); saveT = setTimeout(() => ctx.save('draft', G.song).catch(() => {}), 700); };
     const title = () => ctx.setTitle('THE GARAGE - ' + G.song.title + (G.dirty ? ' *' : ''));
     function changed(kind) {
+      api.trophy.changed(kind);
       if (kind === 'edit') { hist.push(G.song); G.dirty = true; persistSoon(); E.ensureBars(G.song, E.lastBeat(G.song)); }
       if (kind === 'mix') { G.dirty = true; persistSoon(); }
       if (player && (kind === 'mix' || kind === 'edit' || kind === 'drag')) player.refresh();
@@ -102,12 +105,13 @@ export default {
     }
     function stop() {
       if (player) { player.stop(); player = null; }
+      if (G.rec) api.trophy.takeEnd();
       G.rec = false; cancelAnimationFrame(raf);
       grid.setHead(-1); mixer.level(null, 0); tracks.level(null); toolbar.clock(G.cursor, G.cursor * 60 / G.song.bpm); toolbar.update();
     }
     api.toggle = () => player ? stop() : play();
     api.toStart = () => { api.setCursor(0, true); grid.scrollTo(0); };
-    api.record = () => { G.rec = !G.rec; if (G.rec && !player) play(); ctx.toast(G.rec ? 'RECORDING ON THE SELECTED TRACK: PLAY THE KEYS BELOW' : 'RECORDING OFF'); toolbar.update(); };
+    api.record = () => { G.rec = !G.rec; if (!G.rec) api.trophy.takeEnd(); if (G.rec && !player) play(); ctx.toast(G.rec ? 'RECORDING ON THE SELECTED TRACK: PLAY THE KEYS BELOW' : 'RECORDING OFF'); toolbar.update(); };
     api.setLoop = on => { G.loop = on; if (player) { const [a, b] = region(); player.setLoop(on, a, b); } changed('transport'); };
     api.setMetro = on => { G.metro = on; if (player) player.setMetronome(on); changed('transport'); };
     api.setBpm = v => { G.song.bpm = Math.max(30, Math.min(300, v)); if (player) player.seek(player.beat()); changed('edit'); };
@@ -152,6 +156,7 @@ export default {
     /* ---- the screen ------------------------------------------------------------------------------------- */
     const act = makeActions(api);
     api.act = act;
+    ['paste', 'duplicate', 'repeat', 'gap', 'del', 'cut'].forEach(n => { const f = act[n]; act[n] = (...a) => { const r = f(...a); api.trophy.segment(n); return r; }; });
     const toolbar = makeToolbar(root, api);
     const main = el('div', 'g-main'), side = el('div', 'g-side'), center = el('div', 'g-center');
     const ovHost = el('div', 'g-ovhost'), gridHost = el('div', 'g-gridhost');
@@ -198,7 +203,7 @@ export default {
       stop();
       G.song = song; G.path = path || null; G.sel = 0; G.items.clear(); G.range = null; G.cursor = 0; G.dirty = false;
       song.tracks.forEach(t => { if (t.lo == null) t.lo = defaultLo(t.inst, t); });
-      hist.reset(song); S.preload(song); renderAll(); grid.resetScroll(); title();
+      hist.reset(song); S.preload(song); renderAll(); grid.resetScroll(); title(); api.trophy.sync();
     };
 
     /* ---- keys, and cleaning up --------------------------------------------------------------------------- */
@@ -218,7 +223,7 @@ export default {
       else { const d = await ctx.load('draft'); if (d && d.tracks) first = L.deserialize(JSON.stringify(d)); }
     } catch (e) { first = api.fresh(); }
     first.tracks.forEach(t => { if (t.lo == null) t.lo = defaultLo(t.inst, t); });
-    G.song = first; hist.reset(first); S.preload(first);
+    G.song = first; hist.reset(first); S.preload(first); api.trophy.sync();
     status.textContent = HINTS[G.tool];
     setDock(G.dock); renderAll(); grid.resetScroll(); title(); toolbar.clock(0, 0);
     api.focus();

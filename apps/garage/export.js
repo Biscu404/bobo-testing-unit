@@ -47,6 +47,7 @@ export function exportDialog(root, api) {
       try {
         const buf = await S.render(song, opts()), s = stats(buf);
         download(name(song) + '.wav', S.wav(buf, wavOpts()));
+        api.trophy.exported('wav', s.peak);
         out.textContent = 'DONE. PEAK ' + s.peak.toFixed(1) + ' dBFS, LOUDNESS ' + s.rms.toFixed(1) + ' dBFS (RMS). IN YOUR DOWNLOADS.';
       } catch (e) { out.textContent = 'THAT FAILED: ' + e.message; }
       busy(false);
@@ -60,12 +61,12 @@ export function exportDialog(root, api) {
           download(name(song, (i + 1) + '_' + t.name.replace(/[^A-Za-z0-9]/g, '')) + '.wav', S.wav(buf, wavOpts()));
           await new Promise(r => setTimeout(r, 350));
         }
-        out.textContent = 'DONE. ONE WAV PER TRACK, ALL THE SAME LENGTH, SO THEY LINE UP.';
+        api.trophy.exported('stems'); out.textContent = 'DONE. ONE WAV PER TRACK, ALL THE SAME LENGTH, SO THEY LINE UP.';
       } catch (e) { out.textContent = 'THAT FAILED: ' + e.message; }
       busy(false);
     }),
     btn('MIDI', '', () => {
-      try { download(name(song) + '.mid', new Blob([S.midi.toMidi(song)], { type: 'audio/midi' })); out.textContent = 'DONE. A .MID FILE IN YOUR DOWNLOADS: THE NOTES AND THE TEMPO, NOT THE SOUNDS.'; }
+      try { download(name(song) + '.mid', new Blob([S.midi.toMidi(song)], { type: 'audio/midi' })); api.trophy.exported('midi'); out.textContent = 'DONE. A .MID FILE IN YOUR DOWNLOADS: THE NOTES AND THE TEMPO, NOT THE SOUNDS.'; }
       catch (e) { out.textContent = 'THAT FAILED: ' + e.message; }
     }),
     btn('CLOSE', '', () => m.close()));

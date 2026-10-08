@@ -86,7 +86,7 @@ export function openLessons(root, api, hooks) {
       ok(t) { okEl.textContent = t; },
       done() {
         if (stageDone) return;
-        stageDone = true; stars[i] = 1; save(); drawList();
+        stageDone = true; stars[i] = 1; save(); drawList(); api.trophy.lesson(stars.filter(Boolean).length);
         okEl.textContent = '✓ GOT IT';
         if (window.Snd && window.Snd.bell) window.Snd.bell();
         nextB.disabled = false;

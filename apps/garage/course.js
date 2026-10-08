@@ -48,7 +48,11 @@ export function openCourse(api) {
 
   const stepsOf = ch => ch.steps;
   const doneCount = ids => ids.filter(id => progress.done[id]).length;
-  function persist() { clearTimeout(saveT); saveT = setTimeout(() => ctx.save('course', progress).catch(() => {}), 300); }
+  function persist() {
+    clearTimeout(saveT); saveT = setTimeout(() => ctx.save('course', progress).catch(() => {}), 300);
+    const gd = genreData();
+    api.trophy.course({ tour: TOUR.every(c => c.steps.every(s => progress.done[s.id])), genres: gd.filter(g => g.done === g.total).length, genresTotal: gd.length });
+  }
 
   /* ---- running a step -------------------------------------------------------------------------------------------------------- */
   function say(st) {
