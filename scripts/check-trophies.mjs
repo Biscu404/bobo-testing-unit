@@ -100,7 +100,7 @@ all.forEach(d => {
   ok(name === name.toUpperCase() && name.length <= 34, tag + ': a name in capitals, 34 characters at most (' + name + ')');
   ok(desc.length >= 8 && desc.length <= 130 && /[.!?)]$/.test(desc) && desc[0] === desc[0].toUpperCase(), tag + ': a description that is a sentence of 130 characters at most (' + desc.length + ')');
   ok(!(/\bnever\b/i.test(desc) && ['life', 'save'].indexOf(d.scope) >= 0), tag + ': "never" is scoped to something short');
-  ok(d.secret ? !!d.hint && String(d.hint).length >= 12 : !d.hint, tag + ': a secret has a rumour and nothing else has');
+  ok(d.secret ? !!d.hint && plain(d.hint).length >= 12 : !d.hint, tag + ': a secret has a rumour and nothing else has');
   const forms = ['on', 'stat', 'sets', 'streak', 'poll', 'derive', 'manual'].filter(k => d[k] != null && d[k] !== false);
   ok(forms.length === 1 || d.legacy, tag + ': exactly one way to be earned (' + forms.join(',') + ')');
   ok(!d.legacy || d.pay === 0, tag + ': a mirror pays nothing');

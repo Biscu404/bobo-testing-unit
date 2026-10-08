@@ -56,6 +56,7 @@ import { MARKS, SHADOWS, FEATURES } from './palette_marks.js';
 import { lightAt, shelter, keyOf, cssFor, DAY_CSS, mineLight } from './light.js';
 import { lampState, createLamp, bandStates } from './lamp.js';
 import { hintFor, holdingLine } from './hint.js';
+import { createCalls as createTrophyCalls } from './trophy_calls.js';
 import { FURN, furnitureAct } from './furniture_act.js';
 import { lifeFor } from './life.js';
 import { fogLevel, FOG_BLOCK } from './fog.js';
@@ -236,6 +237,7 @@ export default {
          can work out how much a stale save is owed. Never read by the game. */
       const EN_MAX_WAS = 120;
       let S = null;
+      const tro = createTrophyCalls();            /* what the trophies are told (trophy_calls.js): a few events, and scan(S) once a second */
       const fresh = () => {
         const f = {
         ver: 22, lang: BEK_LANG, fullscreen: 0,
@@ -659,7 +661,7 @@ export default {
       /* The SAVE button still exists, but nothing should be lost by closing a
          window, so the valley writes itself down every few seconds and again
          on the way out. */
-      let autoT = 0;
+      let autoT = 0, scanT = 0;
       function autoSave() {
         if (!S) return;
         try { S.lang = BEK_LANG; localStorage.setItem(BEK_SAVE, JSON.stringify(S)); } catch (e) {}
@@ -1141,6 +1143,7 @@ export default {
            ever drifting off S.day */
         S.season = seasonIndexOf(S.day);
         S.festival = festivalOf(S.day) ? BEK_SEASONS[S.season].id : null;
+        tro.newDay(S, night.kind);
         /* the repeatable quest board turns over as one batch on a fixed
            in-game weekday — see isRefreshDay()/refreshBoard() in quests.js.
            GIFTING's own weekly cap (BEK_GIFT_CAP) clears on the same day. */
@@ -1258,7 +1261,7 @@ export default {
       }
       function chopCancel() { chop = null; }
       function chopFinish(c) {
-        chop = null;
+        chop = null; tro.felled(c);
         const n = c.glyph === 'G' ? 2 : 1;
         S.felled[rkey(S.map, c.x, c.y)] = S.day + (c.glyph === 'G' ? BEK_REGROW.gran : BEK_REGROW.birch);
         terrLater();
@@ -1465,10 +1468,11 @@ export default {
         }
         /* the things in a house that answer when faced (furniture_act.js): a prop on the square in front, or a window in the wall */
         { const fp = propMap.get(f.x + ',' + f.y), fw = roomWindowAt(S.map, f.x, f.y), env = { S: S, say: say, sfx: sfx, TX: TX, light: () => lighting().dark };
-          if ((fp || fw) && furnitureAct(fp, env, !!fw)) return;
+          const fAct = (p, w) => { const done = furnitureAct(p, env, w); if (done) tro.used(w ? 'window' : p && FURN[p.kind] && FURN[p.kind].act); return done; };
+          if ((fp || fw) && fAct(fp, env, !!fw)) return;
           /* facing the piece under a window or a clock (the sink, a nightstand, a counter): what hangs on the wall above it answers */
           const hi = furnAbove(f);
-          if (hi && furnitureAct(hi.prop, env, hi.win)) return; }
+          if (hi && fAct(hi.prop, env, hi.win)) return; }
         if (t === 'b') { mode = 'sleep'; return; }
         /* a bench is not a task. You sit, the afternoon moves on a little,
            and you get up less tired than you sat down. */
@@ -1632,7 +1636,7 @@ export default {
              a square you come back to is the same square. */
           let got = '+' + oreQty + ' ' + iname(ore) + '  +1 ' + iname('stein');
           if (deep && t === 'Q' && mineGem(S.run.seed, deep, f.x, f.y) && gainCapped('krystall', 1)) {
-            got = '+1 ' + iname('krystall') + '!  ' + got;
+            got = '+1 ' + iname('krystall') + '!  ' + got; tro.ore('krystall');
             swing.drop = BEK_ITEMS.krystall.col; sfx.coin();
           }
           say(got); return;
@@ -1654,7 +1658,7 @@ export default {
              sell price (sellPrice()), a gift's reaction bonus (talkTo()) and
              the repeatable board's reward (questReward()) without a second
              item id per crop per grade. */
-          const grade = cropGradeScore(c, spec);
+          const grade = cropGradeScore(c, spec); tro.harvest(c.seed, grade);
           S.cropGrade[spec.out] = Math.min(2, Math.max(0, (S.cropGrade[spec.out] || 0) * 0.7 + grade * 0.3));
           sfx.pick(); addXp('farm', 1);
           startSwing('hand').drop = spec.col;
@@ -1946,7 +1950,7 @@ export default {
       ];
       function talkTo(npc) {
         if (npc.bear) {
-          sfx.bear();
+          sfx.bear(); tro.bear();
           const i = Math.floor(Math.random() * BEAR_LINES.length);
           dlg = { lines: [BEAR_LINES[i]], i: 0, npc: npc };
           mode = 'talk';
@@ -2022,7 +2026,7 @@ export default {
             const delta = BEK_GIFT_FR[tier] + qBonus;
             add(giftSel, -1);
             S.giftWeek[npc.id] = given + 1;
-            S.flag.gifted = 1;
+            S.flag.gifted = 1; tro.gift(npc.id, tier);
             /* what they have been given is seen on them afterwards (looks.js), unless they did not want it */
             const worn = noteGift(S.look[npc.id], giftSel, tier);
             const shown = !!(worn && LOOKS[giftSel] && tier !== 'disliked');
@@ -2318,7 +2322,7 @@ export default {
         if (!recipeUnlocked(r)) { say(TX('OPPSKRIFTEN ER IKKE LÅST OPP ENNÅ.', 'RECIPE NOT UNLOCKED YET.')); deny(); return; }
         if (!Object.keys(r.need).every(id => hasStock(id, r.need[id]))) { say(TX('MANGLER RÅVARER.', 'MISSING INGREDIENTS.')); deny(); return; }
         Object.keys(r.need).forEach(id => spendStock(id, r.need[id]));
-        craftGain(r.out, r.qty || 1);
+        craftGain(r.out, r.qty || 1); tro.crafted(r.id, !!craft.side);
         sfx.pick(); say('+' + (r.qty || 1) + ' ' + iname(r.out));
       }
 
@@ -2361,6 +2365,7 @@ export default {
         const mapDef = BEK_MAPS[S.map];
         const placedHere = placedHereObj(S.map);
         if (!canPlace(mapDef, placedHere, S.px, S.py, place.x, place.y, place.kind)) {
+          tro.refused(mapDef, placedHere, S, place);
           say(TX('KAN IKKE STÅ DER.', "CAN'T STAND THERE."));
           deny(); return;
         }
@@ -2618,6 +2623,7 @@ export default {
       function landFish() {
         const sp = fish.sp, item = BEK_ITEMS[sp];
         if (gainCapped(sp, 1)) {
+          tro.caught(sp, item);
           addXp('fish', item.legend ? 8 : item.rare ? 4 : 2);
           if (item.legend) { S.legend[sp] = S.day; sfx.done(); say(TX('LEGENDARISK FANGST! +1 ', 'LEGENDARY CATCH! +1 ') + iname(sp)); }
           else if (item.rare) { sfx.done(); say(TX('SJELDEN FANGST! +1 ', 'RARE CATCH! +1 ') + iname(sp)); }
@@ -4599,6 +4605,7 @@ export default {
         tickClock(dt);
         if (noteT > 0) { noteT -= dt; if (noteT <= 0) note = ''; }
         autoT += dt; if (autoT > 6) { autoT = 0; autoSave(); }
+        scanT += dt; if (scanT > 1) { scanT = 0; tro.scan(S); }
         speechTick(dt);
         Song.rotStep(dt); Song.sync();
         Amb.tick(dt);

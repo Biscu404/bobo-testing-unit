@@ -39,7 +39,7 @@ export function cards(T, area, o) {
   if (o.filter === 'open') list = list.filter(d => state(T, d) === 'open');
   else if (o.filter === 'done') list = list.filter(d => state(T, d) === 'done');
   if (kinds && kinds.length) list = list.filter(d => kinds.indexOf(d.kind) >= 0);
-  if (q) list = list.filter(d => (T.plainName(d) + ' ' + T.plainDesc(d)).toUpperCase().indexOf(q) >= 0 || (T.earned(d.id) || !d.secret ? false : (d.hint || '').toUpperCase().indexOf(q) >= 0));
+  if (q) list = list.filter(d => (T.plainName(d) + ' ' + T.plainDesc(d)).toUpperCase().indexOf(q) >= 0 || (T.earned(d.id) || !d.secret ? false : T.hintOf(d).toUpperCase().indexOf(q) >= 0));
   list = sorted(T, list);
   if (area === 'all') list = list.slice(0, 60);
   return { own: list.filter(d => !d.legacy), mirrors: list.filter(d => d.legacy) };

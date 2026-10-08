@@ -24,7 +24,7 @@ export function renderCard(T, d, o) {
   if (d.legacy) l1.appendChild(el('span', 'tr-tag mir', 'THE GAME\'S OWN'));
   if (d.scope && s !== 'done' && !hidden) l1.appendChild(el('span', 'tr-tag scope', 'PER ' + d.scope.toUpperCase()));
   main.appendChild(l1);
-  main.appendChild(el('div', 'tr-desc', hidden ? (d.hint || 'A SECRET.') : T.descOf(d)));
+  main.appendChild(el('div', 'tr-desc', hidden ? (T.hintOf(d) || 'A SECRET.') : T.descOf(d)));
   if (hidden) c.classList.add('hint');
   const p = !hidden && s === 'open' ? T.progressOf(d) : null;
   if (p && p[1] > 0) {

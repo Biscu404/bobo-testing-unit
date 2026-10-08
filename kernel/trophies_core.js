@@ -82,6 +82,7 @@ export function createTrophies(env) {
   T.appCount = () => 30;                                   /* how many apps have a window: the host says (EVERY DOOR) */
   T.get = id => defs.get(id) || null;
   T.plainName = d => d.name && typeof d.name === 'object' ? d.name.en : String(d.name);
+  T.hintOf = d => d.hint && typeof d.hint === 'object' ? d.hint.en : String(d.hint || '');
   T.plainDesc = d => d.desc && typeof d.desc === 'object' ? d.desc.en : String(d.desc);
   /* [have, need] for the bar on a card, or null */
   T.progressOf = d => {

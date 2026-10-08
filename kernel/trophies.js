@@ -33,6 +33,7 @@ Trophies.names = NAMES;
 Trophies.appCount = () => Object.keys(registry).filter(k => k !== 'placeholder').length;
 Trophies.nameOf = d => words(d.name, Trophies.st.lang);
 Trophies.descOf = d => words(d.desc, Trophies.st.lang);
+Trophies.hintOf = d => words(d.hint, Trophies.st.lang);
 Trophies.plain = plain;
 Trophies.openLedger = id => openWindow('trophies', id ? { focus: id } : {}).catch(console.error);
 
