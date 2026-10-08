@@ -121,6 +121,7 @@ export const Music = {
   },
   loop(t0) {
     const sp = variantSpec(this.active, this.n++);
+    try { if (window.Trophies) window.Trophies.mark('hifi', 'variants', this.active); } catch (e) { /* a trophy never gets into the music */ }
     const st = 15 / sp.bpm;                         /* one sixteenth */
     sp.step = st;
     this.fx(sp, t0);

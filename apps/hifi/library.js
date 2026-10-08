@@ -9,7 +9,7 @@
    opens, because forty offline renders at once would stall the whole box. */
 import { VARIANTS, variantSpec } from '../../kernel/music_variants.js';
 import * as MG from '../magen/score.js';
-import { CK_SONGS, CK_HZ } from '../cook/data.js';
+import * as CK from '../cook/score.js';
 import * as ELE from '../elephant/score.js';
 import * as BEK from '../bekkedal/score.js';
 import * as SB from '../standbattle/score.js';
@@ -21,17 +21,6 @@ import { demoSongs } from '../garage/songs.js';
 
 const TARGET_SECS = 75;                     /* roughly how long a pressed disc plays */
 
-/* an app's score is in eighths against `bpm`; a disc is in sixteenths */
-function fromEighths(song, hzTable, tint, artist) {
-  const f = list => (list || []).map(n => [hzTable[n[0]] || n[0], n[1] * 2, n[2] * 2]);
-  const spec = {
-    bpm: song.bpm, len: (song.len || 32) * 2, tint: tint, artist: artist,
-    lead: f(song.lead), bass: f(song.bass), pad: f(song.pad), arp: song.arp ? f(song.arp) : null,
-    kick: [], hat: [], snare: []
-  };
-  if (song.wave) spec.timbre = { lead: song.wave };
-  return spec;
-}
 const reps = spec => Math.max(3, Math.round(TARGET_SECS / (spec.len * 15 / spec.bpm)));
 
 /* a game's own song (a studio song: real instruments), pressed as it is, with every layer on or the ones asked for */
@@ -60,8 +49,8 @@ export function stackFolders() {
 
   out.push(['MAGEN', 'cyan', MG.IDS.map(k => [MG.NAMES[k], disc(MG.song(Lang, k), 'cyan', 'MAGEN BAND')])]);
 
-  out.push(['THE COOK', 'amber', Object.keys(CK_SONGS).map(k =>
-    [k.toUpperCase(), fromEighths(CK_SONGS[k], CK_HZ, 'amber', 'THE COOK RADIO')])]);
+  /* the Cook's four tunes are studio songs now (apps/cook/score.js), with the heat layers all the way in */
+  out.push(['THE COOK', 'amber', CK.IDS.map(k => [CK.NAMES[k], disc(CK.song(Lang, k), 'amber', 'THE COOK', CK.layersFor(2))])]);
 
   out.push(['ELEPHANT', 'green', ELE.IDS.map(k => [ELE.NAMES[k], disc(ELE.song(Lang, k), 'green', 'ELEPHANT')])]);
 
