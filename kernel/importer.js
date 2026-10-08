@@ -5,6 +5,7 @@ import { toast } from './wm.js';
 import { Vault } from './vault.js';
 import { crushImage } from './imaging.js';
 import { changed } from './vfs_ops.js';
+import { sys } from './trophy_hook.js';
 
 let uploadTarget = '::';
 
@@ -110,9 +111,11 @@ export async function importFiles(fileList, kind, dir) {
       const isImage = kind === 'media' ? !isVideo : /^image\//.test(f.type);
       if (isVideo) {
         await importVideo(`${dir}/${f.name}`, f);
+        sys.emit('import', { kind: 'video' });
       } else if (isImage) {
         const src = await importImage(f);
         await vfs.write(`${dir}/${f.name}`, { type: 'image', src });
+        sys.emit('import', { kind: 'image' });
       } else {
         const content = await readAsText(f);
         await vfs.write(`${dir}/${f.name}`, { type: 'text', content });

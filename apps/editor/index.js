@@ -2,16 +2,19 @@ import { ddRender } from '../../kernel/doldoc.js';
 import { createWindow } from '../../kernel/wm.js';
 import { hcLex, hcParse, hcRun } from '../../kernel/holyc.js';
 import { restoreSystemFiles } from '../../kernel/fileops.js';
+import { sys } from '../../kernel/trophy_hook.js';
 
 /* a macro button in a document has nowhere to print, so it gets a window */
 function runHolyCToast(cmd, ctx) {
   const rows = [];
   let ok = true;
   try {
-    hcRun(hcParse(hcLex(cmd)), line => rows.push(line), null, {
+    const ast = hcParse(hcLex(cmd));
+    hcRun(ast, line => rows.push(line), null, {
       godDoodle: () => ctx.openWindow('goddoodle').catch(console.error),
       dirNames: () => []
     });
+    sys.holyc(ast, null);
   } catch (e) {
     ok = false;
     rows.push(e && e.holyc ? 'HolyC: ' + e.message : 'FAULT: ' + (e && e.message));

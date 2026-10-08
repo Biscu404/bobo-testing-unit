@@ -117,6 +117,7 @@ function wireDeskContextMenu(desk) {
     items.push({ label: 'RESTORE SYSTEM FILES', run: () => restoreSystemFiles() });
     items.push({ label: 'DISPLAY SETTINGS...', run: () => openWindow('display') });
     items.push({ label: "CRAZY DAVE'S SHOP...", run: () => openWindow('shop') });
+    items.push({ label: 'TROPHIES...', run: () => openWindow('trophies') });
     items.push({ label: 'ABOUT THIS MACHINE', run: () => openWindow('about') });
     showMenu(document.getElementById('ctxmenu'), ev.clientX, ev.clientY, items);
   });

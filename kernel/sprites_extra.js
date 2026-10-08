@@ -22,4 +22,8 @@ Object.assign(SPRITES, {
   /* the HolyC lab: a blue editor window with a yellow cursor and a green run triangle */
   holyc: S(R(1, 1, 14, 14, '#000000') + R(2, 2, 12, 12, '#0000AA') + R(2, 2, 12, 2, '#5555FF') + R(3, 5, 4, 1, '#FFFF55') + R(3, 7, 6, 1, '#55FFFF') +
     R(3, 9, 3, 1, '#FFFFFF') + R(3, 11, 5, 1, '#55FF55') + R(10, 8, 1, 5, '#55FF55') + R(11, 9, 1, 3, '#55FF55') + R(12, 10, 1, 1, '#55FF55'))
+,
+  /* the ledger: a gold cup on a black plate */
+  trophy: S(R(0, 0, 16, 16, '#000000') + R(1, 3, 2, 1, '#FFFF55') + R(0, 4, 1, 3, '#FFFF55') + R(1, 7, 2, 1, '#FFFF55') + R(13, 3, 2, 1, '#FFFF55') + R(15, 4, 1, 3, '#FFFF55') + R(13, 7, 2, 1, '#FFFF55') +
+    R(3, 1, 10, 7, '#FFFF55') + R(4, 8, 8, 1, '#FFFF55') + R(5, 9, 6, 1, '#FFFF55') + R(11, 2, 2, 6, '#AA5500') + R(4, 2, 1, 5, '#FFFFFF') + R(7, 10, 2, 3, '#FFFF55') + R(5, 13, 6, 2, '#AA5500') + R(5, 13, 6, 1, '#FFFF55'))
 });

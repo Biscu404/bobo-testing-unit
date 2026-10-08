@@ -9,7 +9,8 @@ export const TOPICS = [
   ['files', 'FILES & FOLDERS'],
   ['music', 'MAKING MUSIC'],
   ['fix', 'SOMETHING IS MISSING'],
-  ['holyc', 'HOLYC']
+  ['holyc', 'HOLYC'],
+  ['trophies', 'TROPHIES']
 ];
 
 export const PAGES = {
@@ -30,6 +31,7 @@ $LK,"FILES & FOLDERS",A="FI:@files"$    folders, moving, copying, the bin
 $LK,"MAKING MUSIC",A="FI:@music"$       the Garage, and how to learn it
 $LK,"SOMETHING IS MISSING",A="FI:@fix"$ get the machine's own files back
 $LK,"HOLYC",A="FI:@holyc"$              the language
+$LK,"TROPHIES",A="FI:@trophies"$          what there is to find
 $TR-$
 
 $TR,"THINGS TO PRESS"$
@@ -183,5 +185,34 @@ Built in: Print, GodWord, GodDoodle, GodSong, Beep,
 BellRing, Sleep, Rand, RandU16, StrLen, Cd, Dir, MemSet,
 Panic, Exit.
 $TR-$
-`
+`,
+
+trophies: `$FG,14$$TX+CX,"TROPHIES"$$FG$
+$HL$
+Everything on this machine that is worth doing once has a trophy, and
+they are all in $FG,14$TROPHIES.EXE$FG$ (the cup in the taskbar, or the
+desktop menu, or type $FG,11$TROPHIES$FG$ in the terminal).
+
+$TR,"TIERS"$
+$FG,6$BRONZE$FG$ 15 SUN, $FG,7$SILVER$FG$ 40 SUN, $FG,14$GOLD$FG$ 100 SUN. A seal ($FG,15$MASTER OF$FG$ a game) is 150.
+The SUN is paid once, and shows in ACCOUNT.EXE as TROPHY: and the name.
+$TR-$
+
+$TR,"SECRETS"$
+A card that says $FG,13$???$FG$ is a secret. It gives you a rumour about where to look,
+never the answer. When it is found it turns into its real name.
+$TR-$
+
+$TR,"CLOSED"$
+Nothing is ever missed for good. If something can no longer be earned the
+ledger says $FG,12$CLOSED$FG$, greys it out, and takes it out of the count.
+$TR-$
+
+$TR,"THE GAMES' OWN"$
+Cook and Magen had achievements before there was a ledger. They are shown
+under their game, pay nothing here and count nowhere, so nobody loses what they had.
+$TR-$
+
+$MA,"OPEN TROPHIES.EXE",LM="@open:trophies"$
+`,
 };

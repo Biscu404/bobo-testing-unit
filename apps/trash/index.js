@@ -59,6 +59,7 @@ export default {
     async function restore(rs) {
       const done = await ctx.fs.restoreMany(rs.map(r => r.id));
       if (done.bad.length) toast(done.bad[0]);
+      if (rs.length && !done.bad.length) { try { if (ctx.trophy || window.Trophies) window.Trophies.emit('system', 'trash-restore', {}); } catch (e) { /* never into the bin */ } }
       if (rs.length) { toast('PUT BACK ' + rs.length + ' ITEM' + (rs.length === 1 ? '' : 'S') + '.'); if (window.Snd) window.Snd.ok(); }
     }
     async function purge(rs) {

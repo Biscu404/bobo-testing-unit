@@ -8,6 +8,7 @@
    themselves and no caller has to remember to. */
 import { fs } from './vfs.js';
 import { Style } from './style.js';
+import { sys, sess } from './trophy_hook.js';
 
 export const TRASH = '::/.Trash';
 const MOVED_KEY = 'templeos.vfs.moved.v1';
@@ -116,6 +117,7 @@ async function mkdir(path) {
   if (await fs.stat(path)) throw new Error('ALREADY EXISTS.');
   await fs.write(path + '/.keep', { type: 'text', content: '' });
   changed(dirOf(path));
+  sess.folders.push(path); sys.emit('mkdir', { path: path, depth: path.split('/').length - 1 });
 }
 
 /* ---- the recycle bin --------------------------------------------------------

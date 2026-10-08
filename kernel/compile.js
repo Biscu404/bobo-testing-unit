@@ -2,6 +2,7 @@ import { fs as vfs } from './vfs.js';
 import { openWindow, createWindow, toast } from './wm.js';
 import { hcLex, hcParse, hcRun } from './holyc.js';
 import { panic } from './panic.js';
+import { sys } from './trophy_hook.js';
 
 function commas(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
 
@@ -86,10 +87,12 @@ export async function runFileHolyC(path) {
   const rows = [];
   let bad = null;
   try {
-    hcRun(hcParse(hcLex(file && file.content || '')), l => rows.push(l), null, {
+    const ast = hcParse(hcLex(file && file.content || ''));
+    hcRun(ast, l => rows.push(l), null, {
       godDoodle: () => openWindow('goddoodle').catch(console.error),
       dirNames: () => []
     });
+    sys.holyc(ast, path.split('/').pop());
   } catch (e) { bad = e; }
   createWindow({
     kind: 'terminal', title: 'RUN ' + path, w: 480, h: 260,

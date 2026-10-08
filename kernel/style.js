@@ -6,6 +6,7 @@ import * as M from "./style_model.js";
 import { Fx } from "./style_fx.js";
 import { Glitch } from "./glitch.js";
 import { StyleTrack, unlock } from "./style_track.js";
+import { sys } from "./trophy_hook.js";
 export { Rage };
 /* ==========================================================================
    11.3d THE STYLE METER
@@ -36,6 +37,9 @@ export const Style = {
   shown: -1,       /* the rank on screen: -1 is dormant, the meter is not on screen at all */
   lost: 0,         /* seconds since the meter was last at the top, while the song waits to see if it comes back */
   sung: false,     /* the birthday fanfare has been used this session */
+  singles: true,   /* this run has been nothing but single files (a trophy asks) */
+  piles: true,     /* ... or nothing but piles of twenty or more */
+  tq: 0,           /* the last second the top rank was reported to the trophies */
   raf: null,
   prev: 0,
   el: null,
@@ -90,6 +94,9 @@ export const Style = {
     Fx.burst(count, tier);
     if (count >= MASS && this.run.atTop >= GLITCH_AT) Glitch.burst(count);
     Rage.tier = this.run.tier; Rage.sync();
+    if (count > 1) this.singles = false;
+    if (count < MASS) this.piles = false;
+    sys.emit('style', { tier: this.run.tier, n: count, top: this.run.tier === M.TOP, atTop: this.run.atTop, singlesOnly: this.singles, pilesOnly: this.piles });
     this.runLoop();
     return r;
   },
@@ -156,6 +163,7 @@ export const Style = {
 
     M.frame(this.run, dt, t);
     if (this.run.tier !== this.shown) this.setTier(this.run.tier);
+    if (this.run.tier === M.TOP && t - this.tq >= 1) { this.tq = t; sys.emit('style', { tier: this.run.tier, n: 0, top: true, atTop: this.run.atTop, singlesOnly: this.singles, pilesOnly: this.piles }); }
     if (this.run.tier < 0 && this.run.pts <= 0) { this.stop(); return; }
 
     /* the song plays for as long as the meter is at the top, and is let go (faded) a moment after it leaves */
@@ -202,6 +210,7 @@ export const Style = {
     this.raf = null;
     this.hide();
     this.shown = -1;
+    this.singles = true; this.piles = true;
     StyleTrack.fadeOut(2.5); Rage.hushed = false;
     Glitch.setLevel(0);
     Rage.tier = -1; Rage.sync();

@@ -1,6 +1,7 @@
 import { Style, Rage } from "./style.js";
 import { Snd } from "./snd.js";
 import { degauss, paintPurity } from "./degauss.js";
+import { sys } from './trophy_hook.js';
 export { degauss };
 export const CRT = {
   scan: 2,
@@ -219,18 +220,25 @@ function setLobby(on) {
   }
 }
 
+/* the picture rolls when the hold is knocked off 5, and a trophy is for locking it back */
+let rolling = false;
+function rolled() {
+  const off = Math.abs((CRT.vhold ?? 5) - 5) + Math.abs((CRT.hhold ?? 5) - 5) > 0;
+  if (off) rolling = true; else if (rolling) { rolling = false; sys.emit('roll', {}); }
+}
+
 function wireChin() {
 
   wirePot('pot-mus', 'lbl-mus', 'MUS', v => {
-    CRT.mus = v; saveCRT();
+    CRT.mus = v; saveCRT(); sys.mark('knobs', 'MUS');
     if (window.Music && window.Music.sync) window.Music.sync();
     Rage.sync();
   });
   /* the bus is set when the speaker wakes, so a knob turned afterwards has to set it again, or a machine that woke with SFX at 0
      (its default) stays silent until it is relaunched, however far the knob is turned */
-  wirePot('pot-sfx', 'lbl-sfx', 'SFX', v => { CRT.sfx = v; saveCRT(); if (Snd.sfx) Snd.sfx.gain.value = sfxGain(); });
-  wirePot('pot-vhold', 'lbl-vhold', 'VHLD', v => { CRT.vhold = v; saveCRT(); applyHold(); });
-  wirePot('pot-hhold', 'lbl-hhold', 'HHLD', v => { CRT.hhold = v; saveCRT(); applyHold(); });
+  wirePot('pot-sfx', 'lbl-sfx', 'SFX', v => { CRT.sfx = v; saveCRT(); sys.mark('knobs', 'SFX'); if (Snd.sfx) Snd.sfx.gain.value = sfxGain(); });
+  wirePot('pot-vhold', 'lbl-vhold', 'VHLD', v => { CRT.vhold = v; saveCRT(); applyHold(); sys.mark('knobs', 'VHLD'); rolled(); });
+  wirePot('pot-hhold', 'lbl-hhold', 'HHLD', v => { CRT.hhold = v; saveCRT(); applyHold(); sys.mark('knobs', 'HHLD'); rolled(); });
 
   const getEl = id => document.getElementById(id);
 
@@ -242,7 +250,7 @@ function wireChin() {
       ev.preventDefault();
       if (window.Snd && window.Snd.wake) window.Snd.wake();
       lobbySw.focus();
-      setLobby(!CRT.lobby);
+      setLobby(!CRT.lobby); sys.mark('knobs', 'LOBBY');
     });
     lobbySw.addEventListener('keydown', ev => {
       if (ev.key === ' ' || ev.key === 'Enter') { ev.preventDefault(); setLobby(!CRT.lobby); }
@@ -250,7 +258,7 @@ function wireChin() {
   }
 
   if (getEl('k-scan')) getEl('k-scan').addEventListener('click', () => {
-    CRT.scan = CRT.scan >= 4 ? 0 : CRT.scan + 1;
+    CRT.scan = CRT.scan >= 4 ? 0 : CRT.scan + 1; sys.mark('knobs', 'SCAN');
     labelKnobs();
     paintGlass();
     saveCRT();
@@ -258,7 +266,7 @@ function wireChin() {
   });
   
   if (getEl('k-phos')) getEl('k-phos').addEventListener('click', () => {
-    CRT.phos = ((CRT.phos || 0) + 1) % 3;
+    CRT.phos = ((CRT.phos || 0) + 1) % 3; sys.mark('knobs', 'PHOS');
     labelKnobs();
     applyPhosphor();
     saveCRT();
@@ -268,7 +276,7 @@ function wireChin() {
   /* DGAUSS is the switch for the tube's purity patches (kernel/degauss.js): on, the corners show the
      wrong colour a magnetised tube would; off, the glass is clean. Switching it on fires the coil. */
   if (getEl('k-dgauss')) getEl('k-dgauss').addEventListener('click', () => {
-    CRT.degauss = !CRT.degauss;
+    CRT.degauss = !CRT.degauss; sys.mark('knobs', 'DGAUSS');
     labelKnobs();
     paintGlass();
     saveCRT();
@@ -277,7 +285,7 @@ function wireChin() {
   });
 
   if (getEl('k-burn')) getEl('k-burn').addEventListener('click', () => {
-    CRT.burn = !CRT.burn;
+    CRT.burn = !CRT.burn; sys.mark('knobs', 'BURN');
     labelKnobs();
     applyBurn();
     saveCRT();
@@ -296,6 +304,7 @@ function wireChin() {
       if (window.Snd && window.Snd.click) window.Snd.click();
       if (window.powerOn) window.powerOn();
       saveCRT();
+      sys.emit('power', {});
     }
   });
 }

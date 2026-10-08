@@ -3,6 +3,7 @@ import { createWindow, openWindow, toast } from './wm.js';
 import { ddRender } from './doldoc.js';
 import { TOPICS, PAGES } from './help_text.js';
 import { restoreSystemFiles } from './fileops.js';
+import { sys } from './trophy_hook.js';
 
 let current = null;               /* the one open help window: { show(topic), win } */
 
@@ -36,6 +37,7 @@ export function openHelp(topic) {
       });
       show = id => {
         Object.keys(btns).forEach(k => btns[k].classList.toggle('on', k === id));
+        sys.mark('help', id);
         ddRender(PAGES[id], pane,
           target => { if (target.charAt(0) === '@') show(target.slice(1)); },
           cmd => act(cmd, show));

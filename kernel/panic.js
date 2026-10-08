@@ -1,5 +1,6 @@
 import { createWindow } from './wm.js';
 import { Snd } from './snd.js';
+import { sys } from './trophy_hook.js';
 
 /* ==========================================================================
    RING 0 HAS NO SAFETY NET
@@ -27,6 +28,7 @@ function fakeRegs(seed) {
 export function panic(err, where) {
   if (panicOpen) return;
   panicOpen = true;
+  if (where === 'deliberate') sys.emit('panic');
   Snd.err();
   Snd.thunk();
   const msg = (err && err.message) ? err.message : String(err);

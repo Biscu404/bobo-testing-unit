@@ -7,6 +7,7 @@ import { fs as vfs } from './vfs.js';
 import { toast } from './wm.js';
 import { VaultURL } from './vault.js';
 import { ditherVGA, UP } from './imaging.js';
+import { sys } from './trophy_hook.js';
 
 const WALL_KEY = 'templeos.wallpaper.v1';
 let wallpaper = null;             /* { src, mode, kind, vault? } */
@@ -36,6 +37,7 @@ export async function setWallpaperFromPath(path, mode) {
   applyWallpaper();
   try { localStorage.setItem(WALL_KEY, JSON.stringify(wallpaper)); } catch (e) {}
   toast('BACKGROUND SET.');
+  sys.mark('fits', wallpaper.mode); sys.emit('bg', { fit: wallpaper.mode, kind: wallpaper.kind });
   return true;
 }
 
@@ -45,6 +47,7 @@ export function setWallpaperFromSrc(src, mode) {
   applyWallpaper();
   try { localStorage.setItem(WALL_KEY, JSON.stringify(wallpaper)); } catch (e) { toast('THAT PICTURE IS TOO BIG TO KEEP AS THE BACKGROUND.'); return false; }
   toast('BACKGROUND SET.');
+  sys.mark('fits', wallpaper.mode); sys.emit('bg', { fit: wallpaper.mode, kind: 'image' });
   return true;
 }
 

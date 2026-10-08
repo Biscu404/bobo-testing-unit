@@ -45,6 +45,13 @@
     "app": "holyc"
   },
   {
+    "path": "::/Trophies",
+    "content": "",
+    "src": "",
+    "type": "app",
+    "app": "trophies"
+  },
+  {
     "path": "::/Notes",
     "content": "",
     "src": "",

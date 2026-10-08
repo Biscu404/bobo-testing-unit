@@ -1,11 +1,13 @@
 import { godDoodle, godRand, VGA16 } from './god.js';
 import { CRT, phosLevel, splashGone } from './hardware.js';
+import { sys } from './trophy_hook.js';
 
 export const Saver = {
   idle: 0, on: false, raf: null, cv: null, mode: 0, t: 0, stars: [],
   IDLE_MS: 90000,
   start() {
     if (this.on || !CRT.on || !splashGone()) return;
+    sys.emit('saver', {});
     this.on = true;
     this.mode = godRand(2);
     const cv = document.createElement('canvas');

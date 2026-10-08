@@ -8,6 +8,9 @@ import { wireKonami } from './desktop.js';
 import { initHardware, CRT } from './hardware.js';
 import "./snd.js";
 import "./economy.js";
+import { Trophies } from "./trophies.js";
+import { runAutoExec } from "./autoexec.js";
+import { sys } from "./trophy_hook.js";
 import "./vault.js";
 import "./drunk.js";
 import { Music } from './music.js';
@@ -107,8 +110,14 @@ window.addEventListener('pagehide', stampSeen);
    to somewhere else must not throw the splash away. */
 const isEnterKey = ev => !ev.ctrlKey && !ev.metaKey && !ev.altKey &&
   (ev.key === '~' || ev.key === '`' || ev.code === 'Backquote');
+let wrongKeys = 0, wrongSaid = false;
 function onEnterKey(ev) {
-  if (!isEnterKey(ev) || ev.repeat) return;
+  if (!isEnterKey(ev)) {
+    /* ten keys that are not the one asked for, at the prompt, are a trophy */
+    if (!ev.repeat && !ev.ctrlKey && !ev.metaKey && !ev.altKey && ev.key && ev.key.length === 1 && ++wrongKeys >= 10 && !wrongSaid) { wrongSaid = true; sys.emit('boot', { kind: 'prompt', wrongKeys: wrongKeys }); }
+    return;
+  }
+  if (ev.repeat) return;
   ev.preventDefault();
   dismissSplash();
 }
@@ -118,9 +127,11 @@ function runBootLines() {
   booting = true;
   document.removeEventListener('keydown', onEnterKey, true);
   const mode = owesLongBoot ? 'long' : 'quick';
+  wrongKeys = 0; wrongSaid = false;
   if (window.Music && window.Music.bootStart) window.Music.bootStart();
   runBootSequence(mode, () => {
     if (mode === 'long') owesLongBoot = false;      /* only a boot that finished counts */
+    sys.emit('boot', { kind: mode, completed: true });
     bootDone = true;
     booting = false;
     document.addEventListener('keydown', onEnterKey, true);
@@ -188,6 +199,7 @@ function dismissSplash() {
 
   if (desktopBuilt) {
     if (window.Snd && window.Snd.ok) window.Snd.ok(); // coming back from a power cycle
+    setTimeout(() => runAutoExec().catch(() => {}), 900);
     return;
   }
   desktopBuilt = true;
@@ -195,6 +207,8 @@ function dismissSplash() {
   initDesktop();
   try { import('./pet.js').then(m => m.Pet.boot()); } catch(e) {}      /* the elephant, if he was let out */
   try { SunUI.mount(); } catch(e) {}
+  try { Trophies.boot(); } catch(e) {}
+  setTimeout(() => runAutoExec().catch(() => {}), 1800);        /* AutoExec.HC runs at boot */
   try { MixerUI.mount(); } catch(e) {}
   try { Hold.apply(); } catch(e) {}
   try { Saver.watch(); } catch(e) {}

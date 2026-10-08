@@ -4,6 +4,7 @@ import { Saver } from '../../kernel/saver.js';
 import { degauss } from '../../kernel/hardware.js';
 import { panic } from '../../kernel/panic.js';
 import { hcLex, hcParse, hcRun, looksLikeHolyC } from '../../kernel/holyc.js';
+import { sys } from '../../kernel/trophy_hook.js';
 
 /* ---- the fallback answering machine --------------------------------------
    Real commands (DIR, CD, TYPE, DEL, MD, TREE, COMPILE...) are handled
@@ -445,12 +446,14 @@ export default {
         return print(['NOTHING TO COMPILE. OPEN A .HC OR NAME ONE.'], 'l-err');
       }
       compileNode(target, file.content, print);
+      try { sys.emit('cmd', { name: 'COMPILE', own: !(await ctx.fs.isSystem(target)) }); } catch (e) { /* never */ }
     }
 
     /* the rest of the command set: neofetch, the oracle, the games */
     async function runExtra(cmd, arg, raw) {
       switch (cmd) {
         case 'NEOFETCH': case 'FETCH': {
+          sys.mark('eggs', 'NEOFETCH');
           const mod = await import('../neofetch/index.js');
           mod.default.open();
           print(['CHECK THE NEW WINDOW.'], 'l-dim');
@@ -462,22 +465,28 @@ export default {
             : 'TempleOS'], 'l-ok');
           return true;
         case 'SUDO': case 'DOAS':
+          sys.mark('eggs', 'SUDO');
           print(['YOU ARE ALREADY GOD. THERE IS NOTHING TO ESCALATE TO.'], 'l-holy');
           return true;
         case 'PING':
+          sys.mark('eggs', 'PING');
           print(['THERE IS NO NETWORK.',
                  'THAT IS NOT A FAULT. NOTHING GETS IN AND NOTHING PHONES HOME.'], 'l-holy');
           return true;
         case 'IFCONFIG': case 'IP': case 'CURL': case 'WGET': case 'SSH':
+          sys.mark('eggs', 'CURL');
           print(['NO NETWORK STACK. NONE WAS EVER WRITTEN.'], 'l-err');
           return true;
         case 'COWSAY':
+          sys.mark('eggs', 'COWSAY');
           print(cowsay(arg || 'HolyC is the shell.'), 'l-ok');
           return true;
         case 'SL':
+          sys.mark('eggs', 'SL');
           runSL(print, out);
           return true;
         case 'LINES': {
+          sys.mark('eggs', 'LINES'); sys.emit('cmd', { name: 'LINES' });
           const total = sourceLineCount();
           const pct = (total / 100000 * 100);
           print([
@@ -521,6 +530,7 @@ export default {
           print(['DROPPING TO THE DEBUGGER.'], 'l-err');
           return true;
         case 'FORTUNE':
+          sys.mark('eggs', 'FORTUNE');
           print([godWords(4).join(' ').toUpperCase() + '.',
                  'MAKE OF IT WHAT YOU WILL.'], 'l-holy');
           return true;
@@ -538,6 +548,7 @@ export default {
       /* the fork bomb, in every spelling anyone ever types it */
       if (/^:\s*\(\s*\)\s*\{.*\}\s*;?\s*:?$/.test(raw.replace(/\s+/g, ' ')) ||
           raw.replace(/\s+/g, '') === ':(){:|:&};:') {
+        sys.mark('eggs', 'FORKBOMB');
         print(['THERE IS NO FORK.',
                'ONE ADDRESS SPACE. ONE RING. NOTHING TO DOUBLE.'], 'l-holy');
         return true;
@@ -643,6 +654,7 @@ export default {
                 godDoodle: () => ctx.openWindow('goddoodle').catch(console.error),
                 dirNames: () => []
               });
+              sys.holyc(ast, null);
             } catch (e) {
               if (e && e.holyc) {
                 print(['HolyC: ' + e.message + (e.line ? '  (line ' + e.line + ')' : '')], 'l-err');
