@@ -467,9 +467,9 @@ export const SCHEMES = [
   { id: 'harvest', name: 'HARVEST',     price: 0, earn: 'mastery_garden', secret: true, blurb: 'Soil, straw and a little light. Every plant, every pot.',
     v: { bg: '#0f0a04', fg: '#EAD9A0', ok: '#9ACD50', hi: '#FFE070', err: '#E0663A', dim: '#A08C50', acc: '#D8C060' } },
   { id: 'nile',   name: 'NILE AT DAWN', price: 0, earn: 'mastery_aftere', secret: true, blurb: 'Blue water and gold sand, from the five ways across.',
-    v: { bg: '#031422', fg: '#F6E7B0', ok: '#5CC8E8', hi: '#FFD860', err: '#FF7A5A', dim: '#5E9AB0', acc: '#8FE0F0' } },
+    v: { bg: '#031422', fg: '#F6E7B0', ok: '#5CC8E8', hi: '#FFF4C8', err: '#FF7A5A', dim: '#5E9AB0', acc: '#8FE0F0' } },
   { id: 'valley', name: 'VALLEY MORNING', price: 0, earn: 'mastery_bekkedal', secret: true, blurb: 'Fjord blue and barn red. Everything in Bekkedal, done.',
-    v: { bg: '#07121a', fg: '#E6EEF2', ok: '#7CC070', hi: '#FFE8A0', err: '#E8604A', dim: '#7A94A6', acc: '#9CC8E0' } },
+    v: { bg: '#07121a', fg: '#E6EEF2', ok: '#7CC070', hi: '#FFFFF0', err: '#E8604A', dim: '#7A94A6', acc: '#9CC8E0' } },
   { id: 'signal', name: 'SIGNAL RED',   price: 0, earn: 'mastery_standbattle', secret: true, blurb: 'A stand\'s worth of red on black. Every fight won.',
     v: { bg: '#100303', fg: '#FFE0E0', ok: '#FF6A6A', hi: '#FFFFFF', err: '#FF2A2A', dim: '#C07878', acc: '#FF9A9A' } }
 ];
