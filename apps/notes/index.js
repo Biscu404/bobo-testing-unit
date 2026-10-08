@@ -1,5 +1,7 @@
 import { createWindow, raise } from '../../kernel/wm.js';
 import { scopedListeners, whenGone } from '../lifecycle.js';
+import { linksOf } from './links.js';
+import { createCalls } from './trophy_calls.js';
 
 const NOTE_KEY = 'templeos.notes.v1';
 const NOTE_SEED = [
@@ -90,14 +92,7 @@ export default {
       const cur = () => N.notes[N.cur] || N.notes[0];
       const byTitle = t => N.notes.findIndex(n => n.title.toLowerCase() === String(t).toLowerCase().trim());
 
-      /* every [[name]] in a body, in order, without duplicates */
-      const LINK_RE = /\[\[([^\[\]|]+)(?:\|([^\[\]]+))?\]\]/g;
-      function linksOf(n) {
-        const out = [];
-        String(n.body || '').replace(LINK_RE, (_, t) => { const k = t.trim();
-          if (k && out.indexOf(k) < 0) out.push(k); return _; });
-        return out;
-      }
+      const tro = createCalls();                /* what the trophies are told (trophy_calls.js); links.js is the pure half of the vault */
       function backlinksOf(title) {
         const t = title.toLowerCase();
         return N.notes.filter(n => n.title.toLowerCase() !== t &&
@@ -111,7 +106,7 @@ export default {
       }
       function openTitle(t) {
         let i = byTitle(t);
-        if (i < 0) { makeNote(t.trim(), t.trim().toUpperCase() + '\n\n'); i = N.notes.length - 1; }
+        if (i < 0) { makeNote(t.trim(), t.trim().toUpperCase() + '\n\n'); i = N.notes.length - 1; N.notes[i].fromLink = true; }
         show(i);
       }
 
@@ -157,7 +152,7 @@ export default {
 
       function renderBack() {
         const n = cur();
-        const back = backlinksOf(n.title);
+        const back = backlinksOf(n.title); tro.backlinks(back.length);
         const out = linksOf(n);
         const dead = out.filter(t => byTitle(t) < 0);
         let h = '<span class="nbl">BACKLINKS</span>';
@@ -193,7 +188,7 @@ export default {
       function setMode(m) {
         N.mode = m;
         root.classList.toggle('reading', m === 'read');
-        graphEl.classList.toggle('on', m === 'graph');
+        graphEl.classList.toggle('on', m === 'graph'); tro.graph(m === 'graph');
         root.classList.toggle('graphing', m === 'graph');
         $('.nb-prev').textContent = m === 'read' ? 'EDIT' : 'PREVIEW';
         if (m === 'read') renderRead();
@@ -204,7 +199,7 @@ export default {
       /* ---- typing -------------------------------------------------------- */
       editEl.addEventListener('input', () => {
         const n = cur(); n.body = editEl.value; n.at = Date.now();
-        renderList(); renderBack();
+        renderList(); renderBack(); tro.written(N.notes, n);
         if (N.mode === 'read') renderRead();
         if (graphEl.classList.contains('on')) layoutSeed();
         save();
@@ -486,6 +481,7 @@ export default {
       setMode('edit');
       whenGone(_rootEl, () => {
         if (G.raf) cancelAnimationFrame(G.raf);
+        tro.stop();
         try { localStorage.setItem(NOTE_KEY, JSON.stringify(N)); } catch (e) {}
       });
   }

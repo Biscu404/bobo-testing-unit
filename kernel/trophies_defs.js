@@ -15,6 +15,7 @@ import { TROPHIES as ELEPHANT, backfill as elephantBackfill } from '../apps/elep
 import { TROPHIES as CRAYON, backfill as crayonBackfill } from '../apps/crayon/trophies.js';
 import { TROPHIES as GARAGE, backfill as garageBackfill } from '../apps/garage/trophies.js';
 import { TROPHIES as HIFI } from '../apps/hifi/trophies.js';
+import { TROPHIES as NOTES } from '../apps/notes/trophies.js';
 
 /* each app's backfill reader: (read(key) -> object|null, T) -> [trophy ids already earned] */
 export const BACKFILL = [sweeperBackfill, solitaireBackfill, aftereBackfill, gardenBackfill, cookBackfill, magenBackfill, standbattleBackfill, bekkedalBackfill, bottleBackfill, elephantBackfill, crayonBackfill, garageBackfill];
@@ -32,7 +33,8 @@ export const APPS = [
   ['elephant', 'THE ELEPHANT', ELEPHANT],
   ['crayon', 'CRAYON', CRAYON],
   ['garage', 'THE GARAGE', GARAGE],
-  ['hifi', 'THE STACK', HIFI]
+  ['hifi', 'THE STACK', HIFI],
+  ['notes', 'NOTES', NOTES]
 ];
 export const NAMES = { system: 'THE MACHINE', meta: 'THE LEDGER', sweeper: 'DUNGEON SWEEPER', solitaire: 'SOLITAIRE', aftere: 'AFTEREGYPT', garden: 'THE GARDEN', cook: 'THE COOK', magen: 'MAGEN',
   standbattle: 'STAND BATTLE', bekkedal: 'BEKKEDAL', bottle: 'THE BOTTLE', elephant: 'THE ELEPHANT', crayon: 'CRAYON', garage: 'THE GARAGE', hifi: 'THE STACK', notes: 'NOTES', holyc: 'HOLYC.EXE', tools: 'THE SMALL TOOLS' };
