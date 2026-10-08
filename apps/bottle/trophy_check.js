@@ -35,6 +35,6 @@ function night({ gap, n, rest, stopAt, hold }) {
 /* the cordial: the bottle is seventeen measures of 40 ml in 700 */
 ok(BOTTLE_MEASURES === Math.floor(700 / 40), 'a bottle is ' + Math.floor(700 / 40) + ' measures, and the trophy asks for that many');
 ok(GLOW_SECS === 300, 'a glow is five minutes');
-ok(TROPHIES.length === 10 && TROPHIES.every(t => t.id.indexOf('bt_') === 0) && SCENES_TOTAL === 9, 'ten Bottle trophies, nine dreams');
+ok(TROPHIES.length === 10 && TROPHIES.every(t => t.id.indexOf('bt_') === 0) && SCENES_TOTAL === 30, 'ten Bottle trophies, thirty dreams');
 console.log(fails ? fails + ' failed' : 'All checks pass.');
 process.exit(fails ? 1 : 0);

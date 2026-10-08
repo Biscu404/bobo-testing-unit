@@ -1,5 +1,6 @@
 import { varsOf, VAR_NAMES, install as installThemes } from './theme_fx.js';
 import { FRAMES, LOGOS, CURSORS, SCHEMES, POTS, SPECIES, WALLS, CRAYON, GARAGE, DRINKS, ELEPHANT, SOLITAIRE, DECO_SVG, CUR_HANDMASK, forSale } from './cos_data.js';
+import { Backdrops } from './backdrops.js';
 
 /* `kind`: what owning one of these means. 'look' goes on the machine and is worn one at a time (frame, logo, pointer, scheme);
    'stock' is what the garden grows with (pots, seeds); 'wall' is a picture, set as the background; 'unlock' is something an app
@@ -71,10 +72,19 @@ const Cos = {
     LOGOS[0].svg = (document.getElementById('logo') || { innerHTML: '' }).innerHTML;
     this.applyAll();
     try { window.addEventListener('trophies-changed', () => this.syncRewards()); window.addEventListener('trophy-earned', ev => { if (ev.detail) this.grantFor(ev.detail.id); }); } catch (e) { /* no window */ }
+    /* a blackout that deals a new backdrop puts it on the shelf for any shop that is open */
+    try { window.addEventListener('backdrop-seen', ev => this.tell('wall', ev.detail.id)); } catch (e) { /* no window */ }
     /* Dave leaves a box on the desktop when the shop window shuts (kernel/dave_box.js); it waits for the window list to say so */
     import('./dave_box.js').then(m => m.DaveBox.watch()).catch(() => {});
   },
 
+  /* the items a shelf shows: a backdrop is not there until a blackout has dealt it (or it is already owned) */
+  shelf(cat) {
+    const c = COS_CATS[cat];
+    if (!c) return [];
+    if (c.kind !== 'wall') return c.list;
+    return c.list.filter(it => this.has(cat, it.id) || Backdrops.seen(it.id));
+  },
   find(cat, id) {
     const c = COS_CATS[cat];
     if (!c) return null;
@@ -92,6 +102,7 @@ const Cos = {
   buy(cat, id) {
     const it = this.find(cat, id);
     if (!it || this.has(cat, id) || it.reward || it.earn) return false;       /* what a trophy gives is not for sale */
+    if (COS_CATS[cat].kind === 'wall' && !Backdrops.seen(id)) return false;   /* a backdrop is for sale once a blackout has shown it */
     if (!window.Economy.spend(it.price, 'DAVE: ' + it.name)) return false;
     this.st.owned[cat].push(id);
     this.save();

@@ -35,6 +35,15 @@ export const FX = {
     }
     g.putImageData(id, 0, 0);
   },
+  /* VHS tracking: a band of the picture shoved sideways, the way an old set holds a bad tape (pixels moved, never mixed) */
+  track(g, r) {
+    const id = get(g), d = id.data, c = new Uint8ClampedArray(d), y0 = r() * H | 0, h = 6 + (r() * 22 | 0), sh = ((r() - 0.5) * 48) | 0;
+    for (let y = y0; y < Math.min(H, y0 + h); y++) for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4, s = (y * W + (((x - sh) % W) + W) % W) * 4;
+      d[i] = c[s]; d[i + 1] = c[s + 1]; d[i + 2] = c[s + 2];
+    }
+    g.putImageData(id, 0, 0);
+  },
   /* the red and the blue come apart */
   split(g, r) {
     const id = get(g), d = id.data, c = new Uint8ClampedArray(d), s = 2 + (r() * 5 | 0);

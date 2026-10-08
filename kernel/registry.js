@@ -33,6 +33,7 @@ export const registry = {
   holyc: () => import('../apps/holyc/index.js'),
   trophies: () => import('../apps/trophies/index.js'),
   trophybox: () => import('../apps/trophybox/index.js'),
+  credits: () => import('../apps/credits/index.js'),
   bibel: () => import('../apps/bibel/index.js'),
 
 
