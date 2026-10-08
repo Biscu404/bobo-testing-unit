@@ -37,10 +37,15 @@ const WEAR = {
   bowtie:   (R, o) => { R(60 + o.nx, 34 + o.hy + o.ny, 4, 5, 12); R(67 + o.nx, 34 + o.hy + o.ny, 4, 5, 12); R(64 + o.nx, 35 + o.hy + o.ny, 3, 3, 4); },
   scarf:    (R, o) => { R(49 + o.nx, 32 + o.hy + o.ny, 16, 3, 12); R(49 + o.nx, 35 + o.hy + o.ny, 16, 3, 15); if (!o.lying) { R(51 + o.nx, 38 + o.hy + o.ny, 4, 8, 12); R(51 + o.nx, 41 + o.hy + o.ny, 4, 2, 15); R(51 + o.nx, 46 + o.hy + o.ny, 4, 2, 14); } },
   blanket:  (R, o) => { R(21, 17 + o.by, 30, 13, 12); R(21, 28 + o.by, 30, 2, 14); R(21, 17 + o.by, 30, 2, 14); for (let x = 22; x < 50; x += 5) R(x, 30 + o.by, 2, 3, 14); R(34, 21 + o.by, 4, 4, 14); },
-  cape:     (R, o) => { R(9, 19 + o.by, 14, 26, 5); R(9, 19 + o.by, 3, 26, 13); R(8, 43 + o.by, 15, 3, 0); R(44, 17 + o.by, 8, 3, 15); R(44, 20 + o.by, 3, 3, 14); },
+  /* a cloak hanging from the shoulders and flaring out behind him: mostly the body is in front of it, so what shows is the flare behind the rump and under the belly */
+  cape:     (R, o) => { for (let j = 0; j < 31; j++) { const xl = Math.round(25 - j * 0.65), y = 18 + o.by + j; R(xl - 1, y, 1, 1, 0); R(xl, y, 38 - xl, 1, j > 27 ? 12 : 5); if (j % 5 === 2) R(xl, y, 2, 1, 13); } R(5, 49 + o.by, 30, 1, 0); },
+  collar:   (R, o) => { R(50 + o.nx, 31 + o.hy + o.ny, 15, 3, 15); R(50 + o.nx, 34 + o.hy + o.ny, 15, 2, 5); R(52 + o.nx, 31 + o.hy + o.ny, 1, 3, 0); R(56 + o.nx, 31 + o.hy + o.ny, 1, 3, 0); R(60 + o.nx, 31 + o.hy + o.ny, 1, 3, 0); },
+  halo:     (R, o) => { const y = 1 + o.hy - HAT_DROP; R(56, y, 14, 1, 0); R(54, y + 1, 18, 1, 14); R(53, y + 2, 2, 1, 14); R(71, y + 2, 2, 1, 14); R(54, y + 3, 18, 1, 14); R(56, y + 4, 14, 1, 0); R(58, y + 1, 3, 1, 15); R(66, y - 2, 1, 1, 15); },
+  medal:    (R, o) => { R(55 + o.nx, 35 + o.hy + o.ny, 3, 7, 12); R(56 + o.nx, 35 + o.hy + o.ny, 1, 7, 15); R(53 + o.nx, 41 + o.hy + o.ny, 7, 5, 0); R(54 + o.nx, 42 + o.hy + o.ny, 5, 3, 14); R(56 + o.nx, 43 + o.hy + o.ny, 1, 1, 6); },
   boots:    (R, o) => { o.feet.forEach(f => { R(f[0] - 1, f[1] - 2, 11, 4, 12); R(f[0] - 1, f[1] - 2, 11, 1, 4); R(f[0] + 1, f[1] + 1, 11, 1, 0); }); }
 };
 const BEHIND = { cape: 1 };
+const NECKWEAR = { bowtie: 1, scarf: 1, medal: 1 };                         /* round the throat: drawn before the trunk, so the trunk hangs in front of it */
 const HAT_DROP = 3;                                              /* a hat sits on the head, not above it */
 
 export function drawMini(g, o) {
@@ -56,7 +61,7 @@ export function drawMini(g, o) {
   if (sleeping) {
     /* lying on his belly, head on the ground in front of him, trunk along the floor, one ear over the eye */
       const feet = [[22, 55], [44, 55]];
-    if (wear.cape) WEAR.cape(R, { by: 12 + br });
+    if (wear.body === 'cape') WEAR.cape(R, { by: 12 + br });
     ellipse(g, 36, 41 + br, 24, 12, 7, 15, 8);
     ellipse(g, 28, 52, 8, 4, 8); ellipse(g, 48, 52, 8, 4, 8);
     if (wear.feet === 'boots') WEAR.boots(R, { feet: feet.map(f => [f[0] - 4, f[1]]) });
@@ -83,7 +88,7 @@ export function drawMini(g, o) {
   const hy = pushing ? 3 : 0, headX = pushing ? 4 : 0;
   const fl = Math.round(ph * 3);
   const feet = [[20 - fl, 55], [46 + fl, 55], [29 + fl, 55], [53 - fl, 55]];
-  if (wear.cape) WEAR.cape(R, { by: bob + br });
+  if (wear.body === 'cape') WEAR.cape(R, { by: bob + br });
   /* far legs, then the tail, the body, the near legs */
   ellipse(g, 33 + fl, 49, 5, 7, 8); ellipse(g, 56 - fl, 49, 5, 7, 8);
   R(11, 26 + bob, 3, 2, 0); R(10, 28 + bob, 3, 12, 8); R(9, 38 + bob, 5, 3, 0); R(9, 39 + bob, 3, 2, 7);
@@ -96,6 +101,10 @@ export function drawMini(g, o) {
   ellipse(g, 60 + headX, 26 + bob + hy, 11, 11, 7, 15, 8);
   const sway = Math.round(Math.sin(t * 1.2) * 1.2);
   const tx = 66 + headX;
+  /* what is round the throat goes on before the trunk (and the cape's collar with it), so the trunk is in front of the knot */
+  const place = { hy: bob + hy, fx: headX, fy: 0, nx: headX, ny: 0, by: bob + br };
+  if (wear.body === 'cape') WEAR.collar(R, place);
+  if (NECKWEAR[wear.neck]) WEAR[wear.neck](R, place);
   if (pushing) {
     for (let i = 0; i < 6; i++) { R(tx + i * 2, 33 + bob + hy + (i > 3 ? 1 : 0), 4, 5, i % 2 ? 8 : 7); R(tx + i * 2, 38 + bob + hy + (i > 3 ? 1 : 0), 4, 1, 0); }
   } else if (o.think) {
@@ -109,9 +118,8 @@ export function drawMini(g, o) {
   R(63 + headX, 22 + bob + hy, 4, 4, blink ? 7 : 15);
   if (!blink) { R(65 + headX, 23 + bob + hy, 2, 3, 0); R(63 + headX, 22 + bob + hy, 1, 1, 15); } else R(63 + headX, 24 + bob + hy, 4, 1, 0);
   R(60 + headX, 19 + bob + hy, 7, 1, 8);                        /* a brow */
-  /* clothes on the head and neck follow the head */
-  const place = { hy: bob + hy, fx: headX, fy: 0, nx: headX, ny: 0, by: bob + br };
-  ['neck', 'face', 'head'].forEach(s => { const w = wear[s]; if (w && WEAR[w] && !BEHIND[w]) WEAR[w](R, s === 'head' ? Object.assign({}, place, { hy: place.hy + HAT_DROP }) : place); });
+  /* clothes on the face and head follow the head */
+  ['face', 'head'].forEach(s => { const w = wear[s]; if (w && WEAR[w] && !BEHIND[w]) WEAR[w](R, s === 'head' ? Object.assign({}, place, { hy: place.hy + HAT_DROP }) : place); });
   g.restore();
 }
 

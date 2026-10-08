@@ -12,7 +12,7 @@ const APP_SPRITES = {
   hifi: 'disc', notes: 'notes', bottle: 'bottle', elephant: 'elephant',
   magen: 'magen', cook: 'flask', garden: 'garden', sweeper: 'sweeper',
   solitaire: 'solitaire', crayon: 'crayon', shop: 'shop', drawings: 'drawings',
-  account: 'account', standbattle: 'arena', garage: 'garage', holyc: 'holyc', trophies: 'trophy'
+  account: 'account', standbattle: 'arena', garage: 'garage', holyc: 'holyc', trophies: 'trophy', bibel: 'bibel'
 };
 
 export function spriteFor(type, app) {
@@ -59,10 +59,14 @@ function template(type, app) {
   return t;
 }
 
+/* A name wraps on as many lines as it needs, so it always fits: a zero-width space gives the line a place to break at each word of a
+   CamelCaseName and after a dot, dash or underscore (it is never read back: the icon carries its real name in data-name). */
+export const breakable = name => String(name).replace(/([a-z0-9])([A-Z])/g, '$1\u200b$2').replace(/([._-])(?=[^._-])/g, '$1\u200b');
+
 /* a finished icon for { name, type, app } */
 export function iconEl(item) {
   const el = template(item.type, item.app).cloneNode(true);
   el.dataset.name = item.name;
-  el.lastChild.firstChild.textContent = item.name;
+  el.lastChild.firstChild.textContent = breakable(item.name);
   return el;
 }

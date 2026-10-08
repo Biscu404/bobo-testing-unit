@@ -1,4 +1,5 @@
 import { DECO_NEW } from './cos_deco.js';
+import { FRAMES_R, LOGOS_R, CURSORS_R, SCHEMES_R, ELEPHANT_R, DRINKS_R } from './cos_rewards.js';
 
 export const FRAMES = [
   {
@@ -631,4 +632,8 @@ export const ELEPHANT = [
   { id: 'pet',      slot: 'free', name: 'FREE RANGE',       price: 2500, blurb: 'Let him out of the window. He will walk about the desktop, lie down and sleep, say things, and move your icons when he thinks they are in the way.' }
 ];
 
-[FRAMES, LOGOS, CURSORS, SCHEMES, WALLS].forEach(l => l.sort((a, b) => a.price - b.price));
+/* what Dave does not sell (kernel/cos_rewards.js): on the same shelves, after everything that is for sale */
+FRAMES.push(...FRAMES_R); LOGOS.push(...LOGOS_R); CURSORS.push(...CURSORS_R); SCHEMES.push(...SCHEMES_R); ELEPHANT.push(...ELEPHANT_R); DRINKS.push(...DRINKS_R);
+[FRAMES, LOGOS, CURSORS, SCHEMES, WALLS].forEach(l => l.sort((a, b) => (a.reward ? 1 : 0) - (b.reward ? 1 : 0) || a.price - b.price));
+/* the items that are for sale: a count of "everything Dave has" never includes what only a trophy can give */
+export const forSale = list => list.filter(it => !it.reward);

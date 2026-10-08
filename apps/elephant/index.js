@@ -109,7 +109,7 @@ export default {
       /* what he has on (kernel/pet.js keeps it, so the elephant on the desktop wears the same), and whether he is out of the window */
       let wear = Pet.wear();
       const kit = { R, B, oval };
-      const HAT_LIFT = { partyhat: 54, tophat: 46, wizard: 62, crown: 40 };
+      const HAT_LIFT = { partyhat: 54, tophat: 46, wizard: 62, crown: 40, halo: 30 };
 
       /* the same dither, poured into an ellipse rather than a box, because a
          square halo around a round sun is a square halo around a round sun */
@@ -525,6 +525,7 @@ export default {
         /* the head, and the dome on top of it */
         limb(240, 154 + br, 54, 50, 7, 15, 8);
         limb(240, 122 + br, 40, 26, 7, 15);
+        drawWear('neck', wear, kit, { br });
 
         /* The trunk: eight slabs, tapering, each leaning a little further than
            the one above it, so the end of it moves and the root does not. */
@@ -828,7 +829,10 @@ export default {
         b.addEventListener('mousedown', ev => { ev.stopPropagation(); Snd.click(); fn(); });
         return b;
       };
-      const toDave = it => { toast('DAVE SELLS THE ' + it.name + ' FOR ' + it.price + ' SUN.'); openWindow('shop', { tab: 'elephant' }).catch(() => {}); };
+      const toDave = it => {
+        if (it.reward) { const T = window.Trophies, d = T && T.get(it.reward); toast('NOT SOLD: THE ' + it.name + ' IS A REWARD' + (d ? ' FOR "' + T.plainName(d) + '"' : '') + '.'); if (T && T.openLedger) T.openLedger(it.reward); return; }
+        toast('DAVE SELLS THE ' + it.name + ' FOR ' + it.price + ' SUN.'); openWindow('shop', { tab: 'elephant' }).catch(() => {});
+      };
       function paintWardrobe() {
         wardrobe.innerHTML = '';
         const hd = document.createElement('div'); hd.className = 'gbh'; hd.textContent = 'THE WARDROBE  --  HE WEARS IT HERE AND ON THE DESKTOP';
@@ -839,7 +843,7 @@ export default {
           row.appendChild(chip('NOTHING', !wear[slot], () => Pet.setWear(slot, null)));
           ELEPHANT.filter(i => i.slot === slot).forEach(it => {
             const own = has(it.id);
-            row.appendChild(chip(it.name + (own ? '' : '  ' + it.price), wear[slot] === it.id, () => own ? Pet.setWear(slot, it.id) : toDave(it), !own, it.blurb));
+            row.appendChild(chip(it.name + (own ? '' : it.reward ? '  TROPHY' : '  ' + it.price), wear[slot] === it.id, () => own ? Pet.setWear(slot, it.id) : toDave(it), !own, it.blurb));
           });
           wardrobe.appendChild(row);
         });

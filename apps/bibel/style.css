@@ -1,0 +1,54 @@
+/* THE BIBEL: a book on the machine's sixteen colours. Brown leather, black pages, ink in the light grey, gold for the heads. */
+.bb { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; background: #000; color: #AAAAAA; font-family: 'VT323', monospace; outline: none; }
+.bb [hidden] { display: none !important; }
+.bb-reader { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.bb-bar { display: flex; align-items: center; gap: 6px; padding: 5px 8px; background: #AA5500; border-bottom: 3px solid #000; flex: 0 0 auto; flex-wrap: wrap; }
+.bb-bar .appbtn { font-size: 18px; padding: 0 8px; }
+.bb-title { flex: 1 1 120px; min-width: 0; color: #FFFFFF; font-size: 20px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bb-page { color: #FFFFFF; font-size: 18px; min-width: 64px; text-align: right; }
+.bb-main { position: relative; flex: 1 1 auto; min-height: 0; display: flex; padding: 10px; background: #AA5500; }
+.bb-sheet { position: relative; flex: 1 1 auto; min-width: 0; background: #000; border: 3px solid #000; box-shadow: 0 0 0 3px #FFFF55 inset; padding: 22px 30px 26px; display: flex; }
+.bb-view { position: relative; flex: 1 1 auto; min-width: 0; overflow: hidden; }
+.bb-flow { position: absolute; left: 0; top: 0; column-fill: auto; column-rule: 3px double #555555; line-height: 1.32; color: #AAAAAA; text-align: left; }
+.bb-flow h2 { break-before: column; break-after: avoid; margin: 0 0 14px; color: #FFFF55; font-weight: normal; text-align: center; font-size: 1.35em; line-height: 1.15; letter-spacing: 1px; padding: 10px 0 12px; border-top: 3px double #AA5500; border-bottom: 3px double #AA5500; }
+.bb-flow h2 small { display: block; font-size: 1.7em; color: #FFFFFF; letter-spacing: 3px; }
+.bb-flow .bb-note { text-align: center; color: #55FFFF; font-size: .78em; letter-spacing: 1px; margin: -4px 0 14px; }
+.bb-flow .bb-part { break-before: column; text-align: center; color: #FFFF55; font-size: 1.5em; padding-top: calc(var(--bb-h, 400px) * .28); letter-spacing: 2px; }
+.bb-flow .bb-part span { display: block; color: #55FFFF; font-size: .6em; margin-bottom: 14px; }
+.bb-flow p { margin: 0 0 .5em; text-indent: 1.2em; }
+.bb-flow p.first { text-indent: 0; }
+.bb-flow p.first .dc { float: left; font-size: 3.1em; line-height: .78; padding: .06em .08em 0 0; color: #FFFF55; }
+.bb-flow sup { color: #55FFFF; font-size: .6em; margin-right: .25em; vertical-align: .55em; }
+.bb-flow i[data-end] { display: block; height: 0; }
+.bb-flow p:last-of-type { break-after: avoid; }
+.bb-flow .bb-fin { break-before: avoid; text-align: center; color: #AA5500; letter-spacing: 6px; margin-top: 1.2em; }
+.bb-flow .bb-pre p { text-indent: 0; }
+.bb-turn { position: absolute; top: 0; bottom: 0; width: 22%; background: none; border: 0; cursor: pointer; opacity: 0; }
+.bb-turn.l { left: 0; } .bb-turn.r { right: 0; }
+.bb-turn:focus-visible { opacity: .15; background: #FFFF55; }
+.bb-foot { display: flex; align-items: center; gap: 8px; padding: 4px 10px; background: #000; color: #AAAAAA; font-size: 17px; flex: 0 0 auto; }
+.bb-prog { flex: 1; height: 8px; background: #000; border: 1px solid #AAAAAA; position: relative; }
+.bb-prog b { position: absolute; left: 0; top: 0; bottom: 0; background: #55FF55; }
+.bb-hint { color: #AAAAAA; }
+
+.bb-cover { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; background: #AA5500; padding: 14px; }
+.bb-board { margin: auto; width: min(520px, 100%); background: #0000AA; border: 4px solid #000; box-shadow: 0 0 0 4px #FFFF55 inset, 0 0 0 8px #0000AA inset, 0 0 0 10px #FFFF55 inset; padding: 40px 28px 30px; text-align: center; color: #FFFFFF; }
+.bb-board svg { width: 96px; height: 96px; image-rendering: pixelated; margin: 0 auto 6px; display: block; }
+.bb-board h1 { margin: 6px 0 2px; font-weight: normal; font-size: 64px; letter-spacing: 8px; color: #FFFF55; line-height: 1; }
+.bb-board .sub { color: #FFFFFF; font-size: 22px; letter-spacing: 2px; }
+.bb-board .rule { height: 6px; margin: 14px auto; width: 70%; border-top: 2px solid #FFFF55; border-bottom: 2px solid #FFFF55; }
+.bb-board .lead { color: #55FFFF; font-size: 20px; margin: 4px 0 16px; }
+.bb-board .btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.bb-board .appbtn { font-size: 22px; padding: 2px 14px; }
+
+.bb-toc { flex: 1 1 auto; min-height: 0; overflow: auto; background: #000; padding: 12px 18px 20px; }
+.bb-toc h3 { margin: 16px 0 6px; color: #FFFF55; font-weight: normal; font-size: 22px; letter-spacing: 1px; border-bottom: 2px solid #AA5500; }
+.bb-toc h3:first-child { margin-top: 0; }
+.bb-toc .stat { color: #55FFFF; font-size: 19px; margin-bottom: 6px; }
+.bb-row { display: grid; grid-template-columns: 48px 1fr auto; gap: 8px; align-items: baseline; width: 100%; background: none; border: 0; border-left: 4px solid transparent; color: #AAAAAA; font: inherit; font-size: 21px; text-align: left; padding: 3px 8px; cursor: pointer; }
+.bb-row:hover, .bb-row:focus-visible { background: #0000AA; color: #FFFFFF; outline: none; border-left-color: #FFFF55; }
+.bb-row .no { color: #FFFF55; }
+.bb-row .nt { display: block; color: #55FFFF; font-size: 16px; }
+.bb-row .tick { color: #55FF55; min-width: 56px; text-align: right; }
+.bb-row.now { border-left-color: #55FF55; }
+@media (prefers-reduced-motion: no-preference) { .bb-flow { transition: transform .12s steps(4); } }

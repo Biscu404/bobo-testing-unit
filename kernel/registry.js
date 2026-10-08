@@ -32,6 +32,7 @@ export const registry = {
   garage: () => import('../apps/garage/index.js'),
   holyc: () => import('../apps/holyc/index.js'),
   trophies: () => import('../apps/trophies/index.js'),
+  bibel: () => import('../apps/bibel/index.js'),
 
 
 };

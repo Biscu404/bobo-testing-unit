@@ -104,7 +104,8 @@ export default {
         const eq = isEq(cat, it.id);
         const card = document.createElement('div');
         card.className = 'shopcard' + (eq ? ' eq' : owned ? ' owned' : '') +
-          (!owned && window.Economy.balance() < it.price ? ' broke' : '');
+          (it.reward ? (owned ? ' earned' : ' reward') : '') +
+          (!it.reward && !owned && window.Economy.balance() < it.price ? ' broke' : '');
 
         const cv = document.createElement('canvas');
         cv.width = 116; cv.height = 60;
@@ -116,13 +117,20 @@ export default {
 
         const pr = document.createElement('div');
         pr.className = 'pr';
-        pr.textContent = owned ? 'OWNED' : (it.price === 0 ? 'FREE' : it.price + ' SUN');
+        pr.textContent = it.reward ? (owned ? 'EARNED' : 'NOT SOLD') : owned ? 'OWNED' : (it.price === 0 ? 'FREE' : it.price + ' SUN');
 
         const bt = document.createElement('div');
         bt.className = 'bt';
-        bt.textContent = buttonText(cat, owned, eq);
+        bt.textContent = it.reward && !owned ? 'EARN IT' : buttonText(cat, owned, eq);
 
-        card.appendChild(cv); card.appendChild(nm); card.appendChild(pr); card.appendChild(bt);
+        card.appendChild(cv); card.appendChild(nm); card.appendChild(pr);
+        /* a reward says which trophy gives it, on the card: the only thing Dave cannot be bargained with over */
+        if (it.reward) {
+          const T = window.Trophies, d = T && T.get(it.reward), rw = document.createElement('div');
+          rw.className = 'rw'; rw.textContent = (owned ? 'FOR ' : 'EARN ') + (d ? T.plainName(d) : 'A TROPHY');
+          card.appendChild(rw);
+        }
+        card.appendChild(bt);
         /* no title attribute: the browser would pop up a second box that says again what Dave is already saying */
 
         card.addEventListener('mouseenter', () => {
@@ -138,6 +146,14 @@ export default {
 
     function press(it, owned) {
       const c = COS_CATS[cat];
+      if (!owned && it.reward) {
+        /* not for sale at any price: the trophy that gives it is opened in the ledger */
+        const T = window.Trophies, d = T && T.get(it.reward);
+        say('THAT ONE IS NOT FOR SALE. I HAVE NEVER BEEN ABLE TO SELL IT. YOU HAVE TO EARN IT' + (d ? ': ' + T.plainName(d) + '.' : '.'));
+        if (window.Snd) window.Snd.deny && window.Snd.deny();
+        if (T && T.openLedger) T.openLedger(it.reward);
+        return;
+      }
       if (!owned) {
         if (window.Economy.balance() < it.price) {
           say(pick(DAVE_BROKE));
@@ -202,12 +218,20 @@ export default {
     this._onCos = () => { if (document.body.contains(root)) fill(); else window.removeEventListener('cos-changed', this._onCos); };
     window.addEventListener('cos-changed', this._onCos);
 
+    /* asked for another shelf by a second click (the elephant sends you to his, a scheme menu to the schemes) */
+    this._onAgain = ev => {
+      const d = ev.detail, i = d && d.appId === 'shop' && d.args && d.args.tab ? keys.indexOf(d.args.tab) : -1;
+      if (i >= 0) tabs.querySelectorAll('.shoptab')[i].dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    };
+    window.addEventListener('app-reopen', this._onAgain);
+
     /* the loop re-arms itself every frame, so cancel whichever id is current, not the first */
     this._stop = () => cancelAnimationFrame(raf);
   },
   unmount() {
     if (this._stop) { this._stop(); this._stop = null; }
     window.removeEventListener('cos-changed', this._onCos);
+    window.removeEventListener('app-reopen', this._onAgain);
     window.Cos.hover(null, null);
   }
 };

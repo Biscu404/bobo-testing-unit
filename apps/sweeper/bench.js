@@ -1,7 +1,7 @@
 /* The bench: rest, and what you wear. A build is what fits in the notches
    you own, so the argument is always the same one: one big charm or two
    small ones. */
-import { CHARMS, CHARM, REGIONS, NOTCH_COST, ROOMS } from './data.js';
+import { CHARMS, CHARM, REGIONS, NOTCH_COST, ROOMS, baseCount } from './data.js';
 import { backdrop, weather, mask, geo, notch, charmIcon } from './art.js';
 
 export const notchesUsed = camp => camp.equipped.reduce((a, id) => a + CHARM[id].n, 0);
@@ -9,7 +9,7 @@ export const notchesUsed = camp => camp.equipped.reduce((a, id) => a + CHARM[id]
 export function createBench(env, regionId) {
   const camp = env.camp, rg = REGIONS.find(r => r.id === regionId) || REGIONS[0];
   /* how far along a charm that is found, not bought, you are */
-  const found = c => c.feat === 'perfect' ? Object.keys(camp.perfect || {}).length : 0;
+  const found = c => c.feat === 'perfect' ? baseCount(camp.perfect) : 0;
   const B = { sel: 0, hits: [], note: '' };
   /* sitting down is resting */
   camp.hp = env.maxHp(); camp.bench = rg.id; env.save();
@@ -50,15 +50,15 @@ export function createBench(env, regionId) {
     B.hits.push({ id: 'notch', x: 600 + camp.notches * 24 + 10, y: 86, w: 150, h: 24 });
 
     CHARMS.forEach((c, i) => {
-      const col = i % 2, row = Math.floor(i / 2), x = 60 + col * 300, y = 130 + row * 62;
+      const col = i % 2, row = Math.floor(i / 2), x = 60 + col * 300, y = 126 + row * 56;
       const own = camp.owned.indexOf(c.id) >= 0, on = camp.equipped.indexOf(c.id) >= 0;
-      G.R(x, y, 290, 54, B.sel === i ? '#26324f' : '#0e1220');
+      G.R(x, y, 290, 50, B.sel === i ? '#26324f' : '#0e1220');
       G.R(x, y, 290, 2, on ? '#ffd68c' : rg.pal.ink); 
-      charmIcon(G, x + 8, y + 10, 4, c.id, own);
-      G.T(c.name, x + 52, y + 24, on ? '#ffd68c' : own ? '#e8e2d4' : '#a3adc2', 22);
-      for (let k = 0; k < c.n; k++) notch(G, x + 54 + k * 14, y + 30, 2.6, on);
-      G.T(own ? (on ? 'WORN' : 'OWNED') : c.feat ? found(c) + ' / ' + ROOMS : c.cost + ' GEO', x + 282, y + 24, own ? '#9fe0ff' : c.feat ? '#ffd68c' : camp.geo >= c.cost ? '#f2e2b0' : '#c08a8a', 20, 'right');
-      B.hits.push({ id: 'c' + i, x, y, w: 290, h: 54 });
+      charmIcon(G, x + 8, y + 8, 4, c.id, own);
+      G.T(c.name, x + 52, y + 22, on ? '#ffd68c' : own ? '#e8e2d4' : '#a3adc2', 22);
+      for (let k = 0; k < c.n; k++) notch(G, x + 54 + k * 14, y + 28, 2.6, on);
+      G.T(own ? (on ? 'WORN' : 'OWNED') : c.feat ? found(c) + ' / ' + ROOMS : c.cost + ' GEO', x + 282, y + 22, own ? '#9fe0ff' : c.feat ? '#ffd68c' : camp.geo >= c.cost ? '#f2e2b0' : '#c08a8a', 20, 'right');
+      B.hits.push({ id: 'c' + i, x, y, w: 290, h: 50 });
     });
     const c = CHARMS[B.sel];
     G.R(660, 130, 240, 372, '#0e1220'); G.R(660, 130, 240, 2, rg.pal.ink);

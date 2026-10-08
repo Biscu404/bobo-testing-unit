@@ -11,8 +11,8 @@ const STEP_MS = 1000 / 60;
 export default {
   id: 'aftere',
   title: 'AfterEgypt',
-  width: 460,
-  height: 380,
+  width: 680,
+  height: 500,
   resizable: true,
   async mount(root, ctx) {
     const snd = (name, ...a) => { try { if (window.Snd && window.Snd[name]) window.Snd[name](...a); } catch (e) {} };
@@ -23,6 +23,7 @@ export default {
     const cv = document.createElement('canvas');
     cv.width = W; cv.height = H;
     cv.className = 'gamecv';
+    cv.dataset.fit = 'int';             /* the window manager grows the picture to fill the pane (kernel/canvas_fit.js) */
     cv.tabIndex = 0;
     wrap.appendChild(cv);
     const bar = document.createElement('div');

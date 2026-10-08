@@ -25,5 +25,8 @@ Object.assign(SPRITES, {
 ,
   /* the ledger: a gold cup on a black plate */
   trophy: S(R(0, 0, 16, 16, '#000000') + R(1, 3, 2, 1, '#FFFF55') + R(0, 4, 1, 3, '#FFFF55') + R(1, 7, 2, 1, '#FFFF55') + R(13, 3, 2, 1, '#FFFF55') + R(15, 4, 1, 3, '#FFFF55') + R(13, 7, 2, 1, '#FFFF55') +
-    R(3, 1, 10, 7, '#FFFF55') + R(4, 8, 8, 1, '#FFFF55') + R(5, 9, 6, 1, '#FFFF55') + R(11, 2, 2, 6, '#AA5500') + R(4, 2, 1, 5, '#FFFFFF') + R(7, 10, 2, 3, '#FFFF55') + R(5, 13, 6, 2, '#AA5500') + R(5, 13, 6, 1, '#FFFF55'))
+    R(3, 1, 10, 7, '#FFFF55') + R(4, 8, 8, 1, '#FFFF55') + R(5, 9, 6, 1, '#FFFF55') + R(11, 2, 2, 6, '#AA5500') + R(4, 2, 1, 5, '#FFFFFF') + R(7, 10, 2, 3, '#FFFF55') + R(5, 13, 6, 2, '#AA5500') + R(5, 13, 6, 1, '#FFFF55')),
+  /* the Bibel: an open book, brown cover, a gold ribbon, and a star over it for every faith at once */
+  bibel: S(R(1, 5, 14, 10, '#000000') + R(2, 6, 6, 8, '#AAAAAA') + R(8, 6, 6, 8, '#FFFFFF') + R(3, 8, 4, 1, '#555555') + R(3, 10, 4, 1, '#555555') +
+    R(9, 8, 4, 1, '#AAAAAA') + R(9, 10, 4, 1, '#AAAAAA') + R(7, 5, 2, 10, '#AA5500') + R(1, 14, 14, 1, '#AA5500') + R(7, 1, 2, 5, '#FFFF55') + R(6, 2, 4, 1, '#FFFF55') + R(5, 3, 6, 1, '#FFFF55'))
 });

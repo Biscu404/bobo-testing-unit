@@ -7,6 +7,8 @@
    - the ledger's model: the areas, the order of the cards, the filters;
    - what it all pays, in SUN, held to the budget in docs/sun-economy.md. */
 import { createTrophies, TIER_PAY, MASTERY_PAY } from '../kernel/trophies_core.js';
+import { COMPLETION, masteryPay, MASTERY_CAP, rewardsByTrophy, applyRewards, rewardText } from '../kernel/trophy_rewards.js';
+import { FRAMES, LOGOS, CURSORS, SCHEMES, ELEPHANT, DRINKS, forSale } from '../kernel/cos_data.js';
 import { registerAll, NAMES, APPS } from '../kernel/trophies_defs.js';
 import { t, rule, secret } from '../apps/trophy_kit.js';
 import { areas, cards, totals, sorted } from '../apps/trophies/model.js';
@@ -111,7 +113,7 @@ all.forEach(d => {
   const forms = ['on', 'stat', 'sets', 'streak', 'poll', 'derive', 'manual'].filter(k => d[k] != null && d[k] !== false);
   ok(forms.length === 1 || d.legacy, tag + ': exactly one way to be earned (' + forms.join(',') + ')');
   ok(!d.legacy || d.pay === 0, tag + ': a mirror pays nothing');
-  ok(d.legacy || d.pay === (d.mastery ? MASTERY_PAY : d.pay), tag + ': pays');
+  ok(d.legacy || d.pay === (d.mastery ? masteryPay(d.size()) : d.pay), tag + ': pays');
   (per[d.app] = per[d.app] || { B: 0, S: 0, G: 0, n: 0, sun: 0, mirrors: 0, secrets: 0 });
   if (d.legacy) per[d.app].mirrors++; else { per[d.app][d.tier]++; per[d.app].n++; per[d.app].sun += d.pay; if (d.secret) per[d.app].secrets++; }
 });
@@ -174,9 +176,41 @@ all.forEach(d => {
 {
   let sun = 0, count = 0, secrets = 0, seals = 0;
   all.forEach(d => { if (!d.legacy) { sun += d.pay; count++; if (d.secret) secrets++; if (d.mastery) seals++; } });
-  console.log('  ' + count + ' trophies (' + secrets + ' secret, ' + seals + ' seals), ' + all.filter(d => d.legacy).length + ' mirrors, ' + sun + ' SUN if every one is earned');
+  /* ---- the completions and what else the big ones give ---------------------------------------------------------------------------------------------- */
+{
+  const T = createTrophies({}); registerAll(T);
+  ok(applyRewards(T).length === 0, 'every completion and every reward names a trophy that exists');
+  Object.keys(COMPLETION).forEach(id => {
+    const d = T.get(id);
+    ok(!d.legacy && d.pay >= TIER_PAY[d.tier] * 2 && d.pay === COMPLETION[id], id + ': a completion pays well over its tier (' + d.pay + ' against ' + TIER_PAY[d.tier] + ')');
+    ok(d.tier === 'G' || d.pay >= 600 || d.mastery, id + ': it is gold, or it is worth a good deal');
+  });
+  ok(COMPLETION.meta_all >= 20000 && COMPLETION.bk_loft >= 2500 && COMPLETION.sw_compass_found >= 3000 && COMPLETION.hc_pall >= 2500, 'finishing a whole thing (the ledger, the loft, the compass, the puzzles) pays thousands');
+  /* the seals: by how many trophies they ask for, to a cap */
+  ok(masteryPay(0) === 500 && masteryPay(10) === 1500 && masteryPay(1000) === MASTERY_CAP, 'a seal pays 500 and a hundred a trophy, to a cap');
+  const seals = [...T.defs.values()].filter(d => d.mastery);
+  ok(seals.length === 10 && seals.every(d => d.pay >= 1000 && d.pay === masteryPay(d.size())), 'all ten seals pay by what they ask for (' + seals.map(d => d.pay).join(', ') + ')');
+  ok(seals.every(d => d.pay > 10 * MASTERY_PAY * 0.2), 'and none pays what it used to (' + MASTERY_PAY + ')');
+  /* the items: on Dave's shelves, not for sale, earned by a trophy that is a milestone */
+  const lists = { FRAMES, LOGOS, CURSORS, SCHEMES, ELEPHANT, DRINKS }, by = rewardsByTrophy();
+  let items = 0;
+  Object.keys(lists).forEach(k => lists[k].forEach(it => {
+    if (!it.reward) return; items++;
+    const d = T.get(it.reward);
+    ok(!!d && !d.legacy && (d.tier === 'G' || d.mastery || d.epic) && it.price === 0 && /\.$/.test(it.blurb), k + '.' + it.id + ': a reward of "' + (d && T.plainName(d)) + '", not for sale, with a blurb');
+    ok(forSale(lists[k]).indexOf(it) < 0 && lists[k].indexOf(it) > lists[k].filter(x => !x.reward).length - 1, k + '.' + it.id + ': after everything for sale, and never counted as for sale');
+  }));
+  ok(items >= 14, 'the milestone trophies give ' + items + ' things Dave does not sell');
+  ok(Object.keys(by).every(id => rewardText(T.get(id)).length > 3), 'every rewarded trophy can say what it gives');
+  /* the ids are unique inside each list */
+  Object.keys(lists).forEach(k => ok(new Set(lists[k].map(x => x.id)).size === lists[k].length, k + ': item ids are unique'));
+}
+
+console.log('  ' + count + ' trophies (' + secrets + ' secret, ' + seals + ' seals), ' + all.filter(d => d.legacy).length + ' mirrors, ' + sun + ' SUN if every one is earned');
   Object.keys(per).forEach(k => console.log('  ' + (NAMES[k] || k).padEnd(18) + String(per[k].n).padStart(4) + '   B ' + String(per[k].B).padStart(3) + '  S ' + String(per[k].S).padStart(3) + '  G ' + String(per[k].G).padStart(3) + (per[k].mirrors ? '   +' + per[k].mirrors + ' mirrors' : '') + '   ' + per[k].sun + ' SUN'));
-  ok(sun < 30000, 'the whole ledger pays under 30,000 SUN (' + sun + '): a few of Dave\'s frames, and well under the temple\'s 99,999');
+  ok(sun > 90000 && sun < 160000, 'the whole ledger pays ' + sun + ' SUN, 90,000 to 160,000: hundreds of hours of a machine, once each, and more than the temple\'s 99,999 only for somebody who has done all of it');
+  const done = all.filter(d => !d.legacy && d.epic).reduce((a, d) => a + d.pay, 0) + all.filter(d => d.mastery).reduce((a, d) => a + d.pay, 0);
+  ok(done / sun > 0.75, 'most of what the ledger pays is for the completions and the seals, not for the small ones (' + Math.round(100 * done / sun) + '%)');
 }
 console.log(bad ? '\nFAILED ' + bad + ' of ' + n : '\nok  - the ledger holds (' + n + ' checks)');
 process.exit(bad ? 1 : 0);

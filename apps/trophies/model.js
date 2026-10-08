@@ -51,3 +51,21 @@ export function totals(T) {
   return { done: T.count(), total: T.total(), B: by('B'), S: by('S'), G: by('G'),
     secrets: live.filter(d => d.secret && !T.earned(d.id)).length, secretsDone: live.filter(d => d.secret && T.earned(d.id)).length };
 }
+
+/* ---- what the lively ledger needs besides the lists ---------------------------------------------------------------------------------------------------- */
+const DAY = 86400000;
+/* earned in the last two days: a card says NEW */
+export const isNew = (T, d, now) => !!T.earned(d.id) && (now == null ? Date.now() : now) - T.st.earned[d.id] < 2 * DAY;
+/* the trophy worth doing next: of those still open and not secret, the one nearest to done (a counter with some of it counted), else the cheapest of the rest */
+export function nextUp(T) {
+  const open = [...T.defs.values()].filter(d => !d.legacy && !d.secret && state(T, d) === 'open');
+  if (!open.length) return null;
+  const counted = open.filter(d => ratio(T, d) > 0 && ratio(T, d) < 1).sort((a, b) => ratio(T, b) - ratio(T, a));
+  if (counted.length) return counted[0];
+  return open.slice().sort((a, b) => (a.pay || 0) - (b.pay || 0))[0];
+}
+/* the whole ledger as one fraction, for the ring: 0..1 of the trophies there are */
+export const doneFraction = T => { const t = totals(T); return t.total ? t.done / t.total : 0; };
+/* which app the area is, so a card can say GO PLAY (the machine and the ledger itself are not an app to play) */
+export const APP_OF = { system: null, meta: null, tools: null };
+export const appOf = area => (area in APP_OF ? APP_OF[area] : area);
