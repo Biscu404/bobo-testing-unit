@@ -270,11 +270,22 @@ hover a plant and it says what is helping it. Late in the game the work comes ou
 drag to sweep a rack, `TEND` (space) waters every room and picks every plant, and the
 bench sells drip lines, bigger baskets and a gatherer that empties a full room for you.
 
-**Hollow Sweeper** — Minesweeper, ruleset untouched: chording, flood fill, first
-click always safe. Everything else is a dug-out hive in cross-section. Revealed
-tiles drop two pixels inward on a fifteen-millisecond cascade following the
-fill order; on a loss every larva hatches forty milliseconds apart and the
-screen shakes. Three sizes, best times and streaks kept.
+**Dungeon Sweeper** (it was Hollow Sweeper) — Minesweeper, ruleset untouched: chording,
+flood fill, first click always safe. Everything else is a dug-out hive in
+cross-section. Revealed tiles drop two pixels inward on a fifteen-millisecond
+cascade following the fill order; on a loss every larva hatches forty
+milliseconds apart and the screen shakes. Three sizes, best times and streaks
+kept, and a campaign down six regions: masks instead of a lost game, soul to
+spend, charms in notches, a shade where you fell. FOCUS, SCRY and DIVE are
+learnt by clearing the map, and the Wayward Compass, which takes every notch,
+is found by clearing all eighteen rooms perfectly. It pays SUN.
+
+**HOLYC.EXE** — learn HolyC by typing it. Seven lessons whose goals tick off the moment the
+program meets them, fifty-six puzzles judged by tests (print a line, find the missing `;`,
+FizzBuzz, a calculator, a stopwatch, a painting program), and a workshop that saves what you
+write and installs it on the desktop as an app. A program can put buttons, boxes, a health bar,
+a 16 by 16 board and notes on the stage, and a button calls back into your own functions.
+WATCH IT RUN steps through the statements with the variables beside them.
 
 **League Solitaire** — Klondike, draw three, unlimited redeals. Four lanes
 instead of four suits — Mid and Bot are the red pair, Top and Support the black —
@@ -556,15 +567,26 @@ The six rooms are one machine because they share a currency.
 
 `Economy` is a singleton with four methods — `balance`, `earn`, `spend`,
 `onChange` — and everything in the build goes through it. The garden drops it
-passively and keeps accruing at 40% while you are away. Sweeper pays 15/60/200
-by difficulty plus a time bonus. Solitaire pays by move count. The Cook pays per
-medal, once, the first time each one is earned — a bench already beaten is a
-thing to come back to, not a tap to leave running. AfterEgypt pays 50 for
-reaching the third temple, which is the one payout moment it already had.
-Crayon pays nothing at all, on purpose: it is the one place on the machine that
+passively and keeps accruing at 40% while you are away. Dungeon Sweeper pays 80/400/1,200
+by size plus a time bonus (less for every win of the same size in the last half hour), and the descent
+pays four SUN a geo, a hundred for a room's first clear and a quarter more for one with no larva hatched.
+Solitaire pays for the deal, the cards that reach the foundations and a win, and
+a thrown-away deal pays nothing toward the next. The Cook pays per medal, once, the first time each one is
+earned — a bench already beaten is a thing to come back to, not a tap to leave running.
+AfterEgypt pays from 50 SUN up to 2,500 and coins a clear, by way. Bekkedal pays for a neighbour's
+request, the house by the water and the loft. Stand Battle pays for a fight and a run, and HOLYC.EXE
+pays once for a lesson, a puzzle and a finished chapter. The paying games are held to the same
+band of a few thousand SUN an hour of play, and `node scripts/check-sun.mjs` fails a change that moves one out of it.
+Crayon pays nothing for drawing, on purpose: it is the one place on the machine that
 is not keeping score, and neither does the Elephant, which has nothing to score.
 Magen keeps its own books in mitzvot and is left alone: an incremental game with
 a second currency bolted to the side of it is two games in one window.
+
+**`TROPHIES.EXE`** is the other way to earn it: 385 trophies in eighteen places — the machine, every
+game and tool, HOLYC.EXE, and the ledger itself — each worth 15, 40 or 100 SUN once, ever, and a seal for
+every game you finish. About 16,000 SUN in all, so it is a reason to go and look at a game, not a way to buy the shop. A secret is
+`???` and a rumour until you find it, and one of them can only be found on the 23rd of July.
+The terminal reads it too: `TROPHIES`, `TROPHIES SWEEPER`, `TROPHY FIRST BREATH`.
 
 The only sink is Dave. The counter in the taskbar rolls a digit at a time and the
 sun sprite turns one revolution whenever it changes, and `ACCOUNT.EXE` — the
@@ -685,7 +707,7 @@ One file, in numbered sections. The comment banners are the map.
 | 31–32 | the disk, the SUN economy, the taskbar counter, `ACCOUNT.EXE` |
 | 33 | the cosmetic system — frames, logos, pointers, schemes, the catalogue |
 | 34–35 | the new noises, and Crazy Dave's shop |
-| 36–39 | the Zen Garden, Hollow Sweeper, League Solitaire, Crayon |
+| 36–39 | the Zen Garden, Dungeon Sweeper, League Solitaire, Crayon |
 | 40–41 | display settings, `FORMAT`, and bringing all of it online |
 | 42 | the Elephant, and the two hundred |
 | 43 | Magen — the clicker, its economy and its ticker |

@@ -8,6 +8,7 @@ import { Style } from './style.js';
 import { planReel, chunkItems, melody } from './delete_reel.js';
 import { openWindow, createWindow, toast, askName } from './wm.js';
 import { baseName, dirOf, joinPath, changed, TRASH } from './vfs_ops.js';
+import { sys } from './trophy_hook.js';
 
 export const Clip = { mode: null, paths: [] };
 const undo = [];                                   /* what was put in the bin, newest last: one entry (a list of ids) per delete */
@@ -33,7 +34,7 @@ export function openItem(dir, item) {
   if (item.type === 'folder') job = openWindow('folder', { path: p });
   else if (item.type === 'terminal') job = openWindow('terminal');
   else if (item.type === 'bin' || item.type === 'binfull') job = openWindow('trash');
-  else if (item.type === 'app') job = item.app ? openWindow(item.app) : (toast('NO SUCH APP: ' + item.name), null);
+  else if (item.type === 'app') job = item.app ? openWindow(item.app, item.args ? Object.assign({ from: p }, item.args) : undefined) : (toast('NO SUCH APP: ' + item.name), null);
   else if (item.type === 'song') job = openWindow('garage', { path: p });
   else if (['code', 'doc', 'text'].includes(item.type)) job = openWindow('editor', { path: p, type: item.type });
   else job = openWindow('viewer', { path: p, type: item.type });
@@ -69,6 +70,7 @@ export async function duplicate(paths) {
 export async function dropInto(paths, dir, copyIt) {
   const r = await (copyIt ? fs.copyMany : fs.moveMany)(paths, dir);
   if (r.bad.length) say(r.bad[0], true);
+  if (r.made.length) sys.emit(copyIt ? 'copy' : 'move', { ctrl: !!copyIt, to: dir, n: r.made.length });
   return r.made.length;
 }
 
@@ -109,6 +111,7 @@ export function deletePaths(paths) {
     const n = g.items.length;
     if (!n) return 0;
     await reel(g);
+    sys.emit('delete', { n: Math.max(n, g.files || 0) });
     undo.push(g.items.map(i => i.id));
     say(n > 1 ? n + ' ITEMS IN THE RECYCLE BIN.' : baseName(g.items[0].path) + ' IS IN THE RECYCLE BIN.');
     return n;
@@ -121,7 +124,7 @@ export async function undoDelete() {
   while (undo.length) {
     const ids = undo.pop();
     const r = await fs.restoreMany(ids);
-    if (r.made.length) { say(r.made.length > 1 ? 'PUT BACK: ' + plural(r.made.length, 'ITEM') : 'PUT BACK: ' + baseName(r.made[0])); return r.made[0]; }
+    if (r.made.length) { say(r.made.length > 1 ? 'PUT BACK: ' + plural(r.made.length, 'ITEM') : 'PUT BACK: ' + baseName(r.made[0])); sys.emit('undo'); return r.made[0]; }
     /* already gone: try the one before */
   }
   say('NOTHING TO UNDO.', true);
@@ -237,7 +240,7 @@ export function fileKey(ev, env) {
 export async function restoreSystemFiles() {
   let names = [];
   try { names = await fs.restoreSystem(); } catch (e) { say('COULD NOT RESTORE: ' + e.message, true); return []; }
-  if (names.length) { say('SYSTEM FILES BACK: ' + names.join(', ').slice(0, 110)); if (window.Snd) window.Snd.chime && window.Snd.chime(); }
+  if (names.length) { sys.emit('restore-system', { n: names.length }); say('SYSTEM FILES BACK: ' + names.join(', ').slice(0, 110)); if (window.Snd) window.Snd.chime && window.Snd.chime(); }
   else say('EVERY SYSTEM FILE IS ALREADY HERE.');
   return names;
 }

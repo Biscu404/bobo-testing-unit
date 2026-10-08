@@ -2,9 +2,9 @@
 
 /* the plain game, three sizes */
 export const CLASSIC = [
-  { id: 'e', name: 'SHALLOWS', c: 9,  r: 9,  m: 10, pay: 15,  par: 60 },
-  { id: 'm', name: 'THE HIVE', c: 16, r: 16, m: 40, pay: 60,  par: 240 },
-  { id: 'h', name: 'THE DEEP', c: 30, r: 16, m: 99, pay: 200, par: 600 }
+  { id: 'e', name: 'SHALLOWS', c: 9,  r: 9,  m: 10, pay: 80,   par: 60 },
+  { id: 'm', name: 'THE HIVE', c: 16, r: 16, m: 40, pay: 400,  par: 240 },
+  { id: 'h', name: 'THE DEEP', c: 30, r: 16, m: 99, pay: 1200, par: 600 }
 ];
 
 /* what a region does to a board (see board.js; `lantern` is a rule of the
@@ -80,7 +80,9 @@ export const FINAL = 'hollow';
 
 /* charms. `n` is the notches it takes up; the bench has only so many. */
 export const CHARMS = [
-  { id: 'compass',  name: 'WAYWARD COMPASS',  n: 1, cost: 0,   text: 'Row and column tallies of mines still loose.' },
+  /* the compass is not sold: it is found, and only by clearing every room of the descent under its par time without losing a mask
+     (PERFECT, in every one of the eighteen: a room can be tried again as often as you like). It takes three notches, which is all you start with. */
+  { id: 'compass',  name: 'WAYWARD COMPASS',  n: 3, cost: 0, feat: 'perfect', text: 'Row and column tallies of mines still loose. Not sold: found, by a perfect clear of every room in the descent.' },
   { id: 'catcher',  name: 'SOUL CATCHER',     n: 1, cost: 60,  text: 'Opened tiles give half again as much soul.' },
   { id: 'greed',    name: 'FRAGILE GREED',    n: 1, cost: 70,  text: 'Rooms pay 30% more geo.' },
   { id: 'sprint',   name: 'SPRINTMASTER',     n: 1, cost: 80,  text: 'The time bonus on a room counts double.' },
@@ -101,8 +103,15 @@ export const SPELLS = {
   scry:  { key: 'Q', name: 'SCRY',  text: 'Choose a tile: a mine is flagged, safe ground is opened.', cost: 33 },
   dive:  { key: 'E', name: 'DIVE',  text: 'Choose a tile: everything round it is settled safely.', cost: 66 }
 };
+/* None of the three is yours from the start. Each is learnt by clearing a whole region of the map (all three of its rooms, the
+   guardian included), and the second by either of the two that branch from the Crossway. */
+export const SPELL_AT = { focus: ['cross'], scry: ['green', 'fungal'], dive: ['city'] };
+export const SPELL_HINT = { focus: 'CLEAR THE CROSSWAY', scry: 'CLEAR GREEN DEPTHS OR FUNGAL FOG', dive: 'CLEAR THE CITY OF RAIN' };
+export const regionCleared = (camp, id) => REGIONS.find(r => r.id === id).nodes.every(n => camp.cleared[n.id] != null);
+export const spellOpen = (camp, kind) => !!camp && SPELL_AT[kind].some(id => regionCleared(camp, id));
 
 export const NOTCH_COST = [0, 0, 0, 0, 120, 200, 300];     /* index = the notch count it buys */
-export const START = { geo: 0, hp: 5, soul: 0, shards: 0, notches: 3, owned: ['compass'], equipped: ['compass'],
-                       cleared: {}, bench: 'cross', shade: null, won: false };
+export const START = { v: 2, geo: 0, hp: 5, soul: 0, shards: 0, notches: 3, owned: [], equipped: [],
+                       cleared: {}, perfect: {}, bench: 'cross', shade: null, won: false };
+export const ROOMS = Object.keys(NODES).length;
 export const maxMasks = shards => Math.min(9, 5 + shards);

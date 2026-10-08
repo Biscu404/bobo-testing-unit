@@ -116,21 +116,30 @@ export const LESSONS_B = [
         X.stop(); build(); played = true;
         X.S.preload(song).then(() => { X.play(song, { loop: true }); });
       };
-      const r1 = X.row();
-      [['PIANO', 'piano', 11], ['FLUTE', 'flute', 10], ['MARIMBA', 'marimba', 14], ['GUITAR', 'nylon', 6], ['MUSIC BOX', 'musicbox', 13]].forEach(([n, id, c]) => X.pad(r1, n, C(c), () => {
-        inst = id; X.tap(inst, 72, 0.7); if (song) song.tracks[0].inst = id;
-      }, 'LEAD'));
+      const r1 = X.row(), leads = X.radio();
+      [['PIANO', 'piano', 11], ['FLUTE', 'flute', 10], ['MARIMBA', 'marimba', 14], ['GUITAR', 'nylon', 6], ['MUSIC BOX', 'musicbox', 13]].forEach(([n, id, c]) => {
+        const b = X.pad(r1, n, C(c), () => {
+          inst = id; X.tap(inst, 72, 0.7); if (song) song.tracks[0].inst = id; leads.pick(b);
+        }, 'LEAD');
+        leads.add(b, id === inst);
+      });
       X.say('Pick a backing band (it plays in the key, so it always fits):');
-      const r2 = X.row();
-      [['POP', 'pop'], ['SOFT', 'lullaby'], ['ROCK', 'rock'], ['DANCE', 'dance']].forEach(([n, k], i) => X.pad(r2, n, C([12, 13, 9, 14][i]), () => { style = k; build(); play(); }, 'BAND'));
-      X.say('Click the grid to write a melody. Each column is a sixteenth note; four columns make a beat. Place at least six, with it playing.');
+      const r2 = X.row(), bands = X.radio();
+      [['POP', 'pop'], ['SOFT', 'lullaby'], ['ROCK', 'rock'], ['DANCE', 'dance']].forEach(([n, k], i) => {
+        const b = X.pad(r2, n, C([12, 13, 9, 14][i]), () => { style = k; build(); play(); bands.pick(b); }, 'BAND');
+        bands.add(b, k === style);
+      });
+      X.say('Click the grid to write a melody. Each column is one beat and four columns make a bar, so the grid is the whole four bars. Place at least six, with it playing, and watch the yellow line: it is where the music is.');
       grid.className = 'l-grid';
       grid.style.gridTemplateColumns = '40px repeat(16, 34px)';
+      const cols = [];                                        /* the cells of each column, so the line can light the one it is on */
+      for (let b = 0; b < 16; b++) cols.push([]);
       NOTES.forEach(([m, n, c]) => {
         const lb = document.createElement('div'); lb.className = 'l-lbl'; lb.textContent = n; grid.appendChild(lb);
         for (let b = 0; b < 16; b++) {
           const cell = document.createElement('div');
           cell.className = 'l-cell'; cell.style.width = '34px'; cell.style.setProperty('--c', C(c));
+          cols[b].push(cell);
           cell.addEventListener('pointerdown', ev => {
             ev.preventDefault();
             if (!song) build();
@@ -142,7 +151,32 @@ export const LESSONS_B = [
           grid.appendChild(cell);
         }
       });
-      st.appendChild(grid);
+      /* the line that follows the music: a bar of light over the grid at the beat the player is on, the column it is in lit,
+         and any note in that column pressed in. It is read off the player's own clock, so it is where you hear it. */
+      const gwrap = document.createElement('div'); gwrap.className = 'l-gridwrap';
+      const head = document.createElement('div'); head.className = 'l-playhead'; head.style.display = 'none';
+      const readout = document.createElement('div'); readout.className = 'l-beatread'; readout.textContent = '';
+      gwrap.append(grid, head);
+      st.append(gwrap, readout);
+      let litCol = -1;
+      const light = k => {
+        if (k === litCol) return;
+        if (litCol >= 0) cols[litCol].forEach(c => c.classList.remove('now', 'strike'));
+        litCol = k;
+        if (k >= 0) cols[k].forEach(c => { c.classList.add('now'); if (c.classList.contains('on')) c.classList.add('strike'); });
+      };
+      X.every(() => {
+        const beat = X.pos(), len = song ? song.bars * (song.beats || 4) : 16;
+        if (beat < 0) { head.style.display = 'none'; readout.textContent = ''; light(-1); return; }
+        const b = ((beat % len) + len) % len;
+        const a = cols[0][0], z = cols[1][0], pitch = z.offsetLeft - a.offsetLeft;
+        head.style.display = '';
+        head.style.left = Math.round(a.offsetLeft + b * pitch - 1) + 'px';
+        head.style.top = (a.offsetTop - 4) + 'px';
+        head.style.height = (cols[0][NOTES.length - 1].offsetTop + cols[0][NOTES.length - 1].offsetHeight - a.offsetTop + 8) + 'px';
+        light(Math.min(15, Math.floor(b)));
+        readout.textContent = 'BAR ' + (Math.floor(b / 4) + 1) + '  BEAT ' + (Math.floor(b % 4) + 1);
+      }, 33);
       const r3 = X.row();
       X.pad(r3, 'PLAY', C(10), () => play(), 'LOOPS');
       X.pad(r3, 'STOP', C(12), () => X.stop(), '');
@@ -158,6 +192,7 @@ export const LESSONS_B = [
           X.done();
         });
       }, 'HOME/SONGS');
+      X.say('When you are ready for the whole studio, the STUDIO COURSE (the pink button next to LEARN) teaches every control of the Garage and then helps you write a song in any style you like.', 'l-small');
       X.pad(r3, 'OPEN IT', C(13), () => { if (!song) build(); X.stop(); X.hooks.load(JSON.parse(JSON.stringify(song))); X.api.ctx.toast('IT IS IN THE GARAGE NOW. KEEP GOING.'); document.querySelector('.g-lessons') && document.querySelector('.g-lessons').remove(); }, 'IN THE GARAGE');
     }
   }

@@ -68,6 +68,15 @@ export function openLessons(root, api, hooks) {
         stage.appendChild(d);
         return { set(k) { cells.forEach((c, j) => c.classList.toggle('on', j < k)); } };
       },
+      /* a set of pads of which one is lit at a time (the instrument you have chosen, the band you have picked): the lit one carries
+         a bright border and a tick, so which one is in use never has to be guessed. add(pad, on) registers one, pick(pad) lights it. */
+      radio() {
+        const pads = [];
+        const pick = b => pads.forEach(p => { p.classList.toggle('sel', p === b); p.setAttribute('aria-pressed', p === b ? 'true' : 'false'); });
+        return { add(b, on) { pads.push(b); b.setAttribute('aria-pressed', 'false'); if (on) pick(b); return b; }, pick };
+      },
+      /* where the music is, in beats from the top of the song, or -1 when nothing is playing (a line can follow it) */
+      pos: () => (player && player.playing ? player.beat() : -1),
       tap: (inst, midi, sec) => S.tap(inst, midi, sec || 0.8, 0.9),
       play(song, o) { if (player) player.stop(); S.preload(song).then(() => { player = S.play(song, o); }); },
       stop() { if (player) { player.stop(); player = null; } },
@@ -77,7 +86,7 @@ export function openLessons(root, api, hooks) {
       ok(t) { okEl.textContent = t; },
       done() {
         if (stageDone) return;
-        stageDone = true; stars[i] = 1; save(); drawList();
+        stageDone = true; stars[i] = 1; save(); drawList(); api.trophy.lesson(stars.filter(Boolean).length);
         okEl.textContent = '✓ GOT IT';
         if (window.Snd && window.Snd.bell) window.Snd.bell();
         nextB.disabled = false;

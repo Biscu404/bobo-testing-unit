@@ -1028,3 +1028,18 @@ house row (`drawQuests()`, `menus.js`) stops reporting a construction status
 once `S.act2Unlocked` (`BYGGET`/BUILT is a word for something under
 construction) and reads as a title instead (`DITT HJEM`/HOME) — a status,
 not a screen, matching what actually happens when you press SPACE on it.
+
+## Trophies
+
+Bekkedal's fifty-two trophies for `TROPHIES.EXE` are `apps/bekkedal/trophies.js` (calls in `trophy_calls.js`; the machine-wide rules are in CLAUDE.md, **Trophies**). The things to know when
+changing the game:
+
+- **They are bilingual**: every name, description and rumour is `{ no, en }`, the ledger shows English unless EN+NO is switched on, and `scripts/check-trophies.mjs` fails a trophy missing either.
+  Write the Norwegian first, as the game does, and keep the description the exact condition in both.
+- **Facts the save already holds are read from the save, not announced.** `scanT()` in `index.js` derives them once a second (places walked, crops grown, wings filled, scenes seen, friendship) and emits only
+  what changed; events (`harvest`, `catch`, `fell`, `craft`, `gift`, `bear`, `place-refused`...) are for what a scan cannot see. A new thing to count is a line in the scan or a `tro` call, never a second
+  store. Nothing in `trophy_calls.js` writes `S`: the save version does not change for a trophy.
+- **Counts come from the data** (`CROPS`, `PLACES`, `DISHES`, `BEK_SCENES.length`, `LOFT_TOTAL`): adding a crop, a map, a recipe or a heart event moves the trophy that asks for all of them, and the
+  description is built from the same number. Check `bk_winter`'s day (`day >= 61`) and the loft's if the calendar changes.
+- **Heart events and the loft's wings pay SUN through the trophies**, not through `pay.js` (`QUEST_SHARE`/`HOUSE_SUN`/`LOFT_SUN` are still what a request, the house and the loft pay).
+- The card is the machine's, over the taskbar and never on the game's own canvas, so Bekkedal does not `hold()` it for a scene (the games that fill the whole picture, a run, a fight, a flight, do).

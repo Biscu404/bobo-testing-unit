@@ -14,7 +14,7 @@ export function makeFiles(api) {
   async function write(path) {
     await ctx.fs.write(path, { type: 'song', content: L.serialize(G.song) });
     G.path = path; G.dirty = false; announce(); api.changed('saved');
-    api.toast('SAVED: ' + path);
+    api.toast('SAVED: ' + path); api.trophy.saved();
   }
   /* asNew: always ask for a name. Otherwise the song already has a file, and that is what is written. */
   function save(asNew, then) {
@@ -43,7 +43,7 @@ export function makeFiles(api) {
       if (!f) return;
       try {
         const song = api.studio.midi.fromMidi(new Uint8Array(await f.arrayBuffer()), f.name);
-        api.startSong(song); api.toast('IMPORTED ' + song.tracks.length + ' TRACK' + (song.tracks.length === 1 ? '' : 'S') + ' FROM ' + f.name.toUpperCase() + '. SAVE IT TO KEEP IT.'); G.dirty = true;
+        api.startSong(song); api.trophy.imported(); api.toast('IMPORTED ' + song.tracks.length + ' TRACK' + (song.tracks.length === 1 ? '' : 'S') + ' FROM ' + f.name.toUpperCase() + '. SAVE IT TO KEEP IT.'); G.dirty = true;
       } catch (e) { api.toast(e.message); }
     });
     inp.click();

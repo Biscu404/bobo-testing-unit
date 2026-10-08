@@ -74,13 +74,13 @@ for (let i = 1; i < LEVELS.length; i++) {
   ok(b.pay > a.pay && b.first >= a.first && b.speed > a.speed && b.gap[1] < a.gap[1] && b.follow < a.follow, b.name + ' pays more, runs faster, and asks more than ' + a.name);
   ok(rate(b) > rate(a) * 1.5, b.name + ' is worth ' + Math.round(rate(b)) + ' sun a minute, over half as much again as ' + a.name + "'s " + Math.round(rate(a)));
 }
-ok(Math.round(secs(LEVELS[0])) === 18 && LEVELS[0].pay === 50, 'PILGRIM is the game it was: 18 seconds, 50 sun');
+ok(Math.round(secs(LEVELS[0])) === 18 && LEVELS[0].pay === 15, 'PILGRIM is the game it was, and eighteen seconds of it pays 15 sun: ' + Math.round(rate(LEVELS[0])) + ' a minute, nothing to farm');
 const T = LEVELS[4];
 const win = { won: true, coins: 100, hits: 0 }, dead = { won: false, coins: 100, hits: 3 };
 ok(payout(T, win, true).total === T.pay + 100 * T.coin + Math.round(T.pay * FLAWLESS) + T.first, 'a first, flawless clear pays everything: ' + payout(T, win, true).total);
 ok(payout(T, win, false).first === 0 && payout(T, { ...win, hits: 1 }, false).flawless === 0, 'later clears do not pay the first-clear bonus, and a hit loses the flawless one');
 ok(payout(T, dead, false).total === Math.round(100 * T.coin * 0.5) && payout(T, dead, false).base === 0, 'dying in the pillars keeps half the coins and nothing else');
-ok(payout(LEVELS[0], { won: true, coins: 0, hits: 0 }, true).total === 50, 'PILGRIM pays exactly 50 whatever the bonuses');
+ok(payout(LEVELS[0], { won: true, coins: 0, hits: 0 }, true).total === 15, 'PILGRIM pays exactly 15 whatever the bonuses');
 
 /* the same seed is the same run */
 const a = fly(LEVELS[3], 7, bot), b = fly(LEVELS[3], 7, bot);

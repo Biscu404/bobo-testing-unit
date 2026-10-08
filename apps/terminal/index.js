@@ -1,9 +1,11 @@
 import { godWords, godStir, godSeed, godSong } from '../../kernel/god.js';
+import * as tools from '../tools/trophy_calls.js';
 import { Snd } from '../../kernel/snd.js';
 import { Saver } from '../../kernel/saver.js';
 import { degauss } from '../../kernel/hardware.js';
 import { panic } from '../../kernel/panic.js';
 import { hcLex, hcParse, hcRun, looksLikeHolyC } from '../../kernel/holyc.js';
+import { sys } from '../../kernel/trophy_hook.js';
 
 /* ---- the fallback answering machine --------------------------------------
    Real commands (DIR, CD, TYPE, DEL, MD, TREE, COMPILE...) are handled
@@ -42,6 +44,7 @@ const TERM = {
      "  GODWORD [N] ... ASK FOR WORDS",
      "  GODDOODLE ..... ASK FOR A PICTURE",
      "  GODSONG ....... ASK FOR A TUNE",
+     "  TROPHIES [GAME] THE LEDGER (TROPHIES OPEN OPENS IT)",
      "APPS:",
      "  TASKS ......... ADAM, SETH AND THE REST",
      "  AFTEREGYPT .... THE GAME",
@@ -168,11 +171,12 @@ const APP_ALIASES = {
   DEFRAG: 'defrag',
   CMOS: 'cmos', SETUP: 'cmos',
   GARDEN: 'garden', SHOP: 'shop', DAVE: 'shop',
-  SWEEPER: 'sweeper', SOLITAIRE: 'solitaire', CRAYON: 'crayon',
+  SWEEPER: 'sweeper', DUNGEON: 'sweeper', DUNGEONSWEEPER: 'sweeper', MINES: 'sweeper', SOLITAIRE: 'solitaire', CRAYON: 'crayon',
   DRAWINGS: 'drawings', ABOUT: 'about', DISPLAY: 'display',
   ACCOUNT: 'account', GODDOODLE: 'goddoodle', DOODLE: 'goddoodle',
   NEOFETCH: 'neofetch', FETCH: 'neofetch',
   GARAGE: 'garage', MUSIC: 'garage', BAND: 'garage', STUDIO: 'garage',
+  HOLYC: 'holyc', PUZZLES: 'holyc', LESSONS: 'holyc', TUTOR: 'holyc',
   TRASH: 'trash', RECYCLE: 'trash'
 };
 const APP_HELLO = {
@@ -186,6 +190,7 @@ const APP_HELLO = {
   elephant: 'HE HAS BEEN WAITING TO TELL YOU SOMETHING.',
   bottle: 'ONE MEASURE IS FORTY MILLILITRES.',
   garage: 'THIRTY INSTRUMENTS AND A DRUM KIT. PRESS LEARN IF YOU ARE NEW.',
+  holyc: 'SEVEN LESSONS, FIFTY PUZZLES, AND A WORKSHOP. TYPE IT.',
   trash: 'NOTHING IS GONE UNTIL YOU SAY SO.',
   defrag: 'MOVING CLUSTERS.'
 };
@@ -443,12 +448,14 @@ export default {
         return print(['NOTHING TO COMPILE. OPEN A .HC OR NAME ONE.'], 'l-err');
       }
       compileNode(target, file.content, print);
+      try { sys.emit('cmd', { name: 'COMPILE', own: !(await ctx.fs.isSystem(target)) }); } catch (e) { /* never */ }
     }
 
     /* the rest of the command set: neofetch, the oracle, the games */
     async function runExtra(cmd, arg, raw) {
       switch (cmd) {
         case 'NEOFETCH': case 'FETCH': {
+          sys.mark('eggs', 'NEOFETCH');
           const mod = await import('../neofetch/index.js');
           mod.default.open();
           print(['CHECK THE NEW WINDOW.'], 'l-dim');
@@ -460,22 +467,28 @@ export default {
             : 'TempleOS'], 'l-ok');
           return true;
         case 'SUDO': case 'DOAS':
+          sys.mark('eggs', 'SUDO');
           print(['YOU ARE ALREADY GOD. THERE IS NOTHING TO ESCALATE TO.'], 'l-holy');
           return true;
         case 'PING':
+          sys.mark('eggs', 'PING');
           print(['THERE IS NO NETWORK.',
                  'THAT IS NOT A FAULT. NOTHING GETS IN AND NOTHING PHONES HOME.'], 'l-holy');
           return true;
         case 'IFCONFIG': case 'IP': case 'CURL': case 'WGET': case 'SSH':
+          sys.mark('eggs', 'CURL');
           print(['NO NETWORK STACK. NONE WAS EVER WRITTEN.'], 'l-err');
           return true;
         case 'COWSAY':
+          sys.mark('eggs', 'COWSAY');
           print(cowsay(arg || 'HolyC is the shell.'), 'l-ok');
           return true;
         case 'SL':
+          sys.mark('eggs', 'SL');
           runSL(print, out);
           return true;
         case 'LINES': {
+          sys.mark('eggs', 'LINES'); sys.emit('cmd', { name: 'LINES' });
           const total = sourceLineCount();
           const pct = (total / 100000 * 100);
           print([
@@ -493,13 +506,23 @@ export default {
         case 'GODWORD': case 'WORD': {
           const n = Math.max(1, Math.min(16, parseInt(arg, 10) || 7));
           godStir();
-          print([godWords(n).join(' ').toUpperCase()], 'l-holy');
+          print([godWords(n).join(' ').toUpperCase()], 'l-holy'); tools.word(arg ? n : 0);
           print(['SEED 0x' + godSeed.toString(16).toUpperCase().padStart(8, '0')], 'l-dim');
           return true;
         }
         case 'GODSONG': case 'SONG': {
-          const n = godSong();
+          const n = godSong(); tools.song();
           print([n + ' NOTES, CHOSEN THE SAME WAY THE WORDS ARE.'], 'l-holy');
+          return true;
+        }
+        case 'TROPHIES': case 'TROPHY': case 'ACHIEVEMENTS': {
+          const T = window.Trophies;
+          if (!T) { print(['THE LEDGER IS NOT LOADED.'], 'l-err'); return true; }
+          const cli = await import('../../kernel/trophies_cli.js'), say = rows => rows.forEach(r => print([r[0]], r[1]));
+          if (cmd === 'TROPHY') say(cli.ofOne(T, arg));
+          else if (!arg) say(cli.summary(T, T.names));
+          else if (arg === 'OPEN' || arg === 'LEDGER') ctx.openWindow('trophies');
+          else { const id = cli.findArea(T, arg, T.names); if (id) say(cli.ofArea(T, id, T.names)); else say(cli.ofOne(T, arg)); }
           return true;
         }
         case 'SAVER': case 'SCREENSAVER':
@@ -519,6 +542,7 @@ export default {
           print(['DROPPING TO THE DEBUGGER.'], 'l-err');
           return true;
         case 'FORTUNE':
+          sys.mark('eggs', 'FORTUNE');
           print([godWords(4).join(' ').toUpperCase() + '.',
                  'MAKE OF IT WHAT YOU WILL.'], 'l-holy');
           return true;
@@ -536,6 +560,7 @@ export default {
       /* the fork bomb, in every spelling anyone ever types it */
       if (/^:\s*\(\s*\)\s*\{.*\}\s*;?\s*:?$/.test(raw.replace(/\s+/g, ' ')) ||
           raw.replace(/\s+/g, '') === ':(){:|:&};:') {
+        sys.mark('eggs', 'FORKBOMB');
         print(['THERE IS NO FORK.',
                'ONE ADDRESS SPACE. ONE RING. NOTHING TO DOUBLE.'], 'l-holy');
         return true;
@@ -641,6 +666,7 @@ export default {
                 godDoodle: () => ctx.openWindow('goddoodle').catch(console.error),
                 dirNames: () => []
               });
+              sys.holyc(ast, null);
             } catch (e) {
               if (e && e.holyc) {
                 print(['HolyC: ' + e.message + (e.line ? '  (line ' + e.line + ')' : '')], 'l-err');

@@ -6,6 +6,7 @@ import { describe, POTS_PER_ROOM } from './synergy.js';
 import { paint, createAmbience, potAt, roomTabAt, W, H } from './scene.js';
 import { makeWorld, loadState } from './world.js';
 import { createBench } from './bench.js';
+import { createCalls } from './trophy_calls.js';
 import * as M from './model.js';
 
 const PENTA = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25];
@@ -20,11 +21,12 @@ export default {
   async mount(root, ctx) {
     const w = makeWorld();
     const st = await loadState(ctx, w);
-    const earn = (n, src) => window.Economy.earn(n, src);
+    const tro = createCalls(w, st, ROOM_DEFS.length);
+    const earn = (n, src) => { window.Economy.earn(n, src); tro.earned(n); };
     const save = () => ctx.save('st', st);
     const snd = (name, ...a) => { try { window.Snd[name](...a); } catch (e) {} };
-    M.catchUp(w, st, Date.now(), earn);
-    save();
+    { const gap0 = Date.now() - (st.lastTick || Date.now()); let got = 0; M.catchUp(w, st, Date.now(), (n, s) => { got += n; earn(n, s); }); tro.caughtUp(gap0, got); }
+    save(); tro.scan();
 
     let mode = 'none', seedIx = 0, hover = -1, tabHover = -1, down = false, lastPot = -1, tipUntil = 0, tip = '';
     let raf = null, t0 = performance.now(), tsec = 0, alive = true, saveT = null;
@@ -52,7 +54,7 @@ export default {
     const sowBtn = btn('SOW ROOM', () => sow());
     const potBtn = btn('', () => cyclePot());
     const pullBtn = btn('PULL UP', () => setMode(mode === 'pull' ? 'none' : 'pull'));
-    const benchBtn = btn('BENCH', () => bench.toggle());
+    const benchBtn = btn('BENCH', () => benchToggle());
     btn('DAVE', () => ctx.openWindow('shop'));
     const tipEl = document.createElement('div'); tipEl.className = 'gtip';
     const l1 = document.createElement('div'), l2 = document.createElement('div');
@@ -66,8 +68,7 @@ export default {
       onChange: open => benchBtn.classList.toggle('on', open)
     });
     pane.appendChild(bench.el);
-    const g = cv.getContext('2d');
-    if (g) g.imageSmoothingEnabled = false;
+    const g = cv.getContext('2d'); if (g) g.imageSmoothingEnabled = false;
 
     function setMode(m) {
       mode = m;
@@ -77,7 +78,20 @@ export default {
       snd('click');
       say(m === 'can' ? 'DRAG ACROSS THE POTS TO WATER THEM. CLICK WATER AGAIN TO PUT THE CAN DOWN.' : m === 'pull' ? 'DRAG ACROSS PLANTS TO PULL THEM UP. WHAT THEY WERE HOLDING IS PAID OUT FIRST.' : '');
     }
+    /* TEND and the BENCH are late-game (model.js UNLOCK): until then the buttons say how far along you are */
+    const gate = () => M.gates(st, window.Cos.owned('seed').length);
+    const lockedSay = which => {
+      const g = gate()[which];
+      say(which === 'tend'
+        ? 'TEND OPENS WHEN THE GARDEN HAS ' + g.need + ' ROOMS. YOU HAVE ' + g.have + '. EACH ROOM IS A TAB ABOVE THE RACK: CLICK ONE TO BUY IT. UNTIL THEN THE CAN AND YOUR OWN HAND DO THE WORK.'
+        : 'THE BENCH OPENS WHEN YOU OWN ' + g.need + ' KINDS OF PLANT. YOU HAVE ' + g.have + '. DAVE SELLS THE SEEDS. IT IS WHERE DRIP LINES, BIGGER BASKETS AND THE GATHERER ARE BOUGHT.', 8000);
+      snd('deny');
+    };
+    function benchToggle() { if (!bench.isOpen() && !gate().bench.open) { lockedSay('bench'); return; } bench.toggle(); }
     function refreshBar() {
+      const gt = gate();
+      tendBtn.textContent = gt.tend.open ? 'TEND' : 'TEND ' + gt.tend.have + '/' + gt.tend.need + ' ROOMS'; tendBtn.classList.toggle('locked', !gt.tend.open);
+      benchBtn.textContent = gt.bench.open ? 'BENCH' : 'BENCH ' + gt.bench.have + '/' + gt.bench.need + ' PLANTS'; benchBtn.classList.toggle('locked', !gt.bench.open);
       seedBtn.textContent = 'SEED: ' + seedNow().name;
       potBtn.textContent = 'POT: ' + potOfRoom(st.active).name;
       sowBtn.textContent = 'SOW ROOM';
@@ -98,6 +112,8 @@ export default {
       const mult = bump(), n = M.collect(w, st, ri, i, mult);
       if (n <= 0) return 0;
       earn(n, 'GARDEN: ' + (w.species(p.sp) || { name: '?' }).name);
+      tro.picked({ n }, w.species(p.sp), ROOM_DEFS[ri].id, M.isNight(Date.now()));
+      if (mult >= 1 + M.CHAIN.max - 1e-9) tro.chain();
       if (ri === st.active) {
         const q = potAt(i);
         amb.pops.push({ x: q.cx, y: q.y, t: 0, n, x2: mult > 1.005 ? mult : 0 });
@@ -127,13 +143,16 @@ export default {
         pick(i);
       } else {
         p.wig = 1;
-        snd('pluck', PENTA[w.species(p.sp).note] * (M.stage(w, p) === 3 ? 1 : 2));
+        const f = PENTA[w.species(p.sp).note] * (M.stage(w, p) === 3 ? 1 : 2);
+        snd('pluck', f); tro.poked(f, performance.now());
       }
       save();
     }
     /* TEND: water what is dry, then sweep every plant in every room, the one you are looking at as a run of notes */
     function tend() {
       if (timers.length) return;
+      if (!gate().tend.open) { lockedSay('tend'); return; }
+      tro.tended(M.roomsOpen(st));
       const now = Date.now();
       let drank = 0, paid = 0, rooms = 0;
       st.rooms.forEach((r, ri) => {
@@ -143,6 +162,7 @@ export default {
         let n = 0;
         r.pots.forEach((p, i) => { if (p && p.tok) { const v = M.collect(w, st, ri, i, M.chainMult(++n)); if (v > 0) { earn(v, 'GARDEN: TEND'); paid += v; } } });
         if (n) rooms++;
+        if (n && M.chainMult(n) >= 1 + M.CHAIN.max - 1e-9) tro.chain();
       });
       if (drank) snd('water');
       chain.n = 0; chain.t = 0;
@@ -190,12 +210,11 @@ export default {
       if (down && hover >= 0 && hover !== lastPot) { lastPot = hover; act(hover); }
     });
     cv.addEventListener('mouseleave', () => { hover = -1; tabHover = -1; });
-    const up = () => { down = false; lastPot = -1; };
-    document.addEventListener('mouseup', up);
+    const up = () => { down = false; lastPot = -1; }; document.addEventListener('mouseup', up);
     cv.addEventListener('keydown', ev => {
       const k = ev.key.toLowerCase();
       if (k === ' ' || k === 't') tend();
-      else if (k === 'b') bench.toggle();
+      else if (k === 'b') benchToggle();
       else if (k === 'w') setMode(mode === 'can' ? 'none' : 'can');
       else if (k === 'p') setMode(mode === 'pull' ? 'none' : 'pull');
       else if (k === 's') sow();
@@ -223,11 +242,16 @@ export default {
         l2.textContent = full.length <= 200 ? full : head;   /* two lines is all the box has: the likes go when the rest is long */
       } else if (hover >= 0) {
         l2.textContent = 'AN EMPTY POT. CLICK OR DRAG TO PLANT ' + seedNow().name + '.  ' + likes(seedNow());
-      } else l2.textContent = 'CLICK A PLANT TO PICK IT, DRAG TO SWEEP.  SPACE: TEND EVERY ROOM.  B: THE BENCH.  1-' + ROOM_DEFS.length + ': ROOMS.';
+      } else {
+        const gt = gate();
+        l2.textContent = 'CLICK A PLANT TO PICK IT, DRAG TO SWEEP.  ' + (gt.tend.open ? 'SPACE: TEND EVERY ROOM.  ' : 'TEND: ' + gt.tend.have + '/' + gt.tend.need + ' ROOMS.  ') +
+          (gt.bench.open ? 'B: THE BENCH.  ' : 'BENCH: ' + gt.bench.have + '/' + gt.bench.need + ' PLANTS.  ') + '1-' + ROOM_DEFS.length + ': ROOMS.';
+      }
     }
 
     /* ---- the loop ---- */
     const V = { st, w, amb, skin: ri => potOfRoom(ri), mode: 'none' };
+    let scanAt = 0;                                    /* the trophies look at the whole garden about once a second */
     const frame = () => {
       if (!alive || !document.body.contains(cv)) { raf = null; GardenAir.stop(); st.lastTick = Date.now(); save(); return; }
       raf = requestAnimationFrame(frame);
@@ -236,14 +260,13 @@ export default {
       const now = Date.now(), gap = now - (st.lastTick || now);
       if (gap > 4000) M.catchUp(w, st, now, earn);
       else { st.lastTick = now; if (gap > 0) M.step(w, st, now, gap, 1, earn); }
+      if (nowMs - scanAt > 1000) { scanAt = nowMs; tro.scan(); }
       const light = M.light(now), night = light < 0.34 || roomDef().buff.night;
       Object.assign(V, { ri: st.active, now, tsec, dt, light, night, hover, mode });
       const dry = paint(g, V);
       lines(dry, now, night);
     };
-    GardenAir.start();
-    raf = requestAnimationFrame(frame);
-    saveT = setInterval(save, 20000);
+    GardenAir.start(); raf = requestAnimationFrame(frame); saveT = setInterval(save, 20000);
 
     const mixerHandler = ev => {
       if (!document.body.contains(cv)) { window.removeEventListener('mixer-changed', mixerHandler); return; }
@@ -252,11 +275,10 @@ export default {
     window.addEventListener('mixer-changed', mixerHandler);
     const stock = () => {
       const win = root.closest('.win'), t = win && win.querySelector('.titlebar .t');
-      if (!t) return;
-      t.textContent = 'Garden [DELIVERY!]'; setTimeout(() => { t.textContent = 'Garden'; }, 3000);
-      refreshBar();
+      if (t) { t.textContent = 'Garden [DELIVERY!]'; setTimeout(() => { t.textContent = 'Garden'; }, 3000); refreshBar(); }
     };
     window.addEventListener('garden-stock-refresh', stock);
+    const bought = () => { if (alive) refreshBar(); }; window.addEventListener('cos-changed', bought);
 
     this._stop = () => {
       alive = false;
@@ -264,6 +286,7 @@ export default {
       document.removeEventListener('mouseup', up);
       window.removeEventListener('mixer-changed', mixerHandler);
       window.removeEventListener('garden-stock-refresh', stock);
+      window.removeEventListener('cos-changed', bought);
       GardenAir.stop();
       st.lastTick = Date.now(); save();
     };

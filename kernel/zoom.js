@@ -11,6 +11,7 @@
    comes closer, and wm.js pans it to follow the pointer when it outgrows the
    screen. */
 import { showMenu } from './menus.js';
+import { sys } from './trophy_hook.js';
 
 const KEY = 'templeos.zoom.v1';
 export const STEPS = [0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3];
@@ -45,6 +46,7 @@ export function attachZoom(o) {
     z = nearest(v);
     if (keep !== false) remember(o.key(), z);
     apply();
+    if (z !== 1 && sys) sys.sit('zoom');
     if (window.Snd) window.Snd.select();
   };
   const step = dir => {

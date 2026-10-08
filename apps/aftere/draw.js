@@ -106,7 +106,7 @@ export function draw(g, r, ui) {
     say(g, L.blurb.length > 44 ? L.blurb.slice(0, L.blurb.lastIndexOf(' ', 44)) : L.blurb, 84, 7);
     if (L.blurb.length > 44) say(g, L.blurb.slice(L.blurb.lastIndexOf(' ', 44) + 1), 95, 7);
     say(g, Math.round(secs(L)) + ' SECONDS  -  ' + L.pay + ' SUN' + (L.coin ? ' + COINS' : ''), 110, 10);
-    say(g, ui.best ? 'BEST ' + ui.best + '%' + (ui.cleared ? '  -  CLEARED' : '') : 'NOT FLOWN YET', 123, 8);
+    say(g, ui.best ? 'BEST ' + ui.best + '%' + (ui.cleared ? '  -  CLEARED' : '') : 'NOT FLOWN YET', 123, 7);
     say(g, 'CLICK OR PRESS SPACE TO FLY', 140, 15);
   } else if (ui.mode === 'dead' || ui.mode === 'won') {
     const p = ui.pay, lines = [];
@@ -116,7 +116,7 @@ export function draw(g, r, ui) {
     if (p.flawless) lines.push(['+' + p.flawless + ' FLAWLESS', 11]);
     if (p.first) lines.push(['+' + p.first + ' FIRST CLEAR', 13]);
     if (ui.unlocked) lines.push(['NEW WAY ACROSS: ' + ui.unlocked, 15]);
-    lines.push(['SPACE TO FLY AGAIN', 8]);
+    lines.push(['SPACE TO FLY AGAIN', 7]);
     const h = 14 + lines.length * 13;
     panel(g, 50, 100 - h / 2, 220, h);
     lines.forEach((l, i) => say(g, l[0], 100 - h / 2 + 18 + i * 13, l[1]));

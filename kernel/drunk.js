@@ -22,6 +22,8 @@
    floor is a journey of minutes and nothing that is clicked can hurry it. At the
    limit the whole window goes (kernel/blackout.js). */
 import { newBlood, swallow, step, over, levelOf, stageOf, wake } from './drunk_bac.js';
+import { createStageWatch, scene as trophyScene, blackedOut as trophyBlackout } from '../apps/bottle/trophy_calls.js';
+const watch = createStageWatch();                  /* the trophies' view of the journey: a glow held, a limit reached and drained away */
 const SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute;pointer-events:none" aria-hidden="true">' +
   '<filter id="drunkfx" x="-6%" y="-6%" width="112%" height="112%" color-interpolation-filters="sRGB">' +
   '<feTurbulence id="dfT" type="fractalNoise" baseFrequency="0.005 0.016" numOctaves="1" seed="4" result="n"/>' +
@@ -42,7 +44,7 @@ export const Drunk = {
   /* one measure, drunk; `units` is what it is worth against the Jägermeister the machine was calibrated on (1), 0 for something with nothing in it */
   drink(units = 1) {
     if (units <= 0) { this.kick = Math.max(this.kick, 0.15); this._ensureLoop(); return; }
-    swallow(this.blood, units);
+    swallow(this.blood, units); watch.measure();
     this.kick = 1;
     this._ensureLoop();
   },
@@ -55,13 +57,14 @@ export const Drunk = {
     this.out = true;
     try {
       const m = await import('./blackout.js');
+      watch.out(); if (window.Trophies) window.Trophies.hold();         /* no card while the lights are out */
       m.runBlackout(() => {
-        this.out = false;
+        this.out = false; trophyBlackout(); if (window.Trophies) window.Trophies.release();
         wake(this.blood);
         this.level = levelOf(this.blood);
         this.kick = 1;
         this._ensureLoop();
-      });
+      }, { onFlash: trophyScene });
     } catch (e) { this.out = false; throw e; }
   },
   _build() {
@@ -95,6 +98,7 @@ export const Drunk = {
       last = now;
       step(this.blood, dt);
       this.level = levelOf(this.blood);
+      watch.step(dt, stageOf(this.blood), this.out);
       this.kick = Math.max(0, this.kick - dt * 1.6);
       if (over(this.blood) && !this.out) this.blackout();
       this._apply(now);

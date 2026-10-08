@@ -1,4 +1,5 @@
 import { createWindow, raise, openWins } from '../../kernel/wm.js';
+import { killed, tried } from '../tools/trophy_calls.js';
 
 export default {
   id: 'tasks',
@@ -29,8 +30,10 @@ export default {
       };
       put(' TASK  PARENT  RING  STATE     NAME', 'l-dim');
       put(' ' + '-'.repeat(52), 'l-dim');
-      put('    0       -     0  RUNNING   Adam', 'l-holy');
-      put('    1       0     0  RUNNING   Seth', 'l-holy');
+      /* the first two cannot be ended, and say so: trying is a trophy */
+      const firstborn = who => () => { tried(who); ctx.toast(who.toUpperCase() + ' CANNOT BE KILLED.'); if (window.Snd && window.Snd.err) window.Snd.err(); };
+      put('    0       -     0  RUNNING   Adam', 'l-holy', firstborn('adam'));
+      put('    1       0     0  RUNNING   Seth', 'l-holy', firstborn('seth'));
       
       openWins.forEach(rec => {
         const age = Math.max(0, Math.round((Date.now() - (rec.born || Date.now())) / 1000));
@@ -38,7 +41,7 @@ export default {
         put('  ' + String(rec.id).padStart(3) + '       1     0  ' +
             state.padEnd(9) + ' ' + String(rec.title).slice(0, 22) +
             '   ' + age + 's   [KILL]', 'l-ok', () => {
-              if (rec.close) rec.close();
+              killed(); if (rec.close) rec.close();
               draw();
             });
       });

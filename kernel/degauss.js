@@ -7,6 +7,7 @@
      pulse    the DEGAUSS command in the terminal still fires the coil: the thunk and a flash of colour
               that grows and fades (the element is #degauss, hidden between pulses). */
 import { Snd } from './snd.js';
+import { sys } from './trophy_hook.js';
 
 /* one soft round patch of colour, lit at its centre and gone at its edge */
 function patch(g, W, H, x, y, r, rgb, a) {
@@ -27,6 +28,7 @@ export function paintPurity(g, W, H) {
 }
 
 export function degauss() {
+  sys.emit('degauss', {});
   const r = document.getElementById('degauss');
   if (!r) return;
   Snd.thunk();

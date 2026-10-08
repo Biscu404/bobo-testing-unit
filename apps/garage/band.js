@@ -23,7 +23,7 @@ export function bandMenu(root, api, defaultLo) {
     add.forEach(t => { t.lo = defaultLo(t.inst, t); if (G.song.tracks.length < MAX_TRACKS) G.song.tracks.push(t); });
     S.preload(G.song).then(() => { if (!api.player()) api.toggle(); });
     api.selectTrack(Math.min(G.sel, G.song.tracks.length - 1), true);
-    api.changed('edit'); m.close();
+    api.trophy.band(); api.changed('edit'); m.close();
   }), btn('CANCEL', '', () => m.close()));
   m.body.append(foot, el('div', 'g-p g-dim', 'TIP: PLAY IT, THEN DRAW A MELODY OVER THE TOP.'));
 }

@@ -11,6 +11,7 @@ import { Pet } from '../../kernel/pet.js';
 import { ELEPHANT } from '../../kernel/cos_data.js';
 import { drawWear } from './wear.js';
 import { scopedListeners, whenGone } from '../lifecycle.js';
+import { talked, heard, placed } from './trophy_calls.js';
 
 export default {
   open() {
@@ -565,6 +566,24 @@ export default {
         drawWear('front', wear, kit, { br });
       }
 
+      /* He has just been let back in (kernel/pet.js: the little one walked up to the side of this window and in behind its edge): the big
+         one walks in from that same edge, waddling, a thud for each foot, and settles where he always stands. Nothing is cut: the
+         little elephant goes behind the frame where this one comes out of the picture. */
+      let lastStep = -1;
+      function drawArriving(t, arr) {
+        const el = performance.now() - arr.t0, k = Math.min(1, el / arr.ms);
+        const e = 1 - (1 - k) * (1 - k);
+        const stepT = el / 450, moving = k < 0.92;
+        const ox = Math.round(arr.side * 400 * (1 - e));
+        const oy = moving ? -Math.round(Math.abs(Math.sin(stepT * Math.PI)) * 4) : 0;
+        if (moving && Math.floor(stepT) !== lastStep) {
+          lastStep = Math.floor(stepT);
+          Snd.tone(58, 120, { type: 'triangle', to: 44, vol: 0.05 });
+        }
+        g.save(); g.translate(ox, oy); drawEle(t, 'walk'); g.restore();
+        if (k >= 0.92 && lastStep !== -2) { lastStep = -2; sfx.done(); }
+      }
+
       /* he is out on the desktop: the place is empty, and says where he went */
       function awayNote() {
         g.font = '12px monospace';
@@ -751,6 +770,7 @@ export default {
          them before you hear any one of them twice.
          ========================================================================== */
       let bag = [];
+      const tro = { talked, heard, placed };
       function nextQuote() {
         if (!bag.length) {
           bag = ELE_QUOTES.map((q, i) => i);
@@ -759,7 +779,8 @@ export default {
             const s = bag[i]; bag[i] = bag[j]; bag[j] = s;
           }
         }
-        return ELE_QUOTES[bag.pop()];
+        const i = bag.pop(); tro.heard(i);
+        return ELE_QUOTES[i];
       }
 
       let place = 0, placeT = 0;
@@ -768,6 +789,7 @@ export default {
 
       function talk() {
         if (phase === 'think') return;
+        tro.talked();
         phase = 'think'; pT = 0; wait = 1.9 + Math.random() * 1.1;
         shown = 0; spoke = 0; openStep = 0;
         bTalk.textContent = '...';
@@ -775,7 +797,7 @@ export default {
       }
       function goPlace(n) {
         place = ((n % ELE_PLACES.length) + ELE_PLACES.length) % ELE_PLACES.length;
-        placeT = 0;
+        placeT = 0; tro.placed(place);
         Song.want(ELE_PLACES[place].song);
         info.textContent = ELE_PLACES[place].name + '  ·  CLICK HIM, OR PRESS TALK';
         sfx.move();
@@ -873,7 +895,10 @@ export default {
         placeT += step;
         if (placeT > 84) goPlace(place + 1);
 
+        const arr = Pet.isOut() ? null : Pet.arriving();
+        if (!arr && lastStep !== -1) lastStep = -1;
         pT += step;
+        if (arr) pT = 0;                                   /* he does not speak until he is in */
         if (phase === 'think' && pT >= wait) {
           phase = 'speak'; pT = 0; shown = 0; spoke = 0; openStep = 0;
           msg = first ? ELE_HELLO : nextQuote();
@@ -896,11 +921,11 @@ export default {
         const away = Pet.isOut();
         stepMotes(step);
         (PLACE_FN[P.id] || placeSun)(t);
-        if (!away) drawEle(t, phase);
+        if (!away) { if (arr) drawArriving(t, arr); else drawEle(t, phase); }
         drawMotes(P.mote);
         overlay(P.id, t);
         if (away) awayNote();
-        else { if (phase === 'think') dots(pT); if (phase === 'speak') bubble(msg, shown, openStep); }
+        else if (!arr) { if (phase === 'think') dots(pT); if (phase === 'speak') bubble(msg, shown, openStep); }
       }
       raf = requestAnimationFrame(frame);
 

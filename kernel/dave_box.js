@@ -14,6 +14,7 @@ import { Snd } from './snd.js';
 import { summarize, pickFarewell } from './dave_farewell.js';
 import { voicePlan } from './dave_plan.js';
 import { Voice } from './dave_voice.js';
+import { sys } from './trophy_hook.js';
 
 export const HOLD_MS = 2800;             /* how long the whole line stays, once it is all said */
 export const SKIP_HOLD_MS = 1800;        /* ... and after a click that skipped to the end of it */
@@ -59,6 +60,7 @@ export const DaveBox = {
     const shell = document.getElementById('shell');
     if (!CRT.on || !shell || getComputedStyle(shell).display === 'none') return false;       /* switched off, or not yet on the desktop */
     const pick = pickFarewell(v, null, this.last);
+    sys.mark('farewells', pick.tier); sys.emit('farewell', { tier: pick.tier });
     this.last = pick.text;
     this.text = pick.text;
     this.plan = voicePlan(pick.text, null, pick.voice);

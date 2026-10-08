@@ -1,9 +1,11 @@
 /* What a room looks like. Everything goes through G.R / G.T so it lands on
    whole device pixels at any window size. */
 import { backdrop, weather, mask, vessel, geo, notch, charmIcon, mix } from './art.js';
-import { CHARM, SPELLS, MODS } from './data.js';
+import { CHARM, SPELLS, SPELL_HINT, MODS } from './data.js';
 import { around } from './board.js';
 
+/* secondary text and a switched-off control: both read on the near-black of the bars (WCAG 4.5:1 or better) */
+const DIM = '#98a2b8', OFF = '#7b86a0';
 const NUM = ['', '#7fb8ff', '#8fe8b0', '#ffffff', '#c3a6ff', '#ffc35c', '#ff9040', '#ff4d5e', '#e0203a'];
 const hashOf = i => (i * 2654435761) >>> 0;
 
@@ -85,6 +87,7 @@ function tile(G, S, rg, i, hover, now) {
     if (b.thorn[i]) thorns(G, x, y, T);
     if (b.web[i]) web(G, x, y, T);
     if (b.flag[i]) flag(G, x, y, T);
+    if (b.flag[i] && !b.mine[i] && S.flagHint && now - S.flagHint < 8000) { G.R(x + 4, y + 4, T - 11, 3, '#ff4d5e'); G.R(x + 4, y + T - 9, T - 11, 3, '#ff4d5e'); }
     if (S.over && !S.won && !S.dead && S.classic && b.mine[i] && !b.flag[i] && now > S.hatch + (i % 40) * 40) { floor(G, x, y, T, p); larva(G, x, y, T, true); }
     if (S.over && !S.won && S.classic && b.flag[i] && !b.mine[i]) { G.R(x + 6, y + 6, T - 14, 3, '#ff4d5e'); G.R(x + 6, y + T - 10, T - 14, 3, '#ff4d5e'); }
     return;
@@ -168,16 +171,18 @@ function particles(G, S) {
 function bottom(G, S, now) {
   G.a(0.7); G.R(0, 604, 960, 36, '#04050a'); G.a(1);
   if (S.camp) {
-    const keys = [['F', 'FOCUS', S.focusCost()], ['Q', 'SCRY', SPELLS.scry.cost], ['E', 'DIVE', SPELLS.dive.cost]];
+    const keys = [['F', 'focus', S.focusCost()], ['Q', 'scry', SPELLS.scry.cost], ['E', 'dive', SPELLS.dive.cost]];
     keys.forEach((k, i) => {
-      const x = 14 + i * 150, ok = S.soul >= k[2] && S.started, on = S.target && SPELLS[S.target].key === k[0];
-      G.R(x, 610, 142, 24, on ? '#9fe0ff' : ok ? '#2c3a52' : '#14181f');
-      G.T('[' + k[0] + '] ' + k[1] + ' ' + k[2], x + 8, 629, on ? '#000' : ok ? '#e8e2d4' : '#555c70', 22);
+      const x = 14 + i * 150, known = S.learnt(k[1]), ok = known && S.soul >= k[2] && S.started, on = S.target && SPELLS[S.target].key === k[0];
+      G.R(x, 610, 142, 24, on ? '#9fe0ff' : ok ? '#2c3a52' : known ? '#1a2030' : '#0c0e14');
+      if (!known) { G.R(x, 610, 142, 1, '#3a4256'); G.R(x, 633, 142, 1, '#3a4256'); }
+      G.T(known ? '[' + k[0] + '] ' + SPELLS[k[1]].name + ' ' + k[2] : '[' + k[0] + '] LOCKED', x + 8, 629, on ? '#000' : ok ? '#e8e2d4' : known ? OFF : '#8a94ac', 22);
     });
   }
-  const m = S.msg[S.msg.length - 1];
-  if (m && now - m.at < 4200) { G.a(Math.min(1, (4200 - (now - m.at)) / 800)); G.T(m.t, S.camp ? 480 : 480, 629, m.c, 24, 'left'); G.a(1); }
-  G.T('ESC: LEAVE   R: ' + (S.camp ? 'RESTART ROOM' : 'NEW GAME'), 946, 629, '#555c70', 18, 'right');
+  const m = S.msg[S.msg.length - 1], tip = S.camp && S.barHover >= 0 ? ['focus', 'scry', 'dive'][S.barHover] : null;
+  if (tip) G.T(S.learnt(tip) ? SPELLS[tip].text : 'LOCKED: ' + SPELL_HINT[tip], 470, 629, S.learnt(tip) ? '#cfe6ff' : '#ffd68c', 22, 'left');
+  else if (m && now - m.at < 4200) { G.a(Math.min(1, (4200 - (now - m.at)) / 800)); G.T(m.t, 470, 629, m.c, 24, 'left'); G.a(1); }
+  else G.T('ESC: LEAVE   R: ' + (S.camp ? 'RESTART ROOM' : 'NEW GAME'), 946, 629, DIM, 20, 'right');
 }
 
 function overlay(G, S, rg, now) {
@@ -188,21 +193,56 @@ function overlay(G, S, rg, now) {
       G.T('YOU HAVE FALLEN', 480, 270, '#e8e2d4', 64, 'center');
       const lost = S.env.shadeGeo(S);
       G.T(lost ? 'YOUR SHADE KEEPS ' + lost + ' GEO IN ' + S.node.name + '.' : 'YOU HAD NOTHING TO LOSE.', 480, 320, '#9bb0ff', 28, 'center');
-      G.T('CLICK OR ENTER: WAKE AT THE BENCH', 480, 380, '#8794aa', 24, 'center');
+      G.T('CLICK OR ENTER: WAKE AT THE BENCH', 480, 380, DIM, 24, 'center');
     }
     return;
   }
   if (S.won && S.pay) {
-    G.a(0.78 * t); G.R(180, 150, 600, 290, '#05060c'); G.a(1);
+    const P = S.pay, two = P.geo.length > 0, tr = P.trophies || [], extra = tr.length ? Math.min(3, tr.length) * 28 + 40 : 0;
+    const top = (two ? 96 : 150) - Math.round(extra / 2), hgt = (two ? 444 : 290) + extra;
+    G.a(0.82 * t); G.R(two ? 110 : 180, top, two ? 740 : 600, hgt, '#05060c'); G.a(1);
     if (t < 1) return;
-    G.R(180, 150, 600, 3, rg.pal.ink); G.R(180, 437, 600, 3, rg.pal.ink);
-    G.T(S.camp ? 'ROOM CLEARED' : 'THE CHAMBER IS QUIET', 480, 210, '#e8e2d4', 52, 'center');
-    G.T(S.pay.secs.toFixed(1) + ' SECONDS', 480, 246, rg.pal.glow, 26, 'center');
-    let y = 292;
-    S.pay.lines.forEach(l => { G.T(l[0], 250, y, '#cfd8e0', 28); G.T(l[1], 710, y, l[2] || '#f2e2b0', 28, 'right'); y += 32; });
-    G.T('CLICK OR ENTER TO CONTINUE', 480, 420, '#8794aa', 22, 'center');
+    const x0 = two ? 110 : 180, w = two ? 740 : 600;
+    G.R(x0, top, w, 3, rg.pal.ink); G.R(x0, top + hgt - 3, w, 3, rg.pal.ink);
+    let y = top + 60;
+    G.T(S.camp ? 'ROOM CLEARED' : 'THE CHAMBER IS QUIET', 480, y, '#e8e2d4', 52, 'center'); y += 36;
+    G.T(P.secs.toFixed(1) + ' SECONDS', 480, y, rg.pal.glow, 26, 'center'); y += 30;
+    if (two) {
+      const near = S.hits === 0 ? 'OVER ' + P.par + 'S' : 'A LARVA HATCHED';
+      G.T(P.perfect ? 'PERFECT' : 'NOT PERFECT: ' + near, 480, y, P.perfect ? '#ffd68c' : DIM, P.perfect ? 30 : 22, 'center'); y += 40;
+      G.T('GEO', 150, y, rg.pal.ink, 24); G.T('SUN', 500, y, '#f2e2b0', 24); G.R(150, y + 6, 310, 2, '#3a4256'); G.R(500, y + 6, 310, 2, '#3a4256'); y += 32;
+      let yl = y, yr = y;
+      P.geo.forEach(l => { G.T(l[0], 150, yl, '#cfd8e0', 26); G.T(l[1], 460, yl, l[2] || '#f2e2b0', 26, 'right'); yl += 28; });
+      P.sun.forEach(l => { G.T(l[0], 500, yr, '#cfd8e0', 26); G.T(l[1], 810, yr, l[2] || '#f2e2b0', 26, 'right'); yr += 28; });
+      y = Math.max(yl, yr) + 6;
+      G.R(500, y - 18, 310, 2, '#3a4256');
+      G.T('TOTAL', 500, y + 12, '#e8e2d4', 28); G.T('+' + P.total + ' SUN', 810, y + 12, '#ffd68c', 30, 'right'); y += 46;
+      (P.news || []).forEach(n => { G.T(n, 480, y, '#9fe0ff', 24, 'center'); y += 26; });
+      trophyRows(G, tr, 150, y - 6, 660);
+      G.T('CLICK OR ENTER TO CONTINUE', 480, top + hgt - 14, DIM, 22, 'center');
+    } else {
+      y += 18;
+      P.sun.forEach(l => { G.T(l[0], 250, y, '#cfd8e0', 28); G.T(l[1], 710, y, l[2] || '#f2e2b0', 28, 'right'); y += 32; });
+      G.R(250, y - 20, 460, 2, '#3a4256');
+      G.T('TOTAL', 250, y + 8, '#e8e2d4', 28); G.T('+' + P.total + ' SUN', 710, y + 8, '#ffd68c', 30, 'right');
+      trophyRows(G, tr, 250, y + 44, 460);
+      G.T('CLICK OR ENTER FOR ANOTHER', 480, top + hgt - 14, DIM, 22, 'center');
+    }
   } else if (S.over && !S.won && S.classic) {
     G.a(0.55 * t); G.R(240, 250, 480, 100, '#05060c'); G.a(1);
-    if (t > 0.6) { G.T('THE HIVE STIRS', 480, 305, '#ff8090', 44, 'center'); G.T('R: TRY AGAIN   ESC: LEAVE', 480, 336, '#8794aa', 22, 'center'); }
+    if (t > 0.6) { G.T('THE HIVE STIRS', 480, 305, '#ff8090', 44, 'center'); G.T('CLICK, ENTER OR R: TRY AGAIN   ESC: LEAVE', 480, 336, DIM, 22, 'center'); }
   }
+}
+
+/* the trophies this room earned: TROPHY: <NAME> and what each paid (three, then how many more) */
+const TIER_INK = { B: '#d9a066', S: '#dfe6ee', G: '#ffd68c' };
+function trophyRows(G, rows, x, y, w) {
+  if (!rows.length) return;
+  G.R(x, y - 18, w, 2, '#3a4256');
+  rows.slice(0, 3).forEach(r => {
+    G.T('TROPHY: ' + r.name, x, y + 8, TIER_INK[r.tier] || '#ffd68c', 24);
+    if (r.pay) G.T('+' + r.pay + ' SUN', x + w, y + 8, '#ffd68c', 24, 'right');
+    y += 28;
+  });
+  if (rows.length > 3) G.T('AND ' + (rows.length - 3) + ' MORE IN TROPHIES.EXE', x, y + 8, '#a3adc2', 20);
 }

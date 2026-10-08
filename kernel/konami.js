@@ -1,3 +1,4 @@
+import { sys } from './trophy_hook.js';
 /* up up down down left right left right b a */
 const KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown',
                 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
@@ -11,6 +12,7 @@ export function wireKonami() {
       konamiAt++;
       if (konamiAt === KONAMI.length) {
         konamiAt = 0;
+        sys.emit('konami');
         if (!edenOpen) {
           import('../apps/eden_ext.js').then(m => m.openEden()).catch(console.error);
         }

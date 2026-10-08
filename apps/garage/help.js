@@ -21,7 +21,7 @@ export function openHelp(root) {
     rows.forEach(([k, d]) => { t.append(el('b', '', k), el('span', '', d)); });
     m.body.appendChild(t);
   });
-  m.body.appendChild(el('div', 'g-p g-dim', 'NOTHING HERE IS PERMANENT UNTIL YOU SAVE, AND EVERYTHING BEFORE THAT CAN BE UNDONE. THE GARAGE ALSO KEEPS A DRAFT OF YOUR LAST SONG BY ITSELF.'));
+  m.body.appendChild(el('div', 'g-p g-dim', 'THE STUDIO COURSE (THE PINK BUTTON IN THE SECOND ROW) TEACHES EVERY BUTTON, THEN HELPS YOU WRITE A SONG IN A STYLE YOU CHOOSE. NOTHING HERE IS PERMANENT UNTIL YOU SAVE, AND EVERYTHING BEFORE THAT CAN BE UNDONE. THE GARAGE ALSO KEEPS A DRAFT OF YOUR LAST SONG BY ITSELF.'));
   const foot = el('div', 'g-boxfoot');
   foot.appendChild(btn('GOT IT', 'g-go', () => m.close()));
   m.body.appendChild(foot);

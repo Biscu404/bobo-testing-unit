@@ -11,7 +11,7 @@
    seconds at the very quickest (a pour, a drink and a breather), and at that pace
    it is a little under two minutes and thirteen measures to the floor, through
    every stage on the way; anybody who keeps at it, one every twenty seconds or so,
-   is out before the bottle is; one measure a minute holds a mild glow indefinitely;
+   is out before the bottle is; one measure a minute never gets anywhere (it settles at a tenth of a measure: sober);
    and stopping lets it drain, slowly. (scripts/check-drunk.mjs holds all of that
    to the numbers.) */
 export const BAC = { LIMIT: 9, ABSORB: 30, CLEAR: 60, GUT_FEEL: 0.5, WAKE: 4 };

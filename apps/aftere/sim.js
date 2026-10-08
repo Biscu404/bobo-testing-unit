@@ -25,7 +25,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const maxShift = L => Math.max(0, L.follow * (L.space / L.speed) * L.wander - 2 * L.wobble);
 
 export function createRun(L, rng = Math.random) {
-  const r = { L, rng, t: 0, dist: 0, y: 100, vy: 0, aim: 100, dead: false, won: false, shield: 0, inv: 0, hits: 0, coins: 0,
+  const r = { L, rng, t: 0, dist: 0, y: 100, vy: 0, aim: 100, dead: false, won: false, shield: 0, inv: 0, hits: 0, coins: 0, coinsSpawned: 0, grazes: 0,
               pillars: [], items: [], locusts: [], gust: null, nextGust: 300 + (rng() * 300 | 0), lastCy: 100, ev: [], info: {} };
   for (let i = 0; i < RING; i++) {
     const p = { x: 340 + i * L.space, cy: 100, gap: 0, ph: 0, off: false };
@@ -55,7 +55,7 @@ export function arrange(r, p) {
   r.lastCy = p.base;
   p.cy = p.base;
   if (p.off) return;
-  if (rng() < L.coins) r.items.push({ x: p.x + 8, y: p.base + (rng() - 0.5) * p.gap * 0.4, k: 'coin' });
+  if (rng() < L.coins) { r.items.push({ x: p.x + 8, y: p.base + (rng() - 0.5) * p.gap * 0.4, k: 'coin' }); r.coinsSpawned++; }
   if (rng() < L.ankh) r.items.push({ x: p.x + 8, y: p.base, k: 'ankh' });
 }
 
@@ -127,6 +127,7 @@ export function stepRun(r, inp) {
     } else if (!p.passed && p.x <= lo && !r.dead) {              /* through: how near the stone it came is `close` */
       p.passed = true;
       r.info.gap = { cy: L.centred ? 100 : centre(r, p), gap: p.gap, close: p.close };
+      if (p.close < 6) r.grazes++;
       r.ev.push(p.close < 6 ? 'graze' : 'gap');
     }
   }

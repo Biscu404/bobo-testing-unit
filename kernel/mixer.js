@@ -21,7 +21,8 @@ const CHANNELS = [
   { id: 'bekkedal',   n: 'BEKKEDAL',   app: 'bekkedal' },
   { id: 'standbattle', n: 'STAND BATTLE', app: 'standbattle' },
   { id: 'aftere',     n: 'AFTEREGYPT', app: 'aftere' },
-  { id: 'garage',     n: 'THE GARAGE', app: 'garage' }
+  { id: 'garage',     n: 'THE GARAGE', app: 'garage' },
+  { id: 'holyc',      n: 'HOLYC.EXE',  app: 'holyc' }
 ];
 
 let st = {};

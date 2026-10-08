@@ -2,6 +2,7 @@ import { fs as vfs } from './vfs.js';
 import { openWindow, createWindow, toast } from './wm.js';
 import { hcLex, hcParse, hcRun } from './holyc.js';
 import { panic } from './panic.js';
+import { sys } from './trophy_hook.js';
 
 function commas(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
 
@@ -73,15 +74,25 @@ export async function openCompile() {
   });
 }
 
+/* a program that puts things on the stage (Button, Label, Pixel...) is an app, not a run for a terminal: HOLYC.EXE's player opens it */
+const STAGE_CALLS = /\b(Label|Button|Field|Bar|Pixel|Fill|Note|Every)\s*\(/;
+
 export async function runFileHolyC(path) {
   const file = await vfs.read(path);
+  if (file && STAGE_CALLS.test(String(file.content || '').replace(/\/\/[^\n]*/g, ''))) {
+    openWindow('holyc', { run: true, from: path, name: path.split('/').pop().replace(/\.HC$/i, '') }).catch(console.error);
+    if (window.Snd) window.Snd.bell();
+    return;
+  }
   const rows = [];
   let bad = null;
   try {
-    hcRun(hcParse(hcLex(file && file.content || '')), l => rows.push(l), null, {
+    const ast = hcParse(hcLex(file && file.content || ''));
+    hcRun(ast, l => rows.push(l), null, {
       godDoodle: () => openWindow('goddoodle').catch(console.error),
       dirNames: () => []
     });
+    sys.holyc(ast, path.split('/').pop());
   } catch (e) { bad = e; }
   createWindow({
     kind: 'terminal', title: 'RUN ' + path, w: 480, h: 260,

@@ -1,8 +1,8 @@
 /* One room: the rules of play, driven by clicks and keys. Drawing is in
    run_draw.js; the board's own rules are in board.js. This file decides what
    a click means, what a larva costs, and what a spell does. */
-import { mk, lay, open, each, around, chordTargets, blocked, hiddenSafe, won as boardWon, flagsUsed } from './board.js';
-import { CHARM, SPELLS, maxMasks } from './data.js';
+import { mk, lay, open, each, around, chordTargets, blocked, hiddenSafe, won as boardWon, flagsUsed, underFlags } from './board.js';
+import { CHARM, SPELLS, SPELL_HINT, spellOpen, maxMasks } from './data.js';
 
 export function createRun(env) {
   const node = env.node || null;                 /* null = a classic game */
@@ -16,7 +16,10 @@ export function createRun(env) {
     soul: camp ? camp.soul : 0, shell: false, opened: 0, womb: 0,
     started: false, t0: 0, endT: 0, over: false, won: false, dead: false, overAt: 0,
     target: null, hover: -1, held: false, msg: [], parts: [], floats: [], shake: 0, flash: 0, fogAt: 0,
-    pay: null, tile: 20, bx: 0, by: 0, face: 'neutral'
+    pay: null, tile: 20, bx: 0, by: 0, face: 'neutral',
+    /* what the trophies and the pay panel ask about a room: a larva that hatched at all (`hits`, even one the shell or a lifeblood mask took),
+       masks really lost, spells cast, flags put down by hand, clicks on a web, clicks at all */
+    hits: 0, maskLoss: 0, spells: 0, flagsPlaced: 0, webBlocks: 0, clicks: 0, hintAt: 0
   };
   if (has('lifeblood')) S.blue = 2;
 
@@ -43,6 +46,8 @@ export function createRun(env) {
   const gainSoul = n => { if (camp) S.soul = Math.min(99, S.soul + Math.round(n)); };
   const focusCost = () => has('deep') ? 44 : has('quick') ? 22 : 33;
   const diveRad = () => has('shaman') ? 2 : 1;
+  /* F, Q and E are learnt by clearing the map, a region at a time (data.js SPELL_AT); a classic game has none */
+  S.learnt = kind => !!camp && spellOpen(camp, kind);
 
   function hurt(i) {
     const b = S.b, now = performance.now();
@@ -51,12 +56,13 @@ export function createRun(env) {
     env.snd.chitter(0);
     if (S.classic) { lose(i); return; }
     const dmg = S.node.boss ? 2 : 1;
+    S.hits++;
     if (has('stalwart') && !S.shell) {
       S.shell = true; S.say('THE SHELL HOLDS.', '#9fe0ff'); float(i, 'SHELL', '#9fe0ff');
     } else {
       let d = dmg;
       if (S.blue) { const t = Math.min(S.blue, d); S.blue -= t; d -= t; }
-      S.hp -= d; S.shake = 1; S.flash = 1; env.snd.err();
+      S.hp -= d; S.maskLoss += d; S.shake = 1; S.flash = 1; env.snd.err();
       float(i, '-' + dmg, '#ff6070'); S.say('A LARVA HATCHES. -' + dmg + ' MASK' + (dmg > 1 ? 'S' : ''), '#ff8090');
       if (has('grubsong')) { gainSoul(33); float(i, '+33 SOUL', '#cfe6ff'); }
     }
@@ -75,6 +81,7 @@ export function createRun(env) {
     S.shake = 1; env.snd.err();
     if (Sw) { Sw.st.played++; Sw.st.streak = 0; Sw.save(); }
     S.hatch = performance.now();
+    if (env.onLose) env.onLose(S);
   }
 
   function checkWin() {
@@ -119,8 +126,8 @@ export function createRun(env) {
       return;
     }
     const why = blocked(b, i);
-    if (why === 'flag') return;
-    if (why === 'web') { env.snd.click(); S.say('WEBBED: OPEN A NEIGHBOUR FIRST.', '#cfd8e0'); S.shake = 0.3; return; }
+    if (why === 'flag') { env.snd.click(); if (underFlags(b)) wrongFlags(); else S.say('FLAGGED. RIGHT-CLICK TO LIFT THE FLAG.', '#8794aa'); return; }
+    if (why === 'web') { S.webBlocks++; env.snd.click(); S.say('WEBBED: OPEN A NEIGHBOUR FIRST.', '#cfd8e0'); S.shake = 0.3; return; }
     if (b.thorn[i]) { b.thorn[i] = 0; env.snd.pin(); pop(i, 8, '#7fe09a'); S.say('THE BRAMBLE IS CUT.', '#9fd8a8'); return; }
     if (b.mine[i]) { hurt(i); return; }
     openAt(i);
@@ -128,12 +135,14 @@ export function createRun(env) {
   }
 
   /* ---- spells ------------------------------------------------------------ */
+  /* A spell is aimed with Q or E and cast with a click. It used to stay aimed when the cast failed (no soul, a tile with nothing to do),
+     so every later click was another "not enough soul" and the room could not be played on until a right-click happened to cancel it:
+     a spell that cannot be cast is now never aimed, and a cast that does not go off lets go of the aim. */
   function cast(kind, i) {
-    const b = S.b;
-    if (b.rev[i] || b.def[i]) { S.say('NOTHING TO DO THERE.'); return; }
-    const cost = SPELLS[kind].cost;
-    if (S.soul < cost) { S.say('NOT ENOUGH SOUL.', '#ff9090'); return; }
-    S.soul -= cost; S.target = null;
+    const b = S.b, cost = SPELLS[kind].cost;
+    if (S.soul < cost) { S.target = null; S.say('NOT ENOUGH SOUL: ' + cost + ' NEEDED.', '#ff9090'); return; }
+    if (b.rev[i] || b.def[i]) { S.say('PICK A TILE THAT IS STILL HIDDEN.', '#cfe6ff'); return; }
+    S.soul -= cost; S.target = null; S.spells++;
     env.snd.tone && env.snd.tone(kind === 'scry' ? 880 : 220, 220, { type: 'sine', to: kind === 'scry' ? 1760 : 80, vol: 0.05 });
     if (kind === 'scry') {
       if (b.mine[i]) { b.flag[i] = true; S.say('A LARVA, SEEN AND MARKED.', '#cfe6ff'); pop(i, 10, '#cfe6ff'); }
@@ -142,7 +151,7 @@ export function createRun(env) {
       around(b, i, diveRad()).forEach(j => {
         if (b.rev[j] || b.def[j]) return;
         if (b.mine[j]) { b.flag[j] = true; pop(j, 5, '#cfe6ff'); }
-        else { b.thorn[j] = 0; b.web[j] = false; openAt(j, true); }
+        else { b.flag[j] = false; b.thorn[j] = 0; b.web[j] = false; openAt(j, true); }
       });
       S.shake = 0.7; S.say('THE DIVE LANDS.', '#cfe6ff');
     }
@@ -151,26 +160,52 @@ export function createRun(env) {
   function focus() {
     const c = focusCost();
     if (S.hp >= S.hpMax) { S.say('YOU ARE WHOLE.'); return; }
-    if (S.soul < c) { S.say('NOT ENOUGH SOUL.', '#ff9090'); return; }
-    S.soul -= c; S.hp = Math.min(S.hpMax, S.hp + (has('deep') ? 2 : 1));
+    if (S.soul < c) { S.say('NOT ENOUGH SOUL: ' + c + ' NEEDED.', '#ff9090'); return; }
+    S.soul -= c; S.hp = Math.min(S.hpMax, S.hp + (has('deep') ? 2 : 1)); S.spells++;
     env.snd.chime(); S.say('A MASK MENDS.', '#f2efe4'); S.flash = -1;
+  }
+  /* aim (or put down) a spell; false when it cannot be aimed, with the reason said */
+  function aim(kind) {
+    if (!S.started) { S.say('OPEN A TILE FIRST.'); return false; }
+    if (S.target === kind) { S.target = null; return true; }
+    if (S.soul < SPELLS[kind].cost) { S.target = null; S.say(SPELLS[kind].name + ' NEEDS ' + SPELLS[kind].cost + ' SOUL.', '#ff9090'); return false; }
+    S.target = kind; S.say(SPELLS[kind].name + ': CHOOSE A TILE. RIGHT-CLICK CANCELS.', '#cfe6ff');
+    return true;
+  }
+
+  /* ---- a hint for the one mistake the board cannot show you: every safe tile that is left is under a flag ---- */
+  function wrongFlags() {
+    if (S.over || !S.started || !underFlags(S.b)) return;
+    S.say('A FLAG IS ON SAFE GROUND: RIGHT-CLICK IT.', '#ffd68c');
+    S.flagHint = performance.now();
   }
 
   /* ---- input --------------------------------------------------------------- */
   S.mouse = (type, ev, lx, ly) => {
-    if (type === 'move') { S.hover = S.idxAt(lx, ly); return; }
+    if (type === 'move') {
+      S.hover = S.idxAt(lx, ly);
+      const k = camp && ly >= 606 ? Math.floor((lx - 14) / 150) : -1;
+      S.barHover = k >= 0 && k < 3 && lx - 14 - k * 150 < 142 ? k : -1;
+      return;
+    }
     if (type === 'up') { S.held = false; return; }
     if (S.over || type !== 'down') return;
+    if (camp && ly >= 606 && ev.button === 0) {                      /* the three keys along the bottom are buttons too */
+      const k = Math.floor((lx - 14) / 150);
+      if (k >= 0 && k < 3 && lx - 14 - k * 150 < 142) S.key({ key: 'fqe'[k] });
+      return;
+    }
     const i = S.idxAt(lx, ly);
-    if (i < 0) return;
+    if (i < 0) { if (S.target && ev.button === 2) S.target = null; return; }
+    S.clicks++;
     if (S.target) {
       if (ev.button === 2) { S.target = null; return; }
-      if (!S.started) return;
+      if (ev.button !== 0 || !S.started) return;
       cast(S.target, i); return;
     }
     if (ev.button === 2) {
       if (S.b.rev[i] || S.b.def[i]) return;
-      S.b.flag[i] = !S.b.flag[i]; env.snd.pin(); return;
+      S.b.flag[i] = !S.b.flag[i]; if (S.b.flag[i]) S.flagsPlaced++; env.snd.pin(); wrongFlags(); return;
     }
     if (ev.button !== 0) return;
     S.held = true;
@@ -184,15 +219,12 @@ export function createRun(env) {
     const k = ev.key.toLowerCase();
     if (S.over) return false;
     if (!camp) return false;
-    if (k === 'f') { if (S.started) focus(); else S.say('OPEN A TILE FIRST.'); return true; }
-    if (k === 'q' || k === 'e') {
-      if (!S.started) { S.say('OPEN A TILE FIRST.'); return true; }
-      const kind = k === 'q' ? 'scry' : 'dive';
-      S.target = S.target === kind ? null : kind;
-      if (S.target) S.say(SPELLS[kind].name + ': CHOOSE A TILE. RIGHT-CLICK CANCELS.', '#cfe6ff');
-      return true;
-    }
-    return false;
+    const kind = { f: 'focus', q: 'scry', e: 'dive' }[k];
+    if (!kind) return false;
+    if (!S.learnt(kind)) { S.target = null; S.say('LOCKED: ' + SPELL_HINT[kind], '#ffd68c'); return true; }
+    if (kind === 'focus') { if (S.started) focus(); else S.say('OPEN A TILE FIRST.'); return true; }
+    aim(kind);
+    return true;
   };
 
   /* spores settle every so often on a number that is already open */

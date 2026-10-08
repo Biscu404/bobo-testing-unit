@@ -3,13 +3,16 @@ import { Snd } from '../../kernel/snd.js';
 import { Cos } from '../../kernel/cos.js';
 import { fs as vfs } from '../../kernel/vfs.js';
 import { lampDip } from '../../kernel/hardware.js';
+import { cardsPay, winPay, dealPay } from './pay.js';
+import { whenGone } from '../lifecycle.js';
+import * as tro from './trophy_calls.js';
 
 
 const SOL_KEY = 'templeos.solitaire';
 const LANES = [
-  { id: 0, name: 'MID',     red: true,  c: '#c8283c', c2: '#8b1020', ink: '#ffd8dc', champ: 'ZED' },
-  { id: 1, name: 'BOT',     red: true,  c: '#e0622a', c2: '#96380e', ink: '#ffe2cc', champ: 'TALON' },
-  { id: 2, name: 'TOP',     red: false, c: '#3f6a9e', c2: '#20364f', ink: '#d6e6f8', champ: 'LEE SIN' },
+  { id: 0, name: 'MID',     red: true,  c: '#c8283c', c2: '#8b1020', ink: '#ffffff', champ: 'ZED' },
+  { id: 1, name: 'BOT',     red: true,  c: '#a83e10', c2: '#6a2406', ink: '#ffffff', champ: 'TALON' },
+  { id: 2, name: 'TOP',     red: false, c: '#3f6a9e', c2: '#20364f', ink: '#ffffff', champ: 'LEE SIN' },
   { id: 3, name: 'SUPPORT', red: false, c: '#4a3060', c2: '#241635', ink: '#e0d4f0', champ: 'JAX' }
 ];
 const RANK_TXT = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
@@ -65,8 +68,8 @@ export default {
   const FAN_UP = 26, FAN_DN = 12;
 
   let cv, g, info;
-  let stock, waste, found, tab, moves, dealing, won, drag, bounce, redeals;
-  let raf = null, mx = 0, my = 0, autoT = null, payShown = 0, payTarget = 0;
+  let stock, waste, found, tab, moves, dealing, won, drag, bounce, redeals, tally = tro.newTally();
+  let raf = null, mx = 0, my = 0, autoT = null, payShown = 0, payTarget = 0, settled = true;
 
   const made = createWindow({
     kind: 'app', title: 'SOLITAIRE.EXE', w: 900, h: 620, appId: 'solitaire',
@@ -113,7 +116,17 @@ export default {
   if (g) g.imageSmoothingEnabled = false;
 
   /* ---- the deal --------------------------------------------------------- */
+  /* the cards that are home are paid as the deal ends, whichever way it ends: a win (checkWon), a new deal, or the window closing */
+  const home = () => found ? found.reduce((a, f) => a + f.length, 0) : 0;
+  function settle() {
+    if (settled || won) { settled = true; return; }
+    settled = true;
+    tro.abandoned(tally, moves);
+    const n = home();
+    if (n > 0 && window.Economy) { window.Economy.earn(dealPay(n, moves, false), 'SOLITAIRE: ' + n + ' CARDS HOME'); setTimeout(() => Snd.coin(), 150); }
+  }
   function deal() {
+    settle();
     const cards = [];
     for (let s = 0; s < 4; s++) for (let r = 1; r <= 13; r++) cards.push({ r: r, s: s, up: false, a: 0, x: 0, y: 0 });
     for (let i = cards.length - 1; i > 0; i--) {
@@ -121,7 +134,7 @@ export default {
       const t = cards[i]; cards[i] = cards[j]; cards[j] = t;
     }
     stock = cards; waste = []; found = [[], [], [], []]; tab = [[], [], [], [], [], [], []];
-    moves = 0; won = false; drag = null; bounce = null; redeals = 0; payShown = 0; payTarget = 0;
+    moves = 0; won = false; drag = null; bounce = null; redeals = 0; payShown = 0; payTarget = 0; settled = false; tally = tro.newTally();
     clearInterval(autoT);
     const now = performance.now();
     let k = 0;
@@ -185,12 +198,13 @@ export default {
   function checkWon() {
     if (found.reduce((a, f) => a + f.length, 0) < 52) return;
     won = true;
-    payTarget = Math.max(40, 300 - moves * 2);
+    payTarget = dealPay(52, moves, true); settled = true;
     Solitaire.st.won++;
     if (!Solitaire.st.bestMoves || moves < Solitaire.st.bestMoves) Solitaire.st.bestMoves = moves;
     Solitaire.save();
+    tro.won(tally, moves, redeals, Solitaire.st.back % 3);
     Snd.fanfare();
-    window.Economy.earn(payTarget, 'SOLITAIRE: ' + moves + ' MOVES');
+    window.Economy.earn(payTarget, 'SOLITAIRE: WON IN ' + moves + ' MOVES');
     setTimeout(() => Snd.coin(), 400);
     /* the cascade everyone who has ever used an old computer expects */
     bounce = [];
@@ -272,7 +286,7 @@ export default {
 
     /* the auto-complete button, when the board is trivially solvable */
     if (autoReady() && px > W - 190 && px < W - 14 && py > H - 40 && py < H - 8) {
-      Snd.click();
+      Snd.click(); tally.auto = true;
       autoT = setInterval(() => {
         let did = false;
         for (let col = 0; col < 7 && !did; col++) {
@@ -347,7 +361,7 @@ export default {
       }
     }
     if (placed) {
-      moves++;
+      moves++; tro.moved(drag.cards.length);
       Snd.snap();
       flipUnder(drag.from);
       checkWon();
@@ -640,7 +654,9 @@ export default {
     }
 
     /* the auto-complete offer */
-    if (autoReady()) {
+    const offer = autoReady();
+    tro.watch(tally, found, offer);
+    if (offer) {
       g.fillStyle = '#1b2740';
       g.fillRect(W - 190, H - 40, 176, 32);
       g.strokeStyle = '#7fe0ff';
@@ -671,7 +687,7 @@ export default {
         anyLive = true;
         drawCard(b.c, Math.round(b.x), Math.round(b.y), false);
       });
-      if (!anyLive) bounce = null;
+      if (!anyLive) { bounce = null; tro.cascadeEnded(); }
       g.fillStyle = '#ffd68c';
       g.font = '34px "VT323", monospace';
       g.textAlign = 'center';
@@ -682,7 +698,7 @@ export default {
 
     if (info) {
       info.textContent = 'MOVES ' + moves + '   REDEALS ' + redeals +
-        '   PAYS ' + Math.max(40, 300 - moves * 2) +
+        '   HOME ' + home() + ' (' + cardsPay(home()) + ' SUN)   A WIN PAYS ' + (winPay(moves) + cardsPay(52)) +
         '   WON ' + Solitaire.st.won + '/' + Solitaire.st.played +
         (Solitaire.st.bestMoves ? '   BEST ' + Solitaire.st.bestMoves + ' MOVES' : '');
     }
@@ -690,6 +706,7 @@ export default {
   }
 
   deal();
+  whenGone(cv, settle);
   raf = requestAnimationFrame(paint);
   lampDip();
   }

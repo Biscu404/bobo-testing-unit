@@ -1,5 +1,6 @@
 import { createWindow, raise } from '../../kernel/wm.js';
 import { godDoodle, godWords } from '../../kernel/god.js';
+import { doodle } from '../tools/trophy_calls.js';
 
 export default {
   id: 'goddoodle',
@@ -24,7 +25,7 @@ export default {
     word.className = 'godword';
     
     const roll = () => {
-      godDoodle(cv);
+      godDoodle(cv); doodle();
       word.textContent = godWords(3).join(' ');
       if (window.Snd && window.Snd.holy) window.Snd.holy();
     };

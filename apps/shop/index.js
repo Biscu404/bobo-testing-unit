@@ -126,7 +126,7 @@ export default {
         /* no title attribute: the browser would pop up a second box that says again what Dave is already saying */
 
         card.addEventListener('mouseenter', () => {
-          say(hoverTalk(cat, it).text);
+          { const talk = hoverTalk(cat, it); say(talk.text); if (talk.crazy) { try { window.Trophies && window.Trophies.emit('system', 'crazy', {}); } catch (e) { /* never into the shop */ } } }
           if (cat === 'frame' || cat === 'cursor' || cat === 'scheme') window.Cos.hover(cat, it.id);
         });
         card.addEventListener('mouseleave', () => { window.Cos.hover(null, null); });

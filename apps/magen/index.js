@@ -13,6 +13,8 @@ import { mgBackdrops, mgAchScene } from './backdrops.js';
 import { scopedListeners } from '../lifecycle.js';
 import { AUTO_LEVELS, AUTO_UNLOCK, autoUnlocked, autoGap, autoRate, autoNext, owed } from './auto.js';
 import { ratesHtml } from './rates.js';
+import { createCalls } from './trophy_calls.js';
+import { achSun } from './pay.js';
 
 /* the machine's own pixel face for everything the star's canvas has to say */
 const MGF = "'VT323', 'Courier New', monospace";
@@ -165,9 +167,10 @@ export default {
         gold: 0, shab: 0, args: 0, asc: 0,
         zech: 0, spent: 0, leg: {},
         shabIn: 360, shabT: 0, menu: 0, litFor: 0,
-        buffs: [], t: Date.now(), born: Date.now()
+        buffs: [], t: Date.now(), born: Date.now(), genAt: Date.now()
       });
       let S = fresh();
+      const tro = createCalls();
       let mode = 'store', buyN = 1, alive = true, frameStamp = 0;
 
       const legOn = id => !!S.leg[id];
@@ -360,21 +363,6 @@ export default {
          hard the threshold actually is: log2 for the small everyday
          milestones (clicks, ownership, gold stars...), log10 for the
          thresholds that run from 1 up past a septillion. */
-      function achSun(a) {
-        if (a.worth0) return 5;
-        switch (a.t) {
-          case 'total':
-          case 'mps':
-            return Math.max(15, Math.round(15 + Math.log10(Math.max(1, a.v)) * 12));
-          case 'allb':
-          case 'dias':
-            return 120;
-          case 'flag':
-            return 25;
-          default:
-            return Math.max(5, Math.round(8 + Math.log2(Math.max(1, a.v)) * 6));
-        }
-      }
       function checkAch() {
         MG_ACH.forEach(a => {
           if (S.ach[a.id]) return;
@@ -394,7 +382,7 @@ export default {
             case 'flag':  hit = !!S.flag[a.v]; break;
           }
           if (hit) {
-            S.ach[a.id] = 1;
+            S.ach[a.id] = 1; tro.mirrored(a.id);
             if (window.Economy) window.Economy.earn(achSun(a), 'MAGEN: ' + a.n);
             /* the two that are worth nothing announce themselves quietly */
             if (a.worth0) {
@@ -429,6 +417,7 @@ export default {
         sfx.shimmer();
       }
       function takeGold() {
+        tro.gold(gs ? gs.t : 99, gs ? gs.life : 13);
         S.gold++; gs = null;
         let pick = GOLD[0], roll = Math.random() * GOLD.reduce((a, b) => a + b.w, 0), acc = 0;
         for (const o of GOLD) { acc += o.w; if (roll <= acc) { pick = o; break; } }
@@ -467,6 +456,7 @@ export default {
          penalty here, which is also the position of the tradition. */
       const WEEK = 360, SHAB = 75, WARN = 18;
       function startShabbat() {
+        tro.shabbatStart(S);
         S.shabT = SHAB; S.menu = 0; S.shab++;
         S.flag.rest = S.flag.rest || 0;
         restClean = true;
@@ -486,6 +476,7 @@ export default {
         if (S.litFor > 0) { power *= 1.5; S.litFor = 0; }
         addBuff('HAVDALAH', secs, { m: power }, 13);
         if (restClean) S.flag.rest = 1;
+        tro.shabbatEnd(restClean);
         toast('HAVDALAH. A GOOD WEEK.');
         sfx.havdalah();
         banner('HAVDALAH', 'shavua tov — a good week', 13, null);
@@ -513,7 +504,7 @@ export default {
       function settleArg(side) {
         if (!arg || arg.picked) return;
         arg.picked = side; arg.t = 0;
-        S.args++; S.flag.arg = 1;
+        S.args++; S.flag.arg = 1; tro.argSettled(arg.q, side);
         /* elu v'elu: both are the words of the living God, and both pay */
         if (side === 0) addBuff('THE STRICT VIEW', 45, { m: 2.5 }, 11);
         else            addBuff('THE LENIENT VIEW', 90, { m: 1.7 }, 10);
@@ -529,7 +520,7 @@ export default {
       function ascend() {
         const gain = zechutFor();
         if (gain < 1) { toast('NOT YET. THERE IS NOTHING TO HAND ON.'); sfx.no(); return; }
-        const keepKav = kavanah();
+        const keepKav = kavanah(), genSecs = S.genAt ? (Date.now() - S.genAt) / 1000 : null;
         const keptTier = legOn('l_teach') ? 2 : legOn('l_chain') ? 1 : 0;
         const tiers = S.tier.map(t => Math.min(t, keptTier));
         const ach = S.ach, leg = S.leg, zech = S.zech + gain, spent = S.spent;
@@ -543,6 +534,7 @@ export default {
         S.baseKav = keepKav;
         if (legOn('l_cand')) S.own[idx.nerot] = 10;
         if (legOn('l_start')) { const v = rawMps() * 60; S.mitz += v; }
+        tro.ascended(genSecs);
         toast('L\'DOR VADOR. +' + gain + ' ZECHUT.');
         sfx.ascend();
         banner('L\'DOR VADOR', '+' + gain + ' zechut, from generation to generation', 15, null);
@@ -1029,7 +1021,7 @@ export default {
         squash = 1; spin = 1;
         combo = Math.min(60, combo + 1); comboT = 0;
         if (combo > (S.bestCombo || 0)) S.bestCombo = combo;
-        restClean = false;
+        restClean = false; tro.pressed(S, combo, auto);
         const bx = ev ? ev.offsetX * (cv.width / cv.clientWidth) : CX;
         const by = ev ? ev.offsetY * (cv.height / cv.clientHeight) : CY;
 
@@ -1337,7 +1329,7 @@ export default {
           R(275, 264, 2, 5, 8);
         }
         g.font = '15px ' + MGF; g.textBaseline = 'top';
-        g.fillStyle = C(8); g.fillText('yahrzeit', 252, 292);
+        g.fillStyle = C(7); g.fillText('yahrzeit', 252, 292);
         g.textBaseline = 'alphabetic';
 
         /* the banner, sweeping in from the left and out to the right */
@@ -1409,7 +1401,7 @@ export default {
         const s = ' '.repeat(PADN) + MG_NEWS[newsIx] + ' '.repeat(PADN);
         newsPos++;
         if (newsPos > s.length - PADN) {
-          newsPos = 0;
+          newsPos = 0; tro.news(newsIx);
           newsIx = (newsIx + 1 + Math.floor(Math.random() * 3)) % MG_NEWS.length;
         }
         tick.textContent = s.slice(newsPos, newsPos + PADN);
@@ -1431,7 +1423,7 @@ export default {
       rEl.addEventListener('mousemove', ev => {
         if (!upOn('s_chesh')) return;
         const live = () => ratesHtml(ratesModel(), mgFmt);
-        showTip(live(), ev, 'right', live);
+        showTip(live(), ev, 'right', live); tro.ledger();
       });
       rEl.addEventListener('mouseleave', hideTip);
       let raf = null, last = 0, acc = 0, saveT = 0, uiT = 0, achT = 0;
@@ -1502,7 +1494,7 @@ export default {
         /* ninety-eight achievements, thirty times a second, over inputs that
            move slowly. Five times a second is plenty. */
         achT += step;
-        if (achT > 0.2) { achT = 0; checkAch(); }
+        if (achT > 0.2) { achT = 0; checkAch(); tro.scan(S); }
         stepNews(step);
 
         /* the numbers, ten times a second, which is as fast as anybody reads */

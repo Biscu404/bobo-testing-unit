@@ -15,6 +15,10 @@
  *
  * `pay` is for arriving, `coin` is what each coin is worth, `first` is added the first time, and a clear without a single
  * hit pays a quarter more (`FLAWLESS`). `rate()` is what a clear is worth a minute: it has to climb, and the check holds it to that.
+ * The whole ladder is on the machine's SUN budget (docs/sun-economy.md, held by scripts/check-sun.mjs): about 50 SUN a minute at PILGRIM,
+ * which is eighteen seconds of nothing in particular and so cannot be a farm, climbing to about 500 a minute at the temple, which
+ * is two minutes of everything at once and is failed most of the time. It used to be 166 and 2,136, thirty to a hundred times what
+ * anything else on the machine paid for the same time.
  */
 export const FLAWLESS = 0.25;
 export const DEAD_SHARE = 0.5;       /* of the coins a run is carrying when it ends in the pillars */
@@ -23,19 +27,19 @@ export const FPS = 60;
 export const LEVELS = [
   { id: 'pilgrim', name: 'PILGRIM', blurb: 'The way it was. Fly through the gaps.',
     speed: 2.4, goal: 2600, gap: [55, 130], space: 90, follow: Infinity, wander: 0, wobble: 0,
-    locust: 0, wind: false, squeeze: 0, coins: 0, ankh: 0, pay: 50, coin: 0, first: 0, centred: true },
+    locust: 0, wind: false, squeeze: 0, coins: 0, ankh: 0, pay: 15, coin: 0, first: 0, centred: true },
   { id: 'scribe', name: 'SCRIBE', blurb: 'The gaps wander and the ship takes a moment to arrive.',
     speed: 3.0, goal: 7200, gap: [48, 104], space: 84, follow: 5.2, wander: 0.55, wobble: 5,
-    locust: 0, wind: false, squeeze: 0.1, coins: 0.45, ankh: 0.05, pay: 180, coin: 2, first: 120 },
+    locust: 0, wind: false, squeeze: 0.1, coins: 0.45, ankh: 0.05, pay: 40, coin: 1, first: 60 },
   { id: 'priest', name: 'PRIEST', blurb: 'Locusts out of the east. Gaps that breathe.',
     speed: 3.5, goal: 12600, gap: [42, 88], space: 80, follow: 4.4, wander: 0.65, wobble: 9,
-    locust: 0.006, wind: false, squeeze: 0.18, coins: 0.5, ankh: 0.06, pay: 450, coin: 4, first: 300 },
+    locust: 0.006, wind: false, squeeze: 0.18, coins: 0.5, ankh: 0.06, pay: 120, coin: 1, first: 150 },
   { id: 'pharaoh', name: 'PHARAOH', blurb: 'Wind off the dunes, and the sky comes down on you.',
     speed: 4.0, goal: 20400, gap: [36, 74], space: 76, follow: 3.8, wander: 0.72, wobble: 12,
-    locust: 0.009, wind: true, squeeze: 0.28, coins: 0.5, ankh: 0.07, pay: 1000, coin: 8, first: 800 },
+    locust: 0.009, wind: true, squeeze: 0.28, coins: 0.5, ankh: 0.07, pay: 260, coin: 2, first: 400 },
   { id: 'temple', name: 'THE THIRD TEMPLE', blurb: 'All of it, at once, for two minutes. It is not a joke.',
     speed: 4.6, goal: 33100, gap: [32, 62], space: 72, follow: 3.4, wander: 0.78, wobble: 14,
-    locust: 0.012, wind: true, squeeze: 0.36, coins: 0.55, ankh: 0.08, pay: 2500, coin: 14, first: 2500 }
+    locust: 0.012, wind: true, squeeze: 0.36, coins: 0.55, ankh: 0.08, pay: 620, coin: 3, first: 1200 }
 ];
 
 export const levelById = id => LEVELS.find(l => l.id === id) || LEVELS[0];

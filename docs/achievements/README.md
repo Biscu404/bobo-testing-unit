@@ -1,6 +1,10 @@
 # Trophies for HOLYTRON DM-640: an achievement proposal
 
-**Status: proposal. No code has been changed.** It is written for two readers: the person this machine is a birthday gift for, who hunts achievements, and the
+**Status: built.** The ledger, the card, the sounds, the terminal commands and every catalogue below are in the repo (`kernel/trophies*.js`, `apps/trophies/`, each game's
+`apps/<id>/trophies.js`; CLAUDE.md, **Trophies**). The pages of this folder are the design record the build followed, and where the build differs it is in the numbers: **385
+trophies and 10 seals in all (Sweeper 35, Garden 22, Garage 22 with the Studio Course's three, the machine 62, Notes 9, HOLYC.EXE 22 which did not exist when this was written,
+the ledger's own meta area 25), about 16,400 SUN**; the thresholds that wanted a playthrough are held by `scripts/check-trophies.mjs` and the per-game `trophy_check.js` files.
+It was written as a proposal for two readers: the person this machine is a birthday gift for, who hunts achievements, and the
 coding session that will build it. It follows the brief: clear goals, meaningful and fun rather than a checklist, hard "for the right reasons", a mix of
 progression, skill, exploration, creative and system-wide goals, and explicit triggers, counters, edge cases and on-screen copy.
 

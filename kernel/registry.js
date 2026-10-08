@@ -30,6 +30,8 @@ export const registry = {
   neofetch: () => import('../apps/neofetch/index.js'),
   trash: () => import('../apps/trash/index.js'),
   garage: () => import('../apps/garage/index.js'),
+  holyc: () => import('../apps/holyc/index.js'),
+  trophies: () => import('../apps/trophies/index.js'),
 
 
 };

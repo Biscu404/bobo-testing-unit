@@ -8,6 +8,7 @@ import { Vault } from '../../kernel/vault.js';
 import { scopedListeners, whenGone } from '../lifecycle.js';
 import { Studio } from '../../kernel/studio.js';
 import { loadTrack } from '../../kernel/style_track.js';
+import { createCalls } from './trophy_calls.js';
 
 export default {
   id: 'hifi',
@@ -278,6 +279,7 @@ export default {
         return c;
       }
 
+      const tro = createCalls();                  /* what the trophies are told (trophy_calls.js) */
       function addTrack(t) {
         const saved = store()[keyOf(t)];
         t.eq = saved && saved.eq ? saved.eq.slice(0, EQ_BANDS.length) : EQ_BANDS.map(() => 0);
@@ -540,7 +542,7 @@ export default {
         }
         S.voices.slice().forEach(v => killVoice(v, 0.05));
         const v = startVoice(t, S.seekBase, 0.04);
-        S.startedAt = ctx.currentTime; S.playing = true;
+        S.startedAt = ctx.currentTime; S.playing = true; tro.play(t);
         S.xfaded = false;
         return v;
       }
@@ -605,7 +607,7 @@ export default {
         g.fillRect(x0, y0, Math.max(1 / K, dv((x | 0) + (w | 0)) - x0), Math.max(1 / K, dv((y | 0) + (h | 0)) - y0));
       };
       /* the dimmest inks are for panels, not for reading: when they are words they are lifted */
-      const LIFT = { [HFP.screw]: '#7d8494', [HFP.lcdDim]: '#4cc088', '#153f2a': '#2f8a5c', [HFP.brush]: '#a3acbc', [HFP.amberDim]: '#c08a30' };
+      const LIFT = { [HFP.screw]: '#7d8494', [HFP.lcdDim]: '#4cc088', '#153f2a': '#46b27e', [HFP.brush]: '#a3acbc', [HFP.amberDim]: '#c08a30' };
       const FACE = '"VT323", "Courier New", monospace', FS = 1.7;
       const TXT = (t, x, y, c, size, align) => {
         g.fillStyle = LIFT[c] || c; g.font = Math.round((size || 8) * FS) + 'px ' + FACE;
@@ -640,7 +642,7 @@ export default {
         if (on) { g.globalAlpha = 0.35; R(x - 2, y - 2, 5, 5, col); g.globalAlpha = 1; }
       }
       function button(id, x, y, w, h, label, active, col) {
-        bevel(x, y, w, h, active ? HFP.brush : HFP.case_, active ? HFP.brushHi : HFP.panel, HFP.black);
+        bevel(x, y, w, h, active ? LIFT[HFP.brush] : HFP.case_, active ? HFP.brushHi : HFP.panel, HFP.black);
         TXT(label, x + w / 2, y + h / 2 + 3, active ? HFP.black : HFP.brushHi, 7, 'center');
         hits.push({ k: 'btn', id: id, x: x, y: y, w: w, h: h });
       }
@@ -1118,13 +1120,14 @@ export default {
         S.marquee += dt * 26;
         if (S.playing) { S.spin += dt * 3.4 * S.speed; S.sheen -= dt * 1.1; }
         S.disc = Math.max(0, S.disc - dt * 1.6);
+        tro.tick(dt, S.playing, S.ix + ':' + (S.list[S.ix] ? S.list[S.ix].name : ''));
         const wantTray = S.trayDir > 0 ? 1 : 0;
         S.tray += (wantTray - S.tray) * Math.min(1, dt * 5);
         if (S.trayDir > 0 && S.tray > 0.98) S.trayDir = 0;
 
         /* the crossfade into the next disc, started before this one runs out */
         if (S.playing && S.dur && !S.xfaded && S.repeat !== 2 && S.pos > S.dur - XFADE && S.list.length > 1) {
-          S.xfaded = true;
+          S.xfaded = true; tro.ended(S.dur);
           const n = nextIx();
           if (n >= 0 && n !== S.ix && S.list[n].buf) {
             const nt = S.list[n];
@@ -1138,6 +1141,7 @@ export default {
         }
         /* the end of the last disc, or of a track on repeat-one */
         if (S.playing && S.dur && S.pos >= S.dur - 0.03) {
+          tro.ended(S.dur);
           if (S.repeat === 2) { S.seekBase = 0; play(); }
           else if (S.list.length <= 1) { if (S.repeat === 1) { S.seekBase = 0; play(); } else stop(); }
           else if (!S.xfaded) { skip(1); }
@@ -1225,7 +1229,7 @@ export default {
             window.addEventListener('mouseup', up); return; }
           press(h.id); return;
         }
-        if (h.k === 'dir') { S.folder = h.id; S.scroll = 0; S.userScrolled = true; S.filter = ''; say('FOLDER: ' + h.id); return; }
+        if (h.k === 'dir') { tro.folder(h.id); S.folder = h.id; S.scroll = 0; S.userScrolled = true; S.filter = ''; say('FOLDER: ' + h.id); return; }
         if (h.k === 'back') { S.folder = null; S.scroll = 0; S.userScrolled = false; return; }
         if (h.k === 'row') { S.drag = { k: 'row', from: h.id, moved: false }; return; }
         if (h.k === 'scrub') { seek((p.x - h.x - 2) / (h.w - 4) * S.dur); S.drag = { k: 'scrub', h: h }; return; }
@@ -1291,7 +1295,7 @@ export default {
       };
       function preset(n) {
         const pre = EQ_PRESETS[n]; if (!pre) return;
-        S.preset = pre.slice();
+        S.preset = pre.slice(); tro.preset(n);
         const wasOut = !S.eqOn;
         if (wasOut) { S.eqOn = true; routeEQ(); }              /* a preset into a bypassed EQ is silent: put it in circuit */
         for (let i = 0; i < EQ_BANDS.length; i++) eqGains[i] = pre[i];

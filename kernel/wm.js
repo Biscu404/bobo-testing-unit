@@ -6,6 +6,7 @@ import { lampDip } from './hardware.js';
 import { Cos } from './cos.js';
 import { attachZoom } from './zoom.js';
 import { Studio } from './studio.js';
+import { sys } from './trophy_hook.js';
 
 let zTop = 100;
 let cascadeN = 0;
@@ -193,6 +194,7 @@ export function createWindow(opts) {
     if (on === full) return;
     if (win.classList.contains('hidden')) return;
     if (on) {
+      sys.sit('full');
       const fluid = body.dataset.fluid === '1';
       const fixedCanvas = !fluid && isCanvasWindow(body);
       /* the browser's zoom comes off first, so the size measured is the window's own */
@@ -320,6 +322,7 @@ export function createWindow(opts) {
     }
   };
   const onUp = () => {
+    if (sizing) sys.sit('resize');
     if (dragging || sizing) Snd.drop();
     dragging = false;
     sizing = false;
@@ -370,6 +373,7 @@ export async function openWindow(appId, args = {}) {
     },
     openWindow,
     studio: Studio,
+    trophy: window.Trophies ? window.Trophies.scope(appId) : null,
     toast,
     ask: (title, def, cb) => askName(title, def, cb),
     setTitle: t => { made.title.textContent = t; made.btn.textContent = t; },

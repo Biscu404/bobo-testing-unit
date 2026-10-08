@@ -1,0 +1,55 @@
+/* THE STUDIO COURSE: a coach on top of the real Garage. The same control-room dark as THE BASICS, with one accent, plain sentences and
+   a ring of light round whatever is to be pressed. Everything here is a flat colour from the sixteen. */
+.c-rings { position: absolute; inset: 0; pointer-events: none; z-index: 110; }
+.c-ring { position: absolute; border: 3px solid #FFFF55; box-shadow: 0 0 0 2px #000000, 0 0 14px #FFFF55; animation: cring 1.1s steps(2, end) infinite; }
+@keyframes cring { 0% { opacity: 1; } 50% { opacity: 0.35; } 100% { opacity: 1; } }
+.c-coach { position: absolute; z-index: 120; width: 400px; max-width: calc(100% - 20px); max-height: calc(100% - 150px); display: flex; flex-direction: column; background: #101018; border: 3px solid #55FFFF; box-shadow: 0 0 0 2px #000000, 6px 6px 0 #000000; color: #DDDDDD; font-size: 18px; line-height: 1.22; }
+.c-coach[data-pos="br"] { right: 10px; bottom: 10px; }
+.c-coach[data-pos="bl"] { left: 10px; bottom: 10px; }
+.c-coach[data-pos="tr"] { right: 10px; top: 138px; }
+.c-coach[data-pos="tl"] { left: 10px; top: 138px; }
+.c-coach[data-pos="free"] { right: auto; bottom: auto; }
+.c-coach.ready { border-color: #55FF55; }
+.c-coach.wide { width: 560px; max-height: calc(100% - 20px); }
+.c-coach.wide[data-pos="tr"], .c-coach.wide[data-pos="tl"] { top: 10px; }
+.c-head { display: flex; align-items: center; gap: 8px; padding: 4px 6px 4px 10px; background: #1b1b28; border-bottom: 2px solid #26262e; cursor: move; flex: none; }
+.c-title { color: #55FFFF; letter-spacing: 2px; font-size: 20px; white-space: nowrap; }
+.c-where { color: #AAAAAA; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.c-head .g-sm { min-width: 28px; }
+.c-body { padding: 8px 12px 6px; overflow-y: auto; min-height: 0; }
+.c-coach.folded .c-body, .c-coach.folded .c-foot { display: none; }
+.c-h { color: #FFFFFF; font-size: 22px; letter-spacing: 2px; margin: 4px 0 6px; padding-bottom: 4px; border-bottom: 2px solid #26262e; }
+.c-say { margin: 0 0 8px; color: #DDDDDD; }
+.c-k { color: #FFFF55; font-weight: normal; }
+.c-pre { margin: 0 0 8px; padding: 4px 8px; background: #000000; border: 2px solid #3a3a46; color: #55FF55; white-space: pre; overflow-x: auto; font-size: 17px; }
+.c-goals { margin: 8px 0; display: flex; flex-direction: column; gap: 5px; }
+.c-goal { display: flex; align-items: flex-start; gap: 8px; color: #FFFFFF; }
+.c-box { flex: none; width: 18px; height: 18px; margin-top: 2px; border: 2px solid #AAAAAA; background: #000000; text-align: center; line-height: 14px; font-size: 16px; color: #000000; }
+.c-goal.on { color: #AAAAAA; }
+.c-goal.on .c-box { background: #55FF55; border-color: #55FF55; }
+.c-goal.on .c-box::after { content: '\2713'; }
+.c-goal.on .c-k { color: #AAAAAA; }
+.c-hint { margin: 8px 0; padding: 6px 8px; background: #1c1c28; border-left: 4px solid #FF55FF; color: #FFFFFF; }
+.c-after { color: #55FF55; min-height: 20px; font-size: 20px; }
+.c-act { margin: 4px 0 8px; }
+.c-foot { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-top: 2px solid #26262e; background: #15151c; flex: none; flex-wrap: wrap; }
+.c-next.pulse { animation: cpulse 0.9s steps(2, end) infinite; }
+@keyframes cpulse { 0% { background: #00AA00; } 50% { background: #55FF55; color: #000000; } }
+.c-item { display: flex; align-items: center; gap: 10px; padding: 4px 8px; border-left: 4px solid transparent; cursor: pointer; color: #DDDDDD; }
+.c-item:hover { background: #1c1c28; color: #FFFFFF; }
+.c-item.here { border-left-color: #55FFFF; background: #1c1c28; }
+.c-item .c-n { color: #55FFFF; }
+.c-item .c-t { flex: 1; }
+.c-item .c-s { color: #AAAAAA; }
+.c-item.done .c-s { color: #55FF55; }
+.c-genres { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 6px 0; }
+.c-write { margin-top: 8px; border-left-color: #FF55FF; background: #1a1a24; }
+.c-write .c-t { color: #FFFFFF; }
+.c-prog { color: #55FFFF; }
+.c-genre { padding: 6px 8px; background: #1a1a24; border: 2px solid #3a3a46; border-top: 5px solid #FF55FF; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+.c-genre:hover { border-color: #55FFFF; background: #22222e; }
+.c-genre b { color: #FFFFFF; font-weight: normal; font-size: 20px; letter-spacing: 1px; }
+.c-genre i { color: #CCCCCC; font-style: normal; font-size: 16px; }
+.c-genre small { color: #AAAAAA; font-size: 14px; }
+.c-genre.done { border-top-color: #55FF55; }
+@media (prefers-reduced-motion: reduce) { .c-ring, .c-next.pulse { animation: none; } }

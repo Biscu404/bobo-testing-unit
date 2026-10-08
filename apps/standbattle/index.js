@@ -11,6 +11,8 @@ import { musicStart, musicSetIntensity, musicStop } from './music.js';
 import { createSaveStore } from './save.js';
 import { createRng } from './rng.js';
 import { createInputSystem } from './input.js';
+import { fightSun, RUN_CLEAR } from './pay.js';
+import { wireTrophies, eventChoice, runEnd, debugOn } from './trophies_bridge.js';
 
 const W = 480, H = 270;
 
@@ -98,7 +100,7 @@ export default {
     updateDebugBtn();
     debugBtn.addEventListener('mousedown', ev => {
       ev.stopPropagation();
-      debugEnabled = !debugEnabled;
+      debugEnabled = !debugEnabled; if (debugEnabled) debugOn();
       if (state.combat) state.combat.debug = debugEnabled;
       updateDebugBtn();
       if (window.Snd) window.Snd.click();
@@ -127,9 +129,11 @@ export default {
       }
       const combat = createCombat(enemyDef, state.runState.buffs, opts, state.runRng);
       combat.player.hp = state.runState.hp;
+      combat.startHp = state.runState.hp; combat.aggressive = !!(node.modifier && MODIFIERS[node.modifier] && node.modifier === 'aggressive');
       combat.player.maxHp = state.runState.maxHp;
       combat.debug = debugEnabled;
       wireCombatAudio(combat);
+      combat.trophies = wireTrophies(combat, { enemyId: enemyDef.id, nodeId: node.id, modifier: node.modifier, shake: shakeEnabled });
       musicSetIntensity(1);
       state.combat = combat;
       state.scene = 'combat';
@@ -147,7 +151,8 @@ export default {
       state.scene = state.runState.nodeIndex >= ACT1_MORIOH.nodes.length ? 'complete' : 'map';
       musicSetIntensity(0);
       if (state.scene === 'complete') {
-        meta.cleared = true;
+        meta.cleared = true; runEnd(true, state.runState.buffs.map(b => b.id));
+        if (window.Economy) { window.Economy.earn(RUN_CLEAR, 'STAND BATTLE: ACT 1 CLEARED'); ctx.toast('ACT 1 CLEARED: +' + RUN_CLEAR + ' SUN'); }
         saveStore.saveMeta(meta);
         saveStore.clearRun();
         sfxActComplete();
@@ -158,8 +163,10 @@ export default {
 
     function applyEventChoice(idx) {
       const choice = state.currentEvent.choices[idx];
+      let given = null;
       if (choice.kind === 'heal') state.runState.hp = Math.min(state.runState.maxHp, state.runState.hp + choice.amount);
-      else if (choice.kind === 'buff') state.runState.buffs.push(state.runRng.stream('rewards').pick(RUN_BUFFS));
+      else if (choice.kind === 'buff') { given = state.runRng.stream('rewards').pick(RUN_BUFFS); state.runState.buffs.push(given); }
+      eventChoice(choice, given && given.id);
       if (window.Snd) window.Snd.chirp();
       advanceNode();
     }
@@ -188,6 +195,8 @@ export default {
         }
       } else if (state.scene === 'combat' && state.combat.outcome !== 'fighting') {
         if (state.combat.outcome === 'win') {
+          const c = state.combat, sun = fightSun(c.enemy.def.id, c.aggressive, c.player.hp >= c.startHp);
+          if (window.Economy) { window.Economy.earn(sun, 'STAND BATTLE: ' + (c.enemy.def.standName || c.enemy.def.name)); ctx.toast('+' + sun + ' SUN'); }
           state.runState.hp = state.combat.player.hp;
           advanceNode();
         } else {
@@ -225,7 +234,7 @@ export default {
           const tense = c.player.hp / c.player.maxHp < 0.3 || (c.isBoss && c.enemy.phaseIndex > 0);
           musicSetIntensity(tense ? 2 : 1);
         } else if (!c._announced) {
-          c._announced = true;
+          c._announced = true; if (c.trophies) c.trophies.end();
           musicSetIntensity(0);
           if (c.outcome === 'win') sfxVictory(); else sfxDefeat();
         }
@@ -244,7 +253,7 @@ export default {
     musicStart(ctx.studio);
     musicSetIntensity(0);
 
-    this._cleanup = () => { cancelAnimationFrame(raf); ro.disconnect(); musicStop(); };
+    this._cleanup = () => { cancelAnimationFrame(raf); ro.disconnect(); musicStop(); if (state.combat && state.combat.trophies) state.combat.trophies.stop(); };
   },
 
   unmount() { if (this._cleanup) this._cleanup(); }

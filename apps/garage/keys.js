@@ -30,7 +30,7 @@ export function makeKeys(host, api) {
       h.at = api.player().beat();
       h.start = st > 0 ? Math.round(h.at / st) * st : h.at;
       h.value = midiOrKey;
-      if (tr.inst === 'drums') { (tr.hits = tr.hits || []).push([((h.start % (G.song.bars * G.song.beats)) + G.song.bars * G.song.beats) % (G.song.bars * G.song.beats), midiOrKey, 0.9]); sortTrack(tr); api.changed('edit'); }
+      if (tr.inst === 'drums') { (tr.hits = tr.hits || []).push([((h.start % (G.song.bars * G.song.beats)) + G.song.bars * G.song.beats) % (G.song.bars * G.song.beats), midiOrKey, 0.9]); sortTrack(tr); api.trophy.recNote(); api.changed('edit'); }
     }
     held.set(id, h);
   }
@@ -45,7 +45,7 @@ export function makeKeys(host, api) {
       const len = G.song.bars * G.song.beats;
       const st = api.snapStep(), raw = api.player().beat() - h.at, dur = Math.max(st > 0 ? st : 0.1, st > 0 ? Math.round(raw / st) * st : raw);
       tr.notes.push([((h.start % len) + len) % len, Math.min(dur, 8), h.value, 0.85]);
-      sortTrack(tr); api.changed('edit');
+      sortTrack(tr); api.trophy.recNote(); api.changed('edit');
     }
   }
 

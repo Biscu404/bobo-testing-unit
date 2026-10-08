@@ -38,6 +38,20 @@
     "app": "garage"
   },
   {
+    "path": "::/HolyC",
+    "content": "",
+    "src": "",
+    "type": "app",
+    "app": "holyc"
+  },
+  {
+    "path": "::/Trophies",
+    "content": "",
+    "src": "",
+    "type": "app",
+    "app": "trophies"
+  },
+  {
     "path": "::/Notes",
     "content": "",
     "src": "",
@@ -87,7 +101,7 @@
     "app": "standbattle"
   },
   {
-    "path": "::/Sweeper",
+    "path": "::/DungeonSweeper",
     "content": "",
     "src": "",
     "type": "app",

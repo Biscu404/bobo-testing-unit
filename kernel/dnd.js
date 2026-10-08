@@ -16,6 +16,7 @@
    `live` means the caller already moves its own elements (desktop icons do)
    so no ghost is drawn. onDrop(zone | null, upEvent) runs on release; zone
    is { el, drop } and null means "not on anything that takes files". */
+import { sys } from './trophy_hook.js';
 const THRESHOLD = 4;
 let ghost = null, hot = null;
 
@@ -79,6 +80,7 @@ export const Dnd = {
       window.removeEventListener('pointerup', up, true);
       window.removeEventListener('keydown', key, true);
       const was = live;
+      if (was && cancelled) sys.emit('drag-cancel');
       clearHot();
       if (ghost) { ghost.remove(); ghost = null; }
       Dnd.active = false;

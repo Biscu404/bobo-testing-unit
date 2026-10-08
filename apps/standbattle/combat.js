@@ -68,7 +68,7 @@ export function createCombat(enemyDef, runBuffs, opts, rng) {
      -- none of which this phase touches -- keep working unmodified. */
   const combat = {
     player, enemy, entities: [player, enemy], juice, dispatcher, stats, isBoss, keys, combatRng,
-    outcome: 'fighting', banner: enemyDef.name || enemyDef.standName, bannerTimer: 84, // 1400ms
+    outcome: 'fighting', frames: 0, banner: enemyDef.name || enemyDef.standName, bannerTimer: 84, // 1400ms
     log: [], pushLog: push, debug: false
   };
 
@@ -91,6 +91,7 @@ export function createCombat(enemyDef, runBuffs, opts, rng) {
      drives this same function directly through combat.step(). */
   function stepFrame() {
     if (combat.outcome !== 'fighting') return;
+    combat.frames++;                                  /* whole sim frames since the fight began: what "under five seconds" is measured in */
     if (combat.bannerTimer > 0) combat.bannerTimer -= 1;
     if (juice.update(FRAME_MS)) return; // hit-stop freezes the sim; see the Phase 1 report
     updatePlayer(combat);

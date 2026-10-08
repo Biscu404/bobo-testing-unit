@@ -45,6 +45,11 @@ node apps/aftere/music_check.js # AfterEgypt's score, layers and sky mapping; no
 node apps/magen/auto_check.js # Magen's auto-press ladder, its unlock at 1,000 presses by hand, and the rates tooltip (pure Node)
 node apps/magen/music_check.js # Magen's score, its band's energy and the seams between tunes (pure Node); apps/bekkedal/music_check.js likewise
 npm run check:music     # instruments, the studio, every game's score, and the style meter's recording
+npm run check:sun       # the SUN budget: every game's real pay tables through a model of an hour of playing it, held to a band (docs/sun-economy.md)
+npm run check:contrast  # every colour scheme, every stylesheet pair, and (in the shell) every app and its tabs and canvases measured for contrast; `--pure` skips the shell
+npm run check:trophies # the ledger: the engine, all 385 trophies, what they pay, the terminal's view (pure Node); node apps/{aftere,standbattle,bottle}/trophy_check.js, node apps/notes/links_check.js
+node apps/holyc/holyc_check.js # HOLYC.EXE: the language, the stage, all thirty-four lesson steps and fifty-six puzzles proved against their model answers (pure Node)
+node apps/sweeper/run_check.js # Dungeon Sweeper: a bot does random things in every room and then finishes it; spells, flags, the compass, the pay (pure Node)
 node apps/garage/edit_check.js # the Garage's note, segment and undo logic (pure Node)
 ```
 Pixel comparison between two builds: `scripts/bekkedal_shots.mjs` twice per build, then `scripts/pngdiff.mjs`.
@@ -126,7 +131,7 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
 - **Menus stay on the glass.** `kernel/menus.js`'s `placeMenu` puts a pop-up where the pointer is and keeps every item of it inside `#screen`, the picture, not the window: the menu is positioned inside the shell (which is not at the corner of the viewport) and below the glass is the chin of the monitor, so a menu clamped to the page's own height slid under the case. It is moved up and left just far enough to fit, and one taller than the screen scrolls. Every menu (icons, the elephant, the File menu, a folder) goes through it.
 - **Right-click.** `kernel/ctxguard.js` suppresses the browser menu everywhere and gives text fields a cut/copy/paste menu; the
   desktop menu opens only on the bare desktop (never from inside a window); `wm.js` keeps the right mouse button away from any
-  app that does not declare `rightClick: true` (Sweeper does). The `contextmenu` event itself is never blocked, so an app can
+  app that does not declare `rightClick: true` (Dungeon Sweeper does). The `contextmenu` event itself is never blocked, so an app can
   still draw its own menu.
 - **Zoom.** Every window has `[Z]` (and Ctrl +/-/0, Ctrl+wheel): `kernel/zoom.js` applies CSS `zoom` to the window body, so the
   app lays itself out again, and remembers the level per app (`templeos.zoom.v1`). A window that is a fixed canvas scaled to fit
@@ -135,6 +140,16 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   **A pane that holds a picture centres it with auto margins, never with `justify/align-items: center`** (`kernel/theme.css`: `.gamepane`, `.godpane`,
   `.vidpane`, the Garage's `.drawwrap`): centring that overflows is clipped on its near side for good, so zoomed in the left and the top of the picture could
   never be scrolled to, and zoomed out a short pane left the picture in the top of the window. A new app with a pane that holds a canvas uses one of those classes.
+- **HolyC is four pure files and a wrapper.** `kernel/holyc_lex.js`, `holyc_parse.js`, `holyc_run.js` and `holyc_lib.js` are the language (no `window`, no sound, so Node can run them);
+  `kernel/holyc.js` adds the builtins that need the machine (Beep, Rand, GodWord...) and `window.HolyC`, which is how an app reaches the compiler without importing from `kernel/`.
+  What the lab needed, and the terminal got for free: a variable lives in the block that declared it (a function's own, a loop's counter), an integer is an integer (`I64 x = 7 / 2` is 3;
+  a point or an F64 makes a float, and a typed parameter keeps its type), run-time errors say their line, `continue` and `do while`, `%5d` and `%.2f`, character literals, and
+  the sixteen colours by TempleOS's names. **The lab reads strictly** (`opts.strict`, `hooks.strict`: a missing `;` is an error on the line that lacks it, an undeclared name or a division by
+  zero is an error); the terminal reads leniently, as it always did. `hooks.trace(line, vars, kind)` is told before every statement (WATCH IT RUN) and `hooks.session(api)` is handed, once
+  the program has run, `call(name, args)`: that is how a button on the stage calls back into what you wrote. `hooks.builtins` adds functions (the stage's), `hooks.rand` replaces the dice.
+- **Installed programs are app records.** `HOLYC.EXE`'s workshop INSTALL writes `::/<Name>` as `{ type: 'app', app: 'holyc', args: { run: true, name }, content: <the program> }`;
+  `vfs.list` hands `args` through and `openItem` (`kernel/fileops.js`) opens an app record with `{ from: <its own path>, ...args }`, which the player reads. `RUN IT` on a `.HC` file that uses
+  Button, Label, Field, Bar, Pixel, Fill, Note or Every opens the same player (`kernel/compile.js`) instead of a terminal run.
 - **Help** is built in (`kernel/help.js`, pages in `help_text.js`, DolDoc): it is not a file on the VFS, so it cannot be deleted.
 - **The Jäger is a journey, and it fits in one bottle.** `kernel/drunk_bac.js` is the arithmetic (pure; `scripts/check-drunk.mjs` holds it to its numbers): a
   measure sits in the stomach and reaches the blood with a time constant of 30 s, the body clears one per 60 s, and what the screen
@@ -142,7 +157,7 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   quickest (a 3.5 s pour, a 3.5 s drink, a 2.6 s breather in which clicks do nothing; clicks are never queued and never speed anything up), so
   non-stop drinking is just under two minutes and thirteen of a bottle's seventeen measures to the floor, through seven named stages; a
   steady twenty seconds a measure is still out inside the bottle; one a
-  minute holds a mild glow for ever. **The drink is first-person**: nobody is drawn drinking. The tumbler is an object
+  minute never gets anywhere (it settles at a tenth of a measure: sober), and a glow is held only by drinking when it wears off. **The drink is first-person**: nobody is drawn drinking. The tumbler is an object
   (`apps/bottle/glass3d.js`, a raycast cylinder with real walls, a floor and liquor that stays level with the room): it is lifted
   toward the screen and tipped toward whoever is at the monitor, and what the near edge cannot hold goes over it.
 - **The Jäger passes out.** At the limit (`BAC.LIMIT`) `kernel/blackout.js`
@@ -244,6 +259,35 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   with a few ways of waking. His bubble grows upward from his head (it used to grow down over it). **Called in with no window open** (GO BACK INSIDE, or CALL HIM IN from nowhere),
   he opens the elephant's window himself, waits for it, and walks in.
 
+- **Readability is checked, not hoped for** (`scripts/check-contrast.mjs`, probes in `scripts/lib/contrast.mjs`). Informative text is 4.5:1 or better against what is really behind it, a control that is
+  switched off 3:1; `#555555` is a border and a fill on this machine, **never a text colour on black** (it is 2.8:1: use `#AAAAAA`, and `#333333` on the light grey of a menu or the mixer). **A disabled button is hollow and
+  dashed** (`transparent`/black with the dim ink and a dashed edge, never grey-on-grey: `.appbtn:disabled`, `.g-btn:disabled`, `.hc-b:disabled`), a minimised window's button is dashed, an off menu item is
+  the menu's own ink at 62 %. **Dave's colour schemes keep all six inks at 4.5:1** (`dim` is lifted in every dark scheme; `scripts/check-contrast.mjs` holds it). A desktop icon sits on a faint plate and its
+  name has a hard black edge, so a dark picture and a name are both legible on a photograph. Text drawn on a canvas is measured too (the check wraps `fillText` and reads the pixels under the words
+  before they are drawn), so a game's dim label goes in the machine's light grey, not its dark one. A bar of key hints that is longer than its window wraps (`.appbar.hint`) rather than losing its end.
+  An app that draws its own pixel font (Bekkedal, Stand Battle) is checked by eye: give a line over a picture an outline (`text(..., { outline })`).
+- **Trophies.** `TROPHIES.EXE` (desktop icon `::/Trophies`, help page TROPHIES, terminal `TROPHIES [GAME]`, `TROPHY <NAME>`, `TROPHIES OPEN`) is the machine's ledger: 385 trophies in
+  eighteen areas (the machine, every game and tool, HOLYC.EXE, and a meta area of its own), 19 of them secret, about 16,400 SUN if every one is earned once. **The engine is pure**
+  (`kernel/trophies_core.js`, `createTrophies(env)`; Node runs all of it in `scripts/check-trophies.mjs`) and a trophy is a definition with exactly one of five ways to be earned:
+  `on + when` (an event and a predicate over its payload), `stat` (a counter or a best: `add`, `max`), `sets` (how many different things were marked), `streak` (in a row, a failure
+  resets) or `poll` (a question the game asks at a checkpoint), plus `derive` for the seals. Tier pays 15 / 40 / 100 SUN (`B`/`S`/`G`) and a game's **mastery seal** (every trophy
+  of that game) 150, as `TROPHY: <NAME>`. **The Cook's twenty-four and Magen's ninety-eight own achievements are mirrors** (`legacy: true`, pay 0, counted nowhere): they keep paying
+  through their own `achSun` and are only shown in the ledger. **Writing a trophy** is one line in `apps/<id>/trophies.js` (`t(id, NAME, tier, kind, 'the exact condition.', rule.on('win', p => p.hits === 0))`
+  from `apps/trophy_kit.js`; `secret(...)` takes a rumour as well; Bekkedal's are `{no,en}`), listed in `APPS` in `kernel/trophies_defs.js`; **a description is the exact condition**
+  and a "never" is scoped to a run, a room or a session (`scope`). `scripts/check-trophies.mjs` holds ids (prefixed with their game), names (capitals, 34 characters), descriptions (one
+  sentence, no two the same), the secrets' rumours, the numbers other files promise (the nine blackout scenes, Bekkedal's crops and places) and the terminal's output.
+  **An app reaches the ledger through `apps/trophy_scope.js`** (`const T = trophies('sweeper')`; `T.emit`, `add`, `max`, `mark`, `streak`, `check`, `hold`/`release`, `drain`, `row`),
+  which does nothing, quietly, if `window.Trophies` is gone: a trophy must never get into a game and a game must run without the ledger (`ctx.trophy` is the same scope, or `null`, for an app that
+  is handed `ctx`). The kernel's own side is `sys.emit(...)` from `kernel/trophy_hook.js`, and `kernel/trophies_wire.js` hears what needs no line added (purchases, windows, the SUN
+  counter, the hour). Each game keeps its calls in `apps/<id>/trophy_calls.js` so `index.js` stays short. **Two ways to see a fact:** an *event* where it happens
+  (a win, a catch, a delete), or a *state scan* where the game's save already holds it (Bekkedal and the Garden derive their facts from the save once a second and emit only the
+  changes: `state` and `rack`); Stand Battle's are read-only observers on its hook bus (`trophies_bridge.js`). **A card never lands on top of a run:** `hold()`/`release()` wrap a
+  run, a fight, a flight, a bench or a blackout, a trophy is recorded the instant it happens and only its card waits (`kernel/trophies_toast.js`: the tier's frame, the cup, the exact
+  condition and the SUN, one at a time, a figure of C-pentatonic notes on the SFX bus, a lower one for a secret, the style meter's chord for a seal; toys' cards are *quiet*). **Silent
+  backfill** (`kernel/trophies_backfill.js`, each game's `backfill(read)`): a machine that has already done a thing is credited without a card, from the old save's own keys. The
+  store is `templeos.trophies.v1` (a damaged one is kept as `.bak`). **The owner's birthday is the 23rd of July** (`sys_birthday`, THE DAY, a secret gold): the machine has to be opened on it.
+  Design record and every threshold: `docs/achievements/`. Checks: `npm run check:trophies`, plus `apps/{aftere,standbattle,bottle}/trophy_check.js` and `apps/notes/links_check.js`.
+
 ### Writing music (for Claude, and anyone else)
 Music is data, not oscillator code. A song is `{ v, title, bpm, key, scale, bars, beats, swing, tracks: [{ id, name, inst, vol, pan,
 reverb, mute, solo, notes: [[startBeat, durBeats, midi, vel0..1]], hits: [[startBeat, 'kick', vel]] }] }`, kept as `.SONG` files
@@ -292,6 +336,7 @@ ctx.setTitle(text) // retitle this window and its taskbar button
 ctx.toast(msg) // the bottom-of-screen message
 ctx.ask(title, default, cb) // an in-glass name box
 ctx.studio // the instruments and the mixer: see "Real instruments"
+ctx.trophy // the trophy ledger's scope for this app, or null: see "Trophies" (apps normally use apps/trophy_scope.js)
 ```
 An app module may also say `rightClick: true` (it uses the right mouse button) and `fluid: true` (it lays itself out off its own size).
 
@@ -481,7 +526,9 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   AudioContext, and a whole flight through `audio.js`) are pure Node.
 - `garden`: `apps/garden/index.js` - GARDEN.EXE. Five rooms of twelve pots, each room standing in a pot of its own choice. **What grows where matters**
   (`synergy.js`, pure): HOME room, KIN pot, ROOTED (both), a room's SET pot, a BED of its own kind, MATE species beside it; hover a plant to read exactly what is helping
-  it. **The work is taken out late**: drag with the can, the hand or the pull tool to sweep a rack, TEND (SPACE) waters every room and sweeps every plant with a chain
+  it. **The work is taken out late**: drag with the can, the hand or the pull tool to sweep a rack. **TEND and the BENCH are late-game and open on what you own** (`UNLOCK` in `model.js`, `gates()`;
+  `garden_check.js` times when each opens): TEND with four rooms, the bench with eight kinds of plant, and until then the buttons are dashed and say how far along you are (`TEND 2/4 ROOMS`) and
+  the line under the picture says what to do. TEND (SPACE) waters every room and sweeps every plant with a chain
   bonus, and the bench (`B`) sells a DRIP line per room, bigger BASKETS (20 to 150 tokens a room) and a GATHERER that empties a full room at 65-85% of a hand's price
   (half that while away, for at most an hour). `model.js` is the whole economy as plain data; `world.js` loads and migrates a save; `scene.js`, `art.js`, `air.js`, `bench.js` are the picture, the plants, the wind and the panel.
   `garden_check.js` runs hours of it as a player who checks in every few minutes: fully equipped, 99,999 SUN is about a quarter of an hour; from nothing, two and a half hours;
@@ -514,7 +561,15 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   `help.js` (F1) lists every key. **LEARN** (`lessons*.js`) is now THE BASICS: the same eight short interactive lessons (the kit,
   pitch, the pulse, five safe notes, major and minor, chords, loops, your first track) in a dark control-room theme and plain
   adult sentences, with a tick for each one you have got.
-- `sweeper`: `apps/sweeper/index.js` - Sweeper, a Hollow-Knight-flavoured minesweeper on one scalable canvas (`gfx.js`
+  **There are two teachers.** **LEARN** is THE BASICS (eight lessons); in its eighth lesson (*your first track*) a yellow line follows the music across the grid and lights the column it is on, and in every lesson the instrument
+  and band choices carry a yellow border and a tick while they are the picked one (`X.radio()`, `.l-pad.sel`). **STUDIO COURSE** (`course*.js`) is a coach that sits on top of the *real* Garage and teaches it by watching what you do: it wraps the Garage's own functions while it is open (and puts
+  them back), lights the control to press, and ticks its goals off as the song and the screen change. Nothing is locked (SKIP, BACK and CONTENTS are always there) and the place is kept. **Part one** takes every button and panel apart on a
+  practice song (`course_tour_a/b/c.js`, eight chapters; `course_practice.js`: SUNDAY MORNING, flawed on purpose: the tune is an octave too low, and the strings and the bass sit in each other's way) and teaches how to *alter an existing song*
+  (transpose, quantise, the EQ, the room, the segments, the export). **Part two is to write a whole song in a style you choose** (`course_write.js`, `course_genres*.js`: POP, ROCK, LO-FI, DANCE, WALTZ, LULLABY, EPIC): each genre has its own
+  tempo, scale, drums, bass, chords, tune and mixing advice at every stage, with `{CHORDS}`/`{TONES}` filled from *your* song, and `course_rules.js` checks what you wrote against the genre (`course_util.js` reads the song and nothing else).
+  `node apps/garage/course_check.js` proves it can be finished: every genre has a model song that passes every goal, and every tour step can be met.
+- `sweeper`: `apps/sweeper/index.js` - **Dungeon Sweeper** (it was Sweeper: the icon is `::/DungeonSweeper`, the registry id and `appId` are still `sweeper`, and `RENAMED` in
+  `kernel/vfs.js` carries an old install's icon across), a Hollow-Knight-flavoured minesweeper on one scalable canvas (`gfx.js`
   draws a 960x640 sheet onto whatever size the window is, so fullscreen is bigger, not blurrier). Two ways in: the plain
   game in three sizes, and a **campaign** — an ink-on-vellum *map* of six regions / 18 rooms (`map.js`, data in `data.js`)
   with benches, guardians, and a mechanical layer taken from the source: *masks* (a larva costs a mask, not the game),
@@ -522,11 +577,29 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   *charms in notches* (`bench.js`: twelve charms, three starting notches, so a build is a choice), *regions that change
   the rules* (bramble, spores, web, dark) and a *shade* that keeps half your geo where you fell. The rules of a board are
   pure in `board.js` (`node apps/sweeper/board_check.js`); `run.js` is play, `run_draw.js` is the room.
-- `cook`: the story (`CK_STORY`/`CK_END` in `data.js`) is the plot of Breaking Bad told plainly, names and all, ten chapters of
-  four or five lines under 60 characters so none wraps; it used to leave every name out. Jesse (`apps/cook/jesse.js`) is drawn as a person — skin tone, buzzed hair, stubble, the yellow suit and the
+  **F, Q and E are learnt, not given.** None is yours at the start: FOCUS comes with clearing the Crossway, SCRY with Green Depths *or* Fungal Fog,
+  DIVE with the City of Rain (`SPELL_AT`, `spellOpen` in `data.js`; the pay panel announces it, the map's ABILITIES plate shows what is next, and
+  a locked key says what to clear). The three keys along the bottom are buttons too. **A room cannot be got stuck in** (`node apps/sweeper/run_check.js` plays
+  every room with a bot that does random things first: wrong flags, spells without the soul, webs, brambles): a webbed safe tile walled in by mines was
+  the one board that could never be won (`unweb` in `board.js` cuts the web off any that no walk could reach); a spell that cannot be cast is never left aimed
+  (it used to swallow every click, "not enough soul", until a right-click happened); a flag on safe ground, when it is all that is left, is said and marked in red;
+  a lost plain game is restarted by a click as well as R.
+  **The Wayward Compass is found, never sold, and takes all three notches.** It is given by `PERFECT` in all eighteen rooms (`pay.js` `isPerfect`: no larva hatched at all —
+  a shell or lifeblood mask that took the blow still counts as hatched — and under 0.75 s a tile, 215 s on the Hollow One; a plain solver with no guesses wins 17 % of the
+  Moss Warden and none of the Hollow One, so SCRY and DIVE are allowed and are the point). Rooms can be tried again as often as you like; `camp.perfect` keeps the best
+  perfect time of each; the bench shows `PERFECT n/18`. An older save loses the compass it was handed (`migrate` in `index.js`).
+  **It pays SUN, and says so on the panel** (`pay.js`, pure; `scripts/check-sun.mjs` holds the budget): a plain win is 80 / 400 / 1,200 SUN plus a time bonus, and pays less for
+  every win of the same size in the last half hour (-10 % each, to 15 %: a few thousand an hour at the very fastest, nothing noticed at a normal pace); a room of the descent pays four
+  SUN for each geo it is worth, 100 SUN for a first clear (400 for a guardian), a quarter more for no larva hatched, and 40 % of the room on a repeat.
+- `cook`: the story is `apps/cook/story.js` (`CK_STORY`, thirteen chapters and an ending, in the order of the show: the diagnosis, Jesse and the first batch are read before the first bench, and a card is read in front
+  of the bench it is about; `STORY_AT` says which) — the plot of Breaking Bad told plainly, names and all, four or five lines under 60 characters so none wraps. Jesse (`apps/cook/jesse.js`) is drawn as a person — skin tone, buzzed hair, stubble, the yellow suit and the
   respirator round his neck. **That portrait is a third user-requested exception to the 16-colour rule** (a face needs a
-  skin tone); nothing else in the app leaves VGA16. On a win he speaks first, in a box that fits what he says, and the
-  BATCH COMPLETE panel does not start until he has finished.
+  skin tone); nothing else in the app leaves VGA16. **What he says is `data.js` (`CK_KID`) plus `lines.js`** (an intro for each bench the first time you sit at it, a line about *that* bench after a win, and what he
+  thinks of your habits: reset, undo, a lot of ruins; he calls you Mr. White now and then); **a win's box is never dismissed by the clock: it waits for a click**, the BATCH COMPLETE panel does not start until he has
+  finished, and only a small intro box goes by itself. **He talks in blips** (`voice.js`: one for each letter, a vowel is a pitch, a stop a click, S and F a hiss, M and N a hum, a rise on a question, a bark on a shout, silent
+  at SFX 0). **The music is a score for the studio's real instruments** (`score.js`: DESERT, COOK, HEAT and FALL, all on D, sixteen bars each, a core and two layers: `h1` when the bench goes wrong, `h2` when the sweep is close, and a WIN and a RUIN
+  stinger; `music.js` crossfades on a bar line when the place changes and rides the layers with `deck.levels`; it plays on the `'cook'` channel, so the mixer's THE COOK slider sets it). `node apps/cook/cook_check.js` holds the
+  lengths, the order, the pools, the blips, the bars and the layers.
 - `bottle` (pour and drink move with the drunkenness: `physics.js`'s `sway/drift/lurch` make the hand wander, rock the bottle and glass, and lurch through its timing without changing a pour's or a drink's length, so the journey's pace in `check-drunk.mjs` still holds): a Jägermeister bottle (baked once and turned by pixel sampling, `raster.js`, with the liquid poured into the *turned*
   interior) and a tumbler that is an object, not a sprite (`glass3d.js`: a thick-walled cylinder with a floor, found pixel by pixel by
   following a ray out of an eye, with the liquor held level by a plane and the volume solved for it). The pour (`pour.js`) is a
@@ -543,6 +616,21 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   need Shift still works) and heard from the document whenever TheStack is the front window and nothing is being typed into (a click on the title bar
   or the taskbar moves focus off the canvas, and the digits used to go to the desktop). A preset puts a bypassed EQ in circuit, and it is the curve the next
   discs inherit unless a disc has an EQ of its own saved with it, so a track change does not put the flat curve back.
+- `trophies`: `apps/trophies/index.js` - **TROPHIES.EXE**, the ledger (see **Trophies**). Eighteen areas down the left (the machine first, then each game, then the ledger's own meta area), the cards of the chosen area
+  nearest to completion first, each with its tier frame, its exact condition, a live progress bar and what it pays; a secret is `???` and a rumour until it is found; filters (all, open, done), kinds
+  (progression, skill, explore, creative, joke), a search, EN or EN+NO for Bekkedal's bilingual ones, and a pin whose progress is echoed in the title bar. A seal lights when every trophy of a game is
+  earned. `model.js` (pure), `cards.js`, `style.css`; arrows move, Enter pins, Tab flips between games and cards, Esc closes. `fluid`.
+- `holyc`: `apps/holyc/index.js` - **HOLYC.EXE**, learn HolyC by typing it and then make small apps with it. Three tabs: **LESSONS** (seven, thirty-four steps: `lessons_a/b.js`), **PUZZLES**
+  (nine chapters, fifty-six, three hints each: `puzzles_a..d.js`) and the **WORKSHOP** (templates, SAVE to `::/Home/HolyC/NAME.HC`, INSTALL on the desktop). The lab (`lab.js`) is the same in all of them: an
+  editor (`editor.js` + `highlight.js`: a textarea over a coloured copy, line numbers, auto-indent, error lines, text typed in a letter at a time for TYPE IT FOR ME / SHOW ME), RUN (CTRL+ENTER),
+  WATCH IT RUN (`trace_view.js`: step through the statements with the variables beside it), what was printed, and **the stage** (`stage.js` pure model, `stage_view.js`).
+  **A program can be clicked**: `Label`, `Button(text, "Function")` (the function named in quotes is what a press calls), `Field`, `Bar`, `SetText/GetText/GetNum/SetBar/Color`, a 16x16 board
+  (`Pixel`, `Fill`), `Note(60, 300)` (the studio's piano on its own `'holyc'` channel, so MUS and the mixer's HOLYC.EXE slider set how loud) and `Every(1000, "Tick")`.
+  **A lesson step has goals** (`tests.js`), ticked off after every RUN or click on the stage, each tick a step higher in pitch; **a puzzle is judged by tests** run against fresh runs of the program
+  (`T.out`, `T.cases` for a function's answers, `T.board` for the picture, `T.scenario` for a person at the stage: click these buttons by their words, type in these boxes by their hints,
+  let this much time pass). **`node apps/holyc/holyc_check.js`** holds all of it: every model answer passes every test and every starting program fails at least one, every lesson step is met by its
+  model answer (after the clicks a person would make) and is not already met by the code it opens on, every template runs. A new puzzle is `P(chapter, id, title, stars, brief, start, hints, model, tests)` in
+  the matching `puzzles_*.js`. It pays SUN once (`pay.js`: a lesson 70, a puzzle 90 to 460 by stars, a quarter if the answer was shown, 250 for a whole chapter); the budget is in `check-sun.mjs`.
 - `standbattle`: `apps/standbattle/index.js` - Stand Battle Arena, a JoJo's Bizarre Adventure roguelike combat prototype (see `docs/stand-battle-arena-spec.md`), ported in full from the jojo-roguelike repo's current, far more developed build (replacing this repo's earlier prototype port). Playable Jotaro Kujo/Star Platinum vs. Morioh enemies and boss Yoshikage Kira/Killer Queen, across a 6-node Act 1 (Morioh) map. Zero meta-progression by design; internal 480×270 canvas on a 720×260 belt plane (x, z) with a tracking camera, integer-only upscale.
   **Combat engine:** dodge (Step) is edge-triggered and gated by a 2-charge meter (`fighter.js`, GDD §3.7) with a HUD pip readout. All action inputs are queued in a 9-frame input buffer (`combat.js`) and fire the instant the player returns to idle. Arena world bounds are centralized in `arena_bounds.js`, shared by the sim (`combat.js`) and camera (`render.js`).
   **Simulation core:** the sim steps in whole frames at a fixed 60Hz (`sim_loop.js`'s `createFixedStepLoop`) on a real (x, z) belt plane. `fighter.js` is the entity/component store (`combat.entities = [player, enemy]`). `render_adapter.js` handles depth projection/sorting/camera targeting. Depth movement (`input.js`'s forward/back, W/S by default) is clamped via `arena_bounds.js`; hit detection remains x-only per Phase 1 scope. `headless_harness.js` (`node apps/standbattle/headless_harness.js`) runs the sim with no canvas for reproducible, seeded testing.

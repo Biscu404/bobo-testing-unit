@@ -26,6 +26,8 @@ const iconEls = new Map();        /* name -> the element on the desk, kept from 
 function loadIconPos() {
   try { iconPos = JSON.parse(localStorage.getItem(ICON_POS_KEY)) || {}; }
   catch (e) { iconPos = {}; }
+  /* DungeonSweeper was Sweeper: it keeps its place on the desk (kernel/vfs.js carries the icon itself) */
+  if (iconPos.Sweeper && !iconPos.DungeonSweeper) { iconPos.DungeonSweeper = iconPos.Sweeper; delete iconPos.Sweeper; }
 }
 function saveIconPos() {
   try { localStorage.setItem(ICON_POS_KEY, JSON.stringify(iconPos)); } catch (e) {}
@@ -115,6 +117,7 @@ function wireDeskContextMenu(desk) {
     items.push({ label: 'RESTORE SYSTEM FILES', run: () => restoreSystemFiles() });
     items.push({ label: 'DISPLAY SETTINGS...', run: () => openWindow('display') });
     items.push({ label: "CRAZY DAVE'S SHOP...", run: () => openWindow('shop') });
+    items.push({ label: 'TROPHIES...', run: () => openWindow('trophies') });
     items.push({ label: 'ABOUT THIS MACHINE', run: () => openWindow('about') });
     showMenu(document.getElementById('ctxmenu'), ev.clientX, ev.clientY, items);
   });

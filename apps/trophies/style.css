@@ -1,0 +1,81 @@
+/* TROPHIES.EXE. Sixteen colours, hard edges. Tier colours are the machine's: bronze brown, silver light grey, gold yellow, a secret light magenta, a seal white. */
+.tr { display: flex; flex-direction: column; height: 100%; background: #000000; color: #FFFFFF; font-size: 17px; line-height: 1.15; position: relative; overflow: hidden; outline: none; }
+.tr * { box-sizing: border-box; }
+.tr-none { padding: 20px; color: #FFFF55; }
+.tr-head { background: #0000AA; border-bottom: 3px solid #5555FF; padding: 5px 10px; flex: none; }
+.tr-h1 { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.tr-bigcup { width: 34px; height: 34px; flex: none; }
+.tr-bigcup svg { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+.tr-count { color: #FFFF55; font-size: 34px; letter-spacing: 2px; }
+.tr-tiers { display: flex; gap: 12px; }
+.tr-tier b { font-weight: normal; padding: 0 5px; color: #000000; }
+.tr-tier.t-B b { background: #AA5500; color: #FFFFFF; }
+.tr-tier.t-S b { background: #AAAAAA; }
+.tr-tier.t-G b { background: #FFFF55; }
+.tr-secs { margin-left: auto; color: #FF55FF; letter-spacing: 1px; }
+.tr-h2 { display: flex; align-items: center; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
+.tr-gap { width: 10px; }
+.tr-b { font: inherit; font-size: 16px; background: #AAAAAA; color: #000000; border: 2px solid; border-color: #FFFFFF #555555 #555555 #FFFFFF; padding: 0 8px; line-height: 20px; cursor: pointer; }
+.tr-b:hover { background: #FFFFFF; }
+.tr-b:active { border-color: #555555 #FFFFFF #FFFFFF #555555; }
+.tr-b.on { background: #FFFF55; border-color: #AA5500 #FFFF55 #FFFF55 #AA5500; }
+.tr-b.kind { min-width: 26px; padding: 0 4px; }
+.tr-b.kind.on.k-P { background: #55FF55; } .tr-b.kind.on.k-S { background: #FF5555; } .tr-b.kind.on.k-E { background: #55FFFF; } .tr-b.kind.on.k-C { background: #FF55FF; } .tr-b.kind.on.k-J { background: #FFFF55; }
+.tr-search { font: inherit; font-size: 16px; width: 150px; margin-left: auto; background: #000000; color: #55FF55; border: 2px solid #FFFFFF; padding: 1px 6px; }
+.tr-recent { display: flex; gap: 12px; align-items: center; padding: 3px 10px; background: #000000; border-bottom: 2px solid #555555; flex: none; overflow: hidden; white-space: nowrap; min-height: 26px; }
+.tr-rl { color: #55FFFF; letter-spacing: 2px; }
+.tr-rn { color: #AAAAAA; }
+.tr-ritem { cursor: pointer; color: #55FF55; }
+.tr-ritem.near { color: #FFFF55; }
+.tr-ritem:hover { color: #FFFFFF; text-decoration: underline; }
+.tr-bodyrow { flex: 1; min-height: 0; display: flex; }
+.tr-side { flex: none; width: 210px; overflow-y: auto; border-right: 3px solid #5555FF; background: #000000; }
+.tr-srow { position: relative; display: flex; align-items: center; gap: 6px; padding: 3px 8px 7px; cursor: pointer; color: #DDDDDD; border-left: 5px solid transparent; }
+.tr-srow:hover { background: #0000AA; }
+.tr-srow.on { background: #0000AA; border-left-color: #FFFF55; color: #FFFFFF; }
+.tr.sidefocus .tr-srow.on { outline: 2px solid #FFFF55; outline-offset: -2px; }
+.tr-sn { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: 1px; }
+.tr-sc { color: #55FFFF; font-size: 15px; }
+.tr-seal { width: 16px; height: 16px; flex: none; } .tr-seal svg { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+.tr-sbar { position: absolute; left: 8px; right: 8px; bottom: 2px; height: 3px; background: #333333; }
+.tr-sbar i { display: block; height: 100%; background: #55FF55; }
+.tr-mainpane { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.tr-area { display: flex; align-items: baseline; gap: 12px; padding: 4px 10px; background: #000000; border-bottom: 2px solid #555555; flex: none; }
+.tr-an { color: #FFFF55; font-size: 22px; letter-spacing: 2px; }
+.tr-ac { color: #55FFFF; }
+.tr-seal2 { margin-left: auto; color: #AAAAAA; font-size: 15px; letter-spacing: 1px; }
+.tr-seal2.on { color: #000000; background: #FFFFFF; padding: 0 6px; }
+.tr-list { flex: 1; min-height: 0; overflow-y: auto; padding: 6px 8px 12px; }
+.tr-empty { color: #AAAAAA; padding: 20px; }
+.tr-sub { color: #55FFFF; margin: 12px 0 5px; letter-spacing: 1px; border-bottom: 2px solid #555555; font-size: 15px; }
+.tr-card { display: flex; gap: 10px; align-items: flex-start; padding: 5px 8px; margin-bottom: 5px; background: #000000; border: 2px solid #555555; border-left-width: 7px; cursor: default; }
+.tr-card.w-B { border-left-color: #AA5500; } .tr-card.w-S { border-left-color: #AAAAAA; } .tr-card.w-G { border-left-color: #FFFF55; } .tr-card.w-secret { border-left-color: #FF55FF; } .tr-card.w-meta { border-left-color: #FFFFFF; }
+.tr-card:hover { border-color: #55FFFF; }
+.tr-card.sel { background: #0000AA; border-color: #FFFF55; }
+.tr-card.pinned::after { content: 'PINNED'; position: absolute; right: 12px; margin-top: 18px; color: #55FF55; font-size: 13px; }
+.tr-card.done { background: #000000; }
+.tr-card.done .tr-name { color: #FFFFFF; }
+.tr-card.open .tr-name { color: #DDDDDD; }
+.tr-card.closed { opacity: 0.55; }
+.tr-card.hint .tr-desc { color: #FF55FF; font-style: normal; }
+.tr-card.flash { animation: trflash 0.5s steps(2, end) 4; }
+@keyframes trflash { 0% { background: #000000; } 50% { background: #AA5500; } }
+.tr-cup { flex: none; width: 34px; height: 34px; margin-top: 1px; }
+.tr-cup svg { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+.tr-body { flex: 1; min-width: 0; }
+.tr-l1 { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.tr-name { font-size: 21px; letter-spacing: 2px; }
+.tr-kind { font-size: 13px; padding: 0 5px; color: #000000; background: #AAAAAA; line-height: 16px; }
+.tr-kind.k-P { background: #55FF55; } .tr-kind.k-S { background: #FF5555; } .tr-kind.k-E { background: #55FFFF; } .tr-kind.k-C { background: #FF55FF; } .tr-kind.k-M { background: #FFFFFF; } .tr-kind.k-J { background: #FFFF55; }
+.tr-tag { font-size: 13px; padding: 0 5px; line-height: 16px; border: 1px solid #AAAAAA; color: #AAAAAA; }
+.tr-tag.sec { border-color: #FF55FF; color: #FF55FF; } .tr-tag.seal { border-color: #FFFFFF; color: #FFFFFF; } .tr-tag.mir { border-color: #55FFFF; color: #55FFFF; }
+.tr-desc { color: #DDDDDD; font-size: 17px; }
+.tr-prog { display: flex; align-items: center; gap: 8px; margin-top: 3px; }
+.tr-bar { width: 140px; height: 8px; background: #000000; border: 2px solid #AAAAAA; }
+.tr-bar i { display: block; height: 100%; background: #55FF55; }
+.tr-num { color: #55FF55; font-size: 15px; }
+.tr-extra { color: #55FFFF; font-size: 14px; margin-top: 2px; }
+.tr-extra.closed { color: #FF5555; }
+.tr-pay { flex: none; color: #55FF55; font-size: 15px; text-align: right; white-space: nowrap; }
+.tr-card.mirror .tr-pay { color: #55FFFF; }
+@media (prefers-reduced-motion: reduce) { .tr-card.flash { animation: none; outline: 3px solid #FFFF55; } }
