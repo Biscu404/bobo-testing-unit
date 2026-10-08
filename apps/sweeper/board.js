@@ -63,8 +63,29 @@ export function lay(b, safe, mod, rnd) {
       if (banned[i] || rnd() > (mod === 'bramble' ? 0.11 : 0.1)) continue;
       if (mod === 'bramble') b.thorn[i] = 1; else b.web[i] = true;
     }
+    if (mod === 'web') unweb(b);
   }
 }
+
+/* A webbed tile cannot be opened until a neighbour is, so a webbed safe tile that is walled in (by mines, or by other webbed tiles
+   that are themselves walled in) could never be opened at all, and the room could never be won: the one real softlock of the
+   board. Walk outward from every safe tile that is not webbed, taking in each webbed safe tile that touches one already taken,
+   and cut the web off any that is never reached. A webbed mine is left as it is: nothing needs to open it. */
+export function unweb(b) {
+  const ok = new Array(b.n).fill(false), q = [];
+  for (let i = 0; i < b.n; i++) if (!b.mine[i] && !b.web[i]) { ok[i] = true; q.push(i); }
+  while (q.length) {
+    const i = q.pop();
+    each(b, i, j => { if (!ok[j] && !b.mine[j] && b.web[j]) { ok[j] = true; q.push(j); } });
+  }
+  for (let i = 0; i < b.n; i++) if (!b.mine[i] && b.web[i] && !ok[i]) b.web[i] = false;
+}
+/* the safe tiles that are hidden: how many, and whether every one of them is under a flag (a wrong one) */
+export const underFlags = b => {
+  let n = 0, f = 0;
+  for (let i = 0; i < b.n; i++) if (!b.rev[i] && !b.mine[i]) { n++; if (b.flag[i]) f++; }
+  return n > 0 && n === f;
+};
 
 export const hasOpenNeighbour = (b, i) => {
   let o = false;

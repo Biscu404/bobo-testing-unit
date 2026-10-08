@@ -126,7 +126,7 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
 - **Menus stay on the glass.** `kernel/menus.js`'s `placeMenu` puts a pop-up where the pointer is and keeps every item of it inside `#screen`, the picture, not the window: the menu is positioned inside the shell (which is not at the corner of the viewport) and below the glass is the chin of the monitor, so a menu clamped to the page's own height slid under the case. It is moved up and left just far enough to fit, and one taller than the screen scrolls. Every menu (icons, the elephant, the File menu, a folder) goes through it.
 - **Right-click.** `kernel/ctxguard.js` suppresses the browser menu everywhere and gives text fields a cut/copy/paste menu; the
   desktop menu opens only on the bare desktop (never from inside a window); `wm.js` keeps the right mouse button away from any
-  app that does not declare `rightClick: true` (Sweeper does). The `contextmenu` event itself is never blocked, so an app can
+  app that does not declare `rightClick: true` (Dungeon Sweeper does). The `contextmenu` event itself is never blocked, so an app can
   still draw its own menu.
 - **Zoom.** Every window has `[Z]` (and Ctrl +/-/0, Ctrl+wheel): `kernel/zoom.js` applies CSS `zoom` to the window body, so the
   app lays itself out again, and remembers the level per app (`templeos.zoom.v1`). A window that is a fixed canvas scaled to fit
@@ -514,7 +514,8 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   `help.js` (F1) lists every key. **LEARN** (`lessons*.js`) is now THE BASICS: the same eight short interactive lessons (the kit,
   pitch, the pulse, five safe notes, major and minor, chords, loops, your first track) in a dark control-room theme and plain
   adult sentences, with a tick for each one you have got.
-- `sweeper`: `apps/sweeper/index.js` - Sweeper, a Hollow-Knight-flavoured minesweeper on one scalable canvas (`gfx.js`
+- `sweeper`: `apps/sweeper/index.js` - **Dungeon Sweeper** (it was Sweeper: the icon is `::/DungeonSweeper`, the registry id and `appId` are still `sweeper`, and `RENAMED` in
+  `kernel/vfs.js` carries an old install's icon across), a Hollow-Knight-flavoured minesweeper on one scalable canvas (`gfx.js`
   draws a 960x640 sheet onto whatever size the window is, so fullscreen is bigger, not blurrier). Two ways in: the plain
   game in three sizes, and a **campaign** — an ink-on-vellum *map* of six regions / 18 rooms (`map.js`, data in `data.js`)
   with benches, guardians, and a mechanical layer taken from the source: *masks* (a larva costs a mask, not the game),
@@ -522,6 +523,20 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   *charms in notches* (`bench.js`: twelve charms, three starting notches, so a build is a choice), *regions that change
   the rules* (bramble, spores, web, dark) and a *shade* that keeps half your geo where you fell. The rules of a board are
   pure in `board.js` (`node apps/sweeper/board_check.js`); `run.js` is play, `run_draw.js` is the room.
+  **F, Q and E are learnt, not given.** None is yours at the start: FOCUS comes with clearing the Crossway, SCRY with Green Depths *or* Fungal Fog,
+  DIVE with the City of Rain (`SPELL_AT`, `spellOpen` in `data.js`; the pay panel announces it, the map's ABILITIES plate shows what is next, and
+  a locked key says what to clear). The three keys along the bottom are buttons too. **A room cannot be got stuck in** (`node apps/sweeper/run_check.js` plays
+  every room with a bot that does random things first: wrong flags, spells without the soul, webs, brambles): a webbed safe tile walled in by mines was
+  the one board that could never be won (`unweb` in `board.js` cuts the web off any that no walk could reach); a spell that cannot be cast is never left aimed
+  (it used to swallow every click, "not enough soul", until a right-click happened); a flag on safe ground, when it is all that is left, is said and marked in red;
+  a lost plain game is restarted by a click as well as R.
+  **The Wayward Compass is found, never sold, and takes all three notches.** It is given by `PERFECT` in all eighteen rooms (`pay.js` `isPerfect`: no larva hatched at all —
+  a shell or lifeblood mask that took the blow still counts as hatched — and under 0.75 s a tile, 215 s on the Hollow One; a plain solver with no guesses wins 17 % of the
+  Moss Warden and none of the Hollow One, so SCRY and DIVE are allowed and are the point). Rooms can be tried again as often as you like; `camp.perfect` keeps the best
+  perfect time of each; the bench shows `PERFECT n/18`. An older save loses the compass it was handed (`migrate` in `index.js`).
+  **It pays SUN, and says so on the panel** (`pay.js`, pure; `scripts/check-sun.mjs` holds the budget): a plain win is 80 / 400 / 1,200 SUN plus a time bonus, and pays less for
+  every win of the same size in the last half hour (-10 % each, to 15 %: a few thousand an hour at the very fastest, nothing noticed at a normal pace); a room of the descent pays four
+  SUN for each geo it is worth, 100 SUN for a first clear (400 for a guardian), a quarter more for no larva hatched, and 40 % of the room on a repeat.
 - `cook`: the story (`CK_STORY`/`CK_END` in `data.js`) is the plot of Breaking Bad told plainly, names and all, ten chapters of
   four or five lines under 60 characters so none wraps; it used to leave every name out. Jesse (`apps/cook/jesse.js`) is drawn as a person — skin tone, buzzed hair, stubble, the yellow suit and the
   respirator round his neck. **That portrait is a third user-requested exception to the 16-colour rule** (a face needs a

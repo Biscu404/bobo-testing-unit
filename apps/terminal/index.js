@@ -168,7 +168,7 @@ const APP_ALIASES = {
   DEFRAG: 'defrag',
   CMOS: 'cmos', SETUP: 'cmos',
   GARDEN: 'garden', SHOP: 'shop', DAVE: 'shop',
-  SWEEPER: 'sweeper', SOLITAIRE: 'solitaire', CRAYON: 'crayon',
+  SWEEPER: 'sweeper', DUNGEON: 'sweeper', DUNGEONSWEEPER: 'sweeper', MINES: 'sweeper', SOLITAIRE: 'solitaire', CRAYON: 'crayon',
   DRAWINGS: 'drawings', ABOUT: 'about', DISPLAY: 'display',
   ACCOUNT: 'account', GODDOODLE: 'goddoodle', DOODLE: 'goddoodle',
   NEOFETCH: 'neofetch', FETCH: 'neofetch',

@@ -26,6 +26,8 @@ const iconEls = new Map();        /* name -> the element on the desk, kept from 
 function loadIconPos() {
   try { iconPos = JSON.parse(localStorage.getItem(ICON_POS_KEY)) || {}; }
   catch (e) { iconPos = {}; }
+  /* DungeonSweeper was Sweeper: it keeps its place on the desk (kernel/vfs.js carries the icon itself) */
+  if (iconPos.Sweeper && !iconPos.DungeonSweeper) { iconPos.DungeonSweeper = iconPos.Sweeper; delete iconPos.Sweeper; }
 }
 function saveIconPos() {
   try { localStorage.setItem(ICON_POS_KEY, JSON.stringify(iconPos)); } catch (e) {}

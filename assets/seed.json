@@ -87,7 +87,7 @@
     "app": "standbattle"
   },
   {
-    "path": "::/Sweeper",
+    "path": "::/DungeonSweeper",
     "content": "",
     "src": "",
     "type": "app",

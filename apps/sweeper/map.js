@@ -2,7 +2,8 @@
    would draw it: ink on dark vellum, each region a hand-cut blot, rooms as
    little boxes joined by corridors, a pin where there is a bench, a skull
    where there is a guardian, and a ghost where you left your geo. */
-import { REGIONS, NODES, MODS, CHARM } from './data.js';
+import { REGIONS, NODES, MODS, CHARM, SPELLS, SPELL_HINT, ROOMS, spellOpen } from './data.js';
+import { SUN_PER_GEO, FIRST, FIRST_GUARDIAN } from './pay.js';
 import { rng } from './gfx.js';
 import { mix, mask, vessel, geo, bench, skull, shade, notch } from './art.js';
 
@@ -31,7 +32,8 @@ export function createMap(env) {
     REGIONS.forEach(rg => rg.nodes.forEach(n => n.req.forEach(r => corridor(G, NODES[r].at, n.at, camp.cleared[r] != null))));
     REGIONS.forEach(rg => { if (regionOpen(camp, rg)) benchPin(G, M, rg, camp, M.sel === 'bench:' + rg.id, now); });
     REGIONS.forEach(rg => rg.nodes.forEach(n => room(G, M, n, camp, M.sel === n.id, now)));
-    compass(G);
+    compass(G, camp);
+    abilities(G, camp);
     card(G, M.sel, camp);
     G.T('ARROWS: MOVE    ENTER: ENTER / REST    C: CHARMS    ESC: BACK', 480, 612, '#7d877f', 20, 'center');
   };
@@ -101,7 +103,7 @@ function blob(G, rg, known) {
   });
 }
 function corridor(G, a, b, done) {
-  const c = done ? '#b9c4bd' : '#4a524c';
+  const c = done ? '#b9c4bd' : '#6a746d';
   const x0 = MX + a[0], y0 = MY + a[1], x1 = MX + b[0], y1 = MY + b[1];
   G.R(Math.min(x0, x1), y0 - 1, Math.abs(x1 - x0) + 2, 3, c);
   G.R(x1 - 1, Math.min(y0, y1), 3, Math.abs(y1 - y0) + 2, c);
@@ -114,7 +116,8 @@ function room(G, M, n, camp, sel, now) {
   const pulse = op && !done && Math.sin(now / 300) > 0;
   const edge = sel ? '#fff' : done ? pal.glow : op ? (pulse ? '#fff' : pal.ink) : '#3a423c';
   G.R(x - w / 2, y - h / 2, w, 2, edge); G.R(x - w / 2, y + h / 2 - 2, w, 2, edge); G.R(x - w / 2, y - h / 2, 2, h, edge); G.R(x + w / 2 - 2, y - h / 2, 2, h, edge);
-  if (n.boss) skull(G, x - 12, y - 8, 3, done ? '#fff' : op ? '#e6dcc0' : '#4a524c');
+  if (camp.perfect && camp.perfect[n.id] != null) { G.R(x + w / 2 - 6, y - h / 2 - 8, 8, 8, '#ffd68c'); G.R(x + w / 2 - 4, y - h / 2 - 10, 4, 12, '#ffd68c'); G.R(x + w / 2 - 8, y - h / 2 - 6, 12, 4, '#ffd68c'); }
+  if (n.boss) skull(G, x - 12, y - 8, 3, done ? '#fff' : op ? '#e6dcc0' : '#6a746d');
   else if (done) { G.R(x - 6, y, 4, 4, '#fff'); G.R(x - 3, y + 3, 4, 4, '#fff'); G.R(x + 1, y - 5, 4, 10, '#fff'); }
   if (camp.shade && camp.shade.node === n.id) shade(G, x - 12, y - h / 2 - 22 + Math.round(Math.sin(now / 400) * 2), 3, '#9bb0ff');
   if (camp.last === n.id) mask(G, x - 13, y - h / 2 - 22, 2.6, 'full');
@@ -127,11 +130,26 @@ function benchPin(G, M, rg, camp, sel, now) {
   if (sel) { G.R(x - 15, y - 11, 30, 2, '#fff'); G.R(x - 15, y + 9, 30, 2, '#fff'); }
   M.hits.push({ id: 'bench:' + rg.id, x: x - 16, y: y - 12, w: 32, h: 24 });
 }
-function compass(G) {
-  const x = 70, y = 540;
+function compass(G, camp) {
+  const x = 70, y = 520, found = Object.keys(camp.perfect || {}).length;
   G.R(x - 1, y - 28, 3, 56, INK); G.R(x - 28, y - 1, 56, 3, INK);
   G.R(x - 6, y - 6, 12, 12, VELLUM); G.R(x - 3, y - 3, 6, 6, INK);
   G.T('N', x, y - 34, INK, 20, 'center');
+  const have = camp.owned.indexOf('compass') >= 0;
+  G.T(have ? 'COMPASS FOUND' : 'PERFECT ' + found + '/' + ROOMS, x, y + 50, have ? '#9fe0ff' : '#ffd68c', 20, 'center');
+}
+/* F, Q and E are learnt a region at a time: what is yours, and what to clear for the next */
+function abilities(G, camp) {
+  G.R(120, 470, 232, 120, '#05070a'); G.R(120, 470, 232, 2, INK); G.R(120, 588, 232, 2, INK);
+  G.T('ABILITIES', 132, 494, '#e8e2d4', 22);
+  let next = null;
+  ['focus', 'scry', 'dive'].forEach((k, i) => {
+    const known = spellOpen(camp, k), y = 520 + i * 22;
+    if (!known && !next) next = k;
+    G.T('[' + SPELLS[k].key + '] ' + SPELLS[k].name, 132, y, known ? '#cfe6ff' : '#8a94ac', 20);
+    G.T(known ? 'LEARNT' : 'LOCKED', 340, y, known ? '#9fe0ff' : '#b08888', 18, 'right');
+  });
+  G.T(next ? SPELL_HINT[next] : 'ALL THREE ARE YOURS', 132, 581, next ? '#ffd68c' : '#9fe0ff', 16);
 }
 function card(G, sel, camp) {
   G.R(660, 462, 276, 134, '#05070a'); G.R(660, 462, 276, 2, INK); G.R(660, 594, 276, 2, INK);
@@ -143,9 +161,10 @@ function card(G, sel, camp) {
   }
   const n = NODES[sel], rg = REGIONS.find(r => r.id === n.region);
   G.T(n.name, 676, 490, n.boss ? '#ffb0a0' : '#e8e2d4', 26);
-  G.T(rg.name + (n.boss ? '  / GUARDIAN' : ''), 676, 512, rg.pal.ink, 18);
+  G.T(rg.name + (n.boss ? '  / GUARDIAN' + (n.shard ? ' + SHARD' : '') : ''), 676, 512, rg.pal.ink, 18);
   G.T(n.c + ' x ' + n.r + '   ' + n.m + ' LARVAE', 676, 536, '#cfd8e0', 20);
   G.T(n.mod ? MODS[n.mod].name : 'PLAIN GROUND', 676, 558, n.mod ? rg.pal.glow : '#8794aa', 20);
   const best = camp.cleared[n.id];
-  G.T(best != null ? 'BEST ' + best + 's' : 'PAYS ' + n.geo + ' GEO' + (n.shard ? '  + A MASK SHARD' : ''), 676, 582, best != null ? '#9fe0ff' : '#f2e2b0', 20);
+  const sun = n.geo * SUN_PER_GEO + (n.boss ? FIRST_GUARDIAN : FIRST);
+  G.T(best != null ? 'BEST ' + best + 's' + (camp.perfect[n.id] != null ? '  PERFECT ' + camp.perfect[n.id] + 's' : '') : 'PAYS ' + n.geo + ' GEO  ' + sun + ' SUN', 676, 582, best != null ? (camp.perfect[n.id] != null ? '#ffd68c' : '#9fe0ff') : '#f2e2b0', 20);
 }

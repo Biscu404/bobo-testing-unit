@@ -270,11 +270,15 @@ hover a plant and it says what is helping it. Late in the game the work comes ou
 drag to sweep a rack, `TEND` (space) waters every room and picks every plant, and the
 bench sells drip lines, bigger baskets and a gatherer that empties a full room for you.
 
-**Hollow Sweeper** — Minesweeper, ruleset untouched: chording, flood fill, first
-click always safe. Everything else is a dug-out hive in cross-section. Revealed
-tiles drop two pixels inward on a fifteen-millisecond cascade following the
-fill order; on a loss every larva hatches forty milliseconds apart and the
-screen shakes. Three sizes, best times and streaks kept.
+**Dungeon Sweeper** (it was Hollow Sweeper) — Minesweeper, ruleset untouched: chording,
+flood fill, first click always safe. Everything else is a dug-out hive in
+cross-section. Revealed tiles drop two pixels inward on a fifteen-millisecond
+cascade following the fill order; on a loss every larva hatches forty
+milliseconds apart and the screen shakes. Three sizes, best times and streaks
+kept, and a campaign down six regions: masks instead of a lost game, soul to
+spend, charms in notches, a shade where you fell. FOCUS, SCRY and DIVE are
+learnt by clearing the map, and the Wayward Compass, which takes every notch,
+is found by clearing all eighteen rooms perfectly. It pays SUN.
 
 **League Solitaire** — Klondike, draw three, unlimited redeals. Four lanes
 instead of four suits — Mid and Bot are the red pair, Top and Support the black —
@@ -556,8 +560,8 @@ The six rooms are one machine because they share a currency.
 
 `Economy` is a singleton with four methods — `balance`, `earn`, `spend`,
 `onChange` — and everything in the build goes through it. The garden drops it
-passively and keeps accruing at 40% while you are away. Sweeper pays 15/60/200
-by difficulty plus a time bonus. Solitaire pays by move count. The Cook pays per
+passively and keeps accruing at 40% while you are away. Dungeon Sweeper pays 80/400/1,200
+by size plus a time bonus, and the descent pays four SUN a geo. Solitaire pays by move count. The Cook pays per
 medal, once, the first time each one is earned — a bench already beaten is a
 thing to come back to, not a tap to leave running. AfterEgypt pays 50 for
 reaching the third temple, which is the one payout moment it already had.
@@ -685,7 +689,7 @@ One file, in numbered sections. The comment banners are the map.
 | 31–32 | the disk, the SUN economy, the taskbar counter, `ACCOUNT.EXE` |
 | 33 | the cosmetic system — frames, logos, pointers, schemes, the catalogue |
 | 34–35 | the new noises, and Crazy Dave's shop |
-| 36–39 | the Zen Garden, Hollow Sweeper, League Solitaire, Crayon |
+| 36–39 | the Zen Garden, Dungeon Sweeper, League Solitaire, Crayon |
 | 40–41 | display settings, `FORMAT`, and bringing all of it online |
 | 42 | the Elephant, and the two hundred |
 | 43 | Magen — the clicker, its economy and its ticker |

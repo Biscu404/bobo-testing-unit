@@ -27,8 +27,11 @@ function getDB() {
 /* bump this whenever assets/seed.json's shape changes (new fields, new
    apps) so a browser that already seeded an older shape gets patched
    instead of silently keeping stale records forever */
-const SEED_VERSION = 4;
+const SEED_VERSION = 5;
 const SEED_VERSION_KEY = 'templeos.vfs.seedVersion';
+/* An app that was renamed: the old seeded icon is carried to the new name (desktop.js carries its place on the desk), so nobody ends up
+   with both. Only an untouched app marker moves; anything else at the old path is the user's and stays. */
+const RENAMED = { '::/Sweeper': '::/DungeonSweeper' };
 
 async function initVFS() {
   const db = await getDB();
@@ -73,8 +76,15 @@ async function initVFS() {
           req.onsuccess = () => resolve(req.result);
           req.onerror = () => reject(req.error);
         }));
+        const moved = [];
+        for (const oldPath of Object.keys(RENAMED)) {
+          if (!existingKeys.has(oldPath)) continue;
+          const rec = await new Promise(r => { const q = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(oldPath); q.onsuccess = () => r(q.result); q.onerror = () => r(null); });
+          if (rec && rec.type === 'app') moved.push(oldPath);
+        }
         const tx2 = db.transaction(STORE_NAME, 'readwrite');
         const store2 = tx2.objectStore(STORE_NAME);
+        moved.forEach(oldPath => { store2.delete(oldPath); existingKeys.delete(oldPath); });
         for (const item of seed) {
           if (item.type === 'app' || !existingKeys.has(item.path)) {
             store2.put({ type: item.type, content: item.content, src: item.src, app: item.app }, item.path);

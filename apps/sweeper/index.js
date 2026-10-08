@@ -3,7 +3,8 @@ import { Snd } from '../../kernel/snd.js';
 import { lampDip } from '../../kernel/hardware.js';
 import { scopedListeners } from '../lifecycle.js';
 import { makeGfx } from './gfx.js';
-import { CLASSIC, REGIONS, CHARM, START, FINAL, maxMasks } from './data.js';
+import { CLASSIC, REGIONS, CHARM, START, FINAL, ROOMS, SPELLS, spellOpen, maxMasks } from './data.js';
+import { classicPay, roomPay, isPerfect, perfectPar } from './pay.js';
 import { createRun } from './run.js';
 import { drawRun, CLASSIC_REGION } from './run_draw.js';
 import { createMap } from './map.js';
@@ -12,6 +13,16 @@ import { createTitle } from './title.js';
 
 const SWP_KEY = 'templeos.sweeper';
 
+/* The descent as it was had the Wayward Compass in the pocket from the first step. It is found now (perfect rooms), so an old save
+   gives it back to the world; every room it had cleared stays cleared, and the spells it had learnt are learnt (they follow the map). */
+function migrate(c) {
+  if ((c.v || 1) < 2) {
+    c.owned = (c.owned || []).filter(id => id !== 'compass'); c.equipped = (c.equipped || []).filter(id => id !== 'compass');
+    c.v = 2;
+  }
+  if (!c.perfect || typeof c.perfect !== 'object') c.perfect = {};
+}
+
 const Sweeper = {
   st: null,
   boot() {
@@ -19,11 +30,14 @@ const Sweeper = {
     try { raw = localStorage.getItem(SWP_KEY); } catch (e) {}
     this.st = raw ? JSON.parse(raw) : { best: {}, won: 0, played: 0, streak: 0, bestStreak: 0, lv: 'e' };
     if (!this.st.best || typeof this.st.best !== 'object') this.st.best = {};
+    if (!this.st.recent || typeof this.st.recent !== 'object') this.st.recent = {};
+    if (this.st.camp) migrate(this.st.camp);
   },
   save() { try { localStorage.setItem(SWP_KEY, JSON.stringify(this.st)); } catch (e) {} }
 };
 Sweeper.boot();
 window.Sweeper = Sweeper;
+const TITLE = 'DUNGEON SWEEPER.EXE';
 
 /* the campaign save: a fresh one is the START table, copied */
 const newCamp = () => JSON.parse(JSON.stringify(START));
@@ -36,7 +50,7 @@ export default {
     let cv, G, scene = null, kind = 'title', run = null, raf = null, dripT = null;
 
     const made = createWindow({
-      kind: 'app', title: 'SWEEPER.EXE', w: 1000, h: 700, appId: 'sweeper', rightClick: true,
+      kind: 'app', title: TITLE, w: 1000, h: 700, appId: 'sweeper', rightClick: true,
       build: body => {
         body.dataset.fluid = '1';
         body.style.overflow = 'hidden';
@@ -67,12 +81,12 @@ export default {
     };
 
     function set(k, s) { kind = k; scene = s; }
-    function toTitle() { run = null; set('title', createTitle(env)); made.title.textContent = 'SWEEPER.EXE'; }
+    function toTitle() { run = null; set('title', createTitle(env)); made.title.textContent = TITLE; }
     function toMap() {
       run = null;
       const c = camp(); refresh(c);
       set('map', createMap({ camp: c, snd: Snd, openRoom: n => toRun(null, n), openBench: toBench }));
-      made.title.textContent = 'SWEEPER.EXE  --  THE SUNKEN KINGDOM';
+      made.title.textContent = TITLE + '  --  THE SUNKEN KINGDOM';
     }
     function toBench(rid) {
       const c = camp(); refresh(c);
@@ -84,42 +98,65 @@ export default {
       run.region = node ? REGIONS.find(r => r.id === node.region) : CLASSIC_REGION;
       run.fresh = { classicLv, node };
       set('run', run);
-      made.title.textContent = 'SWEEPER.EXE  --  ' + (node ? node.name : classicLv.name);
+      made.title.textContent = TITLE + '  --  ' + (node ? node.name : classicLv.name);
     }
 
     /* ---- what winning pays ------------------------------------------------ */
+    /* SUN is paid the moment the room is won (closing the window on the panel used to cost it); only the coin's sound waits */
+    function earn(n, why) {
+      if (n > 0 && window.Economy) window.Economy.earn(n, why);
+      setTimeout(() => Snd.coin(), 1300);
+    }
     function onWin(S, secs) {
       const st = Sweeper.st;
       st.played++; st.won++; st.streak++;
       if (st.streak > (st.bestStreak || 0)) st.bestStreak = st.streak;
       if (S.classic) {
-        const lv = S.lv, bonus = Math.max(0, Math.round(lv.pay * (1 - secs / lv.par))), total = lv.pay + bonus;
+        const lv = S.lv, now = Date.now(), stamps = st.recent[lv.id] || [];
+        const p = classicPay(lv, secs, stamps, now);
+        st.recent[lv.id] = stamps.filter(t => now - t < 3600000).concat(now);
         const b = st.best[lv.id];
         if (!b || secs < b) st.best[lv.id] = Math.round(secs * 10) / 10;
-        S.pay = { secs, lines: [['PAYOUT', '+' + lv.pay + ' SUN'], ['TIME BONUS', '+' + bonus + ' SUN']] };
+        const sun = [['PAYOUT', '+' + p.base], ['TIME BONUS', '+' + p.bonus]];
+        if (p.factor < 1) sun.push(['RECENT WINS', 'x' + p.factor.toFixed(2), '#8794aa']);
+        S.pay = { secs, geo: [], sun, total: p.total };
         Sweeper.save();
-        setTimeout(() => { if (window.Economy) window.Economy.earn(total, 'SWEEPER: ' + lv.name); Snd.coin(); }, 1400);
+        earn(p.total, 'DUNGEON SWEEPER: ' + lv.name);
         return;
       }
-      const c = camp(), n = S.node, lines = [];
+      const c = camp(), n = S.node, geoL = [], sunL = [], news = [];
+      const first = c.cleared[n.id] == null, perfect = isPerfect(n, S, secs);
+      const learnt = {}; Object.keys(SPELLS).forEach(k => { learnt[k] = spellOpen(c, k); });
+      /* geo: what the bench is bought with, as it always was */
       const par = n.c * n.r * 1.2, base = n.geo;
       let bonus = Math.max(0, Math.round(base * 0.5 * (1 - secs / par)));
-      lines.push(['THE ROOM', '+' + base]);
+      geoL.push(['THE ROOM', '+' + base]);
       if (S.has('sprint')) bonus *= 2;
-      lines.push(['TIME', '+' + bonus]);
+      geoL.push(['TIME', '+' + bonus]);
       let total = base + bonus;
-      if (S.has('greed')) { const extra = Math.round(total * 0.3); total += extra; lines.push(['FRAGILE GREED', '+' + extra]); }
-      if (c.shade && c.shade.node === n.id) { total += c.shade.geo; lines.push(['YOUR SHADE, FOUND', '+' + c.shade.geo, '#9bb0ff']); c.shade = null; }
-      const first = c.cleared[n.id] == null;
-      if (first && n.shard) { c.shards++; lines.push(['A MASK SHARD', 'MASK ' + maxMasks(c.shards), '#f2efe4']); }
+      if (S.has('greed')) { const extra = Math.round(total * 0.3); total += extra; geoL.push(['FRAGILE GREED', '+' + extra]); }
+      if (c.shade && c.shade.node === n.id) { total += c.shade.geo; geoL.push(['YOUR SHADE, FOUND', '+' + c.shade.geo, '#9bb0ff']); c.shade = null; }
+      if (first && n.shard) { c.shards++; geoL.push(['A MASK SHARD', 'MASK ' + maxMasks(c.shards), '#f2efe4']); }
       c.geo += total;
+      /* SUN: four for every geo the room is worth, and a share of that again on a room already cleared */
+      const sp = roomPay(n, secs, { first, flawless: S.hits === 0, sprint: S.has('sprint'), greed: S.has('greed') });
+      sunL.push([first ? 'THE ROOM' : 'THE ROOM AGAIN', '+' + sp.base]);
+      sunL.push(['TIME', '+' + sp.bonus]);
+      if (sp.greed) sunL.push(['FRAGILE GREED', '+' + sp.greed]);
+      if (sp.flawless) sunL.push(['NO LARVA HATCHED', '+' + sp.flawless]);
+      if (sp.first) sunL.push([n.boss ? 'GUARDIAN DOWN' : 'FIRST CLEAR', '+' + sp.first, '#9fe0ff']);
       const t = Math.round(secs * 10) / 10;
       if (first || t < c.cleared[n.id]) c.cleared[n.id] = t;
+      if (perfect && (c.perfect[n.id] == null || t < c.perfect[n.id])) c.perfect[n.id] = t;
+      Object.keys(SPELLS).forEach(k => { if (!learnt[k] && spellOpen(c, k)) news.push('YOU HAVE LEARNT ' + SPELLS[k].name + '  [' + SPELLS[k].key + ']'); });
+      if (c.owned.indexOf('compass') < 0 && Object.keys(c.perfect).length >= ROOMS) {
+        c.owned.push('compass'); news.push('THE WAYWARD COMPASS IS YOURS. IT WAITS AT THE BENCH.');
+      }
       c.hp = S.hp; c.soul = S.soul; c.last = n.id;
-      if (n.id === FINAL) { c.won = true; lines.push(['THE HOLLOW ONE IS STILL', '', '#fff']); }
-      S.pay = { secs, lines };
+      if (n.id === FINAL) { c.won = true; news.push('THE HOLLOW ONE IS STILL'); }
+      S.pay = { secs, geo: geoL, sun: sunL, total: sp.total, news, perfect, par: perfectPar(n) };
       Sweeper.save();
-      setTimeout(() => { if (window.Economy) window.Economy.earn(Math.round(base / 2), 'SWEEPER: ' + n.name); Snd.coin(); }, 1400);
+      earn(sp.total, 'DUNGEON SWEEPER: ' + n.name);
     }
     function onDeath(S) {
       const c = camp(), lost = Math.floor(c.geo * 0.5);
@@ -151,6 +188,7 @@ export default {
       const ready = performance.now() - run.overAt > 1300;
       if (run.dead && ready) { leaveRun(); return true; }
       if (run.won && ready) { if (run.camp) leaveRun(); else restart(); return true; }
+      if (!run.won && !run.dead && run.classic && ready) { restart(); return true; }     /* a lost plain game: a click is a new one */
       return false;
     };
     cv.addEventListener('contextmenu', ev => ev.preventDefault());

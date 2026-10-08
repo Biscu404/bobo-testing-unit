@@ -1,13 +1,15 @@
 /* The bench: rest, and what you wear. A build is what fits in the notches
    you own, so the argument is always the same one: one big charm or two
    small ones. */
-import { CHARMS, CHARM, REGIONS, NOTCH_COST } from './data.js';
+import { CHARMS, CHARM, REGIONS, NOTCH_COST, ROOMS } from './data.js';
 import { backdrop, weather, mask, geo, notch, charmIcon } from './art.js';
 
 export const notchesUsed = camp => camp.equipped.reduce((a, id) => a + CHARM[id].n, 0);
 
 export function createBench(env, regionId) {
   const camp = env.camp, rg = REGIONS.find(r => r.id === regionId) || REGIONS[0];
+  /* how far along a charm that is found, not bought, you are */
+  const found = c => c.feat === 'perfect' ? Object.keys(camp.perfect || {}).length : 0;
   const B = { sel: 0, hits: [], note: '' };
   /* sitting down is resting */
   camp.hp = env.maxHp(); camp.bench = rg.id; env.save();
@@ -16,6 +18,7 @@ export function createBench(env, regionId) {
   const wear = i => {
     const c = CHARMS[i], on = camp.equipped.indexOf(c.id) >= 0;
     if (camp.owned.indexOf(c.id) < 0) {
+      if (c.feat) { B.note = 'NOT SOLD: ' + found(c) + ' OF ' + ROOMS + ' ROOMS PERFECT.'; env.snd.err(); return; }
       if (camp.geo < c.cost) { B.note = 'NOT ENOUGH GEO.'; env.snd.err(); return; }
       camp.geo -= c.cost; camp.owned.push(c.id); env.snd.coin(); B.note = 'BOUGHT ' + c.name + '.'; env.save(); return;
     }
@@ -42,7 +45,7 @@ export function createBench(env, regionId) {
     for (let n = 0; n < camp.notches; n++) notch(G, 600 + n * 24, 90, 4, n < notchesUsed(camp));
     const ncost = NOTCH_COST[camp.notches + 1];
     G.R(600 + camp.notches * 24 + 10, 86, 150, 24, ncost ? '#2c3a52' : '#14181f');
-    G.T(ncost ? 'BUY NOTCH ' + ncost : 'ALL CUT', 600 + camp.notches * 24 + 18, 106, ncost ? '#e8e2d4' : '#555c70', 20);
+    G.T(ncost ? 'BUY NOTCH ' + ncost : 'ALL CUT', 600 + camp.notches * 24 + 18, 106, ncost ? '#e8e2d4' : '#98a2b8', 20);
     B.hits.push({ id: 'notch', x: 600 + camp.notches * 24 + 10, y: 86, w: 150, h: 24 });
 
     CHARMS.forEach((c, i) => {
@@ -51,9 +54,9 @@ export function createBench(env, regionId) {
       G.R(x, y, 290, 54, B.sel === i ? '#26324f' : '#0e1220');
       G.R(x, y, 290, 2, on ? '#ffd68c' : rg.pal.ink); 
       charmIcon(G, x + 8, y + 10, 4, c.id, own);
-      G.T(c.name, x + 52, y + 24, on ? '#ffd68c' : own ? '#e8e2d4' : '#8794aa', 22);
+      G.T(c.name, x + 52, y + 24, on ? '#ffd68c' : own ? '#e8e2d4' : '#a3adc2', 22);
       for (let k = 0; k < c.n; k++) notch(G, x + 54 + k * 14, y + 30, 2.6, on);
-      G.T(own ? (on ? 'WORN' : 'OWNED') : c.cost + ' GEO', x + 282, y + 24, own ? '#9fe0ff' : camp.geo >= c.cost ? '#f2e2b0' : '#7a5d5d', 20, 'right');
+      G.T(own ? (on ? 'WORN' : 'OWNED') : c.feat ? found(c) + ' / ' + ROOMS : c.cost + ' GEO', x + 282, y + 24, own ? '#9fe0ff' : c.feat ? '#ffd68c' : camp.geo >= c.cost ? '#f2e2b0' : '#c08a8a', 20, 'right');
       B.hits.push({ id: 'c' + i, x, y, w: 290, h: 54 });
     });
     const c = CHARMS[B.sel];
@@ -61,9 +64,14 @@ export function createBench(env, regionId) {
     G.T(c.name, 676, 164, '#e8e2d4', 24);
     wrap(G, c.text, 676, 196, 26, 22, '#cfd8e0');
     G.T(c.n + ' NOTCH' + (c.n > 1 ? 'ES' : ''), 676, 330, '#9fe0ff', 22);
-    G.T(camp.owned.indexOf(c.id) >= 0 ? 'CLICK TO WEAR / REMOVE' : 'CLICK TO BUY: ' + c.cost + ' GEO', 676, 360, '#8794aa', 18);
+    const mine = camp.owned.indexOf(c.id) >= 0;
+    G.T(mine ? 'CLICK TO WEAR / REMOVE' : c.feat ? 'NOT SOLD' : 'CLICK TO BUY: ' + c.cost + ' GEO', 676, 360, mine || !c.feat ? '#a3adc2' : '#ffd68c', 20);
+    if (c.feat === 'perfect' && !mine) {
+      G.T('PERFECT ROOMS  ' + found(c) + ' OF ' + ROOMS, 676, 392, '#ffd68c', 22);
+      wrap(G, 'PERFECT: NO LARVA HATCHED, AND UNDER THREE QUARTERS OF A SECOND A TILE. EVERY ROOM, THE GUARDIANS TOO.', 676, 420, 26, 22, '#cfd8e0');
+    }
     G.T(B.note, 60, 590, '#ffd68c', 24);
-    G.T('ESC: BACK TO THE MAP', 904, 590, '#7d877f', 20, 'right');
+    G.T('ESC: BACK TO THE MAP', 904, 590, '#98a2b8', 20, 'right');
   };
   B.mouse = (type, ev, lx, ly) => {
     const h = B.hits.find(q => lx >= q.x && lx <= q.x + q.w && ly >= q.y && ly <= q.y + q.h);
