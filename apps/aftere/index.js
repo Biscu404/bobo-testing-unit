@@ -3,6 +3,7 @@ import { createRun, stepRun, W, H } from './sim.js';
 import { draw, makeStars } from './draw.js';
 import { createAudio } from './audio.js';
 import { scopedListeners } from '../lifecycle.js';
+import { createCalls } from './trophy_calls.js';
 
 const PHOS_GLOW = [0.75, 0.40, 0.20, 0.05];
 const STEP_MS = 1000 / 60;
@@ -39,13 +40,13 @@ export default {
     if (!g) { info.textContent = 'NO CANVAS.'; return; }
 
     /* what has been flown: { cleared: { id: true }, best: { id: percent }, level: id, runs } */
-    const prog = Object.assign({ cleared: {}, best: {}, level: 'pilgrim', runs: 0 }, await ctx.load('prog') || {});
+    const prog = Object.assign({ cleared: {}, best: {}, level: 'pilgrim', runs: 0, chain: 0 }, await ctx.load('prog') || {});
     const unlocked = i => i === 0 || !!prog.cleared[LEVELS[i - 1].id];
     if (!unlocked(LEVELS.indexOf(levelById(prog.level)))) prog.level = 'pilgrim';
 
     /* the sound: the title and the way's tune on the studio's 'aftere' channel, and the effects (audio.js). The mixer's slider for it moves the effects
        here; the tunes follow it on their own. */
-    const audio = createAudio(ctx);
+    const audio = createAudio(ctx), tro = createCalls();
     scopedListeners(cv).on(window, 'mixer-changed', ev => { if (!ev.detail || ev.detail.channel === 'aftere') audio.relevel(); });
 
     const ui = { mode: 'ready', stars: makeStars(), phos: 0.75, pay: null, unlocked: '', best: 0, cleared: false };
@@ -72,6 +73,7 @@ export default {
       ui.mode = 'run'; ui.pay = null; ui.unlocked = '';
       acc = 0;
       audio.takeoff(level());
+      tro.takeoff();
     };
     ready();
 
@@ -86,9 +88,12 @@ export default {
         prog.cleared[L.id] = true;
         if (first && LEVELS[i + 1]) ui.unlocked = LEVELS[i + 1].name;
       }
+      /* the ways cleared in order, with no failed run between: a clear of the way after the last one counted adds one, a clear of the first starts again */
+      prog.chain = run.won ? (i === 0 ? 1 : prog.chain === i ? prog.chain + 1 : 0) : 0;
       audio.finish({ won: run.won, first: first && ui.pay.first > 0, unlocked: !!ui.unlocked });
       if (ui.pay.total > 0 && window.Economy) window.Economy.earn(ui.pay.total, 'AFTEREGYPT: ' + (run.won ? L.name : L.name + ' (COINS)'));
       ctx.save('prog', prog);
+      tro.end(L, run, prog.chain);
       note();
     };
 
@@ -132,7 +137,7 @@ export default {
           acc -= STEP_MS;
           stepRun(run, { aim, dir });
           aim = null;                                            /* a pointer move is an event; the ship remembers where it was told to go */
-          audio.events(run);
+          audio.events(run); tro.step(run);
           if (run.dead || run.won) finish();
         }
       } else if (ui.mode === 'ready' && pointer != null) { run.y = pointer; run.aim = pointer; }
@@ -142,7 +147,7 @@ export default {
     state.raf = requestAnimationFrame(frame);
     this._state = state;
     this._audio = audio;
-    this._stop = () => { alive = false; };
+    this._stop = () => { alive = false; tro.stop(); };
   },
   unmount() {
     if (this._stop) this._stop();
