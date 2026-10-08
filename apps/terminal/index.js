@@ -44,6 +44,7 @@ const TERM = {
      "  GODWORD [N] ... ASK FOR WORDS",
      "  GODDOODLE ..... ASK FOR A PICTURE",
      "  GODSONG ....... ASK FOR A TUNE",
+     "  TROPHIES [GAME] THE LEDGER (TROPHIES OPEN OPENS IT)",
      "APPS:",
      "  TASKS ......... ADAM, SETH AND THE REST",
      "  AFTEREGYPT .... THE GAME",
@@ -512,6 +513,16 @@ export default {
         case 'GODSONG': case 'SONG': {
           const n = godSong(); tools.song();
           print([n + ' NOTES, CHOSEN THE SAME WAY THE WORDS ARE.'], 'l-holy');
+          return true;
+        }
+        case 'TROPHIES': case 'TROPHY': case 'ACHIEVEMENTS': {
+          const T = window.Trophies;
+          if (!T) { print(['THE LEDGER IS NOT LOADED.'], 'l-err'); return true; }
+          const cli = await import('../../kernel/trophies_cli.js'), say = rows => rows.forEach(r => print([r[0]], r[1]));
+          if (cmd === 'TROPHY') say(cli.ofOne(T, arg));
+          else if (!arg) say(cli.summary(T, T.names));
+          else if (arg === 'OPEN' || arg === 'LEDGER') ctx.openWindow('trophies');
+          else { const id = cli.findArea(T, arg, T.names); if (id) say(cli.ofArea(T, id, T.names)); else say(cli.ofOne(T, arg)); }
           return true;
         }
         case 'SAVER': case 'SCREENSAVER':
