@@ -198,7 +198,8 @@ function overlay(G, S, rg, now) {
     return;
   }
   if (S.won && S.pay) {
-    const P = S.pay, two = P.geo.length > 0, top = two ? 96 : 150, hgt = two ? 444 : 290;
+    const P = S.pay, two = P.geo.length > 0, tr = P.trophies || [], extra = tr.length ? Math.min(3, tr.length) * 28 + 40 : 0;
+    const top = (two ? 96 : 150) - Math.round(extra / 2), hgt = (two ? 444 : 290) + extra;
     G.a(0.82 * t); G.R(two ? 110 : 180, top, two ? 740 : 600, hgt, '#05060c'); G.a(1);
     if (t < 1) return;
     const x0 = two ? 110 : 180, w = two ? 740 : 600;
@@ -217,16 +218,31 @@ function overlay(G, S, rg, now) {
       G.R(500, y - 18, 310, 2, '#3a4256');
       G.T('TOTAL', 500, y + 12, '#e8e2d4', 28); G.T('+' + P.total + ' SUN', 810, y + 12, '#ffd68c', 30, 'right'); y += 46;
       (P.news || []).forEach(n => { G.T(n, 480, y, '#9fe0ff', 24, 'center'); y += 26; });
+      trophyRows(G, tr, 150, y - 6, 660);
       G.T('CLICK OR ENTER TO CONTINUE', 480, top + hgt - 14, DIM, 22, 'center');
     } else {
       y += 18;
       P.sun.forEach(l => { G.T(l[0], 250, y, '#cfd8e0', 28); G.T(l[1], 710, y, l[2] || '#f2e2b0', 28, 'right'); y += 32; });
       G.R(250, y - 20, 460, 2, '#3a4256');
       G.T('TOTAL', 250, y + 8, '#e8e2d4', 28); G.T('+' + P.total + ' SUN', 710, y + 8, '#ffd68c', 30, 'right');
+      trophyRows(G, tr, 250, y + 44, 460);
       G.T('CLICK OR ENTER FOR ANOTHER', 480, top + hgt - 14, DIM, 22, 'center');
     }
   } else if (S.over && !S.won && S.classic) {
     G.a(0.55 * t); G.R(240, 250, 480, 100, '#05060c'); G.a(1);
     if (t > 0.6) { G.T('THE HIVE STIRS', 480, 305, '#ff8090', 44, 'center'); G.T('CLICK, ENTER OR R: TRY AGAIN   ESC: LEAVE', 480, 336, DIM, 22, 'center'); }
   }
+}
+
+/* the trophies this room earned: TROPHY: <NAME> and what each paid (three, then how many more) */
+const TIER_INK = { B: '#d9a066', S: '#dfe6ee', G: '#ffd68c' };
+function trophyRows(G, rows, x, y, w) {
+  if (!rows.length) return;
+  G.R(x, y - 18, w, 2, '#3a4256');
+  rows.slice(0, 3).forEach(r => {
+    G.T('TROPHY: ' + r.name, x, y + 8, TIER_INK[r.tier] || '#ffd68c', 24);
+    if (r.pay) G.T('+' + r.pay + ' SUN', x + w, y + 8, '#ffd68c', 24, 'right');
+    y += 28;
+  });
+  if (rows.length > 3) G.T('AND ' + (rows.length - 3) + ' MORE IN TROPHIES.EXE', x, y + 8, '#a3adc2', 20);
 }

@@ -81,6 +81,7 @@ export function createRun(env) {
     S.shake = 1; env.snd.err();
     if (Sw) { Sw.st.played++; Sw.st.streak = 0; Sw.save(); }
     S.hatch = performance.now();
+    if (env.onLose) env.onLose(S);
   }
 
   function checkWin() {

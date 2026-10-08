@@ -1,7 +1,7 @@
 import { createWindow, raise } from '../../kernel/wm.js';
 import { Snd } from '../../kernel/snd.js';
 import { lampDip } from '../../kernel/hardware.js';
-import { scopedListeners } from '../lifecycle.js';
+import { scopedListeners, whenGone } from '../lifecycle.js';
 import { makeGfx } from './gfx.js';
 import { CLASSIC, REGIONS, CHARM, START, FINAL, ROOMS, SPELLS, spellOpen, maxMasks } from './data.js';
 import { classicPay, roomPay, isPerfect, perfectPar } from './pay.js';
@@ -10,6 +10,7 @@ import { drawRun, CLASSIC_REGION } from './run_draw.js';
 import { createMap } from './map.js';
 import { createBench, notchesUsed } from './bench.js';
 import { createTitle } from './title.js';
+import * as calls from './trophy_calls.js';
 
 const SWP_KEY = 'templeos.sweeper';
 
@@ -80,7 +81,13 @@ export default {
       maxHp: () => maxMasks(camp().shards), save: () => Sweeper.save()
     };
 
-    function set(k, s) { kind = k; scene = s; }
+    /* a card for a trophy waits while a room is on, and is shown when you leave it */
+    let holding = false;
+    const hold = () => { calls.TR.drain(); if (!holding) { holding = true; calls.TR.hold(); } };
+    const free = () => { if (holding) { holding = false; calls.TR.release(); } };
+    whenGone(made.win, free);
+
+    function set(k, s) { kind = k; scene = s; if (k !== 'run') free(); }
     function toTitle() { run = null; set('title', createTitle(env)); made.title.textContent = TITLE; }
     function toMap() {
       run = null;
@@ -90,11 +97,12 @@ export default {
     }
     function toBench(rid) {
       const c = camp(); refresh(c);
-      set('bench', createBench({ camp: c, snd: Snd, save: () => Sweeper.save(), maxHp: env.maxHp }, rid));
+      set('bench', createBench({ camp: c, snd: Snd, save: () => Sweeper.save(), maxHp: env.maxHp, rested: calls.rested, bought: calls.bought }, rid));
     }
     function toRun(classicLv, node) {
       const c = node ? camp() : null;
-      run = createRun({ lv: classicLv || node, node: node, camp: c, snd: Snd, onWin, shadeGeo: S => S.lostGeo || 0 });
+      run = createRun({ lv: classicLv || node, node: node, camp: c, snd: Snd, onWin, onLose: calls.lost, shadeGeo: S => S.lostGeo || 0 });
+      hold();
       run.region = node ? REGIONS.find(r => r.id === node.region) : CLASSIC_REGION;
       run.fresh = { classicLv, node };
       set('run', run);
@@ -122,11 +130,14 @@ export default {
         S.pay = { secs, geo: [], sun, total: p.total };
         Sweeper.save();
         earn(p.total, 'DUNGEON SWEEPER: ' + lv.name);
+        calls.won(S, secs, {});
+        S.pay.trophies = calls.earned();
         return;
       }
       const c = camp(), n = S.node, geoL = [], sunL = [], news = [];
       const first = c.cleared[n.id] == null, perfect = isPerfect(n, S, secs);
       const learnt = {}; Object.keys(SPELLS).forEach(k => { learnt[k] = spellOpen(c, k); });
+      const shadeFound = !!(c.shade && c.shade.node === n.id), newSpells = [];
       /* geo: what the bench is bought with, as it always was */
       const par = n.c * n.r * 1.2, base = n.geo;
       let bonus = Math.max(0, Math.round(base * 0.5 * (1 - secs / par)));
@@ -148,15 +159,18 @@ export default {
       const t = Math.round(secs * 10) / 10;
       if (first || t < c.cleared[n.id]) c.cleared[n.id] = t;
       if (perfect && (c.perfect[n.id] == null || t < c.perfect[n.id])) c.perfect[n.id] = t;
-      Object.keys(SPELLS).forEach(k => { if (!learnt[k] && spellOpen(c, k)) news.push('YOU HAVE LEARNT ' + SPELLS[k].name + '  [' + SPELLS[k].key + ']'); });
+      Object.keys(SPELLS).forEach(k => { if (!learnt[k] && spellOpen(c, k)) { newSpells.push(k); news.push('YOU HAVE LEARNT ' + SPELLS[k].name + '  [' + SPELLS[k].key + ']'); } });
+      let compass = false;
       if (c.owned.indexOf('compass') < 0 && Object.keys(c.perfect).length >= ROOMS) {
-        c.owned.push('compass'); news.push('THE WAYWARD COMPASS IS YOURS. IT WAITS AT THE BENCH.');
+        c.owned.push('compass'); compass = true; news.push('THE WAYWARD COMPASS IS YOURS. IT WAITS AT THE BENCH.');
       }
       c.hp = S.hp; c.soul = S.soul; c.last = n.id;
       if (n.id === FINAL) { c.won = true; news.push('THE HOLLOW ONE IS STILL'); }
       S.pay = { secs, geo: geoL, sun: sunL, total: sp.total, news, perfect, par: perfectPar(n) };
       Sweeper.save();
       earn(sp.total, 'DUNGEON SWEEPER: ' + n.name);
+      calls.won(S, secs, { learntBefore: Object.keys(learnt).filter(k => learnt[k]).length, shadeFound, perfect, compass, newSpells, cleared: Object.keys(c.cleared).length });
+      S.pay.trophies = calls.earned();
     }
     function onDeath(S) {
       const c = camp(), lost = Math.floor(c.geo * 0.5);
@@ -165,6 +179,7 @@ export default {
       c.geo -= lost; c.hp = maxMasks(c.shards); c.soul = 0; c.last = null;
       Sweeper.st.streak = 0; Sweeper.st.played++;
       Sweeper.save();
+      calls.lost(S);
     }
     function leaveRun() {
       if (!run) return;

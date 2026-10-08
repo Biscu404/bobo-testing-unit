@@ -13,6 +13,7 @@ export function createBench(env, regionId) {
   const B = { sel: 0, hits: [], note: '' };
   /* sitting down is resting */
   camp.hp = env.maxHp(); camp.bench = rg.id; env.save();
+  if (env.rested) env.rested(rg.id);
   B.note = 'YOU REST. YOUR MASKS ARE WHOLE.';
 
   const wear = i => {
@@ -20,7 +21,7 @@ export function createBench(env, regionId) {
     if (camp.owned.indexOf(c.id) < 0) {
       if (c.feat) { B.note = 'NOT SOLD: ' + found(c) + ' OF ' + ROOMS + ' ROOMS PERFECT.'; env.snd.err(); return; }
       if (camp.geo < c.cost) { B.note = 'NOT ENOUGH GEO.'; env.snd.err(); return; }
-      camp.geo -= c.cost; camp.owned.push(c.id); env.snd.coin(); B.note = 'BOUGHT ' + c.name + '.'; env.save(); return;
+      camp.geo -= c.cost; camp.owned.push(c.id); env.snd.coin(); B.note = 'BOUGHT ' + c.name + '.'; env.save(); if (env.bought) env.bought(camp); return;
     }
     if (on) { camp.equipped = camp.equipped.filter(x => x !== c.id); env.snd.click(); B.note = c.name + ' REMOVED.'; }
     else if (notchesUsed(camp) + c.n > camp.notches) { B.note = 'NOT ENOUGH NOTCHES.'; env.snd.err(); return; }
