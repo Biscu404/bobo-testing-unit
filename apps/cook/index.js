@@ -12,6 +12,7 @@ import { createCookMusic } from './music.js';
 import { benchPay } from './pay.js';
 import { VGA16 } from '../../kernel/god.js';
 import { scopedListeners, whenGone } from '../lifecycle.js';
+import { createCalls } from './trophy_calls.js';
 import { drawJesse, moodFor } from './jesse.js';
 
 /* ---- the rules -----------------------------------------------------------
@@ -165,6 +166,8 @@ export default {
                                  ruins:0, seen:{}, said:{}, bestRun:0, story:{} });
       let SV = freshSave();
       let L = null, st = null, hist = [], resets = 0, known = {};
+      let undos = 0, nudged = 0;                 /* undos taken on this bench, and the bench the kid's third nudge came on (for the trophies) */
+      const tro = createCalls();
       let mode = 'story';                        /* story · play · won · menu · book */
       let storyIx = 0, storyT = 0, storyQ = [], storyThen = 1, coinDue = 0;
       let anim = null, deadT = 0, winT = 0, hover = -1;
@@ -185,7 +188,7 @@ export default {
       }
       function ach(id) {
         if (SV.ach[id]) return;
-        SV.ach[id] = 1; save();
+        SV.ach[id] = 1; save(); tro.mirrored(id);
         const a = CK_ACH.filter(x => x.id === id)[0];
         if (a) { banner('LEDGER: ' + a.n, a.d, 14); sfx.ach(); }
       }
@@ -213,7 +216,7 @@ export default {
         kidLast[tag] = i;
         kid = { s: pool[i], t: 0, life: 3.4 + pool[i].length * 0.022, tag: tag, mood: moodFor(tag), sounded: 0 };
         if (big) { kid.big = true; kid.hold = true; kid.life = 1e9; kid.queue = (more || []).slice(); kid.page = 1; kid.pages = 1 + kid.queue.length; }
-        idleT = 0;
+        idleT = 0; tro.said(tag);
       }
       /* the sound of him talking: a blip for each letter as it is typed (voice.js) */
       function voiceKid() {
@@ -249,7 +252,7 @@ export default {
         hist = []; anim = null; deadT = 0; winT = 0; hover = -1; idleT = 0;
         known = {};
         L.reg.forEach((r, i) => { if (!r.hidden) known[i] = 1; });
-        mode = 'play';
+        mode = 'play'; tro.begin();
         Song.forBench(n);
         refresh();
         say('intro_' + n, 1);
@@ -297,11 +300,11 @@ export default {
       /* the pour has arrived: everything that happens on landing */
       function land() {
         const p = anim.path, ri = anim.ri;
-        if (anim.hit === 'wall' && !p.length) { st.steps--; hist.pop(); anim = null; sfx.thud(); kick(2); return; }
+        if (anim.hit === 'wall' && !p.length) { st.steps--; hist.pop(); anim = null; sfx.thud(); kick(2); tro.wall(); return; }
         if (p.length) { st.x = p[p.length - 1][0]; st.y = p[p.length - 1][1]; st.trail.push([st.x, st.y]); }
         const c = ckCell(L, st.x, st.y);
         if (anim.hit === 'ruin' || c === 'X') { ruin(); anim = null; return; }
-        if (anim.hit === 'wall') { sfx.thud(); say('wall'); }
+        if (anim.hit === 'wall') { sfx.thud(); say('wall'); tro.wall(); }
         st.mul = 1;
         if (c === 'M') { st.fx = st.fx ? 0 : 1; sfx.plate(); ach('a17'); say('first_mirror', 1); ring(px(st.x) + 10, py(st.y) + 10, 26, 11, 0.5); }
         if (c === 'W') { st.fy = st.fy ? 0 : 1; sfx.plate(); ring(px(st.x) + 10, py(st.y) + 10, 26, 11, 0.5); }
@@ -332,7 +335,7 @@ export default {
         return true;
       }
       function ruin(why) {
-        deadT = 1.6; SV.ruins++; lvRuins++;
+        deadT = 1.6; SV.ruins++; lvRuins++; tro.ruined(why);
         ach('a11'); if (SV.ruins >= 20) ach('a12');
         sfx.ruin(); Song.sting('ruin');
         spray(px(st.x) + 10, py(st.y) + 10, 26, 12, 150);
@@ -373,6 +376,7 @@ export default {
         winT = kid ? -1e9 : 0;
         if (sun) { window.Economy.earn(sun, 'THE COOK: BENCH ' + L.id); if (kid) coinDue = 1; else setTimeout(() => Snd.coin(), 700); }
         SV.money += Math.round(pur * 1000 * L.id);
+        tro.won(L, st.steps, resets, undos, lvRuins, nudged === L.id);
         if (L.id >= SV.lv) SV.lv = Math.min(10, L.id + 1);
         if (L.id === 1) ach('a1');
         if (L.id >= 3) ach('a2');
@@ -410,7 +414,7 @@ export default {
         if (mode !== 'play' || !hist.length || anim) return;
         const h = hist.pop();
         const keep = st.trail.slice(0, Math.max(1, st.trail.length - 1));
-        st = h; st.trail = keep;
+        st = h; st.trail = keep; undos++;
         deadT = 0; sfx.undo();
         if (Math.random() < 0.25) say('undo_a');
       }
@@ -422,7 +426,7 @@ export default {
         if (which === 'heat') { st.temp++; st.heat--; } else { st.temp--; st.cool--; }
         st.steps++;
         tempFlash = 1;
-        sfx.temp(which === 'heat');
+        sfx.temp(which === 'heat'); tro.op(which);
         say(which === 'heat' ? 'first_hot' : 'first_cold', 1);
         advanceSweep();
         refresh();
@@ -1023,12 +1027,12 @@ export default {
           for (let i = 0; i < 10; i++) {
             const X = 20 + (i % 2) * 194, Y = 54 + Math.floor(i / 2) * 38;
             if (mx > X && mx < X + 186 && my > Y && my < Y + 34 && i + 1 <= SV.lv) {
-              resets = 0; lvRuins = 0; startLevel(i + 1); sfx.page(); return;
+              resets = 0; lvRuins = 0; undos = 0; nudged = 0; startLevel(i + 1); sfx.page(); return;
             }
           }
           if (CK_LV[10] && knocksOpen() && mx > 20 && mx < 400 &&
               my > 54 + 5 * 38 && my < 54 + 5 * 38 + 34) {
-            resets = 0; lvRuins = 0; startLevel(11); sfx.page();
+            resets = 0; lvRuins = 0; undos = 0; nudged = 0; startLevel(11); sfx.page();
           }
           return;
         }
@@ -1038,7 +1042,7 @@ export default {
       /* the cards a bench owes you are read before it, one click each; then the bench begins */
       function beginBench(n) {
         const q = owed(n, SV.story);
-        if (!q.length) { resets = 0; lvRuins = 0; startLevel(n); return; }
+        if (!q.length) { resets = 0; lvRuins = 0; undos = 0; nudged = 0; startLevel(n); return; }
         storyQ = q.slice(1); storyIx = q[0]; storyThen = n; storyT = 0; mode = 'story';
         SV.story[storyIx] = 1; save();
       }
@@ -1047,7 +1051,7 @@ export default {
         sfx.page();
         if (storyIx >= CK_STORY.length) { mode = 'menu'; refresh(); return; }
         if (storyQ.length) { storyIx = storyQ.shift(); SV.story[storyIx] = 1; save(); storyT = 0; return; }
-        resets = 0; lvRuins = 0; startLevel(storyThen);
+        resets = 0; lvRuins = 0; undos = 0; nudged = 0; startLevel(storyThen);
       }
       function nextAfterWin() {
         if (L.id >= 10) { storyIx = CK_STORY.length; storyQ = []; storyT = 0; mode = 'story'; ach('a22'); Song.want('fall'); }
@@ -1104,6 +1108,7 @@ export default {
           if (idleT > 26) {
             idleT = 0;
             const n = lvRuins + resets;
+            if (n >= 4) nudged = L.id;
             say(n >= 4 ? 'stuck3' : n >= 2 ? 'stuck2' : st.steps === 0 ? 'stuck1' : 'idle');
           }
         }
@@ -1192,7 +1197,7 @@ export default {
       raf = requestAnimationFrame(frame);
 
       /* the window closing is seen the moment it happens, not on the next poll */
-      whenGone(cv, () => { alive = false; Song.stop(); save(); if (raf) cancelAnimationFrame(raf); });
+      whenGone(cv, () => { alive = false; Song.stop(); save(); tro.stop(); if (raf) cancelAnimationFrame(raf); });
     }
   });
   }
