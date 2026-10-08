@@ -526,7 +526,9 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   AudioContext, and a whole flight through `audio.js`) are pure Node.
 - `garden`: `apps/garden/index.js` - GARDEN.EXE. Five rooms of twelve pots, each room standing in a pot of its own choice. **What grows where matters**
   (`synergy.js`, pure): HOME room, KIN pot, ROOTED (both), a room's SET pot, a BED of its own kind, MATE species beside it; hover a plant to read exactly what is helping
-  it. **The work is taken out late**: drag with the can, the hand or the pull tool to sweep a rack, TEND (SPACE) waters every room and sweeps every plant with a chain
+  it. **The work is taken out late**: drag with the can, the hand or the pull tool to sweep a rack. **TEND and the BENCH are late-game and open on what you own** (`UNLOCK` in `model.js`, `gates()`;
+  `garden_check.js` times when each opens): TEND with four rooms, the bench with eight kinds of plant, and until then the buttons are dashed and say how far along you are (`TEND 2/4 ROOMS`) and
+  the line under the picture says what to do. TEND (SPACE) waters every room and sweeps every plant with a chain
   bonus, and the bench (`B`) sells a DRIP line per room, bigger BASKETS (20 to 150 tokens a room) and a GATHERER that empties a full room at 65-85% of a hand's price
   (half that while away, for at most an hour). `model.js` is the whole economy as plain data; `world.js` loads and migrates a save; `scene.js`, `art.js`, `air.js`, `bench.js` are the picture, the plants, the wind and the panel.
   `garden_check.js` runs hours of it as a player who checks in every few minutes: fully equipped, 99,999 SUN is about a quarter of an hour; from nothing, two and a half hours;
