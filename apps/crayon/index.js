@@ -8,6 +8,7 @@ import { scopedListeners } from '../lifecycle.js';
 import { BRUSHES } from './brushes.js';
 import { createLayers, MAX_LAYERS } from './layers.js';
 import { CRAYON } from '../../kernel/cos_data.js';
+import { createCalls } from './trophy_calls.js';
 
 
 const DRAW_KEY = 'templeos.draw';
@@ -76,6 +77,7 @@ export default {
   }
   let cv, g, root, sizeBtns = [], toolBtns = [], swatchEls = [];
   let color = 3, colorHex = CRAYON_PAL[3].c, size = 1, tool = 'crayon';
+  const tro = createCalls(CRAYON_PAL.map(p => p.c)), EXTRA = CRAYON.filter(c => c.kind === 'brush').map(c => c.id);
   let wheelH = 0, wheelS = 0, wheelV = 1;
   const SIZES = [4, 9, 17];
   let drawing = false, lastX = 0, lastY = 0, lastT = 0, lastW = SIZES[1];
@@ -299,7 +301,7 @@ export default {
       mk('NEW', newSheet);
       mk('SAVE', save);
       mk('EXPORT PNG', exportPng);
-      mk('BACKGROUND', () => import('../../kernel/wallpaper.js').then(m => m.setWallpaperFromSrc(cv.toDataURL('image/png'), 'fill')));
+      mk('BACKGROUND', () => import('../../kernel/wallpaper.js').then(m => { m.setWallpaperFromSrc(cv.toDataURL('image/png'), 'fill'); tro.background(); }));
       mk('DRAWINGS', () => openWindow('drawings').catch(() => {}));
 
       const wrap = document.createElement('div');
@@ -349,7 +351,7 @@ export default {
     layers.redraw();
     refreshLayers();
     undo = [];
-    current = null;
+    current = null; tro.begin(false);
     made.title.textContent = 'DRAW.EXE';
   }
 
@@ -540,6 +542,7 @@ export default {
     if (ev.button !== 0) return;
     const p = pos(ev);
     push();
+    tro.mark(tool, layers.active, colorHex, EXTRA);
     if (tool === 'fill') { fill(p.x | 0, p.y | 0); layers.redraw(); Snd.page(); return; }
     drawing = true;
     strokeState = {};
@@ -594,7 +597,7 @@ export default {
     if (!current) Crayon.st.items.push(rec);
     current = rec;
     Crayon.st.seq = (Crayon.st.seq || 1) + 1;
-    Crayon.save();
+    Crayon.save(); tro.saved(Crayon.st.items.length);
     made.title.textContent = 'DRAW.EXE  --  ' + name;
     Snd.save();
     toast('SAVED TO MY DRAWINGS: ' + name);
@@ -623,7 +626,7 @@ export default {
       a.download = ((current && current.name) || 'DRAWING') + '.png';
       a.href = cv.toDataURL('image/png');
       a.click();
-      toast('WRITTEN TO YOUR DOWNLOADS.');
+      toast('WRITTEN TO YOUR DOWNLOADS.'); tro.exported();
     } catch (e) { toast('THE BROWSER WOULD NOT LET GO OF IT.'); }
   }
 
@@ -638,7 +641,7 @@ export default {
       g.drawImage(makePaper(), 0, 0);
       g.drawImage(img, 0, 0, DRAW_W, DRAW_H);
       layers.redraw(); refreshLayers();
-      current = rec;
+      current = rec; tro.begin(true);
       made.title.textContent = 'DRAW.EXE  --  ' + rec.name;
     };
     img.src = src;
