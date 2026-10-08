@@ -161,7 +161,7 @@ export const TOWN_TALK = {
         if: S => S.festival === 'sommer' },
       { mood: 'warm', t: [{ no: 'Haustgilde i dag — vi takker for avlingen, før frosten tar den. Har du noe å takke for? Jeg har, i år.', en: 'Harvest Fair today — we give thanks for the crop before the frost takes it. Do you have something to be thankful for? I do, this year.' }],
         if: S => S.festival === 'host' },
-      { mood: 'warm', t: [{ no: 'Juleblot i dag. Kaldt ute, men torget er pyntet likevel, og jeg har varm drikke. Kom nærmere ovnen.', en: 'Midwinter Feast today. Cold out, but the square is dressed all the same, and I have something hot. Come closer to the stove.' }],
+      { mood: 'warm', t: [{ no: 'Juleblot i dag. Kaldt ute, men torget er pyntet likevel, og jeg har varm drikke. Kom nærmere disken.', en: 'Midwinter Feast today. Cold out, but the square is dressed all the same, and I have something hot. Come closer to the counter.' }],
         if: S => S.festival === 'vinter' },
       { t: [{ no: 'Alle åtte på ett torg. Det skjer fire ganger i året, og jeg teller hver gang. Jeg tror jeg er den eneste som gjør det.', en: 'All eight of us in one square. It happens four times a year, and I count every time. I think I am the only one who does.' }],
         if: S => !!S.festival },
@@ -194,7 +194,7 @@ export const TOWN_TALK = {
       /* ---- and the ones that are only to you ----------------------------- */
       { t: ['How are you sleeping out there? Honestly. A farm at night makes noises and nobody tells you which ones to worry about.'] },
       { t: ['Tell me what you are planting this week. I like to know before the seed runs out, not after.'] },
-      { mood: 'warm', t: ['You are always welcome to stand by the stove. Do not buy anything. Just stand. It is good for the shop to have somebody warm in it.'],
+      { mood: 'warm', t: ['You are always welcome to stand by the counter. Do not buy anything. Just stand. It is good for the shop to have somebody in it.'],
         if: S => S.fr.astrid >= 4 }
     ],
     shop: ['potetfro', 'nepefro', 'gulrotfro', 'kalfro', 'jordbarfro', 'rabarbrafro',
@@ -264,7 +264,7 @@ export const TOWN_TALK = {
       { t: [{ no: 'Jeg gikk inn i loftet og så på laftet. Den som hogg det kunne faget sitt. Jeg ble stående lenge. Du må gå og se.', en: 'I went into the loft and looked at the joints. Whoever cut them knew the trade. I stood there a long time. You should go and look.' }],
         if: S => loft(S) >= 1 },
       /* ---- weather ---------------------------------------------------- */
-      { mood: 'troubled', t: [{ no: 'Regn. Da høvler jeg innendørs. Kom og sitt ved ovnen, hvis du har lyst. Du trenger ikke snakke.', en: 'Rain. Then I plane indoors. Come and sit by the stove if you like. You do not have to talk.' }],
+      { mood: 'troubled', t: [{ no: 'Regn. Da høvler jeg under takskjegget. Kom og stå her, hvis du har lyst. Det er tørt. Du trenger ikke snakke.', en: 'Rain. Then I plane under the eaves. Come and stand here if you like, it is dry. You do not have to talk.' }],
         if: S => S.weather === 'regn' },
       { t: [{ no: 'Tåke. Jeg kan ikke sikte langs en planke i dette. Jeg tar en kaffe i stedet. Vil du ha?', en: 'Fog. I cannot sight down a plank in this. I will have a coffee instead. Want one?' }],
         if: S => S.weather === 'take' },

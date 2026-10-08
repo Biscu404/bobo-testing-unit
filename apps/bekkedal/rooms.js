@@ -15,19 +15,14 @@
  * a window is in the middle of a room's north wall and not wherever a hash fell.
  */
 export const BEK_ROOMS = {
-  /* THE CABIN: the farm house, where the work happens. Pine and terracotta, a hearth in the sitting room, a kitchen that is used. */
+  /* THE SHACK: the first house, and a poor one. A single room of bare worn boards between plain board walls, one small window, no rug, nothing laid down to make it look
+     like more. It is what the house by the water is not, on purpose. */
   farmhouse: {
     zones: [
-      { name: 'HALL',    x0: 2,  y0: 9, x1: 21, y1: 12, floor: 'flag',    paper: 'panel',  rug: 'green' },
-      { name: 'BEDROOM', x0: 2,  y0: 2, x1: 7,  y1: 8,  floor: 'plank',   paper: 'stripe', rug: 'blue' },
-      { name: 'STUE',    x0: 9,  y0: 2, x1: 14, y1: 9,  floor: 'parquet', paper: 'stripe', rug: 'red' },
-      { name: 'KITCHEN', x0: 16, y0: 2, x1: 21, y1: 8,  floor: 'tile',    paper: 'tiled',  rug: 'blue' },
-      { name: 'DOORWAY', x0: 8,  y0: 5, x1: 8,  y1: 6,  floor: 'plank',   paper: 'stripe', rug: 'blue' },
-      { name: 'DOORWAY', x0: 15, y0: 5, x1: 15, y1: 6,  floor: 'parquet', paper: 'stripe', rug: 'red' }
+      { name: 'SHACK', x0: 8, y0: 5, x1: 15, y1: 9, floor: 'plank', paper: 'panel', rug: 'green' }
     ],
-    /* the bed has a window either side of it, the hearth has one either side, the sink has one over it */
-    windows: [{ x: 3, y: 1, c: 'blue' }, { x: 6, y: 1, c: 'blue' }, { x: 10, y: 1, c: 'red' }, { x: 13, y: 1, c: 'red' }, { x: 18, y: 1, c: 'green' }],
-    wall: 'stripe'
+    windows: [{ x: 11, y: 4, c: 'green' }],
+    wall: 'panel'
   },
   /* HOME: the house by the water, the one you build to be quiet in. A sleeping room off one long room that runs from the hearth to
      the door, whitewash and pale boards, blue cloth, the lake in the windows. */

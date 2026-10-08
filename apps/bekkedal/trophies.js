@@ -19,7 +19,7 @@ export const CROPS = Object.keys(BEK_CROPS).length;
 export const PLACES = Object.keys(BEK_MAPS).filter(k => !BEK_MAPS[k].inside).length;
 export const DISHES = BEK_RECIPES.cook.length;
 export const FISH = 10, LEGENDS = 3, FRIENDS = [1, 4, 8];
-export const USES = ['read', 'clock', 'window', 'water', 'cat', 'tea'];          /* furniture_act.js: books, clock, window, plant, cat, tea */
+export const USES = ['read', 'clock', 'window', 'water', 'tea'];          /* furniture_act.js: books, clock, window, plant, tea */
 
 export const TROPHIES = [
   /* ---- the farm and the house ---- */
@@ -66,7 +66,7 @@ export const TROPHIES = [
   bk('bk_place10', ['HJEMMEBYGGER I', 'HOME MAKER I'], 'B', 'P', ['Ha ti ting satt ned i huset eller på tunet samtidig.', 'Have ten pieces placed in your home or yard at once.'], rule.stat('placed', 10)),
   bk('bk_place30', ['HJEMMEBYGGER II', 'HOME MAKER II'], 'S', 'P', ['Ha tretti ting satt ned samtidig.', 'Have thirty placed at once.'], rule.stat('placed', 30)),
   bks('bk_nice', ['BRA FORSØK', 'NICE TRY'], 'B', 'E', ['Du kan sette opp gjerde hvor som helst. Nesten.', 'You can fence anything. Almost.'], ['Prøv å sette et gjerde eller en grind som stenger inne en dør.', 'Try to place a fence or gate that would wall in a door.'], on('place-refused')),
-  bk('bk_answers', ['HUSET SVARER', 'THE HOUSE ANSWERS'], 'S', 'E', ['Bruk seks ting i huset: bøker, klokke, vindu, plante, katt og te.', 'Use six things in the house: books, clock, window, plant, cat and tea.'], rule.sets('use', USES.length)),
+  bk('bk_answers', ['HUSET SVARER', 'THE HOUSE ANSWERS'], 'S', 'E', ['Bruk fem ting i huset: bøker, klokke, vindu, plante og te.', 'Use five things in the house: books, clock, window, plant and tea.'], rule.sets('use', USES.length)),
   bk('bk_table', ['DUKET BORD', 'A LAID TABLE'], 'S', 'P', ['Lag alle ' + DISHES + ' rettene.', 'Cook all ' + DISHES + ' dishes.'], rule.sets('cook', DISHES)),
   bk('bk_winter', ['FØRSTE SNØ', 'THE FIRST SNOW'], 'B', 'P', ['Nå vinteren.', 'Reach winter.'], on('state', p => p.day >= 61)),
   bk('bk_year', ['ET ÅR I DALEN', 'A YEAR IN THE VALLEY'], 'S', 'P', ['Nå dag 81: en hel runde med årstider.', 'Reach day 81: one full round of the seasons.'], on('state', p => p.day >= 81)),

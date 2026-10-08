@@ -76,11 +76,11 @@ export const ASK_INGRID = {
     topic('food', 'What do you cook with the catch?',
       ['Soup, mostly. Fish, onion, whatever is left of the potatoes. A bay leaf if I am feeling rich.'],
       'Do you cook for yourself?', [
-        ['Would you like company at the table?', ['[A silence, then.] ...On Sunday. If you bring bread.'], 'company', { fr: 1, mood: 'warm' }],
+        ['Would you like some company?', ['[A silence, then.] ...On Sunday. If you bring bread.'], 'company', { fr: 1, mood: 'warm' }],
         ['I should learn to cook.', ['Start with soup. Soup forgives.'], 'learn'],
         ['It sounds lovely.', ['It is the same soup. But thank you.'], 'lovely']]),
     topic('bread', 'I brought you some bread.',
-      ['[She takes it carefully.] You remembered. [A small, shy smile.] Sit. The soup is on the fire.'],
+      ['[She takes it carefully.] You remembered. [A small, shy smile.] Sit. The soup is still hot.'],
       'May I sit?', [
         ['Gladly.', ['[She ladles two bowls.] Eat. Do not talk. The soup is trying to talk.'], 'gladly', { fr: 2, mood: 'warm' }],
         ['Just for a moment.', ['A moment is plenty. Moments are what I like.'], 'moment', { fr: 1 }],

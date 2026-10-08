@@ -152,8 +152,8 @@ export const GREET_B = {
       ],
       day: [
         { no: 'Hei. Lykten tent? Bra.', en: 'Hello. Lantern lit? Good.' },
-        'Hello. Mind the roof. It has opinions.',
-        ['Afternoon. Or so I am told. Come in out of it.']
+        'Hello. Mind your head. The mine has opinions.',
+        ['Afternoon. Or so I am told. I have not seen the sun today.']
       ],
       evening: [
         'Evening. Up there, I mean. Here it is the usual dark.',
@@ -170,13 +170,13 @@ export const GREET_B = {
     ],
     again: [
       'Back? The mountain has not moved. I checked.',
-      'Hello again. Stand there. The roof is better there.',
-      { no: 'Deg igjen. Jeg skulle akkurat snakke med veggen.', en: 'You again. I was just about to talk to the wall.' },
+      'Hello again. Stand there. The light is better there.',
+      { no: 'Deg igjen. Jeg skulle akkurat snakke med meg selv.', en: 'You again. I was just about to talk to myself.' },
       ['Hello. Yes, still dark. No, I am not complaining.']
     ],
     away: {
       few: [
-        '{n} days. I propped the roof twice in that time. It held, in case you wondered.',
+        '{n} days. I propped a timber twice in that time. It held, in case you wondered.',
         { no: '{n} dager. Jeg la merke til at det ble færre lyder i gruva.', en: '{n} days. I noticed there were fewer sounds in the mine.' }
       ],
       many: [
@@ -185,7 +185,7 @@ export const GREET_B = {
       ],
       long: [
         [{ no: '{n} dager. Jeg tenkte fjellet hadde tatt deg. Det ville vært det første det tok med vilje.', en: '{n} days. I thought the mountain had got you. It would be the first thing it ever took on purpose.', m: 'troubled' },
-         { no: 'Kom inn. Sett deg. Jeg skal bare stå her et øyeblikk.', en: 'Come in. Sit. I will only stand here a moment.', m: 'warm' }]
+         { no: 'Kom hit. Sett deg. Jeg skal bare stå her et øyeblikk.', en: 'Come here. Sit. I will only stand here a moment.', m: 'warm' }]
       ]
     }
   }

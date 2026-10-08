@@ -9,6 +9,7 @@ let current = null;               /* the one open help window: { show(topic), wi
 
 function act(cmd, show) {
   if (cmd === '@restore') { restoreSystemFiles(); return; }
+  if (cmd === '@welcome') { if (window.Welcome) window.Welcome.open(); return; }
   if (cmd.indexOf('@open:') === 0) { openWindow(cmd.slice(6)).catch(console.error); return; }
   if (cmd.indexOf('@help:') === 0) { show(cmd.slice(6)); return; }
   toast('NOTHING TO DO FOR ' + cmd);

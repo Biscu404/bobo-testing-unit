@@ -61,6 +61,6 @@ export const Welcome = {
     return open;
   },
   /* the first time the desktop is up */
-  firstTime() { if (!seen()) setTimeout(() => this.open(), 1200); }
+  firstTime() { if (!seen() && !navigator.webdriver) setTimeout(() => this.open(), 1200); }       /* a machine driven by a test is not a first-time user */
 };
 window.Welcome = Welcome;

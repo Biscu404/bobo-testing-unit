@@ -32,7 +32,7 @@ export const ASK_ASTRID = {
       'Do you mind the rain?', [
         ['Not at all. The plots drink it.', ['Good farmer. Bad for business, good for the beans.'], 'farmer'],
         ['I would rather it stopped.', ['Then do what I do. Make coffee and stop wishing.'], 'coffee'],
-        ['[Shake the water off.] Sorry about the floor.', ['It has had worse. Wipe your boots and stay a while.'], 'floor', { fr: 1 }]],
+        ['[Shake the water off.] Sorry about the doorstep.', ['It has had worse. Wipe your boots and stay a while.'], 'floor', { fr: 1 }]],
       { when: S => S.weather === 'regn' }),
     topic('book', 'What is in the order book?',
       ['Forty names on the order. Twenty-nine of them live here.', 'I keep ordering for the valley my grandmother knew. It is a habit and a small lie.'],

@@ -139,7 +139,7 @@ export const STONE_TALK = {
   lars: {
     nodes: [
       { id: 'l1', mood: 'troubled',
-        lines: ['Watch your head. The good copper is where the ceiling is lowest.'],
+        lines: ['Watch yourself down there. The good copper is where the ceiling is lowest.'],
         ask: { q: { no: 'Sølv, eller stein?', en: 'Silver, or stone?' }, opts: [
           { t: { no: 'Silver. I came for the sølv.', en: 'Silver. I came for the silver.' }, set: { mine: 'solv' }, fr: 2,
             reply: [{ no: 'Et grådig svar. Jeg liker det. Rike årer glitrer — du vil kjenne dem igjen.', en: 'A greedy answer. I like it. Rich veins glitter — you will know them.' }] },
@@ -189,9 +189,9 @@ export const STONE_TALK = {
       { mood: 'warm', t: ['Steel in your hands now. The whole mountain is yours. I am a little proud, and a little afraid of what you will do to it.'], if: S => S.pickLv >= 2 },
       /* ---- weather ---------------------------------------------------- */
       { t: [{ no: 'Regner det ute? Det regner alltid her inne. Det heter drypp. Du blir våt uansett, så du kan like gjerne bli.', en: 'Raining out there? It always rains in here. We call it drip. You will get wet either way, so you may as well stay.' }],
-        if: S => S.weather === 'regn' },
+        if: S => S.weather === 'regn' && S.map === 'gruva' },
       { t: ['Fog outside. In here it makes no difference at all. That is the point of in here. I am glad you came in out of it.'],
-        if: S => S.weather === 'take' },
+        if: S => S.weather === 'take' && S.map === 'gruva' },
       /* ---- season ----------------------------------------------------- */
       { t: [{ no: 'Vår. Da renner smeltevannet inn og jeg stemper i to uker. Hvis du kan holde en bjelke, er du velkommen.', en: 'Spring. The meltwater comes in and I spend two weeks propping. If you can hold a beam, you are welcome.' }],
         if: S => S.season === VAR },

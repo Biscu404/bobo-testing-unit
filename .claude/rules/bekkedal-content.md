@@ -448,7 +448,7 @@ on its other side stands, by the width of the one it leaves and the difference o
 fails on any. The lake and the fjord are not a seam but a boat across the water, and the fjord is placed across the lake. **To add a map: add its seam, and run `world_check.js`; to move one, change the
 seam, never a coordinate.**
 
-**The houses have rooms.** The cabin (`farmhouse`) and the lake house are not one box with furniture in it. The cabin is three rooms along the back wall (the bedroom with the bed, a middle room, the room
+**The houses have rooms.** The lake house is a sleeping room off one long room (the shack, `farmhouse`, is one poor room of eight squares by five, on purpose: you start there and work toward the lake house). The cabin of earlier passes, which was three rooms and a hall, is gone; what follows is true of the lake house. The cabin is three rooms along the back wall (the bedroom with the bed, a middle room, the room
 with the hearth) opening onto a hall with a rug, and a front room by the door; the lake house is divided the same way on its own plan. The dividers are partitions (`H` walls with floor on both sides, so plain log,
 with no window in them) with doorways, the bedroom has a chest of drawers (`kommode`) and a rug (`matte`), the hearth room shelves (`hylle`) and chairs (`stol`). The rooms are
 `maps_valley.js` rows, and `BEK_DECOR` places the furniture. The player's standing square and the finished-house square (`BEK_HOUSE`) are checked by `world_check.js` against
