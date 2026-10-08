@@ -231,7 +231,7 @@ await page.addInitScript(() => {
    page and only closes and reopens the app window, which is the difference
    between three seconds a shot and one. */
 await page.goto(URL_BASE, { waitUntil: 'domcontentloaded' });
-await page.evaluate(() => { if (window.powerOn) window.powerOn(); });
+await page.waitForFunction(() => typeof window.powerOn === 'function'); await page.evaluate(() => window.powerOn());
 await page.waitForSelector('#bootcursor', { timeout: 30000 });
 await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: '~', code: 'Backquote', bubbles: true, cancelable: true })));
 await page.waitForSelector('#shell', { state: 'visible', timeout: 15000 });

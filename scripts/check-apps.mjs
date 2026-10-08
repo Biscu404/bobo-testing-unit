@@ -57,7 +57,7 @@ await page.addInitScript(() => {
    never be blamed on the next */
 async function freshBoot() {
   await page.goto(t.url, { waitUntil: 'domcontentloaded' });
-  await page.evaluate(() => { if (window.powerOn) window.powerOn(); });
+  await page.waitForFunction(() => typeof window.powerOn === 'function'); await page.evaluate(() => window.powerOn());
   /* a profile that has never run owes the long boot (ten seconds of timers on a normal machine); a loaded Windows runner
      stretches those timers, so allow far more than 30 s and say what the screen was doing if it still does not arrive */
   try { await page.waitForSelector('#bootcursor', { state: 'attached', timeout: 120000 }); }

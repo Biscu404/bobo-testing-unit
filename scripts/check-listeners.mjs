@@ -13,7 +13,7 @@ let fails = 0;
 const ok = (c, m) => { console.log(`${c ? 'PASS' : 'FAIL'} - ${m}`); if (!c) fails++; };
 
 await page.goto(t.url, { waitUntil: 'domcontentloaded' });
-await page.evaluate(() => { if (window.powerOn) window.powerOn(); });
+await page.waitForFunction(() => typeof window.powerOn === 'function'); await page.evaluate(() => window.powerOn());
 await page.waitForSelector('#bootcursor', { state: 'attached', timeout: 30000 });
 await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: '~', code: 'Backquote', bubbles: true, cancelable: true })));
 await page.waitForSelector('#shell', { state: 'visible', timeout: 15000 });

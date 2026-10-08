@@ -14,7 +14,7 @@ pg.on('pageerror', e => errors.push(String(e)));
 
 await pg.addInitScript(() => { window.AudioContext = window.webkitAudioContext = function () { throw new Error('no audio'); }; });
 await pg.goto(URL, { waitUntil: 'domcontentloaded' });
-await pg.evaluate(() => { if (window.powerOn) window.powerOn(); });
+await pg.waitForFunction(() => typeof window.powerOn === 'function'); await pg.evaluate(() => window.powerOn());
 await pg.waitForSelector('#bootcursor', { timeout: 30000 });
 await pg.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: '~', code: 'Backquote', bubbles: true, cancelable: true })));
 await pg.waitForSelector('#shell', { state: 'visible', timeout: 15000 });
