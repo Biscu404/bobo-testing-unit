@@ -72,6 +72,7 @@ import { FONT_SM, FONT_LG } from './font.js';
 import { createText } from './text.js';
 import { softCanvas } from './softcv.js';
 import { createSteer, createStride, createSlide, walkKey, DX, DY } from './stride.js';
+import { questSun, HOUSE_SUN, LOFT_SUN } from './pay.js';
 import { BORDER, CELL_SM, LINE_SM, LINE_LG, PAD_SM, PAD_LG, GLYPH_SM, ICON_PX,
          HUD_PAD, HUD_GAP, HUD_TXT_DY, HUD_BOT_Y, EN_BAR_W, EN_BAR_H, EN_BAR_X, EN_BAR_Y,
          DROP_W, DROP_H, TIP_W, TIP_H, TIP_X, TIP_Y, TIP_COL2,
@@ -1963,7 +1964,7 @@ export default {
         if (q && Object.keys(q.need).every(id => has(id, q.need[id]))) {
           Object.keys(q.need).forEach(id => add(id, -q.need[id]));
           S.q[q.id] = 'done'; S.kr += q.kr;
-          if (window.Economy) window.Economy.earn(Math.max(20, Math.round(q.kr * 0.15)), 'BEKKEDAL: ' + q.t.en);
+          if (window.Economy) window.Economy.earn(questSun(q.kr), 'BEKKEDAL: ' + q.t.en);
           S.fr[npc.id] = Math.min(FR_MAX, S.fr[npc.id] + q.fr);
           if (q.tool) S.tools[q.tool] = 1;
           if (q.grant) {
@@ -1989,7 +1990,7 @@ export default {
         if (rq) {
           add(rq.item, -rq.qty);
           rq.state = 'done'; S.kr += rq.kr;
-          if (window.Economy) window.Economy.earn(Math.max(20, Math.round(rq.kr * 0.15)), 'BEKKEDAL: ' + questTitle(rq).en);
+          if (window.Economy) window.Economy.earn(questSun(rq.kr), 'BEKKEDAL: ' + questTitle(rq).en);
           sfx.coin();
           dlg = { lines: [{ no: 'Takk. That is exactly it.', en: 'Thanks. That is exactly it.' }, '+' + rq.kr + ' KR'], i: 0, npc: npc, mood: 'warm' };
           mode = 'talk'; return;
@@ -2307,7 +2308,7 @@ export default {
         if (spineComplete(S) && !S.spine.done) {
           S.spine.done = S.day;
           loft = null; mode = 'loftend'; S.ending = 0;
-          if (window.Economy) window.Economy.earn(1000, 'BEKKEDAL: THE LOFT');
+          if (window.Economy) window.Economy.earn(LOFT_SUN, 'BEKKEDAL: THE LOFT');
         }
       }
       function doCraft() {
@@ -2531,7 +2532,7 @@ export default {
           if (k === 'i' || k === 'q' || k === 'Escape') closeMenu();
           return;
         }
-        if (mode === 'sleep') { if (k === ' ' || k === 'Enter') { mode = ''; if (S.map === 'lakehouse' && !S.flag.homed) { S.flag.homed = 1; mode = 'end'; S.ending = 0; if (window.Economy) window.Economy.earn(500, 'BEKKEDAL: THE HOUSE BY THE WATER'); } else startNap(false); } if (k === 'Escape') closeMenu(); return; }
+        if (mode === 'sleep') { if (k === ' ' || k === 'Enter') { mode = ''; if (S.map === 'lakehouse' && !S.flag.homed) { S.flag.homed = 1; mode = 'end'; S.ending = 0; if (window.Economy) window.Economy.earn(HOUSE_SUN, 'BEKKEDAL: THE HOUSE BY THE WATER'); } else startNap(false); } if (k === 'Escape') closeMenu(); return; }
 
         /* walking */
         if (k === ' ') {

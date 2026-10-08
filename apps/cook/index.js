@@ -9,6 +9,7 @@ import { CK_STORY, CK_END, STORY_AT, owed } from './story.js';
 import { kidPool } from './lines.js';
 import { blip, play as playBlip } from './voice.js';
 import { createCookMusic } from './music.js';
+import { benchPay } from './pay.js';
 import { VGA16 } from '../../kernel/god.js';
 import { scopedListeners, whenGone } from '../lifecycle.js';
 import { drawJesse, moodFor } from './jesse.js';
@@ -364,10 +365,7 @@ export default {
         /* SUN, but only for medals that are new: a bench already beaten is a
            thing to come back to, not a tap to leave running */
         const fresh = m & ~prevM;
-        let sun = 0;
-        if (fresh & 1) sun += 30 + L.id * 6;
-        if (fresh & 2) sun += 30 + L.id * 6;
-        if (fresh & 4) sun += 40 + L.id * 8;
+        const sun = benchPay(L.id, fresh);
         /* he says how it went, and then one more thing about THIS bench: each of them waits for a click, and the batch-complete
            panel does not start until he has finished, so nothing is ever read for you */
         const about = kidPool('win_L' + L.id);

@@ -13,6 +13,7 @@ import { mgBackdrops, mgAchScene } from './backdrops.js';
 import { scopedListeners } from '../lifecycle.js';
 import { AUTO_LEVELS, AUTO_UNLOCK, autoUnlocked, autoGap, autoRate, autoNext, owed } from './auto.js';
 import { ratesHtml } from './rates.js';
+import { achSun } from './pay.js';
 
 /* the machine's own pixel face for everything the star's canvas has to say */
 const MGF = "'VT323', 'Courier New', monospace";
@@ -360,21 +361,6 @@ export default {
          hard the threshold actually is: log2 for the small everyday
          milestones (clicks, ownership, gold stars...), log10 for the
          thresholds that run from 1 up past a septillion. */
-      function achSun(a) {
-        if (a.worth0) return 5;
-        switch (a.t) {
-          case 'total':
-          case 'mps':
-            return Math.max(15, Math.round(15 + Math.log10(Math.max(1, a.v)) * 12));
-          case 'allb':
-          case 'dias':
-            return 120;
-          case 'flag':
-            return 25;
-          default:
-            return Math.max(5, Math.round(8 + Math.log2(Math.max(1, a.v)) * 6));
-        }
-      }
       function checkAch() {
         MG_ACH.forEach(a => {
           if (S.ach[a.id]) return;

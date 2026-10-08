@@ -3,6 +3,8 @@ import { Snd } from '../../kernel/snd.js';
 import { Cos } from '../../kernel/cos.js';
 import { fs as vfs } from '../../kernel/vfs.js';
 import { lampDip } from '../../kernel/hardware.js';
+import { cardsPay, winPay, dealPay } from './pay.js';
+import { whenGone } from '../lifecycle.js';
 
 
 const SOL_KEY = 'templeos.solitaire';
@@ -66,7 +68,7 @@ export default {
 
   let cv, g, info;
   let stock, waste, found, tab, moves, dealing, won, drag, bounce, redeals;
-  let raf = null, mx = 0, my = 0, autoT = null, payShown = 0, payTarget = 0;
+  let raf = null, mx = 0, my = 0, autoT = null, payShown = 0, payTarget = 0, settled = true;
 
   const made = createWindow({
     kind: 'app', title: 'SOLITAIRE.EXE', w: 900, h: 620, appId: 'solitaire',
@@ -113,7 +115,16 @@ export default {
   if (g) g.imageSmoothingEnabled = false;
 
   /* ---- the deal --------------------------------------------------------- */
+  /* the cards that are home are paid as the deal ends, whichever way it ends: a win (checkWon), a new deal, or the window closing */
+  const home = () => found ? found.reduce((a, f) => a + f.length, 0) : 0;
+  function settle() {
+    if (settled || won) { settled = true; return; }
+    settled = true;
+    const n = home();
+    if (n > 0 && window.Economy) { window.Economy.earn(dealPay(n, moves, false), 'SOLITAIRE: ' + n + ' CARDS HOME'); setTimeout(() => Snd.coin(), 150); }
+  }
   function deal() {
+    settle();
     const cards = [];
     for (let s = 0; s < 4; s++) for (let r = 1; r <= 13; r++) cards.push({ r: r, s: s, up: false, a: 0, x: 0, y: 0 });
     for (let i = cards.length - 1; i > 0; i--) {
@@ -121,7 +132,7 @@ export default {
       const t = cards[i]; cards[i] = cards[j]; cards[j] = t;
     }
     stock = cards; waste = []; found = [[], [], [], []]; tab = [[], [], [], [], [], [], []];
-    moves = 0; won = false; drag = null; bounce = null; redeals = 0; payShown = 0; payTarget = 0;
+    moves = 0; won = false; drag = null; bounce = null; redeals = 0; payShown = 0; payTarget = 0; settled = false;
     clearInterval(autoT);
     const now = performance.now();
     let k = 0;
@@ -185,12 +196,12 @@ export default {
   function checkWon() {
     if (found.reduce((a, f) => a + f.length, 0) < 52) return;
     won = true;
-    payTarget = Math.max(40, 300 - moves * 2);
+    payTarget = dealPay(52, moves, true); settled = true;
     Solitaire.st.won++;
     if (!Solitaire.st.bestMoves || moves < Solitaire.st.bestMoves) Solitaire.st.bestMoves = moves;
     Solitaire.save();
     Snd.fanfare();
-    window.Economy.earn(payTarget, 'SOLITAIRE: ' + moves + ' MOVES');
+    window.Economy.earn(payTarget, 'SOLITAIRE: WON IN ' + moves + ' MOVES');
     setTimeout(() => Snd.coin(), 400);
     /* the cascade everyone who has ever used an old computer expects */
     bounce = [];
@@ -682,7 +693,7 @@ export default {
 
     if (info) {
       info.textContent = 'MOVES ' + moves + '   REDEALS ' + redeals +
-        '   PAYS ' + Math.max(40, 300 - moves * 2) +
+        '   HOME ' + home() + ' (' + cardsPay(home()) + ' SUN)   A WIN PAYS ' + (winPay(moves) + cardsPay(52)) +
         '   WON ' + Solitaire.st.won + '/' + Solitaire.st.played +
         (Solitaire.st.bestMoves ? '   BEST ' + Solitaire.st.bestMoves + ' MOVES' : '');
     }
@@ -690,6 +701,7 @@ export default {
   }
 
   deal();
+  whenGone(cv, settle);
   raf = requestAnimationFrame(paint);
   lampDip();
   }

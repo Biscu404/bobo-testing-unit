@@ -11,6 +11,7 @@ import { musicStart, musicSetIntensity, musicStop } from './music.js';
 import { createSaveStore } from './save.js';
 import { createRng } from './rng.js';
 import { createInputSystem } from './input.js';
+import { fightSun, RUN_CLEAR } from './pay.js';
 
 const W = 480, H = 270;
 
@@ -127,6 +128,7 @@ export default {
       }
       const combat = createCombat(enemyDef, state.runState.buffs, opts, state.runRng);
       combat.player.hp = state.runState.hp;
+      combat.startHp = state.runState.hp; combat.aggressive = !!(node.modifier && MODIFIERS[node.modifier] && node.modifier === 'aggressive');
       combat.player.maxHp = state.runState.maxHp;
       combat.debug = debugEnabled;
       wireCombatAudio(combat);
@@ -148,6 +150,7 @@ export default {
       musicSetIntensity(0);
       if (state.scene === 'complete') {
         meta.cleared = true;
+        if (window.Economy) { window.Economy.earn(RUN_CLEAR, 'STAND BATTLE: ACT 1 CLEARED'); ctx.toast('ACT 1 CLEARED: +' + RUN_CLEAR + ' SUN'); }
         saveStore.saveMeta(meta);
         saveStore.clearRun();
         sfxActComplete();
@@ -188,6 +191,8 @@ export default {
         }
       } else if (state.scene === 'combat' && state.combat.outcome !== 'fighting') {
         if (state.combat.outcome === 'win') {
+          const c = state.combat, sun = fightSun(c.enemy.def.id, c.aggressive, c.player.hp >= c.startHp);
+          if (window.Economy) { window.Economy.earn(sun, 'STAND BATTLE: ' + (c.enemy.def.standName || c.enemy.def.name)); ctx.toast('+' + sun + ' SUN'); }
           state.runState.hp = state.combat.player.hp;
           advanceNode();
         } else {

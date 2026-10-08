@@ -87,7 +87,7 @@ export default {
         if (first && LEVELS[i + 1]) ui.unlocked = LEVELS[i + 1].name;
       }
       audio.finish({ won: run.won, first: first && ui.pay.first > 0, unlocked: !!ui.unlocked });
-      if (ui.pay.total > 0 && window.Economy) window.Economy.earn(ui.pay.total, 'AFTEREGYPT: ' + (run.won ? 'THE THIRD TEMPLE' : L.name + ' (COINS)'));
+      if (ui.pay.total > 0 && window.Economy) window.Economy.earn(ui.pay.total, 'AFTEREGYPT: ' + (run.won ? L.name : L.name + ' (COINS)'));
       ctx.save('prog', prog);
       note();
     };
