@@ -405,7 +405,14 @@ The boss against the five (as player 1, 100 matches each): 60 / 67 / 51 / 41 / 5
 
 ### 20.3 The CPU scale (win rate of a profile against another, five fighters mixed, 300 matches)
 
-HUMAN beats EASY 98 %, beats a NOVICE (= NORMAL) 84 %, plays HARD's first fight (= itself) evenly and loses to SKILLED 8 %; `ai_check.js` holds HARD > NORMAL > EASY by a margin on every run.
+| as player 1 → against | EASY | NORMAL | HARD | SKILLED |
+|---|---|---|---|---|
+| EASY | 50 % | 13 % | 0 % | – |
+| NORMAL (= the novice) | 91 % | 52 % | 13 % | 2 % |
+| HARD (= the budget bot, `HUMAN`) | 99 % | 86 % | 55 % | 7 % |
+| SKILLED | 100 % | 99 % | 93 % | 49 % |
+
+The same profile on both sides is an even match; each step up the scale beats the one below by a wide margin (`ai_check.js` holds HARD > NORMAL > EASY and the even mirror on every run).
 
 ### 20.4 The checks and what they said (last run, on this branch)
 
@@ -413,7 +420,7 @@ HUMAN beats EASY 98 %, beats a NOVICE (= NORMAL) 84 %, plays HARD's first fight 
 |---|---|
 | `framedata_check.js` | pass: 1,217 checks, the sim reproduces the table for all 181 moves (first contact, free tick, on hit, on block, late contact, throws, bombs, thrown things) |
 | `combat_check.js`, `input_check.js` | pass: 66 and 44 checks |
-| `content_check.js`, `fairness_check.js`, `anim_check.js`, `ai_check.js`, `trophy_check.js` | pass: 555, 574, 1,910, 15 and 21 checks (`anim_check` found a real fault, the KNEE's wind-up, and `fairness_check` found three, a low at i13, a sweep at i17 and a move that could not be punished; all fixed) |
+| `content_check.js`, `fairness_check.js`, `anim_check.js`, `ai_check.js`, `trophy_check.js` | pass: 555, 574, 1,910, 15 and 21 checks (`anim_check` found a real fault, the KNEE's wind-up that hardly moved; `fairness_check` found two in the data, a low at i13 and a move at -11 that no jab was quick enough to punish; all fixed) |
 | `headless_harness.js` | pass: every mode played, the same seed played twice gives the same fight |
 | `npm run check:standbattle` (source and packaged app) | pass: 30 checks of the screens with real keys; the fight draws at 61 frames a second and steps at 60.1 ticks a second |
 | `check:paths`, `check:shell`, `check:apps` (all 34 apps), `check:listeners`, `check:persist`, `check:contrast`, `check:props`, `check:trophies`, `check:sun`, `check:package` | pass |
