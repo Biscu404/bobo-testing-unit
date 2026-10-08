@@ -781,6 +781,8 @@ textarea.editor {
 }
 .appbtn:hover { background: var(--sch-fg, #FFFFFF); }
 .appbtn.on { background: var(--sch-hi, #FFFF55); color: var(--sch-bg, #000000); border-color: var(--sch-hi, #FFFF55); }
+/* a button for something not open yet: dashed, dim, and still readable (the garden's TEND and BENCH say how far along you are) */
+.appbtn.locked { background: var(--sch-bg, #000000); color: var(--sch-fg, #FFFFFF); border-style: dashed; opacity: 0.8; }
 .godword { color: var(--sch-ok, #55FF55); padding-left: 4px; white-space: nowrap; overflow: hidden; }
 /* A pane that holds a picture centres it with auto margins, not with justify/align-center.
    Centring that overflows is clipped on its near side for good (zoomed in, the left and the top

@@ -122,7 +122,8 @@ function candidates(g) {
   ROOM_DEFS.forEach((d, i) => { if (!g.st.rooms[i].unlocked) c.push({ id: 'room:' + d.id, price: d.price, apply: () => { g.st.rooms[i].unlocked = true; } }); });
   SPECIES.forEach(s => { if (!g.own.sp.includes(s.id)) c.push({ id: 'seed:' + s.id, price: s.price, apply: () => g.own.sp.push(s.id) }); });
   POTS.forEach(p => { if (!g.own.pot.includes(p.id)) c.push({ id: 'pot:' + p.id, price: p.price, apply: () => g.own.pot.push(p.id) }); });
-  roomsOpen(g).forEach(ri => M.offers(w, g.st, ri).forEach(o => { if (!o.owned && !(o.id === 'drip' && g.st.rooms[ri].drip)) c.push({ id: o.id + ':' + (o.id === 'drip' ? ROOM_DEFS[ri].id : g.st.up[o.id] || 0), price: o.price, apply: () => M.buy(w, g.st, ri, o.id, () => true) }); }));
+  /* the bench opens at M.UNLOCK.bench kinds of plant: until then nothing it sells can be bought */
+  if (g.own.sp.length >= M.UNLOCK.bench) roomsOpen(g).forEach(ri => M.offers(w, g.st, ri).forEach(o => { if (!o.owned && !(o.id === 'drip' && g.st.rooms[ri].drip)) c.push({ id: o.id + ':' + (o.id === 'drip' ? ROOM_DEFS[ri].id : g.st.up[o.id] || 0), price: o.price, apply: () => M.buy(w, g.st, ri, o.id, () => true) }); }));
   const seen = new Set();
   return c.filter(x => !seen.has(x.id) && seen.add(x.id));
 }
@@ -130,6 +131,12 @@ function clone(g) { return { ...g, st: JSON.parse(JSON.stringify(g.st)), own: { 
 
 function shop(g) {
   for (let guard = 0; guard < 50; guard++) {
+    /* a garden with four rooms is a garden that wants the bench: a collector's purchase, the cheapest kind of plant it does not have yet,
+       because the bench opens at M.UNLOCK.bench kinds (the seeds are worth little on their own, which is the cost of the door) */
+    if (g.own.sp.length < M.UNLOCK.bench && roomsOpen(g).length >= M.UNLOCK.tend) {
+      const cheap = SPECIES.filter(sp => !g.own.sp.includes(sp.id)).sort((a, b) => a.price - b.price)[0];
+      if (cheap && cheap.price <= g.sun) { g.sun -= cheap.price; g.spent += cheap.price; g.own.sp.push(cheap.id); g.log.push({ t: g.t, id: 'seed:' + cheap.id, price: cheap.price }); continue; }
+    }
     const base = income(g), cs = candidates(g).map(c => {
       const h = clone(g); const keep = g; void keep;
       /* the candidate's own apply works on `g`'s state; try it on the clone through the same ids */
@@ -178,6 +185,25 @@ VISIT = 300;
 const full = play(newGame(), GOAL, 60 * 3600);
 console.log('purchases: ' + full.log.map(l => Math.round(l.t / 60) + 'm ' + l.id).join(' | '));
 ok(full.sun >= GOAL, 'a player who checks in every five minutes reaches the third temple');
+{
+  /* TEND and the BENCH are late-game: when does the player first have what they ask for? */
+  const at = pred => { const l = full.log.find(pred); return l ? l.t : Infinity; };
+  let rooms = 1, kinds = 1, tendT = Infinity, benchT = Infinity;
+  full.log.forEach(l => {
+    if (/^room:/.test(l.id)) rooms++;
+    if (/^seed:/.test(l.id)) kinds++;
+    if (rooms >= M.UNLOCK.tend && tendT === Infinity) tendT = l.t;
+    if (kinds >= M.UNLOCK.bench && benchT === Infinity) benchT = l.t;
+  });
+  void at;
+  console.log('TEND opens at ' + mins(tendT) + ' and the BENCH at ' + mins(benchT) + ' of ' + mins(full.t));
+  ok(M.UNLOCK.tend >= 4 && M.UNLOCK.bench >= 8, 'TEND wants four rooms and the bench eight kinds of plant');
+  ok(tendT >= full.t * 0.25 && benchT >= full.t * 0.25, 'both open in the later part of the game, not the first quarter (' + mins(tendT) + ' and ' + mins(benchT) + ' of ' + mins(full.t) + ')');
+  const st0 = M.fresh(ROOM_DEFS), g0 = M.gates(st0, 1);
+  ok(!g0.tend.open && !g0.bench.open && g0.tend.have === 1 && g0.bench.have === 1, 'a new garden has neither');
+  st0.rooms.forEach((r, i) => { if (i < M.UNLOCK.tend) r.unlocked = true; });
+  ok(M.gates(st0, 1).tend.open && !M.gates(st0, M.UNLOCK.bench - 1).bench.open && M.gates(st0, M.UNLOCK.bench).bench.open, 'four rooms open TEND, and eight kinds of plant open the bench');
+}
 console.log('from nothing, the third temple takes ' + mins(full.t) + ' (' + (full.t / 3600).toFixed(1) + ' h) of a player who checks in every five minutes');
 
 /* ---- fully equipped, from the day it is all bought ---- */

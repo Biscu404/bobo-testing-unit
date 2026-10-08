@@ -52,7 +52,7 @@ export default {
     const sowBtn = btn('SOW ROOM', () => sow());
     const potBtn = btn('', () => cyclePot());
     const pullBtn = btn('PULL UP', () => setMode(mode === 'pull' ? 'none' : 'pull'));
-    const benchBtn = btn('BENCH', () => bench.toggle());
+    const benchBtn = btn('BENCH', () => benchToggle());
     btn('DAVE', () => ctx.openWindow('shop'));
     const tipEl = document.createElement('div'); tipEl.className = 'gtip';
     const l1 = document.createElement('div'), l2 = document.createElement('div');
@@ -77,7 +77,20 @@ export default {
       snd('click');
       say(m === 'can' ? 'DRAG ACROSS THE POTS TO WATER THEM. CLICK WATER AGAIN TO PUT THE CAN DOWN.' : m === 'pull' ? 'DRAG ACROSS PLANTS TO PULL THEM UP. WHAT THEY WERE HOLDING IS PAID OUT FIRST.' : '');
     }
+    /* TEND and the BENCH are late-game (model.js UNLOCK): until then the buttons say how far along you are */
+    const gate = () => M.gates(st, window.Cos.owned('seed').length);
+    const lockedSay = which => {
+      const g = gate()[which];
+      say(which === 'tend'
+        ? 'TEND OPENS WHEN THE GARDEN HAS ' + g.need + ' ROOMS. YOU HAVE ' + g.have + '. EACH ROOM IS A TAB ABOVE THE RACK: CLICK ONE TO BUY IT. UNTIL THEN THE CAN AND YOUR OWN HAND DO THE WORK.'
+        : 'THE BENCH OPENS WHEN YOU OWN ' + g.need + ' KINDS OF PLANT. YOU HAVE ' + g.have + '. DAVE SELLS THE SEEDS. IT IS WHERE DRIP LINES, BIGGER BASKETS AND THE GATHERER ARE BOUGHT.', 8000);
+      snd('deny');
+    };
+    function benchToggle() { if (!bench.isOpen() && !gate().bench.open) { lockedSay('bench'); return; } bench.toggle(); }
     function refreshBar() {
+      const gt = gate();
+      tendBtn.textContent = gt.tend.open ? 'TEND' : 'TEND ' + gt.tend.have + '/' + gt.tend.need + ' ROOMS'; tendBtn.classList.toggle('locked', !gt.tend.open);
+      benchBtn.textContent = gt.bench.open ? 'BENCH' : 'BENCH ' + gt.bench.have + '/' + gt.bench.need + ' PLANTS'; benchBtn.classList.toggle('locked', !gt.bench.open);
       seedBtn.textContent = 'SEED: ' + seedNow().name;
       potBtn.textContent = 'POT: ' + potOfRoom(st.active).name;
       sowBtn.textContent = 'SOW ROOM';
@@ -134,6 +147,7 @@ export default {
     /* TEND: water what is dry, then sweep every plant in every room, the one you are looking at as a run of notes */
     function tend() {
       if (timers.length) return;
+      if (!gate().tend.open) { lockedSay('tend'); return; }
       const now = Date.now();
       let drank = 0, paid = 0, rooms = 0;
       st.rooms.forEach((r, ri) => {
@@ -195,7 +209,7 @@ export default {
     cv.addEventListener('keydown', ev => {
       const k = ev.key.toLowerCase();
       if (k === ' ' || k === 't') tend();
-      else if (k === 'b') bench.toggle();
+      else if (k === 'b') benchToggle();
       else if (k === 'w') setMode(mode === 'can' ? 'none' : 'can');
       else if (k === 'p') setMode(mode === 'pull' ? 'none' : 'pull');
       else if (k === 's') sow();
@@ -223,7 +237,11 @@ export default {
         l2.textContent = full.length <= 200 ? full : head;   /* two lines is all the box has: the likes go when the rest is long */
       } else if (hover >= 0) {
         l2.textContent = 'AN EMPTY POT. CLICK OR DRAG TO PLANT ' + seedNow().name + '.  ' + likes(seedNow());
-      } else l2.textContent = 'CLICK A PLANT TO PICK IT, DRAG TO SWEEP.  SPACE: TEND EVERY ROOM.  B: THE BENCH.  1-' + ROOM_DEFS.length + ': ROOMS.';
+      } else {
+        const gt = gate();
+        l2.textContent = 'CLICK A PLANT TO PICK IT, DRAG TO SWEEP.  ' + (gt.tend.open ? 'SPACE: TEND EVERY ROOM.  ' : 'TEND: ' + gt.tend.have + '/' + gt.tend.need + ' ROOMS.  ') +
+          (gt.bench.open ? 'B: THE BENCH.  ' : 'BENCH: ' + gt.bench.have + '/' + gt.bench.need + ' PLANTS.  ') + '1-' + ROOM_DEFS.length + ': ROOMS.';
+      }
     }
 
     /* ---- the loop ---- */
@@ -257,6 +275,8 @@ export default {
       refreshBar();
     };
     window.addEventListener('garden-stock-refresh', stock);
+    const bought = () => { if (alive) refreshBar(); };
+    window.addEventListener('cos-changed', bought);
 
     this._stop = () => {
       alive = false;
@@ -264,6 +284,7 @@ export default {
       document.removeEventListener('mouseup', up);
       window.removeEventListener('mixer-changed', mixerHandler);
       window.removeEventListener('garden-stock-refresh', stock);
+      window.removeEventListener('cos-changed', bought);
       GardenAir.stop();
       st.lastTick = Date.now(); save();
     };

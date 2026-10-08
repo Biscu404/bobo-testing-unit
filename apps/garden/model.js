@@ -32,6 +32,18 @@ export const isNight = now => light(now) < 0.34;
 export const blank = () => ({ unlocked: false, pot: null, drip: false, pots: Array(POTS_PER_ROOM).fill(null) });
 export const fresh = defs => ({ rooms: defs.map((d, i) => ({ ...blank(), unlocked: i === 0 })), active: 0, lastTick: 0, planted: 0, up: { basket: 0, gather: 0 } });
 
+/* TEND and the BENCH are late-game: they are what the work turns into once there is a garden worth the trouble.
+   TEND (water and sweep every room in one press) opens when the garden has this many rooms; the BENCH (drip lines, baskets, the
+   gatherer: everything that takes the work out of it) opens when you own this many different kinds of plant. Before that you
+   water with the can, pick with your hand and walk from room to room, which is the game. Four rooms is 4,400 SUN of rooms and eight
+   kinds of plant is 5,600 of seeds: well past the middle of the way to the third temple (garden_check.js holds it). */
+export const UNLOCK = { tend: 4, bench: 8 };
+export const roomsOpen = st => st.rooms.filter(r => r.unlocked).length;
+export const gates = (st, kinds) => {
+  const r = roomsOpen(st);
+  return { tend: { have: r, need: UNLOCK.tend, open: r >= UNLOCK.tend }, bench: { have: kinds, need: UNLOCK.bench, open: kinds >= UNLOCK.bench } };
+};
+
 export const potId = (w, room) => room.pot || w.defaultPot;
 export const cap = st => CAPS[Math.min(st.up.basket, CAPS.length - 1)];
 export const tokens = room => room.pots.reduce((a, p) => a + (p ? p.tok || 0 : 0), 0);
