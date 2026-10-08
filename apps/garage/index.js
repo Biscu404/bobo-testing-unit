@@ -12,6 +12,7 @@ import { openPicker, stopAudition } from './picker.js';
 import { makeHistory, MAX_TRACKS, snapBeats, rowsFor } from './model.js';
 import * as E from './edit.js';
 import { openLessons } from './lessons.js';
+import { openCourse } from './course.js';
 import { bandMenu } from './band.js';
 import { keyboard } from './hotkeys.js';
 import { whenGone, scopedListeners } from '../lifecycle.js';
@@ -163,6 +164,7 @@ export default {
     root.append(...toolbar.bars, main);
     const grid = makeGrid(gridHost, ovHost, api), tracks = makeTracks(side, api), keys = makeKeys(keyHost, api), mixer = makeMixer(mixHost, api);
     const files = makeFiles(api);
+    api.guard = next => files.guard(next);
     api.save = (asNew) => files.save(asNew); api.openSongs = () => files.openSongs(); api.newSong = () => files.newSong();
     api.exportDialog = () => exportDialog(root, api); api.help = () => openHelp(root);
     api.band = () => bandMenu(root, api, defaultLo);
@@ -190,6 +192,7 @@ export default {
       });
     };
     api.learn = () => { stop(); openLessons(root, api, { load: s => api.startSong(s) }); };
+    api.course = () => { stop(); openCourse(api); };
     function renderAll() { tracks.render(); keys.render(); mixer.render(); toolbar.update(); grid.redraw(); }
     api.startSong = (song, path) => {
       stop();

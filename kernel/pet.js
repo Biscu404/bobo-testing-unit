@@ -11,11 +11,13 @@
 import { drawMini, MINI_W, MINI_H } from './pet_art.js';
 import { showMenu, hideMenus } from './menus.js';
 import { petIcons, petMoveIcon } from './desktop.js';
-import { openWindow } from './wm.js';
+import { openWindow, openWins } from './wm.js';
 import { LINES, PUSH_LINES, GOODBYES_DAY, GOODBYES_NIGHT, WAKES, WAKES_NEAR, HOME_LINES, DOOR_LINES, choose } from './pet_lines.js';
 
 const KEY = 'templeos.pet.v1', S = 2, SW = MINI_W * S, SH = MINI_H * S, FOOT = 56 * S;
 const SPEED = 46, ICON_W = 84, ICON_H = 78;
+/* the moment he is let back into his window: the big elephant there walks in from this side over ARRIVE_MS (apps/elephant reads arriving()) */
+const ARRIVE_MS = 2600, ARRIVE = { side: 0, t0: 0 };
 const SLOTS = ['head', 'face', 'neck', 'body', 'feet'];
 
 let st = { out: false, wear: {}, x: 200, y: 260, last: null };
@@ -141,7 +143,17 @@ function tick(ts) {
 
 function arrive() {
   const j = P.job;
-  if (P.mode === 'home') { vanish(); return; }
+  if (P.mode === 'home') {
+    /* at the side of his window: now he walks in, behind its edge (he lives under every window), and the big one starts walking in from that edge */
+    if (j && j.kind === 'enter' && j.stage === 0) {
+      j.stage = 1; P.dir = j.side < 0 ? 1 : -1;
+      P.to = { x: j.side < 0 ? j.r.x + 4 : j.r.x + j.r.w - SW - 4, y: P.y };
+      ARRIVE.side = j.side; ARRIVE.t0 = performance.now();
+      st.out = false; save(); tell();
+      return;
+    }
+    vanish(); return;
+  }
   if (j && j.kind === 'push') { P.dir = 1; P.mode = 'push'; P.t = 0; snd(120, 90, { type: 'triangle', to: 90, vol: 0.03 }); return; }
   P.mode = 'idle'; P.t = 0; P.wait = 1.5 + Math.random() * 4; P.job = null; save();
 }
@@ -212,13 +224,26 @@ function vanish() {
   el = cv = g = bub = null;
   st.out = false; save(); tell();
 }
+const elephantRec = () => openWins.find(r => r.appId === 'elephant' && r.win.querySelector('canvas.elecv')) || null;
 const winRect = () => {
-  const w = Array.from(document.querySelectorAll('#desktop .win')).filter(n => n.querySelector('canvas.elecv'))[0];
-  const d = desk();
-  if (!w || !d) return null;
-  const r = w.getBoundingClientRect(), o = d.getBoundingClientRect();
+  const rec = elephantRec(), d = desk();
+  if (!rec || !d || rec.win.classList.contains('hidden')) return null;
+  const r = rec.win.getBoundingClientRect(), o = d.getBoundingClientRect();
   return { x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height };
 };
+/* the way in: to the side of the window nearer to him (the one that has room for him to stand), at a height inside it */
+function walkIn(r) {
+  const { w } = room(), mid = P.x + SW / 2;
+  const fits = side => side < 0 ? r.x - SW >= -20 : r.x + r.w + SW <= w + 20;
+  let side = mid < r.x + r.w / 2 ? -1 : 1;
+  if (!fits(side) && fits(-side)) side = -side;
+  const feet = Math.max(r.y + 50, Math.min(r.y + r.h - 16, P.y + FOOT));
+  P.job = { kind: 'enter', side, r, stage: 0 };
+  P.mode = 'home'; P.t = 0;
+  P.to = { x: clampX(side < 0 ? r.x - SW + 4 : r.x + r.w - 4), y: clampY(feet - FOOT) };
+  /* already wholly behind the window (it is as big as the desk, say): there is nothing to stage, straight in */
+  if (P.x >= r.x && P.x + SW <= r.x + r.w && P.y >= r.y && P.y + SH <= r.y + r.h) P.to = { x: P.x, y: P.y };
+}
 
 export const Pet = {
   wear: () => Object.assign({}, st.wear),
@@ -243,6 +268,7 @@ export const Pet = {
   out() {
     if (!owned()) return false;
     if (st.out && el) return true;
+    ARRIVE.t0 = 0;
     st.out = true;
     const { w, h } = room(), r = winRect() || { x: w / 2 - 200, y: h / 2 - 150, w: 400, h: 300 };
     build();
@@ -255,25 +281,36 @@ export const Pet = {
     save(); tell();
     return true;
   },
-  /* back in: he walks to his window and is gone. If the window is not open he opens it himself (the app is the door), waits for it,
-     and then goes in; if it will not open he walks off the nearest edge as he always did */
+  /* back in: he walks to his window, in behind its edge and is gone, and the big elephant in the window walks in from the same side
+     (arriving() tells it). If the window is not open he opens it himself (the app is the door), waits for it, and then goes in;
+     if it will not open he walks off the nearest edge as he always did */
   home() {
     if (!el) { st.out = false; save(); tell(); return; }
     if (P.mode === 'home' || P.mode === 'door') return;
     P.job = null;
-    const walkIn = () => {
+    const walkOff = () => {
       if (!el) return;
-      const { w, h } = room(), r = winRect();
-      P.mode = 'home';
-      if (r) P.to = { x: r.x + r.w / 2 - SW / 2, y: r.y + r.h - SH - 20 };
-      else P.to = { x: P.x + SW / 2 < w / 2 ? -SW : w, y: Math.min(h - SH - 4, P.y) };
+      const { w, h } = room();
+      P.mode = 'home'; P.job = { kind: 'exit' };
+      P.to = { x: P.x + SW / 2 < w / 2 ? -SW : w, y: Math.min(h - SH - 4, P.y) };
     };
-    if (winRect()) { speak(line(HOME_LINES), 3.5); walkIn(); return; }
+    const go = () => { if (!el) return; const r = winRect(); if (r) walkIn(r); else walkOff(); };
+    if (winRect()) { speak(line(HOME_LINES), 3.5); go(); return; }
+    /* open but minimized: bring it back rather than opening a second one */
+    const rec = elephantRec();
+    if (rec) {
+      P.mode = 'door'; P.t = 0; speak(line(DOOR_LINES), 3.2);
+      rec.btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+      setTimeout(go, 450);
+      return;
+    }
     P.mode = 'door'; P.t = 0;
     speak(line(DOOR_LINES), 3.2);
     snd(196, 90, { type: 'square', vol: 0.012 }); snd(196, 90, { type: 'square', delay: 0.14, vol: 0.012 });
-    openWindow('elephant').catch(() => {}).then(() => setTimeout(walkIn, 450));
+    openWindow('elephant').catch(() => {}).then(() => setTimeout(go, 450));
   },
+  /* set while the big elephant in his window is walking in: { side: -1 (from the left edge) | 1, t0 } or null */
+  arriving: () => (ARRIVE.t0 && performance.now() - ARRIVE.t0 < ARRIVE_MS ? { side: ARRIVE.side, t0: ARRIVE.t0, ms: ARRIVE_MS } : null),
   putBack() {
     const l = st.last;
     if (!l) return false;

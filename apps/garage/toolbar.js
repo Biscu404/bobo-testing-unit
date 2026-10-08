@@ -55,7 +55,7 @@ export function makeToolbar(root, api) {
     btn('SAVE', 'g-save', () => api.save(false), 'KEEP THIS SONG IN HOME/SONGS (CTRL+S)'), btn('SAVE AS', '', () => api.save(true), 'KEEP IT UNDER A NEW NAME'),
     btn('EXPORT', '', () => api.exportDialog(), 'MAKE A WAV, A MIDI FILE, OR A WAV FOR EVERY TRACK'),
     lbl('BARS'), barsBox, btn('TRIM', 'g-sm', () => A.trim(), 'CUT THE SONG OFF WHERE THE LAST NOTE ENDS'),
-    el('span', 'g-flex'), btn('LEARN', 'g-learn', () => api.learn(), 'THE BASICS, IN EIGHT SHORT LESSONS'), btn('?', 'g-sm', () => api.help(), 'KEYS AND TIPS (F1)'));
+    el('span', 'g-flex'), btn('STUDIO COURSE', 'g-learn', () => api.course(), 'A GUIDED TOUR OF EVERY BUTTON, THEN WRITE A WHOLE SONG IN A STYLE YOU CHOOSE'), btn('LEARN', 'g-learn', () => api.learn(), 'THE BASICS, IN EIGHT SHORT LESSONS'), btn('?', 'g-sm', () => api.help(), 'KEYS AND TIPS (F1)'));
 
   /* ---- bar three: the tools --------------------------------------------------------------------------- */
   const b3 = el('div', 'g-top g-top3');

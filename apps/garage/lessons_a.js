@@ -74,7 +74,11 @@ export const LESSONS_A = [
       };
       start();
       const sp = X.row();
-      [['SLOW', 60, C(11)], ['MID', 80, C(10)], ['FAST', 120, C(12)]].forEach(([n, v, c]) => X.pad(sp, n, c, () => { bpm = v; taps = []; start(); X.ok(''); }, v + ' BPM'));
+      const speeds = X.radio();
+      [['SLOW', 60, C(11)], ['MID', 80, C(10)], ['FAST', 120, C(12)]].forEach(([n, v, c]) => {
+        const b = X.pad(sp, n, c, () => { bpm = v; taps = []; start(); X.ok(''); speeds.pick(b); }, v + ' BPM');
+        speeds.add(b, v === bpm);
+      });
       X.say('Now lock onto it. Tap the pad (or the space bar) on every kick.');
       const dots = X.dots(8);
       let taps = [];
@@ -109,7 +113,11 @@ export const LESSONS_A = [
       X.play(back, { loop: true });
       let inst = 'piano';
       const ir = X.row();
-      [['PIANO', 'piano', C(11)], ['FLUTE', 'flute', C(10)], ['MARIMBA', 'marimba', C(14)]].forEach(([n, id, c]) => X.pad(ir, n, c, () => { inst = id; X.tap(inst, 72, 0.6); }, 'USE'));
+      const voices = X.radio();
+      [['PIANO', 'piano', C(11)], ['FLUTE', 'flute', C(10)], ['MARIMBA', 'marimba', C(14)]].forEach(([n, id, c]) => {
+        const b = X.pad(ir, n, c, () => { inst = id; X.tap(inst, 72, 0.6); voices.pick(b); }, 'USE');
+        voices.add(b, id === inst);
+      });
       const notes = [[72, 'C', 12], [74, 'D', 14], [76, 'E', 10], [79, 'G', 11], [81, 'A', 13]];
       const mine = [];
       const dots = X.dots(12), tuneEl = document.createElement('div');

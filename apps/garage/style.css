@@ -169,6 +169,11 @@
 .l-pad:hover { border-color: #55FFFF; border-top-color: var(--c, #55FFFF); background: #22222e; }
 .l-pad:active, .l-pad.down { background: #34344a; transform: translateY(1px); }
 .l-pad small { font-size: 14px; margin-top: 6px; color: #888888; letter-spacing: 0; }
+.l-pad { position: relative; }
+/* the pad that is in use (the lead sound, the band, the speed): a border you can see from across the room, and a tick */
+.l-pad.sel { border-color: #FFFF55; border-top-color: var(--c, #FFFF55); background: #2c2c40; box-shadow: 0 0 0 2px #000000, 0 0 0 5px #FFFF55; }
+.l-pad.sel::after { content: '\2713'; position: absolute; top: 2px; right: 6px; font-size: 18px; color: #FFFF55; }
+.l-pad.sel small { color: #FFFF55; }
 .l-dots { display: flex; gap: 5px; margin: 8px 0; min-height: 16px; }
 .l-dot { width: 16px; height: 16px; background: #1a1a24; border: 2px solid #3a3a46; }
 .l-dot.on { background: #55FFFF; border-color: #55FFFF; }
@@ -179,6 +184,10 @@
 .l-cell:hover { border-color: #55FFFF; }
 .l-cell.on { background: var(--c, #55FFFF); border-color: #FFFFFF; }
 .l-cell.now { outline: 2px solid #FFFF55; }
+.l-cell.on.strike { background: #FFFFFF; border-color: #FFFF55; }
+.l-gridwrap { position: relative; display: inline-block; }
+.l-playhead { position: absolute; width: 4px; background: #FFFF55; box-shadow: 0 0 0 1px #000000, 0 0 10px #FFFF55; pointer-events: none; z-index: 2; }
+.l-beatread { color: #FFFF55; font-size: 18px; min-height: 22px; letter-spacing: 2px; }
 .l-lbl { display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; color: #55FFFF; font-size: 16px; }
 .l-heart { width: 96px; height: 96px; background: #15151c; border: 3px solid #3a3a46; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #888888; letter-spacing: 2px; }
 .l-heart.beat { background: #55FFFF; border-color: #FFFFFF; color: #000000; }
