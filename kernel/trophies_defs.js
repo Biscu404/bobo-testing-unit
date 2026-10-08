@@ -7,16 +7,18 @@ import { TROPHIES as SOLITAIRE, backfill as solitaireBackfill } from '../apps/so
 import { TROPHIES as AFTERE, backfill as aftereBackfill } from '../apps/aftere/trophies.js';
 import { TROPHIES as GARDEN, backfill as gardenBackfill } from '../apps/garden/trophies.js';
 import { TROPHIES as COOK, MIRRORS as COOK_MIRRORS, backfill as cookBackfill } from '../apps/cook/trophies.js';
+import { TROPHIES as MAGEN, MIRRORS as MAGEN_MIRRORS, backfill as magenBackfill } from '../apps/magen/trophies.js';
 
 /* each app's backfill reader: (read(key) -> object|null, T) -> [trophy ids already earned] */
-export const BACKFILL = [sweeperBackfill, solitaireBackfill, aftereBackfill, gardenBackfill, cookBackfill];
+export const BACKFILL = [sweeperBackfill, solitaireBackfill, aftereBackfill, gardenBackfill, cookBackfill, magenBackfill];
 export const APPS = [
   /* [id, the name the ledger shows, its trophy list] */
   ['sweeper', 'DUNGEON SWEEPER', SWEEPER],
   ['solitaire', 'SOLITAIRE', SOLITAIRE],
   ['aftere', 'AFTEREGYPT', AFTERE],
   ['garden', 'THE GARDEN', GARDEN],
-  ['cook', 'THE COOK', COOK.concat(COOK_MIRRORS)]
+  ['cook', 'THE COOK', COOK.concat(COOK_MIRRORS)],
+  ['magen', 'MAGEN', MAGEN.concat(MAGEN_MIRRORS)]
 ];
 export const NAMES = { system: 'THE MACHINE', meta: 'THE LEDGER', sweeper: 'DUNGEON SWEEPER', solitaire: 'SOLITAIRE', aftere: 'AFTEREGYPT', garden: 'THE GARDEN', cook: 'THE COOK', magen: 'MAGEN',
   standbattle: 'STAND BATTLE', bekkedal: 'BEKKEDAL', bottle: 'THE BOTTLE', elephant: 'THE ELEPHANT', crayon: 'CRAYON', garage: 'THE GARAGE', hifi: 'THE STACK', notes: 'NOTES', holyc: 'HOLYC.EXE', tools: 'THE SMALL TOOLS' };
