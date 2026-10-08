@@ -70,8 +70,10 @@ export function drawJesse(g, x, y, s, mood, talk) {
 /* what he looks like for each kind of thing he says */
 export function moodFor(tag) {
   if (/^ruin/.test(tag)) return 'wince';
-  if (/^wall|^stuck|^idle/.test(tag)) return 'flat';
-  if (/^win|first_(mirror|double|solvent|stage)|reveal/.test(tag)) return 'smirk';
+  if (/^wall|^stuck|^idle|^undo/.test(tag)) return 'flat';
+  if (/^win|^reset|first_(mirror|double|solvent|stage)|reveal/.test(tag)) return 'smirk';
   if (/^first_(hot|cold)/.test(tag)) return 'shock';
+  /* a new bench: wide-eyed for the ones with something new in them (the blue, the burner, the jar), flat for the rest */
+  if (/^intro_(5|6|7|10)$/.test(tag)) return 'shock';
   return 'flat';
 }

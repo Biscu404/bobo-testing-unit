@@ -2,9 +2,13 @@ import { createWindow, raise, sysDialog } from '../../kernel/wm.js';
 import { Snd } from '../../kernel/snd.js';
 import { Cos } from '../../kernel/cos.js';
 import { fs as vfs } from '../../kernel/vfs.js';
-import { CRT, Vol, musGain } from '../../kernel/hardware.js';
-import { Mixer } from '../../kernel/mixer.js';
-import { CK_SAVE, CK_W, CK_H, CK_T, CK_LV, CK_STORY, CK_END, CK_KID, CK_ACH, CK_HZ, CK_SONGS } from './data.js';
+import { CRT, Vol } from '../../kernel/hardware.js';
+import { Studio } from '../../kernel/studio.js';
+import { CK_SAVE, CK_W, CK_H, CK_T, CK_LV, CK_ACH } from './data.js';
+import { CK_STORY, CK_END, STORY_AT, owed } from './story.js';
+import { kidPool } from './lines.js';
+import { blip, play as playBlip } from './voice.js';
+import { createCookMusic } from './music.js';
 import { VGA16 } from '../../kernel/god.js';
 import { scopedListeners, whenGone } from '../lifecycle.js';
 import { drawJesse, moodFor } from './jesse.js';
@@ -157,11 +161,11 @@ export default {
 
       /* ---- 33.7 state ---------------------------------------------------- */
       const freshSave = () => ({ v:1, lv:1, best:{}, medal:{}, ach:{}, money:0,
-                                 ruins:0, seen:{}, said:{}, bestRun:0 });
+                                 ruins:0, seen:{}, said:{}, bestRun:0, story:{} });
       let SV = freshSave();
       let L = null, st = null, hist = [], resets = 0, known = {};
       let mode = 'story';                        /* story · play · won · menu · book */
-      let storyIx = 0, storyT = 0;
+      let storyIx = 0, storyT = 0, storyQ = [], storyThen = 1, coinDue = 0;
       let anim = null, deadT = 0, winT = 0, hover = -1;
       let kid = null, kidLast = {}, idleT = 0, lvRuins = 0, run = null;
       const parts = [], floats = [], rings = [];
@@ -171,7 +175,11 @@ export default {
       function load() {
         try {
           const o = JSON.parse(localStorage.getItem(CK_SAVE) || 'null');
-          if (o && o.v === 1) { SV = Object.assign(freshSave(), o); }
+          if (o && o.v === 1) {
+            SV = Object.assign(freshSave(), o);
+            /* a save from before the story was reordered has no list of the cards it has read: it has read the ones that led up to the bench it is on */
+            if (!o.story) { for (let n = 1; n <= SV.lv; n++) (STORY_AT[n] || []).forEach(i => { SV.story[i] = 1; }); }
+          }
         } catch (e) {}
       }
       function ach(id) {
@@ -193,19 +201,38 @@ export default {
 
       /* He says one thing at a time and never the same thing twice running.
          `once` keys are remembered in the save, so a first-time reaction is
-         genuinely a first time. */
-      function say(tag, once, big) {
-        const pool = CK_KID[tag];
-        if (!pool || !pool.length) return;
+         genuinely a first time. A win (`big`) is held: he types it out, it waits for a click, and
+         `more` are the things he goes on to say, one click each; nothing he says on a win goes by itself. */
+      function say(tag, once, big, more) {
+        const pool = kidPool(tag);
+        if (!pool.length) return;
         if (once) { if (SV.said[tag]) return; SV.said[tag] = 1; save(); }
         let i = Math.floor(Math.random() * pool.length);
         if (pool.length > 1 && i === kidLast[tag]) i = (i + 1) % pool.length;
         kidLast[tag] = i;
-        kid = { s: pool[i], t: 0, life: 3.4 + pool[i].length * 0.022, tag: tag, mood: moodFor(tag) };
-        /* on a win he gets the whole stage: slower to type, longer to read */
-        if (big) { kid.big = true; kid.life = pool[i].length / 36 + 2.6; }
+        kid = { s: pool[i], t: 0, life: 3.4 + pool[i].length * 0.022, tag: tag, mood: moodFor(tag), sounded: 0 };
+        if (big) { kid.big = true; kid.hold = true; kid.life = 1e9; kid.queue = (more || []).slice(); kid.page = 1; kid.pages = 1 + kid.queue.length; }
         idleT = 0;
-        sfx.kid();
+      }
+      /* the sound of him talking: a blip for each letter as it is typed (voice.js) */
+      function voiceKid() {
+        if (!kid) return;
+        const rate = kid.big ? 36 : 44, shown = Math.min(kid.s.length, Math.floor(kid.t * rate));
+        while (kid.sounded < shown) { const b = blip(kid.s, kid.sounded); kid.sounded++; if (b) playBlip(Snd, b); }
+      }
+      /* a click on the box he is holding: finish the line, then the next one, then let it go (and the batch panel begins) */
+      function kidNext() {
+        if (!kid || !kid.hold) return false;
+        const total = kid.s.length;
+        if (Math.floor(kid.t * 36) < total) { kid.t = total / 36 + 0.02; kid.sounded = total; return true; }
+        if (kid.queue.length) {
+          const nxt = kid.queue.shift();
+          kid.s = nxt; kid.lines = null; kid.t = 0; kid.sounded = 0; kid.page++; kid.mood = moodFor('win_L' + (L ? L.id : 1)); sfx.page();
+          return true;
+        }
+        kid = null; winT = 0; sfx.page();
+        if (coinDue) { coinDue = 0; setTimeout(() => Snd.coin(), 450); }
+        return true;
       }
 
       function startLevel(n) {
@@ -222,8 +249,9 @@ export default {
         known = {};
         L.reg.forEach((r, i) => { if (!r.hidden) known[i] = 1; });
         mode = 'play';
-        Song.want(n >= 9 ? 'fall' : n >= 6 ? 'heat' : n >= 3 ? 'cook' : 'desert');
+        Song.forBench(n);
         refresh();
+        say('intro_' + n, 1);
       }
       const clone = s2 => JSON.parse(JSON.stringify(s2));
       /* Ten stars opens an eleventh board. It is not a bonus stage — it is a
@@ -305,7 +333,7 @@ export default {
       function ruin(why) {
         deadT = 1.6; SV.ruins++; lvRuins++;
         ach('a11'); if (SV.ruins >= 20) ach('a12');
-        sfx.ruin();
+        sfx.ruin(); Song.sting('ruin');
         spray(px(st.x) + 10, py(st.y) + 10, 26, 12, 150);
         ring(px(st.x) + 10, py(st.y) + 10, 60, 12, 0.7);
         kick(7, 0.5, 12);
@@ -316,7 +344,7 @@ export default {
                  ? 'it crosses one column for every pour you make'
                  : 'the pour crossed a ruined cell at ' + st.x + ',' + st.y,
                12);
-        say(why === 'caught' ? 'ruin_sweep' : 'ruin_X');
+        say(lvRuins >= 3 && lvRuins % 3 === 0 ? 'ruin_many' : why === 'caught' ? 'ruin_sweep' : 'ruin_X');
         save();
       }
       function win() {
@@ -340,11 +368,12 @@ export default {
         if (fresh & 1) sun += 30 + L.id * 6;
         if (fresh & 2) sun += 30 + L.id * 6;
         if (fresh & 4) sun += 40 + L.id * 8;
-        say(resets === 0 && lvRuins === 0 ? 'win_first' : st.steps <= L.par ? 'win_par' : 'win_over', 0, true);
-        /* the batch-complete panel does not start until he has finished: he
-           starts and ends before it begins, and the coin lands with it */
-        winT = kid ? -(kid.life + 0.4) : 0;
-        if (sun) { window.Economy.earn(sun, 'THE COOK: BENCH ' + L.id); setTimeout(() => Snd.coin(), Math.max(0, -winT) * 1000 + 700); }
+        /* he says how it went, and then one more thing about THIS bench: each of them waits for a click, and the batch-complete
+           panel does not start until he has finished, so nothing is ever read for you */
+        const about = kidPool('win_L' + L.id);
+        say(resets === 0 && lvRuins === 0 ? 'win_first' : st.steps <= L.par ? 'win_par' : 'win_over', 0, true, about.length ? [about[Math.floor(Math.random() * about.length)]] : []);
+        winT = kid ? -1e9 : 0;
+        if (sun) { window.Economy.earn(sun, 'THE COOK: BENCH ' + L.id); if (kid) coinDue = 1; else setTimeout(() => Snd.coin(), 700); }
         SV.money += Math.round(pur * 1000 * L.id);
         if (L.id >= SV.lv) SV.lv = Math.min(10, L.id + 1);
         if (L.id === 1) ach('a1');
@@ -365,7 +394,7 @@ export default {
           banner('THE ONE WHO KNOCKS', 'ten stars. there is an eleventh bench', 14); } }
         if (L.id === 11) ach('a24');
         save();
-        sfx.win();
+        sfx.win(); Song.sting('win');
         refresh();
         for (let k = 0; k < 4; k++) ring(px(st.x) + 10, py(st.y) + 10, 40 + k * 34, k % 2 ? 11 : 15, 0.8 + k * 0.2);
         spray(px(st.x) + 10, py(st.y) + 10, 40, 11, 170);
@@ -377,6 +406,7 @@ export default {
         const keep = known;
         startLevel(L.id);
         known = keep;
+        if (Math.random() < 0.4) say('reset_a');
       }
       function undo() {
         if (mode !== 'play' || !hist.length || anim) return;
@@ -384,6 +414,7 @@ export default {
         const keep = st.trail.slice(0, Math.max(1, st.trail.length - 1));
         st = h; st.trail = keep;
         deadT = 0; sfx.undo();
+        if (Math.random() < 0.25) say('undo_a');
       }
       function op(which) {
         if (mode !== 'play' || anim || deadT > 0) return;
@@ -593,7 +624,8 @@ export default {
       /* he sits under the bench and talks over the top of it */
       function drawKid() {
         if (!kid) return;
-        const talk = kid.t < kid.life - (kid.big ? 1.6 : 0.6) && Math.floor(kid.t * 9) % 2 === 0;
+        const typing = Math.floor(kid.t * (kid.big ? 36 : 44)) < kid.s.length;
+        const talk = typing && Math.floor(kid.t * 9) % 2 === 0;
         if (kid.big) { drawKidBig(talk); return; }
         const k = kid.t / kid.life;
         const slide = k < 0.1 ? Math.round(-60 + (k / 0.1) * 60) : k > 0.94 ? Math.round(((k - 0.94) / 0.06) * 60) : 0;
@@ -615,13 +647,13 @@ export default {
           if (cut > 0) txt(l.slice(0, cut), 62, Y + 15 + i * 13, 15, '11px monospace');
         });
       }
-      /* the win: the board dims, he gets the middle of the screen and a box
-         that fits what he says, and nothing else happens until he is done */
+      /* the win: the board dims, he gets the middle of the screen and a box that fits what he says, and nothing else happens until
+         he is done AND you have clicked: it types itself out, finishes on a click, goes on to the next thing on the next, and the
+         batch-complete panel starts on the last */
       function drawKidBig(talk) {
-        const k = kid.t / kid.life;
-        const dy = k < 0.08 ? Math.round((1 - k / 0.08) * 30) : k > 0.96 ? Math.round(((k - 0.96) / 0.04) * 30) : 0;
+        const open = Math.min(1, kid.t / 0.25), dy = Math.round((1 - open) * 30);
         wash(0, 0, 420, 320, 0, 6);
-        const X = 36, Y = 62 + dy, W = 348, H = 138;
+        const X = 36, Y = 62 + dy, W = 348, H = 150;
         R(X, Y, W, H, 0);
         R(X, Y, W, 2, 14); R(X, Y + H - 2, W, 2, 14); R(X, Y, 2, H, 14); R(X + W - 2, Y, 2, H, 14);
         wash(X + 2, Y + 2, W - 4, H - 4, 8, 2);
@@ -630,16 +662,18 @@ export default {
         R(X + 10, Y + 10, 96, 1, 14); R(X + 10, Y + 127, 96, 1, 14);
         drawJesse(g, X + 14, Y + 14, 5.4, kid.mood, talk);
         txt('JESSE', X + 118, Y + 10, 14, 'bold 12px monospace');
+        if (kid.pages > 1) txt(kid.page + ' / ' + kid.pages, X + W - 10, Y + 10, 7, '10px monospace', 'right');
         g.font = '12px monospace';
         if (!kid.lines) kid.lines = wrapTo(kid.s, W - 140);
         const shown = Math.floor(kid.t * 36);
         let n = 0;
-        kid.lines.slice(0, 6).forEach((l, i) => {
+        kid.lines.slice(0, 7).forEach((l, i) => {
           const cut = Math.max(0, Math.min(l.length, shown - n));
           n += l.length;
-          if (cut > 0) txt(l.slice(0, cut), X + 118, Y + 32 + i * 16, 15, '12px monospace');
+          if (cut > 0) txt(l.slice(0, cut), X + 118, Y + 30 + i * 16, 15, '12px monospace');
         });
-        if (kid.t > kid.life - 1.6) txt('space: skip', X + W - 10, Y + H - 14, 8, '9px monospace', 'right');
+        /* when it has all been said, it waits */
+        if (shown >= kid.s.length) txt(Math.floor(kid.t * 2.2) % 2 ? '\u25BC CLICK' : '\u25BC', X + W - 10, Y + H - 16, 11, '10px monospace', 'right');
       }
 
       /* ---- 33.10 the shelf ------------------------------------------------ */
@@ -774,6 +808,22 @@ export default {
           for (let i = 0; i < 3; i++) { S2(50 + i * 120, 80, 80, 150, 8); S2(54 + i * 120, 84, 72, 142, 0); }
           washOval(210, 160, 90, 80, 11, 2);
           S2(0, 250, 420, 70, 0); wash(0, 250, 420, 70, 8, 4);
+        } else if (id === 'glass') {
+          wash(0, 0, 420, 320, 1, 4);
+          S2(30, 90, 360, 6, 7); S2(30, 170, 360, 6, 7); S2(30, 250, 360, 6, 7);
+          for (let i = 0; i < 7; i++) { const x = 46 + i * 50; S2(x, 52, 18, 38, 11); S2(x - 6, 76, 30, 14, 11); S2(x, 52, 18, 4, 15); }
+          for (let i = 0; i < 6; i++) { const x = 60 + i * 58; oval(x, 150, 14, 18, 11); S2(x - 3, 118, 6, 14, 11); }
+          S2(300, 200, 70, 50, 6); S2(304, 204, 62, 8, 14);
+        } else if (id === 'blast') {
+          wash(0, 0, 420, 320, 0, 5);
+          for (let i = 0; i < 5; i++) washOval(210, 150, 40 + i * 28, 30 + i * 22, i % 2 ? 14 : 12, 6 - i);
+          oval(210, 150, 28, 22, 15);
+          S2(150, 250, 120, 40, 8); S2(170, 262, 80, 6, 7);
+        } else if (id === 'book') {
+          wash(0, 0, 420, 320, 8, 3);
+          S2(110, 80, 200, 150, 6); S2(116, 86, 188, 138, 14); S2(206, 86, 8, 138, 6);
+          for (let i = 0; i < 6; i++) { S2(126, 104 + i * 18, 70, 3, 8); S2(224, 104 + i * 18, 70, 3, 8); }
+          S2(100, 232, 220, 10, 8); S2(0, 250, 420, 70, 0); wash(0, 250, 420, 70, 8, 4);
         } else if (id === 'end') {
           wash(0, 0, 420, 320, 1, 4);
           washOval(210, 190, 150, 90, 11, 3);
@@ -812,7 +862,7 @@ export default {
       }
 
       function drawStory(t) {
-        const ch = storyIx < 10 ? CK_STORY[storyIx] : null;
+        const ch = storyIx < CK_STORY.length ? CK_STORY[storyIx] : null;
         scene(ch ? ch.sc : 'end', t);
         wash(0, 0, 420, 320, 0, 7);
         const title = ch ? ch.t : CK_END.t;
@@ -923,7 +973,7 @@ export default {
           [330, 262, 220].forEach((f, i) => Snd.tone(f, 400, { type: 'square', delay: i * 0.1, vol: 0.03 }));
         },
         win() {
-          [294, 349, 440, 587, 698, 880].forEach((f, i) =>
+          [294, 370, 440, 587, 740, 880].forEach((f, i) =>
             Snd.tone(f, 900, { type: 'triangle', delay: i * 0.1, vol: 0.045 }));
           Snd.noise(400, { freq: 2600, q: 0.9, vol: 0.04, delay: 0.2 });
         },
@@ -937,87 +987,12 @@ export default {
         empty() { Snd.tone(120, 90, { type: 'square', vol: 0.02 }); },
         siren() { Snd.tone(660, 400, { type: 'sawtooth', to: 440, vol: 0.02 }); },
         page()  { Snd.noise(120, { freq: 1500, q: 0.5, vol: 0.03 }); },
-        /* he talks in short flat blips, well under everything else */
-        kid()   { for (let i = 0; i < 3; i++)
-                    Snd.tone(300 + (i % 2) * 70, 30, { type: 'square', delay: i * 0.05, vol: 0.014 }); }
       };
 
       /* ---- 33.14 the score ------------------------------------------------- */
-      const Song = {
-        on:false, cur:'desert', bus:null, when:0, timer:null, voices:[], g0:-1, swap:null, FADE:1.2, heat:0,
-        ensure() { Snd.wake(); if (!Snd.ctx) return false;
-          if (!this.bus) { this.bus = Snd.ctx.createGain(); this.bus.gain.value = 0.0001; this.bus.connect(Snd.ctx.destination); }
-          return true; },
-        voice(f, at, dur, type, vol) {
-          const c = Snd.ctx, o = c.createOscillator(), gn = c.createGain();
-          o.type = type; o.frequency.setValueAtTime(f, at);
-          gn.gain.setValueAtTime(0.0001, at);
-          gn.gain.exponentialRampToValueAtTime(vol, at + 0.05);
-          gn.gain.setValueAtTime(vol, at + dur * 0.5);
-          gn.gain.exponentialRampToValueAtTime(0.0001, at + dur);
-          o.connect(gn); gn.connect(this.bus); o.start(at); o.stop(at + dur + 0.05);
-          this.voices.push(o);
-          o.onended = () => { const i = this.voices.indexOf(o); if (i >= 0) this.voices.splice(i, 1); };
-        },
-        bar(t0, sg) {
-          const e = 30 / sg.bpm, H = this.heat;
-          sg.pad.forEach(n  => this.voice(CK_HZ[n[0]], t0 + n[1] * e, n[2] * e * 0.96, 'triangle', 0.03));
-          sg.bass.forEach(n => this.voice(CK_HZ[n[0]], t0 + n[1] * e, n[2] * e * 0.9, 'triangle', 0.055));
-          sg.lead.forEach(n => this.voice(CK_HZ[n[0]], t0 + n[1] * e, n[2] * e * 0.9, 'square', 0.036));
-          if (sg.arp && H >= 1) sg.arp.forEach(n => this.voice(CK_HZ[n[0]], t0 + n[1] * e, n[2] * e * 0.7, 'triangle', 0.022));
-          if (H >= 2) for (let k = 0; k < sg.len; k += 4) this.voice(62, t0 + k * e, e * 0.4, 'triangle', 0.045);
-          return sg.len * e;
-        },
-        want(id) { if (id !== this.cur) { if (this.on) this.crossfade(id); else this.cur = id; } },
-        crossfade(next) {
-          if (!Snd.ctx || !this.bus) { this.cur = next; return; }
-          clearTimeout(this.timer); clearTimeout(this.swap); this.on = false;
-          const now = Snd.ctx.currentTime, gn = this.bus.gain, F = this.FADE;
-          gn.cancelScheduledValues(now); gn.setValueAtTime(Math.max(0.0001, gn.value), now);
-          gn.exponentialRampToValueAtTime(0.0001, now + F);
-          this.voices.forEach(o => { try { o.stop(now + F + 0.02); } catch (e) {} });
-          this.voices = [];
-          this.swap = setTimeout(() => { this.swap = null; this.cur = next;
-            if (alive && CRT.on && Vol.mus > 0) this.start(); }, F * 1000 + 40);
-        },
-        level(ramp) {
-          if (!this.bus || !Snd.ctx) return;
-          const want = musGain() * Mixer.get('cook');
-          if (ramp == null && Math.abs(want - this.g0) < 0.0005) return;
-          this.g0 = want;
-          const now = Snd.ctx.currentTime, gn = this.bus.gain;
-          gn.cancelScheduledValues(now); gn.setValueAtTime(Math.max(0.0001, gn.value), now);
-          gn.exponentialRampToValueAtTime(Math.max(0.0002, want * 0.8), now + (ramp || 0.4));
-        },
-        sync() { if (!(alive && CRT.on && Vol.mus > 0)) { this.stop(); return; }
-                 if (this.swap) return; if (this.on) this.level(); else this.start(); },
-        start() { if (this.on || !this.ensure()) return;
-          this.on = true; this.g0 = -1; this.when = Snd.ctx.currentTime + 0.15; this.level(this.FADE); this.tick(); },
-        tick() {
-          if (!this.on || !Snd.ctx) return;
-          const now = Snd.ctx.currentTime;
-          if (this.when < now) this.when = now + 0.05;
-          const len = this.bar(this.when, CK_SONGS[this.cur] || CK_SONGS.desert);
-          this.when += len;
-          this.timer = setTimeout(() => this.tick(), Math.max(300, len * 1000 - 500));
-        },
-        stop() {
-          clearTimeout(this.swap); this.swap = null;
-          if (!this.on) return;
-          clearTimeout(this.timer); this.on = false;
-          if (!this.bus || !Snd.ctx) { this.voices = []; return; }
-          const now = Snd.ctx.currentTime, gn = this.bus.gain;
-          gn.cancelScheduledValues(now); gn.setValueAtTime(Math.max(0.0001, gn.value), now);
-          gn.exponentialRampToValueAtTime(0.0001, now + 0.7);
-          this.voices.forEach(o => { try { o.stop(now + 0.72); } catch (e) {} });
-          this.voices = [];
-        }
-      };
-      const mixerHandler = ev => {
-        if (!alive) { window.removeEventListener('mixer-changed', mixerHandler); return; }
-        if (ev.detail && ev.detail.channel === 'cook') Song.level(0.2);
-      };
-      winL.on(window, 'mixer-changed', mixerHandler);
+      /* real instruments on the studio (score.js), played by music.js on the game's own channel: the tune follows the bench, the two
+         layers come in as it goes wrong, and a won or a ruined batch gets a stinger over the top */
+      const Song = createCookMusic({ studio: () => Studio, playing: () => alive && CRT.on && Vol.mus > 0 });
 
       /* ---- 33.15 input ----------------------------------------------------- */
       function refresh() {
@@ -1044,7 +1019,7 @@ export default {
         const sx = 420 / cv.clientWidth, sy = 320 / cv.clientHeight;
         const mx = ev.offsetX * sx, my = ev.offsetY * sy;
         if (mode === 'story') { skipStory(); return; }
-        if (mode === 'won') { if (winT < 0) { winT = 0; kid = null; return; } nextAfterWin(); return; }
+        if (mode === 'won') { if (kid && kid.hold) { kidNext(); return; } nextAfterWin(); return; }
         if (mode === 'book') { mode = 'menu'; sfx.page(); refresh(); return; }
         if (mode === 'menu') {
           for (let i = 0; i < 10; i++) {
@@ -1062,22 +1037,29 @@ export default {
         const b = bottleAt(mx, my);
         if (b >= 0) pour(b);
       });
+      /* the cards a bench owes you are read before it, one click each; then the bench begins */
+      function beginBench(n) {
+        const q = owed(n, SV.story);
+        if (!q.length) { resets = 0; lvRuins = 0; startLevel(n); return; }
+        storyQ = q.slice(1); storyIx = q[0]; storyThen = n; storyT = 0; mode = 'story';
+        SV.story[storyIx] = 1; save();
+      }
       function skipStory() {
         if (storyT < 2.2) { storyT = 2.3; return; }
         sfx.page();
-        if (storyIx >= 10) { mode = 'menu'; refresh(); return; }
-        resets = 0; lvRuins = 0; startLevel(storyIx + 1);
+        if (storyIx >= CK_STORY.length) { mode = 'menu'; refresh(); return; }
+        if (storyQ.length) { storyIx = storyQ.shift(); SV.story[storyIx] = 1; save(); storyT = 0; return; }
+        resets = 0; lvRuins = 0; startLevel(storyThen);
       }
       function nextAfterWin() {
-        if (L.id >= 10) { storyIx = 10; storyT = 0; mode = 'story'; ach('a22'); Song.want('fall'); }
-        else if (!SV.seen['c' + (L.id + 1)]) { SV.seen['c' + (L.id + 1)] = 1; save(); storyIx = L.id; storyT = 0; mode = 'story'; }
-        else { resets = 0; lvRuins = 0; startLevel(L.id + 1); }
+        if (L.id >= 10) { storyIx = CK_STORY.length; storyQ = []; storyT = 0; mode = 'story'; ach('a22'); Song.want('fall'); }
+        else beginBench(L.id + 1);
         refresh();
       }
       cv.addEventListener('keydown', ev => {
         const k = ev.key;
         if (k === ' ' || k === 'Enter') { ev.preventDefault();
-          if (mode === 'story') skipStory(); else if (mode === 'won') { if (winT < 0) { winT = 0; kid = null; } else nextAfterWin(); } return; }
+          if (mode === 'story') skipStory(); else if (mode === 'won') { if (kid && kid.hold) kidNext(); else nextAfterWin(); } return; }
         if (mode !== 'play') { if (k === 'Escape') { mode = 'menu'; refresh(); } return; }
         if (k >= '1' && k <= '9') { ev.preventDefault(); pour(+k - 1); }
         if (k === 'u' || k === 'U') undo();
@@ -1127,8 +1109,8 @@ export default {
             say(n >= 4 ? 'stuck3' : n >= 2 ? 'stuck2' : st.steps === 0 ? 'stuck1' : 'idle');
           }
         }
-        if (kid) { kid.t += step; if (kid.t > kid.life) kid = null; }
-        if (winT > 0 || mode === 'won') winT += step;
+        if (kid) { kid.t += step; voiceKid(); if (!kid.hold && kid.t > kid.life) kid = null; }
+        if (winT > 0 || (mode === 'won' && !kid)) winT += step;
         if (deadT > 0) { deadT -= step; if (deadT <= 0) { const keep = known; startLevel(L.id); known = keep; resets++; } }
 
         /* the pour, travelling */
@@ -1144,8 +1126,8 @@ export default {
         if (mode === 'play' && L) {
           const tight = L.sweep && Math.abs(st.sweep - st.x) <= 3;
           const late = st.steps > L.par;
-          Song.heat = tight ? 2 : late ? 1 : 0;
-        } else Song.heat = 0;
+          Song.setHeat(tight ? 2 : late ? 1 : 0);
+        } else Song.setHeat(0);
 
         g.save();
         g.scale(RES, RES);
@@ -1205,7 +1187,7 @@ export default {
 
       load();
       if (SV.lv > 1 || SV.seen.c1) { mode = 'menu'; L = CK_LV[0]; }
-      else { mode = 'story'; storyIx = 0; storyT = 0; SV.seen.c1 = 1; save(); Song.want('desert'); }
+      else { SV.seen.c1 = 1; beginBench(1); Song.want('desert'); }
       window.__ckDebug = { win: () => win(), start: n => startLevel(n), get mode() { return mode; }, get winT() { return winT; }, get kid() { return kid; } };
       refresh();
       setTimeout(() => cv.focus(), 60);

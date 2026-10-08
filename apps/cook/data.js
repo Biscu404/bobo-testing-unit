@@ -205,76 +205,7 @@ export const CK_LV = [
 
 ];
 
-/* ---- 33.2 the story -------------------------------------------------------
-   Ten chapters and an ending: the plot of Breaking Bad, told straight, names
-   and all. An earlier draft left every name out and hinted at the show; it was
-   asked to stop beating around the bush. A few short lines a chapter, so it gets
-   read and not skipped. Every line is kept under 60 characters, so none of
-   them wraps on the card (drawStory in index.js wraps at 366 px of 10px
-   monospace).
-   ========================================================================== */
-export const CK_STORY = [
-  { sc:'class', t:'THE DIAGNOSIS',
-    l:['Walter White teaches high-school chemistry in Albuquerque',
-       'and washes cars on the side. He is brilliant and broke.',
-       'Then a doctor tells him he has stage 3 lung cancer.',
-       'Months to live, a baby on the way, and nothing to leave.'] },
-  { sc:'rv', t:'JESSE PINKMAN',
-    l:['Riding along on a DEA raid with his brother-in-law Hank,',
-       'Walt sees a former student flee the house: Jesse Pinkman,',
-       'a small-time meth dealer. Walt tracks him down and offers',
-       'a deal: Walt cooks, Jesse sells, and they split the money.'] },
-  { sc:'desert', t:'THE FIRST BATCH',
-    l:['They cook in a beat-up RV in the New Mexico desert.',
-       'Walt\'s meth is 99.1% pure. Nothing else comes close.',
-       'Two rival dealers try to kill them. Walt kills both,',
-       'and learns what he is capable of.'] },
-  { sc:'meet', t:'HEISENBERG',
-    l:['Their first buyer, the cartel dealer Tuco, beats Jesse up.',
-       'Walt walks in alone, says his name is Heisenberg, and',
-       'blows up the room with a fake crystal of explosives.',
-       'Tuco pays up. Walt has found out he likes being feared.'] },
-  { sc:'blue', t:'THE BLUE',
-    l:['The blue meth is the purest on earth. Everyone wants it.',
-       'Saul Goodman, a sleazy lawyer, helps them launder cash.',
-       'Gus Fring, a chicken-restaurant owner who secretly runs',
-       'the drug trade in the Southwest, takes notice.'] },
-  { sc:'lab', t:'THE LAUNDRY',
-    l:['Gus gives Walt a superlab under an industrial laundry',
-       'and $3 million for three months. Real equipment, real',
-       'respect. But Gus plans to kill him when he is done.',
-       'Walt gets there first: he blows Gus up in a nursing home.'] },
-  { sc:'badge', t:'THE BROTHER-IN-LAW',
-    l:['Hank hunts Heisenberg for years, never guessing it is',
-       'the man passing him the potatoes at family dinner.',
-       'Walt\'s wife Skyler finds out and, trapped, launders his',
-       'money through a car wash. Then Hank finds a book that',
-       'Walt\'s dead lab partner signed for him, and he knows.'] },
-  { sc:'car', t:'THE KID FINDS OUT',
-    l:['Jesse falls for Jane, a recovering addict. When she',
-       'chokes in her sleep, Walt stands there and lets her die.',
-       'Later he poisons a child to keep Jesse on his side.',
-       'When Jesse finds out, he goes to burn Walt\'s house down.'] },
-  { sc:'hole', t:'THE DESERT AGAIN',
-    l:['Walt retires with $80 million buried in the desert.',
-       'Hank corners him. Walt offers it all to save his life,',
-       'but the neo-Nazi gang he once hired shoots Hank anyway,',
-       'takes the money, and makes Jesse their slave cook.'] },
-  { sc:'empty', t:'ONE LAST TIME',
-    l:['Dying in hiding, Walt drives back to Albuquerque.',
-       'He says goodbye to his family and rigs a machine gun',
-       'in his trunk. He kills the gang, frees Jesse, and is shot.',
-       'He dies on the floor of a meth lab, touching the steel.'] }
-];
-export const CK_END = {
-  t:'99.1%',
-  l:['Walt finally tells Skyler the truth:',
-     '',
-     '"I did it for me. I liked it. I was good at it.',
-     ' And I was really — I was alive."',
-     '',
-     'The last batch is the cleanest thing he ever made.']
-};
+/* ---- 33.2 the story: story.js (thirteen chapters in the order they happened, and which bench each is read before) ---- */
 
 /* ---- 33.2b the kid --------------------------------------------------------
    The single thing every review of Bartender: The Right Mix comes back to is
@@ -400,42 +331,4 @@ export const CK_ACH = [
   { id:'a24', n:'THE ONE WHO KNOCKS', d:'Finish the eleventh bench.' }
 ];
 
-/* ---- 33.4 four tunes ------------------------------------------------------
-   D minor pentatonic, mostly two notes at a time, a bass that does not move
-   much and a lead that arrives late. It is desert music: the point of it is
-   the space between the notes, and it gets less spacious as things go wrong.
-   ========================================================================== */
-export const CK_HZ = {
-  D2:73.42, F2:87.31, G2:98.00, A2:110.00, Bb2:116.54, C3:130.81,
-  D3:146.83, E3:164.81, F3:174.61, G3:196.00, A3:220.00, Bb3:233.08, C4:261.63,
-  D4:293.66, E4:329.63, F4:349.23, G4:392.00, A4:440.00, Bb4:466.16, C5:523.25,
-  D5:587.33, F5:698.46, G5:783.99, A5:880.00, C6:1046.50, D6:1174.66
-};
-export const CK_SONGS = {
-  desert: { bpm: 62, len: 32,
-    lead: [['D4',0,6],['F4',8,4],['G4',14,2],['A4',16,8],['F4',26,4]],
-    bass: [['D2',0,8],['D2',8,8],['C3',16,8],['D2',24,8]],
-    pad:  [['D3',0,16],['A3',0,16],['C4',16,8],['G3',16,8],['D3',24,8],['A3',24,8]],
-    arp:  [['D5',0,2],['A4',10,2],['F4',20,2],['D5',28,2]] },
-  cook: { bpm: 84, len: 32,
-    lead: [['A4',0,3],['C5',3,1],['D5',4,4],['C5',8,2],['A4',10,2],['G4',12,4],
-           ['F4',16,3],['G4',19,1],['A4',20,4],['D5',24,4],['A4',28,4]],
-    bass: [['D2',0,4],['D2',4,2],['F2',6,2],['G2',8,4],['G2',12,4],
-           ['Bb2',16,4],['A2',20,4],['D2',24,4],['D2',28,4]],
-    pad:  [['D3',0,8],['F3',0,8],['G3',8,8],['Bb3',8,8],['Bb3',16,8],['D4',16,8],['A3',24,8],['D4',24,8]],
-    arp:  [['D5',0,1],['A4',4,1],['F5',8,1],['D5',12,1],['G5',16,1],['D5',20,1],['A4',24,1],['D5',28,1]] },
-  heat: { bpm: 112, len: 24,
-    lead: [['D5',0,2],['F5',2,1],['D5',3,1],['C5',4,2],['A4',6,2],['D5',8,2],['G5',10,2],
-           ['F5',12,4],['D5',16,2],['C5',18,2],['A4',20,4]],
-    bass: [['D2',0,2],['D2',2,1],['D2',4,2],['C3',6,1],['Bb2',8,2],['Bb2',10,1],
-           ['A2',12,2],['A2',14,1],['D2',16,2],['D2',18,1],['G2',20,2],['A2',22,1]],
-    pad:  [['D4',0,6],['A4',0,6],['Bb3',6,6],['F4',6,6],['A3',12,6],['E4',12,6],['D4',18,6],['A4',18,6]],
-    arp:  [['D6',0,1],['A5',1,1],['F5',2,1],['D5',3,1],['A5',4,1],['F5',5,1],['D5',6,1],['A4',7,1],
-           ['Bb4',8,1],['D5',9,1],['F5',10,1],['Bb4',11,1],['A4',12,1],['C5',13,1],['E5',14,1],['A4',15,1],
-           ['D5',16,1],['F5',17,1],['A5',18,1],['D6',19,1],['A5',20,1],['F5',21,1],['D5',22,1],['A4',23,1]] },
-  fall: { bpm: 54, len: 32,
-    lead: [['D5',0,8],['C5',8,4],['Bb4',12,4],['A4',16,8],['F4',24,4],['D4',28,4]],
-    bass: [['D2',0,16],['Bb2',16,8],['A2',24,8]],
-    pad:  [['D3',0,16],['F3',0,16],['Bb2',16,8],['D3',16,8],['A2',24,8],['E3',24,8]],
-    arp:  [['D5',0,4],['F4',12,4],['D4',24,4]] }
-};
+/* ---- 33.4 the score: score.js (real instruments on the studio), played by music.js ---- */
