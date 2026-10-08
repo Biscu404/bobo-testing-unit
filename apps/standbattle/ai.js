@@ -5,11 +5,11 @@
    (hold guard, walk). Being hit throws the plan away. Breaking a throw and the wake-up choice are decided here, once each. */
 
 import { BIT, RULES } from './rules.js';
-import { think } from './ai_think.js';
+import { think, alert } from './ai_think.js';
 
 const ABORT = { hitstun: 1, blockstun: 1, air: 1, down: 1, thrown: 1, wake: 1, roll: 1, ko: 1 };
 
-function snap(o) { return { x: o.x, lane: o.lane, state: o.state, moveId: o.move ? o.move.id : null, mf: o.mf, crouch: o.crouch, y: o.y }; }
+function snap(o) { return { x: o.x, lane: o.lane, state: o.state, moveId: o.move ? o.move.id : null, mf: o.mf, crouch: o.crouch, guard: o.guard, y: o.y }; }
 
 export function createAI(fight, slot, profile, rng) {
   const me = fight.fighters[slot], o = fight.fighters[1 - slot], r = rng || fight.rng.stream('ai' + slot);
@@ -46,8 +46,9 @@ export function createAI(fight, slot, profile, rng) {
       }
       if (b.queue.length) { const v = b.queue.shift(); if (!b.queue.length) b.rest = b.restAfter || 0; return v; }
       if (st === 'idle') {
+        if (!(b.mode && b.mode.react) && alert(b) && b.queue.length) return b.queue.shift();
         if (b.mode) {
-          if (fight.tick >= b.mode.until) b.mode = null;
+          if (fight.tick >= b.mode.until || (b.mode.proj && fight.projectiles.indexOf(b.mode.proj) < 0)) b.mode = null;
           else if (b.mode.kind === 'guard') return back() | (b.mode.crouch ? BIT.DOWN : 0);
           else if (b.mode.kind === 'walk') return b.mode.dir > 0 ? fwd() : back();
           else return 0;

@@ -57,9 +57,9 @@ ok(movelistOf('angelo').list.some(m => m.status && m.status.id === 'drown' && m.
 /* ---- the ladder ---- */
 PLAYABLE.forEach(id => {
   const L = ladderFor(id);
-  ok(L.length === LADDER_LENGTH && L[L.length - 1].boss && L[L.length - 1].stage === 'store', id + ': a ladder of seven that ends with the boss at the store');
+  ok(L.length === LADDER_LENGTH && L[L.length - 1].boss && L[L.length - 1].stage === 'store', id + ': a ladder of six that ends with the boss at the store');
   ok(L.filter(r => r.id === id && r.mirror).length === 1 && L.filter(r => r.id === id).length === 1, id + ': meets itself once, as the mirror');
-  ok(L.filter(r => r.rival).length === 1 && L.every(r => ROSTER[r.id]), id + ': a rival, and everyone it meets exists');
+  ok(L.filter(r => r.mirror).length === 1 && L.every(r => ROSTER[r.id]), id + ': one mirror, and everyone it meets exists');
   ok(new Set(L.slice(0, 4).map(r => r.id)).size === 4, id + ': the four others, each once, first');
   ok(L.every(r => STAGES[r.stage]), id + ': every stage is a stage');
 });
@@ -69,8 +69,8 @@ const ALLOWED = ['reaction', 'error', 'punish', 'tech', 'step', 'combo', 'aggro'
 ['easy', 'normal', 'hard'].forEach(t => ok(Object.keys(TIERS[t]).sort().join() === ALLOWED, t + ': a profile of exactly the numbers the spec lists, none for health, damage or speed'));
 ok(Object.keys(HUMAN).sort().join() === ALLOWED, 'the budget bot is the same program with a person\'s numbers');
 ok(TIERS.easy.reaction > TIERS.normal.reaction && TIERS.normal.reaction > TIERS.hard.reaction && TIERS.easy.error > TIERS.normal.error && TIERS.normal.error > TIERS.hard.error && TIERS.easy.punish < TIERS.normal.punish && TIERS.normal.punish < TIERS.hard.punish && TIERS.easy.tech < TIERS.hard.tech && TIERS.easy.combo < TIERS.hard.combo, 'the tiers are ordered on every number');
-ok(HUMAN.reaction > TIERS.normal.reaction && HUMAN.combo <= 3, 'a person\'s pace is slower than NORMAL and routes at most three hits');
-{ const a = ladderProfile('normal', 0, 7), z = ladderProfile('normal', 6, 7); ok(a.reaction === TIERS.normal.reaction && z.reaction === TIERS.hard.reaction && z.error < a.error, 'a ladder ramps from its tier at the first fight to the next at the boss'); }
+ok(HUMAN.reaction < TIERS.normal.reaction && HUMAN.reaction >= TIERS.hard.reaction && HUMAN.combo <= 3, 'a person\'s pace is between NORMAL and the top of HARD and routes at most three hits');
+{ const a = ladderProfile('normal', 0, 6), z = ladderProfile('normal', 5, 6); ok(a.reaction === TIERS.normal.reaction && z.reaction === TIERS.hard.reaction && z.error < a.error, 'a ladder ramps from its tier at the first fight to the next at the boss'); }
 
 /* ---- the save, the table, the keys, the stages ---- */
 (async () => {
@@ -118,7 +118,7 @@ ok(STAGE_IDS.length === 4 && STAGE_IDS.every(i => BG[i]) && STAGE_IDS.some(i => 
   const two = scoreMatch(mk([0, 0], 120, false, 0), 'normal'), one = scoreMatch(mk([0, 1, 0], 60, false, 0), 'normal');
   ok(two > one && two > 2000 && scoreMatch(mk([0, 0], 120, false, 0), 'hard') === two * 2 && scoreMatch(mk([0, 0], 120, false, 0), 'easy') === two / 2, 'a cleaner, quicker win scores more, and the tier multiplies it (x0.5, x1, x2)');
   ok(scoreMatch(mk([0, 0], 120, false, 8), 'normal') === two + 250 && scoreMatch(mk([0, 0], 120, true, 0), 'normal') > two, 'a long combo and a ring-out add to it');
-  ok(CONTINUES.easy === 5 && CONTINUES.normal === 3 && CONTINUES.hard === 1 && TIER_MULT.hard === 2, 'five, three and one continue');
+  ok(CONTINUES.easy === 7 && CONTINUES.normal === 5 && CONTINUES.hard === 3 && TIER_MULT.hard === 2, 'seven, five and three continues');
   const ladder = [0, 1, 2, 3, 4, 5, 6].reduce((s, i) => s + matchSun('arcade', 'normal', i, true, 0), 0);
   ok(ladder === 1330 && ladder + clearSun('arcade', 'normal') === 2330, 'a ladder pays 1,330 and its clear 1,000 more (' + ladder + ')');
   ok(matchSun('arcade', 'normal', 0, false, 0) === 0 && matchSun('versus', 'normal', 0, true, 0) === 0, 'nothing is paid for a loss or for two people fighting each other');

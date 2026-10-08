@@ -7,10 +7,10 @@ import { createRng } from './rng.js';
 import { defOf, PLAYABLE } from './roster.js';
 import { STAGE_IDS, STAGES } from './stages.js';
 import { ladderFor, MIRROR_TINT, LADDER_LENGTH } from './ladder.js';
-import { profileOf } from './ai_profiles.js';
+import { profileOf, survivalProfile, timeAttackProfile } from './ai_profiles.js';
 import { RULES } from './rules.js';
 
-export const CONTINUES = { easy: 5, normal: 3, hard: 1 };
+export const CONTINUES = { easy: 7, normal: 5, hard: 3 };
 export const TIER_MULT = { easy: 0.5, normal: 1, hard: 2 };
 const SURVIVAL_FRAMES = 45 * 60, HEAL = 30, TA_FIGHTS = 5;
 
@@ -58,7 +58,7 @@ export function createSession(cfg) {
     const d0 = defOf(S.p1), d1 = defOf(op.id, op.mirror ? { tint: MIRROR_TINT } : null);
     const stage = STAGES[S.stageId && (S.mode === 'versus' || S.mode === 'cpu') ? S.stageId : op.stage] || STAGES.street;
     const cfg2 = { defs: [d0, d1], stage, humans: [true, !!human2], rng: createRng((cfg.seed || 'session') + ':fight' + S.matches), label: S.label(), boss: !!op.boss };
-    if (!human2) cfg2.profile = S.mode === 'arcade' || S.mode === 'timeattack' ? profileOf(tier, S.i, Math.max(2, S.total)) : S.mode === 'survival' ? profileOf(tier, Math.min(S.wins, 11), 12) : profileOf(tier, 0, 1);
+    if (!human2) cfg2.profile = S.mode === 'arcade' ? profileOf(tier, S.i, Math.max(2, S.total)) : S.mode === 'timeattack' ? timeAttackProfile(S.i, Math.max(2, S.total)) : S.mode === 'survival' ? survivalProfile(S.wins) : profileOf(tier, 0, 1);
     if (S.mode === 'survival' || S.mode === 'timeattack') { cfg2.wins = 1; cfg2.timerFrames = SURVIVAL_FRAMES; }
     if (S.mode === 'survival' && S.carry != null) cfg2.hp = [S.carry, null];
     if (S.mode === 'survival') cfg2.carry = true;

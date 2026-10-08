@@ -78,7 +78,7 @@ export function optionsScene(app) {
       title(g, 'OPTIONS', W / 2, 20, 3);
       drawMenu(g, items(), sel, W / 2, 80, 24, tsec, { w: 240 });
       const t = app.meta.difficulty;
-      text(g, t === 'easy' ? 'THE CPU REACTS SLOWLY AND MAKES MISTAKES. FIVE CONTINUES. SCORE X0.5.' : t === 'normal' ? 'THE CPU PLAYS A REAL GAME. THREE CONTINUES.' : 'THE CPU REACTS IN EIGHT FRAMES. ONE CONTINUE. SCORE X2.', W / 2, 190, { scale: 1, align: 'center', color: '#C8D0F0' });
+      text(g, t === 'easy' ? 'THE CPU REACTS SLOWLY AND MAKES MISTAKES. SEVEN CONTINUES. SCORE X0.5.' : t === 'normal' ? 'THE CPU PLAYS FAIRLY AND GETS BETTER EACH STAGE. FIVE CONTINUES.' : 'THE CPU READS YOU AND PUNISHES. THREE CONTINUES. SCORE X2.', W / 2, 190, { scale: 1, align: 'center', color: '#C8D0F0' });
       text(g, 'THE SAME FIGHTERS, THE SAME NUMBERS: ONLY THE CPU\'S EYES AND NERVES CHANGE.', W / 2, 204, { scale: 1, align: 'center', color: '#9FB0D8' });
     },
     hint() { return 'UP / DOWN: CHOOSE   LEFT / RIGHT / ENTER: CHANGE   ESC: BACK'; }

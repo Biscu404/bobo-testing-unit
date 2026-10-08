@@ -4,17 +4,17 @@
 export default [
   /* standing */
   ['jab',       'JAB',             'LP',     'h', 10, 1, 14,  8,   1,  6, 46, 'jab',        { combo: true }],
-  ['cross',     'STRAIGHT',        'RP',     'h', 12, 1, 18,  7,  -3,  9, 54, 'cross',      {}],
-  ['snap',      'FRONT SNAP',      'LK',     'm', 13, 1, 17,  4,  -4,  8, 58, 'frontkick',  {}],
-  ['high',      'HIGH ROUNDHOUSE', 'RK',     'h', 15, 2, 22, 10,  -9, 14, 66, 'roundhouse', { track: 'both', ch: 'launch' }],
+  ['cross',     'STRAIGHT',        'RP',     'h', 12, 1, 18, 7, -3, 10, 56, 'cross',      {}],
+  ['snap',      'FRONT SNAP',      'LK',     'm', 13, 1, 17, 4, -4, 9, 60, 'frontkick',  {}],
+  ['high',      'HIGH ROUNDHOUSE', 'RK',     'h', 15, 2, 22, 10, -9, 15, 68, 'roundhouse', { track: 'both', ch: 'launch' }],
   /* forward */
-  ['elbow',     'STAR ELBOW',      'f+LP',   'm', 14, 1, 19,  6,  -3, 10, 50, 'elbow',      {}],
+  ['elbow',     'STAR ELBOW',      'f+LP',   'm', 14, 1, 19, 6, -3, 11, 50, 'elbow',      {}],
   ['drive',     'DRIVE PUNCH',     'f+RP',   'm', 16, 2, 24, 11, -10, 18, 58, 'hook',       {juggle: true, stand: true, splat: true, push: [16, 18] }],
   ['knee',      'KNEE LIFT',       'f+LK',   'm', 15, 1, 22,  5,  -8, 12, 48, 'knee',       {}],
   ['heel',      'SPINNING HEEL',   'f+RK',   'm', 20, 2, 26, null, -14, 20, 64, 'spinheel', { hit: 'down', track: 'near' }],
   /* back */
   ['backfist',  'BACKFIST',        'b+LP',   'h', 12, 1, 17,  5,  -3,  8, 52, 'backfist',   { track: 'far' }],
-  ['sidekick',  'SIDE KICK',       'b+RK',   'm', 16, 1, 22,  3,  -9, 12, 70, 'sidekick',   {}],
+  ['sidekick',  'SIDE KICK',       'b+RK',   'm', 16, 1, 22, 3, -9, 11, 66, 'sidekick',   {}],
   /* strings */
   ['jab_cross',    'JAB, STRAIGHT',         'jab>RP',        'h',  7, 1, 17,  7,  -3,  8, 54, 'cross',   { combo: true }],
   ['jab_cross_lk', 'JAB, STRAIGHT, KICK',   'jab_cross>LK',  'l', 10, 1, 20,  2, -10,  7, 56, 'lowkick', {}],
@@ -30,7 +30,7 @@ export default [
   /* run */
   ['dashpunch', 'ORA CHARGE',      'ff+RP',  'm', 18, 2, 24,  8, -10, 16, 66, 'lunge',      {juggle: true, stand: true }],
   /* specials */
-  ['finger',    'STAR FINGER',     'qcf+LP', 'm', 20, 1, 24,  4,  -9, 12, 96, 'finger',     { stand: true }],
+  ['finger',    'STAR FINGER',     'qcf+LP', 'm', 22, 1, 24, 4, -9, 10, 82, 'finger',     { stand: true }],
   ['barrage',   'ORA BARRAGE',     'qcf+RP', 'm', 16, 17, 22,  3, -12, 22, 60, 'barrage',   {juggle: true, stand: true, hits: [[16, 4], [20, 4], [24, 4], [28, 4], [32, 6]] }],
   ['crash',     'STAR CRASH',      'qcb+RK', 'm', 22, 2, 26, null, -16, 20, 68, 'roundhouse', {juggle: true, hit: 'launch', track: 'both' }],
   ['breaker',   'STAR BREAKER',    'ch+RP',  'm', 26, 1, 30, null, -20, 26, 56, 'uppercut',  { hit: 'bounce', stand: true, splat: true }],
