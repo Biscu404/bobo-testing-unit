@@ -12,6 +12,8 @@ import { drawMini, MINI_W, MINI_H } from './pet_art.js';
 import { showMenu, hideMenus } from './menus.js';
 import { petIcons, petMoveIcon } from './desktop.js';
 import { openWindow, openWins } from './wm.js';
+import { dressed as trophyDressed, event as trophy } from '../apps/elephant/trophy_calls.js';
+import { ELEPHANT } from './cos_data.js';
 import { LINES, PUSH_LINES, GOODBYES_DAY, GOODBYES_NIGHT, WAKES, WAKES_NEAR, HOME_LINES, DOOR_LINES, choose } from './pet_lines.js';
 
 const KEY = 'templeos.pet.v1', S = 2, SW = MINI_W * S, SH = MINI_H * S, FOOT = 56 * S;
@@ -29,7 +31,9 @@ let el = null, cv = null, g = null, bub = null, raf = null, last = 0, drawAt = 0
 const subs = [];
 const desk = () => document.getElementById('desktop');
 const owned = () => !!(window.Cos && window.Cos.has('elephant', 'pet'));
-const tell = () => subs.forEach(f => { try { f(); } catch (e) {} });
+const tell = () => { subs.forEach(f => { try { f(); } catch (e) {} }); wardrobeNow(); };
+/* the trophies ask what he wears and what is owned whenever either may have changed */
+function wardrobeNow() { try { const all = ELEPHANT.filter(i => i.slot !== 'free').every(i => window.Cos && window.Cos.has('elephant', i.id)); trophyDressed(st.wear, all); } catch (e) { /* never into the desk */ } }
 const snd = (...a) => { try { window.Snd.tone(...a); } catch (e) {} };
 const pick = a => a[Math.floor(Math.random() * a.length)];
 
@@ -78,7 +82,7 @@ function goodbye() {
   speak(line(lateHour() ? GOODBYES_NIGHT : GOODBYES_DAY), 4.2);
   snd(330, 420, { type: 'triangle', to: 196, vol: 0.016 });
 }
-function sleep() { P.mode = 'sleep'; P.t = 0; P.wait = 25 + Math.random() * 45; P.snore = 1; speak('...', 1.6); }
+function sleep() { trophy('sleep'); P.mode = 'sleep'; P.t = 0; P.wait = 25 + Math.random() * 45; P.snore = 1; speak('...', 1.6); }
 function talk() { P.mode = 'talk'; P.t = 0; P.wait = 5.6; speak(line(LINES)); }
 function hop() { P.mode = 'hop'; P.t = 0; P.wait = 0.9; snd(660, 50, { type: 'triangle', to: 880, vol: 0.02 }); }
 function pushIcon() {
@@ -125,7 +129,7 @@ function tick(ts) {
   } else if (P.mode === 'sleep') {
     P.snore -= dt; if (P.snore <= 0) { P.snore = 3.2; snd(104, 700, { type: 'sine', to: 78, vol: 0.008 }); }
     const c = { x: P.x + SW / 2, y: P.y + SH / 2 };
-    if (Math.hypot(ptr.x - c.x, ptr.y - c.y) < 80 && P.t > 3) { P.mode = 'idle'; P.t = 0; P.wait = 2; speak(line(WAKES_NEAR), 3.5); }
+    if (Math.hypot(ptr.x - c.x, ptr.y - c.y) < 80 && P.t > 3) { trophy('woken'); P.mode = 'idle'; P.t = 0; P.wait = 2; speak(line(WAKES_NEAR), 3.5); }
     else if (P.t > P.wait) { P.mode = 'idle'; P.t = 0; P.wait = 1.5; speak(line(WAKES), 3.2); }
   } else if (P.mode === 'goodbye') {
     if (P.t > P.wait) sleep();
@@ -148,7 +152,7 @@ function arrive() {
     if (j && j.kind === 'enter' && j.stage === 0) {
       j.stage = 1; P.dir = j.side < 0 ? 1 : -1;
       P.to = { x: j.side < 0 ? j.r.x + 4 : j.r.x + j.r.w - SW - 4, y: P.y };
-      ARRIVE.side = j.side; ARRIVE.t0 = performance.now();
+      ARRIVE.side = j.side; ARRIVE.t0 = performance.now(); if (P.viaDoor) { P.viaDoor = false; trophy('door'); }
       st.out = false; save(); tell();
       return;
     }
@@ -184,7 +188,7 @@ function wire() {
     const d = P.down; if (!d) return;
     P.down = null;
     try { el.releasePointerCapture(ev.pointerId); } catch (e) { /* already let go */ }
-    if (d.moved) { P.x = clampX(P.x); P.y = clampY(P.y); P.mode = 'hop'; P.t = 0; P.wait = 0.8; speak('thank you, friend', 2.5); save(); return; }
+    if (d.moved) { trophy('picked-up'); P.x = clampX(P.x); P.y = clampY(P.y); P.mode = 'hop'; P.t = 0; P.wait = 0.8; speak('thank you, friend', 2.5); save(); return; }
     if (P.mode === 'sleep') { P.mode = 'idle'; P.t = 0; P.wait = 2; speak('i wasn\'t asleep. i was thinking', 3.5); return; }
     trumpet(); hop(); speak(Math.random() < 0.4 ? 'hello, friend' : line(LINES), 4.5);
   };
@@ -258,6 +262,7 @@ export const Pet = {
   /* returns the way to stop listening, for a window that has closed */
   onChange: f => { subs.push(f); return () => { const i = subs.indexOf(f); if (i >= 0) subs.splice(i, 1); }; },
   boot() {
+    wardrobeNow();
     if (!st.out || !owned()) return;
     const { w, h } = room();
     P.x = Math.max(0, Math.min(w - SW, st.x)); P.y = Math.max(30, Math.min(h - SH - 4, st.y));
@@ -275,7 +280,7 @@ export const Pet = {
     const x0 = r.x + r.w / 2 - SW / 2, y0 = r.y + r.h - SH - 20;
     const right = r.x + r.w + SW + 60 < w;
     const x1 = right ? r.x + r.w + 20 : Math.max(0, r.x - SW - 20), y1 = Math.min(h - SH - 6, r.y + r.h - SH + 10);
-    P.x = x0; P.y = y0; P.dir = x1 >= x0 ? 1 : -1;
+    trophy('out'); P.x = x0; P.y = y0; P.dir = x1 >= x0 ? 1 : -1;
     P.mode = 'jump'; P.t = 0; P.jump = { x0, y0, x1: Math.max(0, Math.min(w - SW, x1)), y1: Math.max(30, y1), len: 1.0, say: 'outside. there is more of it than i thought' };
     snd(392, 120, { type: 'triangle', to: 660, vol: 0.03 });
     save(); tell();
@@ -304,7 +309,7 @@ export const Pet = {
       setTimeout(go, 450);
       return;
     }
-    P.mode = 'door'; P.t = 0;
+    P.mode = 'door'; P.t = 0; P.viaDoor = true;
     speak(line(DOOR_LINES), 3.2);
     snd(196, 90, { type: 'square', vol: 0.012 }); snd(196, 90, { type: 'square', delay: 0.14, vol: 0.012 });
     openWindow('elephant').catch(() => {}).then(() => setTimeout(go, 450));
@@ -314,9 +319,10 @@ export const Pet = {
   putBack() {
     const l = st.last;
     if (!l) return false;
-    if (petMoveIcon(l.name, l.x, l.y)) { st.last = null; speak('put back. i was only helping, kiddo', 3.5); save(); return true; }
+    if (petMoveIcon(l.name, l.x, l.y)) { trophy('put-back'); st.last = null; speak('put back. i was only helping, kiddo', 3.5); save(); return true; }
     st.last = null; save();
     return false;
   }
 };
 window.Pet = Pet;
+try { window.addEventListener('cos-changed', wardrobeNow); } catch (e) { /* no window */ }

@@ -8,6 +8,8 @@ import { cup, wearOf, TIER_NAME } from '../apps/trophy_art.js';
 
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
 const SHOW_MS = 4200, GAP_MS = 350, MAX_WAIT = 4;
+/* the toys have no score and no fail state, so their cards are the quiet kind: the same frame and words, no sparkle and one soft chime whatever the tier (docs/achievements/toys.md) */
+const QUIET = { elephant: 1, crayon: 1, garage: 1, hifi: 1, notes: 1, tools: 1 };
 
 export function makeToast(T, o) {
   const Snd = () => window.Snd;
@@ -24,7 +26,8 @@ export function makeToast(T, o) {
     meta: () => { [1046, 1568, 2093, 3136].forEach((f, i) => { tone(f, 210, { type: 'sine', delay: i * 0.1, vol: 0.04 }); tone(f, 210, { type: 'sine', delay: i * 0.1 + 0.18, vol: 0.014 }); }); },
     joke: () => { tone(440, 70, { type: 'square', to: 880, vol: 0.03 }); tone(660, 90, { type: 'square', to: 1320, delay: 0.1, vol: 0.03 }); }
   };
-  const sound = d => (FIGURE[d.kind === 'joke' ? 'joke' : wearOf(d)] || FIGURE.B)();
+  const calm = d => !!QUIET[d.app] && !d.secret && !d.mastery;
+  const sound = d => calm(d) ? [660, 784].forEach((f, i) => tone(f, 170, { type: 'sine', delay: i * 0.11, vol: 0.03 })) : (FIGURE[d.kind === 'joke' ? 'joke' : wearOf(d)] || FIGURE.B)();
   T.sound = sound;
 
   /* ---- the card ----------------------------------------------------------------------------------------------------------------- */
@@ -43,7 +46,7 @@ export function makeToast(T, o) {
     body.append(top, el('div', 'tc-name', o.nameOf(d)), el('div', 'tc-desc', o.descOf(d)));
     if (extra) body.appendChild(el('div', 'tc-more', extra));
     c.append(icon, body);
-    if (wear === 'G' || wear === 'meta') for (let i = 0; i < 7; i++) { const s = el('i', 'tc-spark'); s.style.left = (10 + i * 13) + '%'; s.style.animationDelay = (i * 0.17) + 's'; c.appendChild(s); }
+    if ((wear === 'G' || wear === 'meta') && !calm(d)) for (let i = 0; i < 7; i++) { const s = el('i', 'tc-spark'); s.style.left = (10 + i * 13) + '%'; s.style.animationDelay = (i * 0.17) + 's'; c.appendChild(s); }
     c.addEventListener('mousedown', ev => { ev.stopPropagation(); hide(true); if (o.open) o.open(d.id); });
     c.dataset.id = d.id;
     return c;

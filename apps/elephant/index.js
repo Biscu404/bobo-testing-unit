@@ -11,6 +11,7 @@ import { Pet } from '../../kernel/pet.js';
 import { ELEPHANT } from '../../kernel/cos_data.js';
 import { drawWear } from './wear.js';
 import { scopedListeners, whenGone } from '../lifecycle.js';
+import { talked, heard, placed } from './trophy_calls.js';
 
 export default {
   open() {
@@ -769,6 +770,7 @@ export default {
          them before you hear any one of them twice.
          ========================================================================== */
       let bag = [];
+      const tro = { talked, heard, placed };
       function nextQuote() {
         if (!bag.length) {
           bag = ELE_QUOTES.map((q, i) => i);
@@ -777,7 +779,8 @@ export default {
             const s = bag[i]; bag[i] = bag[j]; bag[j] = s;
           }
         }
-        return ELE_QUOTES[bag.pop()];
+        const i = bag.pop(); tro.heard(i);
+        return ELE_QUOTES[i];
       }
 
       let place = 0, placeT = 0;
@@ -786,6 +789,7 @@ export default {
 
       function talk() {
         if (phase === 'think') return;
+        tro.talked();
         phase = 'think'; pT = 0; wait = 1.9 + Math.random() * 1.1;
         shown = 0; spoke = 0; openStep = 0;
         bTalk.textContent = '...';
@@ -793,7 +797,7 @@ export default {
       }
       function goPlace(n) {
         place = ((n % ELE_PLACES.length) + ELE_PLACES.length) % ELE_PLACES.length;
-        placeT = 0;
+        placeT = 0; tro.placed(place);
         Song.want(ELE_PLACES[place].song);
         info.textContent = ELE_PLACES[place].name + '  ·  CLICK HIM, OR PRESS TALK';
         sfx.move();
