@@ -561,6 +561,13 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   `help.js` (F1) lists every key. **LEARN** (`lessons*.js`) is now THE BASICS: the same eight short interactive lessons (the kit,
   pitch, the pulse, five safe notes, major and minor, chords, loops, your first track) in a dark control-room theme and plain
   adult sentences, with a tick for each one you have got.
+  **There are two teachers.** **LEARN** is THE BASICS (eight lessons); in its eighth lesson (*your first track*) a yellow line follows the music across the grid and lights the column it is on, and in every lesson the instrument
+  and band choices carry a yellow border and a tick while they are the picked one (`X.radio()`, `.l-pad.sel`). **STUDIO COURSE** (`course*.js`) is a coach that sits on top of the *real* Garage and teaches it by watching what you do: it wraps the Garage's own functions while it is open (and puts
+  them back), lights the control to press, and ticks its goals off as the song and the screen change. Nothing is locked (SKIP, BACK and CONTENTS are always there) and the place is kept. **Part one** takes every button and panel apart on a
+  practice song (`course_tour_a/b/c.js`, eight chapters; `course_practice.js`: SUNDAY MORNING, flawed on purpose: the tune is an octave too low, and the strings and the bass sit in each other's way) and teaches how to *alter an existing song*
+  (transpose, quantise, the EQ, the room, the segments, the export). **Part two is to write a whole song in a style you choose** (`course_write.js`, `course_genres*.js`: POP, ROCK, LO-FI, DANCE, WALTZ, LULLABY, EPIC): each genre has its own
+  tempo, scale, drums, bass, chords, tune and mixing advice at every stage, with `{CHORDS}`/`{TONES}` filled from *your* song, and `course_rules.js` checks what you wrote against the genre (`course_util.js` reads the song and nothing else).
+  `node apps/garage/course_check.js` proves it can be finished: every genre has a model song that passes every goal, and every tour step can be met.
 - `sweeper`: `apps/sweeper/index.js` - **Dungeon Sweeper** (it was Sweeper: the icon is `::/DungeonSweeper`, the registry id and `appId` are still `sweeper`, and `RENAMED` in
   `kernel/vfs.js` carries an old install's icon across), a Hollow-Knight-flavoured minesweeper on one scalable canvas (`gfx.js`
   draws a 960x640 sheet onto whatever size the window is, so fullscreen is bigger, not blurrier). Two ways in: the plain
@@ -584,11 +591,15 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   **It pays SUN, and says so on the panel** (`pay.js`, pure; `scripts/check-sun.mjs` holds the budget): a plain win is 80 / 400 / 1,200 SUN plus a time bonus, and pays less for
   every win of the same size in the last half hour (-10 % each, to 15 %: a few thousand an hour at the very fastest, nothing noticed at a normal pace); a room of the descent pays four
   SUN for each geo it is worth, 100 SUN for a first clear (400 for a guardian), a quarter more for no larva hatched, and 40 % of the room on a repeat.
-- `cook`: the story (`CK_STORY`/`CK_END` in `data.js`) is the plot of Breaking Bad told plainly, names and all, ten chapters of
-  four or five lines under 60 characters so none wraps; it used to leave every name out. Jesse (`apps/cook/jesse.js`) is drawn as a person — skin tone, buzzed hair, stubble, the yellow suit and the
+- `cook`: the story is `apps/cook/story.js` (`CK_STORY`, thirteen chapters and an ending, in the order of the show: the diagnosis, Jesse and the first batch are read before the first bench, and a card is read in front
+  of the bench it is about; `STORY_AT` says which) — the plot of Breaking Bad told plainly, names and all, four or five lines under 60 characters so none wraps. Jesse (`apps/cook/jesse.js`) is drawn as a person — skin tone, buzzed hair, stubble, the yellow suit and the
   respirator round his neck. **That portrait is a third user-requested exception to the 16-colour rule** (a face needs a
-  skin tone); nothing else in the app leaves VGA16. On a win he speaks first, in a box that fits what he says, and the
-  BATCH COMPLETE panel does not start until he has finished.
+  skin tone); nothing else in the app leaves VGA16. **What he says is `data.js` (`CK_KID`) plus `lines.js`** (an intro for each bench the first time you sit at it, a line about *that* bench after a win, and what he
+  thinks of your habits: reset, undo, a lot of ruins; he calls you Mr. White now and then); **a win's box is never dismissed by the clock: it waits for a click**, the BATCH COMPLETE panel does not start until he has
+  finished, and only a small intro box goes by itself. **He talks in blips** (`voice.js`: one for each letter, a vowel is a pitch, a stop a click, S and F a hiss, M and N a hum, a rise on a question, a bark on a shout, silent
+  at SFX 0). **The music is a score for the studio's real instruments** (`score.js`: DESERT, COOK, HEAT and FALL, all on D, sixteen bars each, a core and two layers: `h1` when the bench goes wrong, `h2` when the sweep is close, and a WIN and a RUIN
+  stinger; `music.js` crossfades on a bar line when the place changes and rides the layers with `deck.levels`; it plays on the `'cook'` channel, so the mixer's THE COOK slider sets it). `node apps/cook/cook_check.js` holds the
+  lengths, the order, the pools, the blips, the bars and the layers.
 - `bottle` (pour and drink move with the drunkenness: `physics.js`'s `sway/drift/lurch` make the hand wander, rock the bottle and glass, and lurch through its timing without changing a pour's or a drink's length, so the journey's pace in `check-drunk.mjs` still holds): a Jägermeister bottle (baked once and turned by pixel sampling, `raster.js`, with the liquid poured into the *turned*
   interior) and a tumbler that is an object, not a sprite (`glass3d.js`: a thick-walled cylinder with a floor, found pixel by pixel by
   following a ray out of an eye, with the liquor held level by a plane and the volume solved for it). The pour (`pour.js`) is a
