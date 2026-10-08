@@ -45,6 +45,8 @@ node apps/aftere/music_check.js # AfterEgypt's score, layers and sky mapping; no
 node apps/magen/auto_check.js # Magen's auto-press ladder, its unlock at 1,000 presses by hand, and the rates tooltip (pure Node)
 node apps/magen/music_check.js # Magen's score, its band's energy and the seams between tunes (pure Node); apps/bekkedal/music_check.js likewise
 npm run check:music     # instruments, the studio, every game's score, and the style meter's recording
+npm run check:sun       # the SUN budget: every game's real pay tables through a model of an hour of playing it, held to a band (docs/sun-economy.md)
+node apps/sweeper/run_check.js # Dungeon Sweeper: a bot does random things in every room and then finishes it; spells, flags, the compass, the pay (pure Node)
 node apps/garage/edit_check.js # the Garage's note, segment and undo logic (pure Node)
 ```
 Pixel comparison between two builds: `scripts/bekkedal_shots.mjs` twice per build, then `scripts/pngdiff.mjs`.
