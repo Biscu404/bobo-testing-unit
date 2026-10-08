@@ -27,7 +27,7 @@ export function juggle(fight, f, m, away) {
   const a = f.air;
   f.comboIn.juggles++; a.juggles++;
   f.vy = Math.max(f.vy, m.reaction === 'launch' ? m.lift * 0.8 : RULES.JUGGLE_VY);
-  f.vx = away * 1.2;
+  f.vx = away * 0.35;
   if (a.juggles >= RULES.SLUMP_AFTER) a.slump = true;
   if (m.reaction === 'down') { a.slam = true; f.vy = Math.min(f.vy, 2); }
 }

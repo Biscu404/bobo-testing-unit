@@ -112,7 +112,8 @@ function advance(fight, f, o) {
   }
 }
 
-const FREEISH = { idle: 1, attack: 1, dash: 1, backdash: 1, sidestep: 1 };
+/* a combo is over the moment the other fighter is on the floor or on their feet again: a hit on a fighter who is lying or rising is a new one */
+const FREEISH = { idle: 1, attack: 1, dash: 1, backdash: 1, sidestep: 1, down: 1, wake: 1, roll: 1, ko: 1 };
 
 export function stepFighter(fight, f, o) {
   f.t++;

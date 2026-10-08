@@ -21,7 +21,7 @@ export const COMPLETION = {
   gd_herb11: 900, gd_perfect5: 1200, gd_hands: 1500, gd_sun3: 2000,
   ck_knock: 500, ck_oneshot: 500,
   mg_chain60: 500, mg_tree: 700, mg_news: 800, mg_double: 400,
-  sb_bare: 700, sb_scratch: 400,
+  sb_all5: 1200, sb_perfect: 500, sb_hard: 700,
   /* Bekkedal */
   bk_loft: 3000, bk_scenes: 1500, bk_fr8: 1200, bk_fish10: 1000, bk_crops12: 700, bk_legends: 800, bk_mine15: 600, bk_house24: 400, bk_loft100: 1500,
   /* the Bottle, the Elephant, the tools */

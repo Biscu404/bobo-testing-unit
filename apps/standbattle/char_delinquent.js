@@ -24,7 +24,7 @@ export default [
   ['charge',   'CHARGING PUNCH',  'ff+RP',  'm', 17, 2, 24,  9, -10, 15, 64, 'lunge',     { juggle: true }],
   ['lunge',    'LUNGE',           'qcf+LP', 'm', 17, 2, 22,  5, -8, 12, 80, 'lunge',      {}],
   ['flurry',   'FLURRY',          'qcf+RP', 'm', 15, 13, 22, 3, -11, 18, 52, 'barrage',   {juggle: true, hits: [[15, 3], [19, 3], [23, 3], [27, 4]] }],
-  ['spin',     'SPINNING KICK',   'qcb+RK', 'm', 21, 2, 26, null, -15, 18, 66, 'spinheel', {juggle: true, hit: 'launch', track: 'both' }],
+  ['spin',     'SPINNING KICK',   'qcb+RK', 'm', 21, 2, 26, null, -15, 18, 66, 'spinheel', {juggle: true, hit: 'launch', track: 'near' }],
   ['slam',     'HAYMAKER SLAM',   'ch+RP',  'm', 24, 1, 30, null, -19, 22, 56, 'hook',     { hit: 'bounce', splat: true }],
   ...throws(30, 34, 28, 32), ...risers()
 ];

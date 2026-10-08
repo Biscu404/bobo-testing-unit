@@ -5,10 +5,12 @@
 import { trophies } from '../trophy_scope.js';
 
 const TR = trophies('standbattle');
+let OUT = TR;                                  /* the checks swap in a recording sink */
+export const setSink = s => { OUT = s || TR; };
 const guard = f => { try { return f(); } catch (e) { return undefined; } };
 
 export function wireTrophies(fight, info, sink) {
-  sink = sink || TR;
+  sink = sink || OUT;
   info = info || {};
   const d = fight.bus, F = fight.fighters, me = F[0];
   const c = { ended: false, held: false, maxCombo: 0, breaks: 0, dodges: 0, throws: 0, counters: 0, blocks: 0, splats: 0, launches: 0, bounces: 0, specials: 0, detonates: 0, drowns: 0, rolls: 0, rounds: [], hpLost: 0, maxHit: 0 };
@@ -22,7 +24,7 @@ export function wireTrophies(fight, info, sink) {
       if (e.counter) { c.counters++; sink.emit('counter', {}); }
       if (e.move && e.move.special) { c.specials++; sink.emit('special', { move: e.move.id }); }
       if (e.kind === 'detonate') { c.detonates++; sink.emit('detonate', { who: me.id }); }
-      if (e.kind === 'throw') { c.throws++; sink.emit('throw', {}); }
+      if (e.kind === 'throw' && e.move && e.move.status) sink.emit('status', { id: e.move.status.id });
       c.maxHit = Math.max(c.maxHit, e.dmg);
     }
   }));
@@ -61,6 +63,6 @@ export function wireTrophies(fight, info, sink) {
 }
 
 /* the run-level calls: one line each from flow.js and the scenes */
-export const emit = (name, p) => guard(() => TR.emit(name, p || {}));
-export const mark = (set, id) => guard(() => TR.mark(set, id));
+export const emit = (name, p) => guard(() => OUT.emit(name, p || {}));
+export const mark = (set, id) => guard(() => OUT.mark(set, id));
 export const debugOn = () => emit('debug-on');

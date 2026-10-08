@@ -27,3 +27,14 @@ export const dirBit = (f, rel) => (rel === 'f') === (f.facing > 0) ? BIT.RIGHT :
 export const back = f => (f.facing > 0 ? BIT.LEFT : BIT.RIGHT);
 export const events = (fight, k) => fight.log.filter(e => e.k === k);
 export { BIT, RULES, WORLD };
+
+/* the same for the fighter on the right (slot 1) */
+export const perform1 = (fight, D, id, b0 = 0) => planInputs(D.ml.byId.get(id), D.facing).forEach(b => fight.step(b0, b));
+/* a route: [id, frames to walk forward first] ..., each started the moment the fighter is free */
+export function route(fight, A, seq) {
+  for (const [id, pre] of seq) {
+    let w = 0; while (A.state !== 'idle' && w++ < 140) fight.step(0, 0);
+    for (let k = 0; k < (pre || 0); k++) fight.step(A.facing > 0 ? BIT.RIGHT : BIT.LEFT, 0);
+    planInputs(A.ml.byId.get(id), A.facing).forEach(b => fight.step(b, 0));
+  }
+}
