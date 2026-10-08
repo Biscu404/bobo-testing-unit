@@ -46,6 +46,7 @@ node apps/magen/auto_check.js # Magen's auto-press ladder, its unlock at 1,000 p
 node apps/magen/music_check.js # Magen's score, its band's energy and the seams between tunes (pure Node); apps/bekkedal/music_check.js likewise
 npm run check:music     # instruments, the studio, every game's score, and the style meter's recording
 npm run check:sun       # the SUN budget: every game's real pay tables through a model of an hour of playing it, held to a band (docs/sun-economy.md)
+npm run check:trophies # the ledger: the engine, all 385 trophies, what they pay, the terminal's view (pure Node); node apps/{aftere,standbattle,bottle}/trophy_check.js, node apps/notes/links_check.js
 node apps/holyc/holyc_check.js # HOLYC.EXE: the language, the stage, all thirty-four lesson steps and fifty-six puzzles proved against their model answers (pure Node)
 node apps/sweeper/run_check.js # Dungeon Sweeper: a bot does random things in every room and then finishes it; spells, flags, the compass, the pay (pure Node)
 node apps/garage/edit_check.js # the Garage's note, segment and undo logic (pure Node)
@@ -155,7 +156,7 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   quickest (a 3.5 s pour, a 3.5 s drink, a 2.6 s breather in which clicks do nothing; clicks are never queued and never speed anything up), so
   non-stop drinking is just under two minutes and thirteen of a bottle's seventeen measures to the floor, through seven named stages; a
   steady twenty seconds a measure is still out inside the bottle; one a
-  minute holds a mild glow for ever. **The drink is first-person**: nobody is drawn drinking. The tumbler is an object
+  minute never gets anywhere (it settles at a tenth of a measure: sober), and a glow is held only by drinking when it wears off. **The drink is first-person**: nobody is drawn drinking. The tumbler is an object
   (`apps/bottle/glass3d.js`, a raycast cylinder with real walls, a floor and liquor that stays level with the room): it is lifted
   toward the screen and tipped toward whoever is at the monitor, and what the near edge cannot hold goes over it.
 - **The Jäger passes out.** At the limit (`BAC.LIMIT`) `kernel/blackout.js`
@@ -257,6 +258,28 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   with a few ways of waking. His bubble grows upward from his head (it used to grow down over it). **Called in with no window open** (GO BACK INSIDE, or CALL HIM IN from nowhere),
   he opens the elephant's window himself, waits for it, and walks in.
 
+- **Trophies.** `TROPHIES.EXE` (desktop icon `::/Trophies`, help page TROPHIES, terminal `TROPHIES [GAME]`, `TROPHY <NAME>`, `TROPHIES OPEN`) is the machine's ledger: 385 trophies in
+  eighteen areas (the machine, every game and tool, HOLYC.EXE, and a meta area of its own), 19 of them secret, about 16,400 SUN if every one is earned once. **The engine is pure**
+  (`kernel/trophies_core.js`, `createTrophies(env)`; Node runs all of it in `scripts/check-trophies.mjs`) and a trophy is a definition with exactly one of five ways to be earned:
+  `on + when` (an event and a predicate over its payload), `stat` (a counter or a best: `add`, `max`), `sets` (how many different things were marked), `streak` (in a row, a failure
+  resets) or `poll` (a question the game asks at a checkpoint), plus `derive` for the seals. Tier pays 15 / 40 / 100 SUN (`B`/`S`/`G`) and a game's **mastery seal** (every trophy
+  of that game) 150, as `TROPHY: <NAME>`. **The Cook's twenty-four and Magen's ninety-eight own achievements are mirrors** (`legacy: true`, pay 0, counted nowhere): they keep paying
+  through their own `achSun` and are only shown in the ledger. **Writing a trophy** is one line in `apps/<id>/trophies.js` (`t(id, NAME, tier, kind, 'the exact condition.', rule.on('win', p => p.hits === 0))`
+  from `apps/trophy_kit.js`; `secret(...)` takes a rumour as well; Bekkedal's are `{no,en}`), listed in `APPS` in `kernel/trophies_defs.js`; **a description is the exact condition**
+  and a "never" is scoped to a run, a room or a session (`scope`). `scripts/check-trophies.mjs` holds ids (prefixed with their game), names (capitals, 34 characters), descriptions (one
+  sentence, no two the same), the secrets' rumours, the numbers other files promise (the nine blackout scenes, Bekkedal's crops and places) and the terminal's output.
+  **An app reaches the ledger through `apps/trophy_scope.js`** (`const T = trophies('sweeper')`; `T.emit`, `add`, `max`, `mark`, `streak`, `check`, `hold`/`release`, `drain`, `row`),
+  which does nothing, quietly, if `window.Trophies` is gone: a trophy must never get into a game and a game must run without the ledger (`ctx.trophy` is the same scope, or `null`, for an app that
+  is handed `ctx`). The kernel's own side is `sys.emit(...)` from `kernel/trophy_hook.js`, and `kernel/trophies_wire.js` hears what needs no line added (purchases, windows, the SUN
+  counter, the hour). Each game keeps its calls in `apps/<id>/trophy_calls.js` so `index.js` stays short. **Two ways to see a fact:** an *event* where it happens
+  (a win, a catch, a delete), or a *state scan* where the game's save already holds it (Bekkedal and the Garden derive their facts from the save once a second and emit only the
+  changes: `state` and `rack`); Stand Battle's are read-only observers on its hook bus (`trophies_bridge.js`). **A card never lands on top of a run:** `hold()`/`release()` wrap a
+  run, a fight, a flight, a bench or a blackout, a trophy is recorded the instant it happens and only its card waits (`kernel/trophies_toast.js`: the tier's frame, the cup, the exact
+  condition and the SUN, one at a time, a figure of C-pentatonic notes on the SFX bus, a lower one for a secret, the style meter's chord for a seal; toys' cards are *quiet*). **Silent
+  backfill** (`kernel/trophies_backfill.js`, each game's `backfill(read)`): a machine that has already done a thing is credited without a card, from the old save's own keys. The
+  store is `templeos.trophies.v1` (a damaged one is kept as `.bak`). **The owner's birthday is the 23rd of July** (`sys_birthday`, THE DAY, a secret gold): the machine has to be opened on it.
+  Design record and every threshold: `docs/achievements/`. Checks: `npm run check:trophies`, plus `apps/{aftere,standbattle,bottle}/trophy_check.js` and `apps/notes/links_check.js`.
+
 ### Writing music (for Claude, and anyone else)
 Music is data, not oscillator code. A song is `{ v, title, bpm, key, scale, bars, beats, swing, tracks: [{ id, name, inst, vol, pan,
 reverb, mute, solo, notes: [[startBeat, durBeats, midi, vel0..1]], hits: [[startBeat, 'kick', vel]] }] }`, kept as `.SONG` files
@@ -305,6 +328,7 @@ ctx.setTitle(text) // retitle this window and its taskbar button
 ctx.toast(msg) // the bottom-of-screen message
 ctx.ask(title, default, cb) // an in-glass name box
 ctx.studio // the instruments and the mixer: see "Real instruments"
+ctx.trophy // the trophy ledger's scope for this app, or null: see "Trophies" (apps normally use apps/trophy_scope.js)
 ```
 An app module may also say `rightClick: true` (it uses the right mouse button) and `fluid: true` (it lays itself out off its own size).
 
@@ -571,6 +595,10 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   need Shift still works) and heard from the document whenever TheStack is the front window and nothing is being typed into (a click on the title bar
   or the taskbar moves focus off the canvas, and the digits used to go to the desktop). A preset puts a bypassed EQ in circuit, and it is the curve the next
   discs inherit unless a disc has an EQ of its own saved with it, so a track change does not put the flat curve back.
+- `trophies`: `apps/trophies/index.js` - **TROPHIES.EXE**, the ledger (see **Trophies**). Eighteen areas down the left (the machine first, then each game, then the ledger's own meta area), the cards of the chosen area
+  nearest to completion first, each with its tier frame, its exact condition, a live progress bar and what it pays; a secret is `???` and a rumour until it is found; filters (all, open, done), kinds
+  (progression, skill, explore, creative, joke), a search, EN or EN+NO for Bekkedal's bilingual ones, and a pin whose progress is echoed in the title bar. A seal lights when every trophy of a game is
+  earned. `model.js` (pure), `cards.js`, `style.css`; arrows move, Enter pins, Tab flips between games and cards, Esc closes. `fluid`.
 - `holyc`: `apps/holyc/index.js` - **HOLYC.EXE**, learn HolyC by typing it and then make small apps with it. Three tabs: **LESSONS** (seven, thirty-four steps: `lessons_a/b.js`), **PUZZLES**
   (nine chapters, fifty-six, three hints each: `puzzles_a..d.js`) and the **WORKSHOP** (templates, SAVE to `::/Home/HolyC/NAME.HC`, INSTALL on the desktop). The lab (`lab.js`) is the same in all of them: an
   editor (`editor.js` + `highlight.js`: a textarea over a coloured copy, line numbers, auto-indent, error lines, text typed in a letter at a time for TYPE IT FOR ME / SHOW ME), RUN (CTRL+ENTER),

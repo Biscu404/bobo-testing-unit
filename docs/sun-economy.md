@@ -53,6 +53,15 @@ real pay tables through a model of an hour of playing it and fails if the answer
 
 ## Earned another way: trophies
 
-`TROPHIES.EXE` pays SUN for achievements, scaled by how hard each one is (see `docs/achievements/`); that money is on top of the table and
-is bounded by the one-off nature of a trophy. Nothing in the table above is paid for through the trophies, and no trophy pays for what a
-game already pays for.
+`TROPHIES.EXE` pays SUN for achievements, scaled by how hard each one is (bronze 15, silver 40, gold 100, a game's mastery seal 150, paid as
+`TROPHY: <NAME>`; see `docs/achievements/`). That money is on top of the table and is bounded by the one-off nature of a trophy:
+**385 trophies, about 16,400 SUN if every one is earned, once, ever**, which is a sixth of what the shelves sell (the temple frame aside) and a sixth of the frame itself, so
+the ledger is a reason to go and look at a game, never a way to buy the shop. `scripts/check-sun.mjs` holds the total between 12,000 and 22,000,
+`scripts/check-trophies.mjs` holds it under 30,000 and every trophy to its tier.
+
+* **Nothing in the table above is paid for through the trophies, and no trophy pays for what a game already pays for.** The Cook's twenty-four
+  achievements and Magen's ninety-eight mitzvot are *mirrored* in the ledger (`legacy: true`, pay 0, counted nowhere): they keep paying through
+  their own `achSun`, exactly as they did, and are shown in TROPHIES.EXE only.
+* **Heart events and the loft's wings pay through the trophies** (`apps/bekkedal/trophies.js`), not through `apps/bekkedal/pay.js`.
+* A trophy is silent when it is *backfilled* from an old save (`kernel/trophies_backfill.js`): a machine that has already done a thing is
+  credited without a card, and its SUN is paid once.

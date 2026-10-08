@@ -10,6 +10,13 @@ import { createTrophies, TIER_PAY, MASTERY_PAY } from '../kernel/trophies_core.j
 import { registerAll, NAMES, APPS } from '../kernel/trophies_defs.js';
 import { t, rule, secret } from '../apps/trophy_kit.js';
 import { areas, cards, totals, sorted } from '../apps/trophies/model.js';
+import { summary as cliSummary, findArea, ofArea, ofOne } from '../kernel/trophies_cli.js';
+import { SCENES_TOTAL } from '../apps/bottle/trophies.js';
+import { CROPS, PLACES } from '../apps/bekkedal/trophies.js';
+import { BEK_SCENES } from '../apps/bekkedal/data.js';
+import { CK_ACH } from '../apps/cook/data.js';
+import { MG_ACH } from '../apps/magen/data.js';
+import { readFileSync } from 'node:fs';
 
 let bad = 0, n = 0;
 const ok = (c, m) => { n++; if (!c) { bad++; console.log('FAIL ' + m); } };
@@ -133,6 +140,34 @@ all.forEach(d => {
   ok(cards(T2, 'system', { filter: 'all', query: 'THUNK' }).own.length === 1, 'a search finds a card by its name');
   ok(cards(T2, 'system', { filter: 'all', kinds: ['joke'] }).own.every(d => d.kind === 'joke'), 'a kind switches the rest off');
   const tt = totals(T2); ok(tt.done === 2 && tt.B.total > 0 && tt.secrets > 0, 'the totals count by tier and by secrets unfound');
+}
+
+/* ---- the numbers other files promise, and the terminal's view of the ledger --------------------------------------------------------------------------- */
+{
+  const src = readFileSync(new URL('../kernel/blackout.js', import.meta.url), 'utf8');
+  const block = (src.match(/const SCENES = \[([\s\S]*?)\n\];/) || [])[1] || '';
+  ok((block.match(/\['\w+',/g) || []).length === SCENES_TOTAL, 'the Bottle counts the blackout\'s scenes (' + SCENES_TOTAL + ') and kernel/blackout.js lists as many');
+  ok(all.filter(d => d.app === 'cook' && d.legacy).length === CK_ACH.length, 'every one of the Cook\'s own ' + CK_ACH.length + ' has its mirror');
+  ok(all.filter(d => d.app === 'magen' && d.legacy).length === MG_ACH.length, 'every one of Magen\'s own ' + MG_ACH.length + ' has its mirror');
+  ok(all.filter(d => d.legacy).every(d => CK_ACH.some(a => 'ck_' + a.id === d.id) || MG_ACH.some(a => 'mg_' + a.id === d.id)), 'a mirror stands for something that exists in its game\'s own table');
+  ok(CROPS >= 10 && PLACES >= 6 && BEK_SCENES.length >= 24, 'Bekkedal\'s crops, places and heart events are counted from its data (' + CROPS + ', ' + PLACES + ', ' + BEK_SCENES.length + ')');
+  const bk = all.filter(d => d.app === 'bekkedal');
+  ok(bk.length === 52 && bk.every(d => d.name && d.name.no && d.name.en && d.desc.no && d.desc.en), 'Bekkedal\'s fifty-two are written in both languages');
+  ok(bk.every(d => !d.secret || (d.hint && d.hint.no && d.hint.en)), 'and so are the rumours of its secrets');
+  const T3 = createTrophies(mem().env); registerAll(T3); T3.award('sys_thunk', true);
+  const sum = cliSummary(T3, NAMES), line = sum.map(r => r[0]).join('\n');
+  ok(sum.length === areas(T3).length + 2 && /TROPHIES\s+1 OF \d+/.test(line), 'the terminal\'s summary has a line a game and a count');
+  ok(sum.every(r => typeof r[0] === 'string' && /^l-/.test(r[1]) && r[0].length <= 100), 'every terminal line is short enough for a terminal and has a class');
+  ok(findArea(T3, 'sweep', NAMES) === 'sweeper' && findArea(T3, 'holy', NAMES) === 'holyc' && findArea(T3, 'zzzz', NAMES) == null, 'a game is found by the start of its name');
+  const sw = ofArea(T3, 'sweeper', NAMES);
+  ok(sw.length >= all.filter(d => d.app === 'sweeper').length, 'a game\'s listing has a line a trophy');
+  const one = ofOne(T3, 'sw_first');
+  ok(one.length >= 3 && /FIRST BREATH/.test(one[0][0]) && /NOT YET/.test(one.map(r => r[0]).join(' ')), 'one trophy shows its name, its words and that it is not yet earned');
+  const done = ofOne(T3, 'thunk').map(r => r[0]).join(' ');
+  ok(/THUNK/i.test(done) && /EARNED|DONE|\bGOT\b/i.test(done), 'a trophy that is earned says so (' + done.slice(0, 60) + ')');
+  ok(ofOne(T3, 'zzzzz')[0][0].indexOf('NO TROPHY') === 0, 'a name that is nothing is said so');
+  const secret1 = all.find(d => d.secret), sec = ofOne(T3, secret1.id).map(r => r[0]).join(' ');
+  ok(plain(secret1.desc).length < 5 || sec.indexOf(plain(secret1.desc)) < 0, 'a secret not yet found does not give its condition away');
 }
 
 /* ---- what it pays ---------------------------------------------------------------------------------------------------------------------------------------- */

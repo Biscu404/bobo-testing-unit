@@ -30,7 +30,8 @@
     "check:farewell": "node scripts/check-farewell.mjs",
     "check:petlines": "node scripts/check-petlines.mjs",
     "check:rooms": "node apps/bekkedal/rooms_check.js",
-    "check:sun": "node scripts/check-sun.mjs"
+    "check:sun": "node scripts/check-sun.mjs",
+    "check:trophies": "node scripts/check-trophies.mjs"
   },
   "devDependencies": {
     "electron": "^44.5.1",

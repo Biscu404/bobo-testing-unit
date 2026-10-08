@@ -16,7 +16,7 @@ export const KIND_CHIP = { progress: 'P', skill: 'S', explore: 'E', creative: 'C
 const GRACE_DAYS = 1;
 
 export function createTrophies(env) {
-  const fresh = () => ({ v: 1, earned: {}, stats: {}, sets: {}, streaks: {}, days: [], seen: { near: {}, revealed: {} }, recent: [], pinned: null, lang: 'both' });
+  const fresh = () => ({ v: 1, earned: {}, stats: {}, sets: {}, streaks: {}, days: [], seen: { near: {}, revealed: {} }, recent: [], pinned: null, lang: 'en' });
   let st = fresh();
   try { const r = env.read && env.read(); if (r && typeof r === 'object' && r.v === 1) st = Object.assign(fresh(), r, { seen: Object.assign({ near: {}, revealed: {} }, r.seen || {}) }); } catch (e) { /* a save that will not read: start clean, the host keeps a copy */ }
   const defs = new Map(), byEvent = {}, byStat = {}, bySet = {}, byStreak = {}, byPoll = {}, derived = [];

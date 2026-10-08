@@ -568,14 +568,25 @@ The six rooms are one machine because they share a currency.
 `Economy` is a singleton with four methods — `balance`, `earn`, `spend`,
 `onChange` — and everything in the build goes through it. The garden drops it
 passively and keeps accruing at 40% while you are away. Dungeon Sweeper pays 80/400/1,200
-by size plus a time bonus, and the descent pays four SUN a geo. Solitaire pays by move count. The Cook pays per
-medal, once, the first time each one is earned — a bench already beaten is a
-thing to come back to, not a tap to leave running. AfterEgypt pays 50 for
-reaching the third temple, which is the one payout moment it already had.
-Crayon pays nothing at all, on purpose: it is the one place on the machine that
+by size plus a time bonus (less for every win of the same size in the last half hour), and the descent
+pays four SUN a geo, a hundred for a room's first clear and a quarter more for one with no larva hatched.
+Solitaire pays for the deal, the cards that reach the foundations and a win, and
+a thrown-away deal pays nothing toward the next. The Cook pays per medal, once, the first time each one is
+earned — a bench already beaten is a thing to come back to, not a tap to leave running.
+AfterEgypt pays from 50 SUN up to 2,500 and coins a clear, by way. Bekkedal pays for a neighbour's
+request, the house by the water and the loft. Stand Battle pays for a fight and a run, and HOLYC.EXE
+pays once for a lesson, a puzzle and a finished chapter. The paying games are held to the same
+band of a few thousand SUN an hour of play, and `node scripts/check-sun.mjs` fails a change that moves one out of it.
+Crayon pays nothing for drawing, on purpose: it is the one place on the machine that
 is not keeping score, and neither does the Elephant, which has nothing to score.
 Magen keeps its own books in mitzvot and is left alone: an incremental game with
 a second currency bolted to the side of it is two games in one window.
+
+**`TROPHIES.EXE`** is the other way to earn it: 385 trophies in eighteen places — the machine, every
+game and tool, HOLYC.EXE, and the ledger itself — each worth 15, 40 or 100 SUN once, ever, and a seal for
+every game you finish. About 16,000 SUN in all, so it is a reason to go and look at a game, not a way to buy the shop. A secret is
+`???` and a rumour until you find it, and one of them can only be found on the 23rd of July.
+The terminal reads it too: `TROPHIES`, `TROPHIES SWEEPER`, `TROPHY FIRST BREATH`.
 
 The only sink is Dave. The counter in the taskbar rolls a digit at a time and the
 sun sprite turns one revolution whenever it changes, and `ACCOUNT.EXE` — the

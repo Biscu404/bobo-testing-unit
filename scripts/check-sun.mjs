@@ -18,6 +18,8 @@ import { LESSONS } from '../apps/holyc/lessons.js';
 import { PUZZLES, CHAPTERS } from '../apps/holyc/puzzles.js';
 import { LESSON_SUN, puzzleSun, CHAPTER_SUN, SEEN_SHARE } from '../apps/holyc/pay.js';
 import * as COS from '../kernel/cos_data.js';
+import { createTrophies } from '../kernel/trophies_core.js';
+import { registerAll } from '../kernel/trophies_defs.js';
 
 let bad = 0;
 const ok = (c, m) => { if (!c) { bad++; console.log('FAIL ' + m); } };
@@ -109,6 +111,17 @@ const LO = 1500, HI = 12000;
   ok(copied < all * 0.5 && SEEN_SHARE === 0.25, 'HOLYC.EXE: looking up every answer pays less than half');
 }
 
+/* THE LEDGER: every trophy pays once, by tier (15 / 40 / 100 SUN) and a seal 150, so the whole of it is a fixed sum that does not grow with playing. It is a sixth of the shelves
+   and a sixth of the temple frame: a reason to go and look, never a way to buy the shop. Mirrors (the Cook's and Magen's own) pay nothing a second time. */
+const LEDGER = (() => {
+  const T = createTrophies({ read: () => null, write: () => {}, pay: () => {}, announce: () => {} });
+  registerAll(T);
+  const all = [...T.defs.values()].filter(d => !d.legacy);
+  return { n: all.length, sun: all.reduce((a, d) => a + d.pay, 0), top: Math.max(...all.map(d => d.pay)) };
+})();
+ok(LEDGER.n > 350 && LEDGER.sun > 12000 && LEDGER.sun < 22000, 'the ledger is ' + LEDGER.n + ' trophies and ' + LEDGER.sun + ' SUN, between 12,000 and 22,000');
+ok(LEDGER.top <= 150, 'no trophy pays more than the 150 of a mastery seal (' + LEDGER.top + ')');
+
 /* ---- the shop: what there is to buy, and how long it is to buy it ------------------------------------------------------------------ */
 {
   let total = 0, frame = 0;
@@ -121,6 +134,7 @@ const LO = 1500, HI = 12000;
   ok(rest / mean > 8 && rest / mean < 40, 'the rest of the shop is between 8 and 40 hours of games other than the garden');
 }
 
+console.log('\n  the ledger: ' + LEDGER.n + ' trophies, ' + LEDGER.sun + ' SUN once, ever');
 console.log('\n' + rows.map(r => '  ' + r[0].padEnd(28) + String(r[2]).padStart(7) + ' SUN/hr   ' + r[1]).join('\n'));
 console.log(bad ? '\nFAILED ' + bad : '\nok  - the SUN budget holds (' + rows.length + ' models, band ' + LO + ' to ' + HI + ' unless a game says otherwise)');
 process.exit(bad ? 1 : 0);
