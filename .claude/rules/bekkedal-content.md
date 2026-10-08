@@ -1042,4 +1042,4 @@ changing the game:
 - **Counts come from the data** (`CROPS`, `PLACES`, `DISHES`, `BEK_SCENES.length`, `LOFT_TOTAL`): adding a crop, a map, a recipe or a heart event moves the trophy that asks for all of them, and the
   description is built from the same number. Check `bk_winter`'s day (`day >= 61`) and the loft's if the calendar changes.
 - **Heart events and the loft's wings pay SUN through the trophies**, not through `pay.js` (`QUEST_SHARE`/`HOUSE_SUN`/`LOFT_SUN` are still what a request, the house and the loft pay).
-- A trophy's card never lands on the picture mid-scene: a heart event, the sleep scene and the end screens `hold()` it and `release()` it after.
+- The card is the machine's, over the taskbar and never on the game's own canvas, so Bekkedal does not `hold()` it for a scene (the games that fill the whole picture, a run, a fight, a flight, do).
