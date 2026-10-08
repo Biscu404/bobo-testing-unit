@@ -3,11 +3,11 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { FRAMES, LOGOS, CURSORS, SCHEMES, POTS, SPECIES, WALLS, CRAYON, GARAGE, DRINKS, ELEPHANT } from '../../kernel/cos_data.js';
+import { FRAMES, LOGOS, CURSORS, SCHEMES, POTS, SPECIES, WALLS, CRAYON, GARAGE, DRINKS, ELEPHANT, SOLITAIRE } from '../../kernel/cos_data.js';
 import { DAVE_LINES, DAVE_BROKE, DAVE_CRAZY, DAVE_CRAZY_CAT, DAVE_CRAZY_ITEM, CRAZY_RATE, SPEECH_MAX, crazyPool, makeHoverTalk } from './lines.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const SHELVES = { frame: FRAMES, logo: LOGOS, cursor: CURSORS, scheme: SCHEMES, pot: POTS, seed: SPECIES, wall: WALLS, crayon: CRAYON, garage: GARAGE, drink: DRINKS, elephant: ELEPHANT };
+const SHELVES = { frame: FRAMES, logo: LOGOS, cursor: CURSORS, scheme: SCHEMES, pot: POTS, seed: SPECIES, wall: WALLS, crayon: CRAYON, garage: GARAGE, drink: DRINKS, elephant: ELEPHANT, solitaire: SOLITAIRE };
 
 let fails = 0;
 const ok = (cond, msg) => { if (!cond) { fails++; console.log('FAIL  ' + msg); } };

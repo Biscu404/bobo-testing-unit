@@ -176,7 +176,7 @@ all.forEach(d => {
   all.forEach(d => { if (!d.legacy) { sun += d.pay; count++; if (d.secret) secrets++; if (d.mastery) seals++; } });
   console.log('  ' + count + ' trophies (' + secrets + ' secret, ' + seals + ' seals), ' + all.filter(d => d.legacy).length + ' mirrors, ' + sun + ' SUN if every one is earned');
   Object.keys(per).forEach(k => console.log('  ' + (NAMES[k] || k).padEnd(18) + String(per[k].n).padStart(4) + '   B ' + String(per[k].B).padStart(3) + '  S ' + String(per[k].S).padStart(3) + '  G ' + String(per[k].G).padStart(3) + (per[k].mirrors ? '   +' + per[k].mirrors + ' mirrors' : '') + '   ' + per[k].sun + ' SUN'));
-  ok(sun < 30000, 'the whole ledger pays under 30,000 SUN (' + sun + '): a few of Dave\'s frames, and well under the temple\'s 99,999');
+  ok(sun < 260000 && sun > 80000, 'the whole ledger pays between 80,000 and 260,000 SUN (' + sun + '): the long road, spread over hundreds of hours');
 }
 console.log(bad ? '\nFAILED ' + bad + ' of ' + n : '\nok  - the ledger holds (' + n + ' checks)');
 process.exit(bad ? 1 : 0);

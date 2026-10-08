@@ -65,7 +65,7 @@ export const Studio = {
   level(id) {
     id = id || 'garage';
     const crt = window.CRT;
-    const knob = crt ? Math.pow((crt.mus || 0) / 10, 1.6) * 0.85 : 0.5;
+    const knob = crt ? Math.pow((crt.mus || 0) / 10, 1.25) * 1.2 : 0.5;
     return knob * (window.Mixer ? window.Mixer.get(id) : 1) * (id === 'garage' ? this.user : 1);
   },
   knob() { return window.CRT ? window.CRT.mus || 0 : 0; },

@@ -12,7 +12,7 @@ const CHIP = { progress: 'P', skill: 'S', explore: 'E', creative: 'C', meta: 'M'
 
 export function renderCard(T, d, o) {
   const s = state(T, d), lang = T.st.lang, hidden = d.secret && s !== 'done';
-  const c = el('div', 'tr-card w-' + wearOf(d) + ' ' + s + (hidden ? ' hidden' : '') + (T.st.pinned === d.id ? ' pinned' : '') + (d.legacy ? ' mirror' : ''));
+  const c = el('div', 'tr-card w-' + wearOf(d) + ' ' + s + (hidden ? ' hidden' : '') + (T.isPinned(d.id) ? ' pinned' : '') + (d.legacy ? ' mirror' : ''));
   c.dataset.id = d.id; c.tabIndex = -1; c.setAttribute('role', 'listitem');
   const icon = el('div', 'tr-cup'); icon.innerHTML = cup(wearOf(d), s !== 'done');
   const main = el('div', 'tr-body');
@@ -23,6 +23,7 @@ export function renderCard(T, d, o) {
   if (d.mastery) l1.appendChild(el('span', 'tr-tag seal', 'SEAL'));
   if (d.legacy) l1.appendChild(el('span', 'tr-tag mir', 'THE GAME\'S OWN'));
   if (d.scope && s !== 'done' && !hidden) l1.appendChild(el('span', 'tr-tag scope', 'PER ' + d.scope.toUpperCase()));
+  { const pb = el('span', 'tr-pin', T.isPinned(d.id) ? 'PINNED' : 'PIN'); pb.title = 'Pin to the corner of the screen'; l1.appendChild(pb); }
   main.appendChild(l1);
   main.appendChild(el('div', 'tr-desc', hidden ? (T.hintOf(d) || 'A SECRET.') : T.descOf(d)));
   if (hidden) c.classList.add('hint');

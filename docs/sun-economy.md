@@ -53,11 +53,11 @@ real pay tables through a model of an hour of playing it and fails if the answer
 
 ## Earned another way: trophies
 
-`TROPHIES.EXE` pays SUN for achievements, scaled by how hard each one is (bronze 15, silver 40, gold 100, a game's mastery seal 150, paid as
+`TROPHIES.EXE` pays SUN for achievements, scaled by how hard each one is (bronze 100, silver 350, gold 1,200, a game's mastery seal 2,500, paid as
 `TROPHY: <NAME>`; see `docs/achievements/`). That money is on top of the table and is bounded by the one-off nature of a trophy:
-**385 trophies, about 16,400 SUN if every one is earned, once, ever**, which is a sixth of what the shelves sell (the temple frame aside) and a sixth of the frame itself, so
-the ledger is a reason to go and look at a game, never a way to buy the shop. `scripts/check-sun.mjs` holds the total between 12,000 and 22,000,
-`scripts/check-trophies.mjs` holds it under 30,000 and every trophy to its tier.
+**385 trophies, about 171,000 SUN if every one is earned, once, ever** (they used to pay a tenth of that, which for a trophy that takes half an hour to five hours was nothing), spread over hundreds of hours, so
+the ledger is the long road. `scripts/check-sun.mjs` holds the total between 80,000 and 260,000,
+`scripts/check-trophies.mjs` holds it between 80,000 and 260,000 and every trophy to its tier.
 
 * **Nothing in the table above is paid for through the trophies, and no trophy pays for what a game already pays for.** The Cook's twenty-four
   achievements and Magen's ninety-eight mitzvot are *mirrored* in the ledger (`legacy: true`, pay 0, counted nowhere): they keep paying through

@@ -1,0 +1,12 @@
+.tbox { display: flex; flex-direction: column; background: #3a2412; color: #FFFFFF; font-family: 'VT323', monospace; min-height: 100%; box-sizing: border-box; border: 6px solid #6b4423; }
+.tb-head { color: #FFFF55; font-size: 22px; padding: 4px 10px; background: #2a1809; border-bottom: 3px solid #6b4423; }
+.tb-shelf { flex: 1 1 auto; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 10px; padding: 12px; overflow: auto; }
+.tb-slot { width: 112px; padding: 6px; background: #1d1006; border: 2px solid #6b4423; text-align: center; cursor: grab; user-select: none; touch-action: none; }
+.tb-slot:hover { border-color: #FFFF55; }
+.tb-slot.out { opacity: 0.45; cursor: default; border-style: dashed; }
+.tb-cup { width: 72px; height: 72px; margin: 0 auto; image-rendering: pixelated; }
+.tb-cup svg { width: 100%; height: 100%; display: block; }
+.tb-name { font-size: 16px; line-height: 1; min-height: 32px; color: #FFFFFF; }
+.tb-tier { font-size: 14px; color: #AAAAAA; }
+.tb-slot.w-meta .tb-tier { color: #55FFFF; }
+.tb-empty { color: #AAAAAA; font-size: 18px; padding: 20px; }

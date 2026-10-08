@@ -104,12 +104,12 @@ export default {
       if (S.flash) { const c = list.querySelector('[data-id="' + S.flash + '"]'); if (c) { c.classList.add('flash'); c.scrollIntoView({ block: 'center' }); } S.flash = null; }
     }
     function wireCard(c) {
-      c.addEventListener('mousedown', ev => { if (ev.button !== 0) return; ev.stopPropagation(); select(c.dataset.id); });
+      c.addEventListener('mousedown', ev => { if (ev.button !== 0) return; ev.stopPropagation(); select(c.dataset.id); if (ev.target.classList && ev.target.classList.contains('tr-pin')) pin(c.dataset.id); });
       c.addEventListener('dblclick', () => pin(c.dataset.id));
       return c;
     }
     function select(id) { S.sel = id; list.querySelectorAll('.tr-card.sel').forEach(x => x.classList.remove('sel')); const c = list.querySelector('[data-id="' + id + '"]'); if (c) { c.classList.add('sel'); c.scrollIntoView({ block: 'nearest' }); } try { if (snd()) snd().select(); } catch (e) { /* no sound */ } }
-    function pin(id) { T.pin(T.st.pinned === id ? null : id); try { if (snd()) snd().pin(); } catch (e) { /* no sound */ } ctx.toast(T.st.pinned ? 'PINNED: ' + T.plainName(T.get(id)) : 'UNPINNED.'); }
+    function pin(id) { T.pin(id); try { if (snd()) snd().pin(); } catch (e) { /* no sound */ } ctx.toast(T.isPinned(id) ? 'PINNED: ' + T.plainName(T.get(id)) + '  (' + T.pinsList().length + ' IN THE CORNER)' : 'UNPINNED.'); }
     function focusOn(id) {
       const d = T.get(id); if (!d) return;
       S.area = ORDER.indexOf(d.app) >= 0 ? d.app : 'all'; S.filter = 'all'; S.kinds = []; S.query = ''; search.value = ''; S.sel = id; S.flash = id; draw();

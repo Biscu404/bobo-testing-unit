@@ -267,7 +267,7 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   before they are drawn), so a game's dim label goes in the machine's light grey, not its dark one. A bar of key hints that is longer than its window wraps (`.appbar.hint`) rather than losing its end.
   An app that draws its own pixel font (Bekkedal, Stand Battle) is checked by eye: give a line over a picture an outline (`text(..., { outline })`).
 - **Trophies.** `TROPHIES.EXE` (desktop icon `::/Trophies`, help page TROPHIES, terminal `TROPHIES [GAME]`, `TROPHY <NAME>`, `TROPHIES OPEN`) is the machine's ledger: 385 trophies in
-  eighteen areas (the machine, every game and tool, HOLYC.EXE, and a meta area of its own), 19 of them secret, about 16,400 SUN if every one is earned once. **The engine is pure**
+  eighteen areas (the machine, every game and tool, HOLYC.EXE, and a meta area of its own), 19 of them secret, about 171,000 SUN if every one is earned once (100 / 350 / 1,200, a seal 2,500). **The engine is pure**
   (`kernel/trophies_core.js`, `createTrophies(env)`; Node runs all of it in `scripts/check-trophies.mjs`) and a trophy is a definition with exactly one of five ways to be earned:
   `on + when` (an event and a predicate over its payload), `stat` (a counter or a best: `add`, `max`), `sets` (how many different things were marked), `streak` (in a row, a failure
   resets) or `poll` (a question the game asks at a checkpoint), plus `derive` for the seals. Tier pays 15 / 40 / 100 SUN (`B`/`S`/`G`) and a game's **mastery seal** (every trophy

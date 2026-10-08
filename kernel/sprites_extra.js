@@ -9,6 +9,9 @@ const can = R(3, 4, 10, 1, '#AAAAAA') + R(6, 3, 4, 1, '#AAAAAA') + R(4, 5, 8, 9,
   R(6, 6, 1, 7, '#000000') + R(9, 6, 1, 7, '#000000') + R(11, 6, 1, 7, '#000000') + R(4, 14, 8, 1, '#000000');
 
 Object.assign(SPRITES, {
+  /* the trophy box: a wooden crate with the handle of a gold cup showing over the top */
+  trophybox: S(R(0, 0, 16, 16, '#000000') + R(5, 2, 6, 1, '#FFFF55') + R(4, 3, 8, 3, '#FFFF55') + R(10, 3, 2, 3, '#AA5500') + R(2, 6, 12, 8, '#AA5500') + R(2, 6, 12, 1, '#FF5555') +
+    R(2, 9, 12, 1, '#552B00') + R(2, 12, 12, 1, '#552B00') + R(2, 6, 1, 8, '#552B00') + R(13, 6, 1, 8, '#552B00') + R(6, 7, 4, 2, '#FFFF55') + R(7, 7, 2, 1, '#000000')),
   bin: S(can),
   binfull: S(R(5, 1, 4, 3, '#FFFFFF') + R(9, 2, 3, 2, '#FFFF55') + R(7, 0, 2, 2, '#55FFFF') + can),
   song: S(R(2, 1, 11, 14, '#AAAAAA') + R(3, 2, 9, 12, '#FFFFFF') + R(6, 4, 4, 1, '#0000AA') + R(9, 4, 1, 6, '#0000AA') +

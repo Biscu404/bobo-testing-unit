@@ -4,7 +4,7 @@ import { Mixer } from './mixer.js';
 import { VARIANTS, variantSpec, hz } from './music_variants.js';
 
 const VKEY = 'templeos.lobby.variant.v1';
-const BOOT_FLOOR = Math.pow(0.5, 1.6) * 0.85;      /* the boot never plays quieter than the knob at 5 */
+const BOOT_FLOOR = Math.pow(0.5, 1.25) * 1.2;      /* the boot never plays quieter than the knob at 5 */
 const BASE_VOL = { lead: 0.08, bass: 0.07, pad: 0.05, arp: 0.045, drum: 0.5 };
 
 function loadVariant() {

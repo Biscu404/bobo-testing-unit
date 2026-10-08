@@ -1269,6 +1269,7 @@ textarea.editor {
 .shopcard.owned { border-color: #55FF55; }
 .shopcard.eq    { border-color: #55FFFF; background: #001a1a; }
 .shopcard.broke { border-color: #AA0000; }
+.shopcard.locked { border-style: dashed; opacity: 0.85; }
 .shopcard canvas { width: 116px; height: 60px; display: block; image-rendering: pixelated; background: #000000; }
 .shopcard .nm { color: var(--phos); font-size: 17px; text-align: center; line-height: 1; }
 .shopcard .pr { color: #FFFF55; font-size: 17px; }
@@ -1469,3 +1470,58 @@ textarea.editor {
 .helptopic:hover { background: #5555FF; }
 .helptopic.on { background: #FFFF55; color: #000000; }
 .helppane { flex: 1 1 auto; min-width: 0; overflow-y: auto; padding: 8px 12px; }
+
+/* the set is off when the app opens: a hint on the dark glass and a glow on the button */
+#powerhint { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); text-align: center; z-index: 5; pointer-events: none;
+  font-family: 'VT323', monospace; font-size: 26px; line-height: 1.3; color: #AAAAAA; text-shadow: 0 0 6px #555555; }
+#powerhint b { color: #FFFF55; }
+#power.callme { color: #FF5555; animation: powercall 1.4s ease-in-out infinite; }
+@keyframes powercall { 0%, 100% { text-shadow: none; } 50% { text-shadow: 0 0 10px #FF5555, 0 0 2px #FFFFFF; } }
+@media (prefers-reduced-motion: reduce) { #power.callme { animation: none; text-shadow: 0 0 8px #FF5555; } }
+
+/* the welcome window */
+.welcome { padding: 10px 14px; overflow: auto; height: 100%; box-sizing: border-box; background: #000000; color: #FFFFFF; font-family: 'VT323', monospace; }
+.wl-head { color: #FFFF55; font-size: 24px; margin-bottom: 8px; }
+.wl-row { display: grid; grid-template-columns: 150px 1fr auto; gap: 4px 12px; align-items: center; padding: 6px 0; border-top: 1px dashed #555555; }
+.wl-t { color: #55FFFF; font-size: 20px; }
+.wl-d { color: #FFFFFF; font-size: 18px; line-height: 1.15; }
+.wl-foot { color: #AAAAAA; margin-top: 8px; font-size: 18px; }
+
+/* the pinned trophies: a square in the corner of the glass, over every window and program */
+.pinbox { position: absolute; right: 3px; top: 30px; z-index: 8000; }
+.pinsq { width: 18px; height: 18px; line-height: 18px; text-align: center; background: #000000; border: 2px solid #FFFF55; color: #FFFF55; font-family: 'VT323', monospace; font-size: 16px; cursor: pointer; user-select: none; }
+.pinsq.alldone { border-color: #55FF55; color: #55FF55; }
+.pinpanel { display: none; position: absolute; right: 0; top: 22px; width: 300px; max-height: 70vh; overflow: auto; background: #000000; border: 2px solid #FFFF55; padding: 6px 8px; font-family: 'VT323', monospace; }
+.pinbox:hover .pinpanel, .pinbox:focus-within .pinpanel { display: block; }
+.pinhead { color: #FFFF55; font-size: 18px; border-bottom: 1px dashed #555555; margin-bottom: 4px; }
+.pinrow { padding: 4px 0; cursor: pointer; border-bottom: 1px dashed #333333; }
+.pinrow:hover { background: #111111; }
+.pinname { color: #55FFFF; font-size: 18px; }
+.pinrow.done .pinname { color: #55FF55; }
+.pindesc { color: #FFFFFF; font-size: 16px; line-height: 1.1; }
+.pinbar { height: 6px; background: #333333; margin-top: 3px; }
+.pinbar i { display: block; height: 100%; background: #55FF55; }
+.pinnum { color: #AAAAAA; font-size: 15px; }
+.pinfoot { color: #AAAAAA; font-size: 14px; margin-top: 4px; }
+
+/* ---- game windows ------------------------------------------------------------------------------------------------------------
+   A colour scheme dresses the machine's own windows in full. A game's window (data-game, set by wm.js from GAME_IDS) takes only its
+   FRAME (the title bar and the edge) and one line of accent on its bar; everything inside keeps the machine's palette and the game's
+   own art, whatever scheme is worn. The scheme variables are put back to VGA inside the body, so no pane, canvas or label of a game
+   can pick a scheme up; the accent is --theme-line, which is already safe against black (a light scheme gives the plain grey). */
+#room[data-themed] .win[data-game] > .titlebar, .win[data-game][data-themed] > .titlebar { background: var(--theme-frame, #FF55FF) !important; }
+#room[data-themed] .win[data-game], .win[data-game][data-themed] { border-color: var(--theme-edge, #AA00AA) !important; }
+.win[data-game] .wbody {
+  --sch-bg: #000000; --sch-fg: #FFFFFF; --sch-ok: #55FF55; --sch-hi: #FFFF55; --sch-err: #FF5555; --sch-dim: #AAAAAA; --sch-acc: #55FFFF;
+}
+#room[data-themed] .win[data-game] .appbar, .win[data-game][data-themed] .appbar { border-top: 2px solid var(--theme-line, #555555); }
+#room[data-themed] .win[data-game] .appbtn.on, .win[data-game][data-themed] .appbtn.on { border-color: var(--theme-line, #FFFF55); }
+
+/* the elephant as a guest in an app's window: above the app, his own coordinates inside the window */
+#pet.guest { z-index: 60; }
+#petsay.guest { z-index: 61; }
+
+/* trophies left on the desktop (kernel/trophy_props.js): under the windows, over the icons */
+#trophyprops { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.tprop { position: absolute; left: 0; top: 0; z-index: 26; background-size: 100% 100%; image-rendering: pixelated; pointer-events: auto; cursor: grab; touch-action: none; filter: drop-shadow(3px 4px 0 rgba(0, 0, 0, 0.55)); }
+.tprop.held { cursor: grabbing; z-index: 9000; }

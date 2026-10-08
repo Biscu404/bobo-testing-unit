@@ -45,6 +45,9 @@ Trophies.boot = () => {
     Trophies.toast = toast;
     toast.mountCup();
     toast.live();
+    import('./trophies_pins.js').then(m => m.mountPins(Trophies)).catch(() => {});
+    import('./rewards.js').then(m => m.startRewards(Trophies)).catch(() => {});
+    import('./trophy_box.js').then(m => m.startBox(Trophies)).catch(() => {});
     wire(Trophies);
     const d = new Date(), two = n => String(n).padStart(2, '0');
     Trophies.openDay(d.getFullYear() + '-' + two(d.getMonth() + 1) + '-' + two(d.getDate()), d.getMonth() + 1, d.getDate());

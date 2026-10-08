@@ -9,6 +9,7 @@ import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const L = await import(pathToFileURL(path.join(ROOT, 'kernel/pet_lines.js')));
+const G = await import(pathToFileURL(path.join(ROOT, 'kernel/pet_guest.js')));
 const { LINES, PUSH_LINES, GOODBYES_DAY, GOODBYES_NIGHT, WAKES, WAKES_NEAR, HOME_LINES, DOOR_LINES, choose } = L;
 
 let fails = 0;
@@ -31,7 +32,7 @@ ok(GOODBYES_DAY.length >= 8 && GOODBYES_NIGHT.length >= 5, 'goodbyes: ' + GOODBY
 ok(WAKES.length >= 3 && WAKES_NEAR.length >= 2 && HOME_LINES.length >= 2 && DOOR_LINES.length >= 2 && PUSH_LINES.length >= 5, 'enough ways to wake, go in, open the door and push an icon');
 
 const seen = new Map();
-const pools = { LINES, PUSH_LINES, GOODBYES_DAY, GOODBYES_NIGHT, WAKES, WAKES_NEAR, HOME_LINES, DOOR_LINES };
+const pools = { GUEST_GENERIC: G.GENERIC, GUEST_ENTER: G.ENTER, GUEST_LEAVE: G.LEAVE, GUEST_CHEER: G.CHEER, GUEST_POKE: G.POKE, ...Object.fromEntries(Object.entries(G.BY_APP).map(([k, v]) => ['GUEST_' + k, v])), LINES, PUSH_LINES, GOODBYES_DAY, GOODBYES_NIGHT, WAKES, WAKES_NEAR, HOME_LINES, DOOR_LINES };
 for (const [name, pool] of Object.entries(pools)) {
   everyLine(pool).forEach(([i, t]) => {
     ok(typeof t === 'string' && t.length > 3, name + '[' + i + '] answers a line');

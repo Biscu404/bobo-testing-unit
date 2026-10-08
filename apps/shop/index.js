@@ -83,7 +83,7 @@ export default {
 
     /* the words on a card's button for this item, now */
     function buttonText(c, owned, eq) {
-      if (!owned) return 'BUY';
+      if (!owned) return COS_CATS[c].list.some(x => x.earn) && false ? 'LOCKED' : 'BUY';
       const kind = KIND[COS_CATS[c].kind];
       if (eq && kind.eq) return kind.eq;
       if (kind.have) return kind.have;
@@ -104,7 +104,7 @@ export default {
         const eq = isEq(cat, it.id);
         const card = document.createElement('div');
         card.className = 'shopcard' + (eq ? ' eq' : owned ? ' owned' : '') +
-          (!owned && window.Economy.balance() < it.price ? ' broke' : '');
+          (!owned && !it.earn && window.Economy.balance() < it.price ? ' broke' : '') + (!owned && it.earn ? ' locked' : '');
 
         const cv = document.createElement('canvas');
         cv.width = 116; cv.height = 60;
@@ -112,15 +112,15 @@ export default {
 
         const nm = document.createElement('div');
         nm.className = 'nm';
-        nm.textContent = it.name;
+        nm.textContent = it.secret && !owned ? '???' : it.name;
 
         const pr = document.createElement('div');
         pr.className = 'pr';
-        pr.textContent = owned ? 'OWNED' : (it.price === 0 ? 'FREE' : it.price + ' SUN');
+        pr.textContent = owned ? 'OWNED' : it.earn ? 'EARNED, NOT BOUGHT' : (it.price === 0 ? 'FREE' : it.price + ' SUN');
 
         const bt = document.createElement('div');
         bt.className = 'bt';
-        bt.textContent = buttonText(cat, owned, eq);
+        bt.textContent = !owned && it.earn ? 'TROPHY' : buttonText(cat, owned, eq);
 
         card.appendChild(cv); card.appendChild(nm); card.appendChild(pr); card.appendChild(bt);
         /* no title attribute: the browser would pop up a second box that says again what Dave is already saying */
@@ -138,6 +138,13 @@ export default {
 
     function press(it, owned) {
       const c = COS_CATS[cat];
+      if (!owned && it.earn) {
+        const d = window.Trophies && window.Trophies.get(it.earn);
+        say('NOT FOR SALE. ' + (d ? 'IT COMES WITH THE TROPHY ' + window.Trophies.plainName(d) + ': ' + window.Trophies.plainDesc(d).toUpperCase() : 'A TROPHY HANDS IT OVER.'));
+        if (window.Snd && window.Snd.deny) window.Snd.deny();
+        if (d && window.Trophies.openLedger) setTimeout(() => window.Trophies.openLedger(it.earn), 900);
+        return;
+      }
       if (!owned) {
         if (window.Economy.balance() < it.price) {
           say(pick(DAVE_BROKE));
@@ -169,6 +176,7 @@ export default {
     function unlockHint(c, it) {
       if (c === 'crayon') return it.kind === 'layer' ? 'OPEN DRAW. THE LAYERS ARE ON THE LEFT, UNDER THE TOOLS.' : 'OPEN DRAW. THE ' + it.name + ' IS ON THE LEFT, UNDER THE OTHER TOOLS.';
       if (c === 'garage') return 'OPEN THE GARAGE, PICK AN INSTRUMENT FOR A TRACK. THEY ARE IN THE PICKER NOW: ' + it.inst.map(i => i.toUpperCase()).join(', ') + '.';
+      if (c === 'solitaire') return 'OPEN SOLITAIRE. THE ' + ({ back: 'BACK', table: 'TABLE', win: 'WIN' }[it.sub] || 'THING') + ' BUTTON ON THE BAR CYCLES THROUGH WHAT YOU OWN.';
       if (c === 'drink') return 'OPEN THE BOTTLE. THE DRINK BUTTON CHANGES WHAT YOU ARE POURING. ' + (it.strength > 1.5 ? 'GO CAREFULLY.' : '');
       if (it.id === 'pet') return 'OPEN THE ELEPHANT AND PRESS GO OUTSIDE. THEN STAND BACK.';
       return 'OPEN THE ELEPHANT. THE WARDROBE IS THE BUTTON.';

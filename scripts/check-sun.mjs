@@ -111,16 +111,16 @@ const LO = 1500, HI = 12000;
   ok(copied < all * 0.5 && SEEN_SHARE === 0.25, 'HOLYC.EXE: looking up every answer pays less than half');
 }
 
-/* THE LEDGER: every trophy pays once, by tier (15 / 40 / 100 SUN) and a seal 150, so the whole of it is a fixed sum that does not grow with playing. It is a sixth of the shelves
-   and a sixth of the temple frame: a reason to go and look, never a way to buy the shop. Mirrors (the Cook's and Magen's own) pay nothing a second time. */
+/* THE LEDGER: every trophy pays once, by tier (100 / 350 / 1,200 SUN) and a seal 2,500, so the whole of it is a fixed sum that does not grow with playing. It used to pay 15 / 40 / 100,
+   which for a trophy that takes half an hour to five hours was nothing; now the ledger is the long road: more than the shelves, spread over hundreds of hours. Mirrors (the Cook's and Magen's own) pay nothing a second time. */
 const LEDGER = (() => {
   const T = createTrophies({ read: () => null, write: () => {}, pay: () => {}, announce: () => {} });
   registerAll(T);
   const all = [...T.defs.values()].filter(d => !d.legacy);
   return { n: all.length, sun: all.reduce((a, d) => a + d.pay, 0), top: Math.max(...all.map(d => d.pay)) };
 })();
-ok(LEDGER.n > 350 && LEDGER.sun > 12000 && LEDGER.sun < 22000, 'the ledger is ' + LEDGER.n + ' trophies and ' + LEDGER.sun + ' SUN, between 12,000 and 22,000');
-ok(LEDGER.top <= 150, 'no trophy pays more than the 150 of a mastery seal (' + LEDGER.top + ')');
+ok(LEDGER.n > 350 && LEDGER.sun > 80000 && LEDGER.sun < 260000, 'the ledger is ' + LEDGER.n + ' trophies and ' + LEDGER.sun + ' SUN, between 80,000 and 260,000');
+ok(LEDGER.top <= 2500, 'no trophy pays more than the 2,500 of a mastery seal (' + LEDGER.top + ')');
 
 /* ---- the shop: what there is to buy, and how long it is to buy it ------------------------------------------------------------------ */
 {

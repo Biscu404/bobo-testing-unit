@@ -14,6 +14,7 @@ import { petIcons, petMoveIcon } from './desktop.js';
 import { openWindow, openWins } from './wm.js';
 import { dressed as trophyDressed, event as trophy } from '../apps/elephant/trophy_calls.js';
 import { ELEPHANT } from './cos_data.js';
+import { guestLine, pickFrom, ENTER, LEAVE, CHEER, POKE } from './pet_guest.js';
 import { LINES, PUSH_LINES, GOODBYES_DAY, GOODBYES_NIGHT, WAKES, WAKES_NEAR, HOME_LINES, DOOR_LINES, choose } from './pet_lines.js';
 
 const KEY = 'templeos.pet.v1', S = 2, SW = MINI_W * S, SH = MINI_H * S, FOOT = 56 * S;
@@ -27,7 +28,10 @@ try { st = Object.assign(st, JSON.parse(localStorage.getItem(KEY)) || {}); st.we
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ out: st.out, wear: st.wear, x: Math.round(P.x), y: Math.round(P.y), last: st.last })); } catch (e) {} };
 
 const P = { x: st.x, y: st.y, dir: 1, mode: 'idle', t: 0, wait: 2, to: null, job: null, say: 0, lastPush: 0, down: null, near: false, jump: null, step: 0, snore: 0 };
-let el = null, cv = null, g = null, bub = null, raf = null, last = 0, drawAt = 0, ptr = { x: -999, y: -999 }, hooked = false;
+let el = null, cv = null, g = null, bub = null, raf = null, last = 0, drawAt = 0, ptr = { x: -999, y: -999 }, raw = { x: -9999, y: -9999 }, hooked = false;
+/* A guest: carried into an app's window he stands in it (coordinates are the window's own), walks about inside it, has words for the app,
+   answers a poke, and when the window closes he is put back on the desktop where it was. Never saved: a launch starts him on the desk. */
+let host = null, hostApp = null, hostWatch = null, lastGuest = '';
 const subs = [];
 const desk = () => document.getElementById('desktop');
 const owned = () => !!(window.Cos && window.Cos.has('elephant', 'pet'));
@@ -57,7 +61,8 @@ function speak(txt, secs) {
 }
 
 /* ---- the world he walks in ----------------------------------------------------------------------------------------------- */
-const room = () => { const d = desk(); return { w: d ? d.clientWidth : 800, h: d ? d.clientHeight : 600 }; };
+const room = () => { const d = host || desk(); return { w: d ? d.clientWidth : 800, h: d ? d.clientHeight : 600 }; };
+const origin = () => (host || desk()).getBoundingClientRect();
 const clampX = x => { const { w } = room(); return Math.max(-20, Math.min(w - SW + 20, x)); };
 const clampY = y => { const { h } = room(); return Math.max(30, Math.min(h - SH - 4, y)); };
 const goTo = (x, y, why) => { P.to = { x: clampX(x), y: clampY(y) }; P.mode = 'walk'; P.job = why || null; };
@@ -83,7 +88,8 @@ function goodbye() {
   snd(330, 420, { type: 'triangle', to: 196, vol: 0.016 });
 }
 function sleep() { trophy('sleep'); P.mode = 'sleep'; P.t = 0; P.wait = 25 + Math.random() * 45; P.snore = 1; speak('...', 1.6); }
-function talk() { P.mode = 'talk'; P.t = 0; P.wait = 5.6; speak(line(LINES)); }
+function guestSay() { const t = guestLine(hostApp, lastGuest); lastGuest = t; return t; }
+function talk() { P.mode = 'talk'; P.t = 0; P.wait = 5.6; speak(host ? guestSay() : line(LINES)); }
 function hop() { P.mode = 'hop'; P.t = 0; P.wait = 0.9; snd(660, 50, { type: 'triangle', to: 880, vol: 0.02 }); }
 function pushIcon() {
   const list = petIcons();
@@ -94,7 +100,7 @@ function pushIcon() {
 }
 function think() {
   const sleepy = lateHour();
-  const canPush = performance.now() - P.lastPush > 150000 && petIcons().length > 2;
+  const canPush = !host && performance.now() - P.lastPush > 150000 && petIcons().length > 2;
   const w = [['walk', 5], ['sleep', sleepy ? 6 : 1.4], ['talk', 2.2], ['push', canPush ? 1.4 : 0], ['hop', 0.7], ['stay', 1.5]];
   let r = Math.random() * w.reduce((a, b) => a + b[1], 0), c = 'stay';
   for (const [k, v] of w) { if ((r -= v) < 0) { c = k; break; } }
@@ -109,6 +115,7 @@ function tick(ts) {
   const dt = Math.min(0.1, (ts - (last || ts)) / 1000);
   last = ts;
   P.t += dt;
+  { const o = origin(); ptr = { x: raw.x - o.left, y: raw.y - o.top }; }
   if (P.say > 0) { P.say -= dt; if (P.say <= 0 && bub) bub.style.display = 'none'; }
 
   if (P.mode === 'walk' || P.mode === 'home') {
@@ -178,7 +185,7 @@ function wire() {
   });
   el.addEventListener('pointermove', ev => {
     const d = P.down; if (!d) return;
-    if (!d.moved && Math.hypot(ev.clientX - d.px, ev.clientY - d.py) > 5) { d.moved = true; P.mode = 'carried'; P.job = null; speak('oh. put me down gently, pal. there we go', 3); snd(300, 60, { type: 'triangle', vol: 0.02 }); }
+    if (!d.moved && Math.hypot(ev.clientX - d.px, ev.clientY - d.py) > 5) { d.moved = true; leaveHost(true); el.style.zIndex = 9000; bub.style.zIndex = 9001; P.mode = 'carried'; P.job = null; speak('oh. put me down gently, pal. there we go', 3); snd(300, 60, { type: 'triangle', vol: 0.02 }); }
     if (d.moved) {
       const r = desk().getBoundingClientRect();
       P.x = ev.clientX - r.left - SW / 2; P.y = ev.clientY - r.top - SH / 2;
@@ -188,9 +195,16 @@ function wire() {
     const d = P.down; if (!d) return;
     P.down = null;
     try { el.releasePointerCapture(ev.pointerId); } catch (e) { /* already let go */ }
-    if (d.moved) { trophy('picked-up'); P.x = clampX(P.x); P.y = clampY(P.y); P.mode = 'hop'; P.t = 0; P.wait = 0.8; speak('thank you, friend', 2.5); save(); return; }
+    if (d.moved) {
+      trophy('picked-up'); el.style.zIndex = ''; bub.style.zIndex = '';
+      const into = winAt(ev.clientX, ev.clientY);
+      if (into) { enterHost(into, ev.clientX, ev.clientY); return; }
+      P.x = clampX(P.x); P.y = clampY(P.y); P.mode = 'hop'; P.t = 0; P.wait = 0.8; speak('thank you, friend', 2.5); save(); return;
+    }
     if (P.mode === 'sleep') { P.mode = 'idle'; P.t = 0; P.wait = 2; speak('i wasn\'t asleep. i was thinking', 3.5); return; }
-    trumpet(); hop(); speak(Math.random() < 0.4 ? 'hello, friend' : line(LINES), 4.5);
+    trumpet(); hop();
+    if (host) { try { host.dispatchEvent(new CustomEvent('pet-poke', { detail: { appId: hostApp } })); } catch (e) { /* the app has no ears */ } speak(Math.random() < 0.35 ? pickFrom(POKE) : guestSay(), 4.5); return; }
+    speak(Math.random() < 0.4 ? 'hello, friend' : line(LINES), 4.5);
   };
   el.addEventListener('pointerup', end);
   el.addEventListener('pointercancel', end);
@@ -200,13 +214,58 @@ function wire() {
       { label: 'SAY SOMETHING', run: () => { P.job = null; talk(); } },
       { label: 'LIE DOWN', run: () => { P.job = null; goodbye(); } },
       { label: 'TRUMPET', run: () => { trumpet(); hop(); } },
-      { label: 'PUT THE LAST ICON BACK', off: !st.last, run: () => Pet.putBack() },
+      { label: 'PUT THE LAST ICON BACK', off: !st.last || !!host, run: () => Pet.putBack() },
+      ...(host ? [{ label: 'BACK TO THE DESKTOP', run: () => leaveHost(false) }] : []),
       { sep: true },
       { label: 'GO BACK INSIDE', run: () => Pet.home() }
     ]);
   });
 }
 function trumpet() { snd(196, 380, { type: 'sawtooth', to: 392, vol: 0.03 }); snd(392, 300, { type: 'triangle', delay: 0.16, vol: 0.03 }); }
+
+/* ---- guest of an app ------------------------------------------------------------------------------------------------------------ */
+/* the open window under a point (not his own window, not a minimised one), topmost first */
+function winAt(x, y) {
+  const stack = document.elementsFromPoint(x, y);
+  for (const n of stack) {
+    const w = n.closest && n.closest('#desktop .win');
+    if (!w || w.classList.contains('hidden') || w.style.display === 'none') continue;
+    const rec = openWins.find(r => r.win === w);
+    if (rec && rec.appId === 'elephant') continue;
+    return { win: w, appId: rec ? rec.appId : null };
+  }
+  return null;
+}
+function enterHost(into, cx, cy) {
+  const o = into.win.getBoundingClientRect();
+  host = into.win; hostApp = into.appId;
+  into.win.appendChild(el); into.win.appendChild(bub);
+  el.classList.add('guest'); bub.classList.add('guest');
+  P.x = cx - o.left - SW / 2; P.y = cy - o.top - SH / 2;
+  P.x = clampX(P.x); P.y = clampY(P.y);
+  P.mode = 'hop'; P.t = 0; P.wait = 1; P.job = null;
+  speak(Math.random() < 0.5 ? pickFrom(ENTER) : guestSay(), 4);
+  clearInterval(hostWatch);
+  hostWatch = setInterval(() => { if (!host || !document.body.contains(host)) leaveHost(false, true); }, 400);
+  save();
+}
+/* back on the desktop: where he stands now, or (the window is gone) where it was */
+function leaveHost(carried, closed) {
+  if (!host) return;
+  const d = desk(), o = d.getBoundingClientRect();
+  let ax = raw.x - o.left - SW / 2, ay = raw.y - o.top - SH / 2;
+  if (!carried) {
+    const h = host.isConnected ? host.getBoundingClientRect() : null;
+    if (h) { ax = h.left - o.left + P.x; ay = h.top - o.top + P.y; }
+    else { ax = Math.max(0, Math.min(d.clientWidth - SW, P.x + 80)); ay = P.y; }
+  }
+  host = null; hostApp = null; clearInterval(hostWatch); hostWatch = null;
+  el.classList.remove('guest'); bub.classList.remove('guest');
+  d.appendChild(el); d.appendChild(bub);
+  P.x = ax; P.y = ay;
+  if (!carried) { P.x = clampX(P.x); P.y = clampY(P.y); P.mode = 'hop'; P.t = 0; P.wait = 1; speak(pickFrom(LEAVE), 3.5); save(); }
+}
+window.addEventListener('trophy-earned', () => { if (host && el && P.mode !== 'carried') { hop(); speak(pickFrom(CHEER), 3.5); } });
 
 /* ---- coming and going ------------------------------------------------------------------------------------------------------------ */
 function build() {
@@ -219,10 +278,11 @@ function build() {
   bub = document.createElement('div'); bub.id = 'petsay';
   d.appendChild(el); d.appendChild(bub);
   wire();
-  if (!hooked) { hooked = true; document.addEventListener('mousemove', ev => { const r = desk().getBoundingClientRect(); ptr = { x: ev.clientX - r.left, y: ev.clientY - r.top }; }); }
+  if (!hooked) { hooked = true; document.addEventListener('mousemove', ev => { raw = { x: ev.clientX, y: ev.clientY }; }); }
   last = 0; raf = requestAnimationFrame(tick);
 }
 function vanish() {
+  host = null; hostApp = null; clearInterval(hostWatch); hostWatch = null;
   if (raf) cancelAnimationFrame(raf); raf = null;
   if (el) { el.remove(); bub.remove(); }
   el = cv = g = bub = null;
@@ -291,6 +351,7 @@ export const Pet = {
      if it will not open he walks off the nearest edge as he always did */
   home() {
     if (!el) { st.out = false; save(); tell(); return; }
+    if (host) leaveHost(false);
     if (P.mode === 'home' || P.mode === 'door') return;
     P.job = null;
     const walkOff = () => {

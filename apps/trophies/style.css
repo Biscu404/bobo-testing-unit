@@ -52,7 +52,9 @@
 .tr-card.w-B { border-left-color: #AA5500; } .tr-card.w-S { border-left-color: #AAAAAA; } .tr-card.w-G { border-left-color: #FFFF55; } .tr-card.w-secret { border-left-color: #FF55FF; } .tr-card.w-meta { border-left-color: #FFFFFF; }
 .tr-card:hover { border-color: #55FFFF; }
 .tr-card.sel { background: #0000AA; border-color: #FFFF55; }
-.tr-card.pinned::after { content: 'PINNED'; position: absolute; right: 12px; margin-top: 18px; color: #55FF55; font-size: 13px; }
+.tr-pin { margin-left: auto; padding: 0 6px; border: 1px solid #AAAAAA; color: #AAAAAA; font-size: 14px; cursor: pointer; }
+.tr-pin:hover { border-color: #FFFF55; color: #FFFF55; }
+.tr-card.pinned .tr-pin { border-color: #55FF55; color: #55FF55; }
 .tr-card.done { background: #000000; }
 .tr-card.done .tr-name { color: #FFFFFF; }
 .tr-card.open .tr-name { color: #DDDDDD; }

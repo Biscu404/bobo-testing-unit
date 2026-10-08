@@ -13,7 +13,7 @@ const cellKey = p => { const c = cellOf(p.x, p.y); return c.c + ',' + c.r; };
 /* a fresh desk fills down a column, then the next, one icon to a cell */
 let out = layout(names(25), {}, [], dims);
 ok(new Set([...out.values()].map(cellKey)).size === 25, 'twenty-five new icons take twenty-five different cells');
-ok(out.get('F0').x === 8 && out.get('F0').y === 8 && out.get('F1').y === 8 + ICON_H, 'the first icons run down the first column');
+ok(out.get('F0').y === 8 && out.get('F1').x === out.get('F0').x + ICON_W, 'new files fill their zone left to right, then down');
 
 /* an icon that has a place keeps it, and a newcomer never bumps it */
 const stored = { F3: { x: 8 + 2 * ICON_W, y: 8 + ICON_H } };
@@ -58,5 +58,15 @@ ok(n && Math.max(Math.abs(n.c - 1), Math.abs(n.r - 1)) === 2, 'the nearest free 
 for (let r = 0; r < 5; r++) for (let q = 0; q < 5; q++) taken.add(q + ',' + r);
 ok(nearestFree(taken, 2, 2, 5, 5) === null, 'a full grid answers null');
 
+/* zones: tools top left, games top right, the bin in the corner, the machine's papers bottom left */
+const seed = ['TERMINAL', 'Trophies', 'Magen', 'TheCook', 'Solitaire', 'TheBibel.TXT', 'Notes', 'mine.txt'].map(n => ({ name: n })).concat([{ name: 'RecycleBin', type: 'bin' }]);
+out = layout(seed, {}, [], dims);
+const cl = n => cellOf(out.get(n).x, out.get(n).y);
+ok(cl('TERMINAL').c <= 1 && cl('Trophies').c <= 1, 'tools sit at the left');
+ok(cl('Magen').c >= cols - 3 && cl('TheCook').c >= cols - 3 && cl('Solitaire').c >= cols - 3, 'games sit at the right');
+ok(cl('RecycleBin').c === cols - 1 && cl('RecycleBin').r === rows - 1, 'the bin is in the bottom right corner');
+ok(cl('TheBibel.TXT').r >= rows - 2 && cl('TheBibel.TXT').c <= 2, 'the machine\'s papers are bottom left');
+ok(cl('mine.txt').c >= 3 && cl('mine.txt').c <= 6 && cl('mine.txt').r === 0, 'your own files have a zone of their own');
+ok(new Set([...out.values()].map(cellKey)).size === seed.length, 'and nobody shares a cell');
 console.log(bad ? bad + ' FAILED' : 'all ok');
 process.exit(bad ? 1 : 0);

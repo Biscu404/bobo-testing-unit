@@ -1,11 +1,14 @@
-import { createWindow, raise, sysDialog } from '../../kernel/wm.js';
+import { createWindow, raise, sysDialog, toast } from '../../kernel/wm.js';
 import { Snd } from '../../kernel/snd.js';
 import { Cos } from '../../kernel/cos.js';
 import { fs as vfs } from '../../kernel/vfs.js';
-import { lampDip } from '../../kernel/hardware.js';
+import { lampDip, CRT, Vol } from '../../kernel/hardware.js';
 import { cardsPay, winPay, dealPay } from './pay.js';
 import { whenGone } from '../lifecycle.js';
 import * as tro from './trophy_calls.js';
+import { Studio } from '../../kernel/studio.js';
+import { createSolitaireMusic } from './music.js';
+import { BASE_BACKS, ITEMS, bySub, drawBackArt, drawTable, drawSlate, BACK_BASE, winFx } from './cosmetics.js';
 
 
 const SOL_KEY = 'templeos.solitaire';
@@ -18,6 +21,12 @@ const LANES = [
 const RANK_TXT = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 const CW = 80, CH = 112;
 const SOL_BACKS = ['HEXTECH', 'SILK', 'RUNE'];
+/* what the trophies have given: the backs, tables and endings you own (Dave's SOLITAIRE shelf), and which you wear */
+const ownedOf = sub => bySub(sub).filter(i => window.Cos && window.Cos.has('solitaire', i.id));
+const backIds = () => BASE_BACKS.map(b => b.id).concat(ownedOf('back').map(i => i.id));
+const backId = () => { const l = backIds(), id = Solitaire.st.backId; return l.indexOf(id) >= 0 ? id : BASE_BACKS[Solitaire.st.back % 3].id; };
+const nameOfBack = id => (BASE_BACKS.find(b => b.id === id) || ITEMS.find(i => i.id === id) || { name: id }).name;
+const wornOf = (sub, key) => { const id = Solitaire.st[key]; return id && ownedOf(sub).some(i => i.id === id) ? id : null; };
 const Solitaire = {
   st: null,
   boot() {
@@ -88,13 +97,30 @@ export default {
       nb.addEventListener('mousedown', ev => { ev.stopPropagation(); Snd.click(); deal(); });
       const bb = document.createElement('button');
       bb.className = 'appbtn';
-      const setBack = () => { bb.textContent = 'BACK: ' + SOL_BACKS[Solitaire.st.back % 3]; };
+      const setBack = () => { bb.textContent = 'BACK: ' + nameOfBack(backId()); };
       bb.addEventListener('mousedown', ev => {
         ev.stopPropagation();
-        Solitaire.st.back = (Solitaire.st.back + 1) % 3;
+        const l = backIds(), id = l[(l.indexOf(backId()) + 1) % l.length];
+        Solitaire.st.backId = id;
+        const bi = BASE_BACKS.findIndex(b => b.id === id); if (bi >= 0) Solitaire.st.back = bi;
         Solitaire.save(); Snd.click(); setBack();
       });
       setBack();
+      /* the table and the ending of a win: only once a trophy has given you one (otherwise the button says where they come from) */
+      const cycle = (btn, sub, key, label) => {
+        const set = () => { const w = wornOf(sub, key), it = ITEMS.find(i => i.id === w); btn.textContent = label + ': ' + (it ? it.name : 'STANDARD'); };
+        btn.className = 'appbtn';
+        btn.addEventListener('mousedown', ev => {
+          ev.stopPropagation(); Snd.click();
+          const l = [null].concat(ownedOf(sub).map(i => i.id));
+          if (l.length === 1) { toast('EARN ' + label + 'S WITH SOLITAIRE TROPHIES. DAVE KEEPS THEM ON THE SOLITAIRE SHELF.'); return; }
+          Solitaire.st[key] = l[(l.indexOf(wornOf(sub, key)) + 1) % l.length]; Solitaire.save(); set();
+        });
+        set();
+        return btn;
+      };
+      const tb = cycle(document.createElement('button'), 'table', 'tableId', 'TABLE');
+      const wb = cycle(document.createElement('button'), 'win', 'winId', 'WIN');
       const sb = document.createElement('button');
       sb.className = 'appbtn';
       const setSuit = () => { sb.textContent = SUIT_MODE_LABEL[Solitaire.st.suitMode]; };
@@ -107,7 +133,7 @@ export default {
       setSuit();
       info = document.createElement('span');
       info.className = 'godword';
-      bar.appendChild(nb); bar.appendChild(bb); bar.appendChild(sb); bar.appendChild(info);
+      bar.appendChild(nb); bar.appendChild(bb); bar.appendChild(tb); bar.appendChild(wb); bar.appendChild(sb); bar.appendChild(info);
       body.appendChild(pane); body.appendChild(bar);
     }
   });
@@ -127,6 +153,7 @@ export default {
   }
   function deal() {
     settle();
+    if (typeof Music !== 'undefined' && Music.on) Music.nextDeal();
     const cards = [];
     for (let s = 0; s < 4; s++) for (let r = 1; r <= 13; r++) cards.push({ r: r, s: s, up: false, a: 0, x: 0, y: 0 });
     for (let i = cards.length - 1; i > 0; i--) {
@@ -202,7 +229,7 @@ export default {
     Solitaire.st.won++;
     if (!Solitaire.st.bestMoves || moves < Solitaire.st.bestMoves) Solitaire.st.bestMoves = moves;
     Solitaire.save();
-    tro.won(tally, moves, redeals, Solitaire.st.back % 3);
+    tro.won(tally, moves, redeals, BASE_BACKS.some(b => b.id === backId()) ? Solitaire.st.back % 3 : -1);
     Snd.fanfare();
     window.Economy.earn(payTarget, 'SOLITAIRE: WON IN ' + moves + ' MOVES');
     setTimeout(() => Snd.coin(), 400);
@@ -210,7 +237,7 @@ export default {
     bounce = [];
     for (let f = 3; f >= 0; f--) {
       found[f].slice().reverse().forEach((c, i) => {
-        bounce.push({ c: c, x: FOUND[f].x, y: FOUND[f].y, vx: 0, vy: 0, wait: (3 - f) * 52 + i * 4, live: false });
+        bounce.push({ c: c, x: FOUND[f].x, y: FOUND[f].y, vx: 0, vy: 0, age: 0, wait: (3 - f) * 52 + i * 4, live: false });
       });
     }
   }
@@ -481,9 +508,9 @@ export default {
       g.shadowColor = 'rgba(0,0,0,0.45)'; g.shadowBlur = 4; g.shadowOffsetY = 2;
     }
     if (!c.up) {
-      const b = Solitaire.st.back % 3;
+      const bid = backId(), b = bid === 'hex' ? 0 : bid === 'silk' ? 1 : bid === 'rune' ? 2 : -1;
       roundRect(x, y, CW, CH, 5);
-      g.fillStyle = b === 0 ? '#16283c' : b === 1 ? '#2a2030' : '#20261c';
+      g.fillStyle = BACK_BASE[bid];
       g.fill();
       g.shadowColor = 'transparent';
       g.strokeStyle = 'rgba(255,255,255,0.35)';
@@ -492,7 +519,9 @@ export default {
       g.save();
       roundRect(x + 5, y + 5, CW - 10, CH - 10, 3);
       g.clip();
-      if (b === 0) {
+      if (b < 0) {
+        drawBackArt(g, bid, x, y, CW, CH);
+      } else if (b === 0) {
         g.strokeStyle = '#39a0c8';
         for (let i = -CH; i < CW; i += 9) {
           g.beginPath(); g.moveTo(x + i, y); g.lineTo(x + i + CH, y + CH); g.stroke();
@@ -610,12 +639,7 @@ export default {
     const now = performance.now();
 
     /* the table: slate, with a grid pressed into it */
-    g.fillStyle = '#0f1218';
-    g.fillRect(0, 0, W, H);
-    g.fillStyle = '#131722';
-    for (let y = 0; y < H; y += 8) g.fillRect(0, y, W, 1);
-    g.fillStyle = 'rgba(60,90,140,0.05)';
-    for (let x = 0; x < W; x += 64) g.fillRect(x, 0, 32, H);
+    { const tw = wornOf('table', 'tableId'); if (!tw || !drawTable(g, tw, W, H, now / 16)) drawSlate(g, W, H); }
 
     emptySlot(STOCK.x, STOCK.y, stock.length ? null : (waste.length ? 'REDEAL' : ''));
     emptySlot(WASTE.x, WASTE.y, null);
@@ -672,8 +696,18 @@ export default {
     /* the win: fifty-two cards down the glass */
     if (bounce) {
       let anyLive = false;
-      bounce.forEach(b => {
+      const fxId = wornOf('win', 'winId'), fx = fxId ? winFx(fxId) : null;
+      bounce.forEach((b, bi) => {
         if (b.wait > 0) { b.wait -= 1; return; }
+        if (fx) {
+          if (!b.live) { b.live = true; b.slot = (bi % 13) * 2; fx.launch(b, bi, bounce.length, W, H); }
+          b.age++;
+          if (!fx.step(b, W, H)) return;
+          anyLive = true;
+          if (fx.deco) fx.deco(g, b);
+          drawCard(b.c, Math.round(b.x), Math.round(b.y), false);
+          return;
+        }
         if (!b.live) {
           b.live = true;
           /* one direction per card, hard enough to clear the table */
@@ -687,6 +721,7 @@ export default {
         anyLive = true;
         drawCard(b.c, Math.round(b.x), Math.round(b.y), false);
       });
+      if (fx && fx.overlay) fx.overlay(g, W, H, bounce.reduce((a, b) => Math.max(a, b.age), 0));
       if (!anyLive) { bounce = null; tro.cascadeEnded(); }
       g.fillStyle = '#ffd68c';
       g.font = '34px "VT323", monospace';
@@ -705,6 +740,10 @@ export default {
     void now;
   }
 
+  const Music = createSolitaireMusic({ studio: () => Studio, playing: () => !!(cv && cv.isConnected) && CRT.on && Vol.mus > 0 });
+  let musicHome = -1;
+  const musicTimer = setInterval(() => { Music.sync(); const h = home(); if (h !== musicHome) { musicHome = h; Music.cards(h); } }, 700);
+  whenGone(cv, () => { clearInterval(musicTimer); Music.stop(); });
   deal();
   whenGone(cv, settle);
   raf = requestAnimationFrame(paint);

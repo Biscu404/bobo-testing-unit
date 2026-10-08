@@ -1,4 +1,4 @@
-import { FRAMES, LOGOS, CURSORS, SCHEMES, POTS, SPECIES, WALLS, CRAYON, GARAGE, DRINKS, ELEPHANT, DECO_SVG, CUR_HANDMASK } from './cos_data.js';
+import { FRAMES, LOGOS, CURSORS, SCHEMES, POTS, SPECIES, WALLS, CRAYON, GARAGE, DRINKS, ELEPHANT, SOLITAIRE, DECO_SVG, CUR_HANDMASK } from './cos_data.js';
 
 /* `kind`: what owning one of these means. 'look' goes on the machine and is worn one at a time (frame, logo, pointer, scheme);
    'stock' is what the garden grows with (pots, seeds); 'wall' is a picture, set as the background; 'unlock' is something an app
@@ -14,7 +14,8 @@ export const COS_CATS = {
   crayon:  { list: CRAYON,   label: 'CRAYON',    kind: 'unlock', app: 'crayon',   appName: 'THE CRAYON' },
   garage:  { list: GARAGE,   label: 'GARAGE',    kind: 'unlock', app: 'garage',   appName: 'THE GARAGE' },
   drink:   { list: DRINKS,   label: 'DRINKS',    kind: 'unlock', app: 'bottle',   appName: 'THE BOTTLE' },
-  elephant:{ list: ELEPHANT, label: 'ELEPHANT',  kind: 'unlock', app: 'elephant', appName: 'THE ELEPHANT' }
+  elephant:{ list: ELEPHANT, label: 'ELEPHANT',  kind: 'unlock', app: 'elephant', appName: 'THE ELEPHANT' },
+  solitaire:{ list: SOLITAIRE, label: 'SOLITAIRE', kind: 'unlock', app: 'solitaire', appName: 'SOLITAIRE' }
 };
 
 
@@ -51,7 +52,7 @@ const Cos = {
   boot() {
     const def = {
       owned: { frame: ['beige'], logo: ['temple'], cursor: ['stock'], scheme: ['vga'], pot: ['terra'], seed: ['sunshoot'],
-               wall: [], crayon: [], garage: [], drink: ['jager'], elephant: [] },
+               wall: [], crayon: [], garage: [], drink: ['jager'], elephant: [], solitaire: [] },
       eq:    { frame: 'beige', logo: 'temple', cursor: 'stock', scheme: 'vga', pot: 'terra' }
     };
     const got = { ...def, ...(JSON.parse(localStorage.getItem('templeos.cosm')) || {}) };
@@ -88,10 +89,20 @@ const Cos = {
   buy(cat, id) {
     const it = this.find(cat, id);
     if (!it || this.has(cat, id)) return false;
+    if (it.earn) return false;                                 /* a gift of a trophy is not for sale */
     if (!window.Economy.spend(it.price, 'DAVE: ' + it.name)) return false;
     this.st.owned[cat].push(id);
     this.save();
     if (COS_CATS[cat].kind === 'wall') this.shelve(it);
+    this.tell(cat, id);
+    return true;
+  },
+  /* a gift: something a trophy hands over (kernel/rewards.js). Returns true only when it is new. */
+  grant(cat, id) {
+    const it = this.find(cat, id);
+    if (!it || this.has(cat, id)) return false;
+    (this.st.owned[cat] || (this.st.owned[cat] = [])).push(id);
+    this.save();
     this.tell(cat, id);
     return true;
   },
@@ -220,10 +231,18 @@ const Cos = {
     const room = document.getElementById('room');
     if (!room) return;
     const s = this.find('scheme', this.live('scheme')) || SCHEMES[0];
-    this.applySchemeVars(room, s.v);
+    this.applySchemeVars(room, s.v, s.id === 'vga');
   },
 
-  applySchemeVars(el, v) {
+  /* A scheme dresses the machine's own windows in full. A game's window takes only its FRAME (title bar and edge) and a line of accent on its
+     bar: --theme-frame / --theme-line are what that is (see "game windows" in kernel/theme.css); the art inside never sees a scheme. */
+  applySchemeVars(el, v, plain) {
+    const lum = h => { const n = parseInt(h.slice(1), 16); return (0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255; };
+    const light = lum(v.bg) > 0.5;
+    el.style.setProperty('--theme-frame', light ? v.bg : v.acc);
+    el.style.setProperty('--theme-edge', light ? v.dim : v.dim);
+    el.style.setProperty('--theme-line', light ? '#AAAAAA' : v.acc);
+    if (plain) el.removeAttribute('data-themed'); else el.setAttribute('data-themed', '1');
     el.style.setProperty('--sch-bg', v.bg);
     el.style.setProperty('--sch-fg', v.fg);
     el.style.setProperty('--sch-ok', v.ok);
@@ -242,13 +261,14 @@ const Cos = {
   applyWinScheme(win, schemeId) {
     if (!win) return;
     if (!schemeId) {
-      ['--sch-bg', '--sch-fg', '--sch-ok', '--sch-hi', '--sch-err', '--sch-dim', '--sch-acc']
+      ['--sch-bg', '--sch-fg', '--sch-ok', '--sch-hi', '--sch-err', '--sch-dim', '--sch-acc', '--theme-frame', '--theme-edge', '--theme-line']
         .forEach(k => win.style.removeProperty(k));
+      win.removeAttribute('data-themed');
       return;
     }
     const s = this.find('scheme', schemeId);
     if (!s) return;
-    this.applySchemeVars(win, s.v);
+    this.applySchemeVars(win, s.v, false);
   },
 
   applyLogo() {

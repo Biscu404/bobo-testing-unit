@@ -32,6 +32,7 @@ async function boot(app) {
   const page = await app.firstWindow();
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
+  await page.waitForFunction(() => typeof window.powerOn === 'function'); await page.evaluate(() => window.powerOn());
   await page.waitForSelector('#bootcursor', { state: 'attached', timeout: 30000 });
   await page.keyboard.press('Backquote');
   await page.waitForSelector('#shell', { state: 'visible', timeout: 15000 });
