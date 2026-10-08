@@ -193,6 +193,7 @@ export function createTrophies(env) {
   T.setStat = (app, key, v) => { try { const s = bag(st.stats, app); if (v > (s[key] || 0)) { s[key] = v; judge(byStat[app + ':' + key]); save(); } } catch (e) { /* never into the game */ } };
   /* a counter found in an old save: set silently, nothing earned by it (the ids the save proves were awarded already) */
   T.seed = (app, key, v) => { try { const s = bag(st.stats, app); if (v > (s[key] || 0)) { s[key] = v; save(); } } catch (e) { /* never into the game */ } };
+  T.seedSet = (app, key, v) => { try { const s = bag(st.sets, app); const a = s[key] || (s[key] = []); if (a.indexOf(v) < 0) { a.push(v); save(); } } catch (e) { /* never into the game */ } };
   T.pin = id => { st.pinned = id || null; save(); tell('trophies-changed', {}); };
   T.reset = () => { st = fresh(); T.st = st; save(); };
   T.save = save;

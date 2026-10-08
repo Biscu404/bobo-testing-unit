@@ -18,8 +18,9 @@ export const t = (id, name, tier, kind, desc, r, o) => Object.assign({ id: id, n
 export const secret = (id, name, tier, kind, hint, desc, r, o) => t(id, name, tier, kind, desc, r, Object.assign({ secret: true, hint: hint }, o || {}));
 /* a mirror of an achievement a game already awards itself: shown, paid nothing, counted nowhere */
 export const mirror = (id, name, tier, desc, o) => t(id, name, tier, 'P', desc, {}, Object.assign({ legacy: true, pay: 0 }, o || {}));
-/* a backfill reader may also hand back a counter it found in a save: the ledger seeds it (silently) after the ids are awarded, so a bar that was 20 of 40 is 20 of 40 */
+/* a backfill reader may also hand back a counter (`stat`) or a member of a set (`inSet`) it found in a save: the ledger seeds it (silently) after the ids are awarded, so a bar that was 20 of 40 is 20 of 40 */
 export const stat = (app, key, v) => 'stat:' + app + ':' + key + ':' + v;
+export const inSet = (app, key, v) => 'set:' + app + ':' + key + ':' + v;
 /* the text a trophy shows, in the language the ledger is set to ('en', or 'both' for a bilingual one) */
 export const words = (v, lang) => v && typeof v === 'object' ? (lang === 'both' && v.no && v.no !== v.en ? v.en + ' / ' + v.no : v.en) : String(v == null ? '' : v);
 export const plain = v => v && typeof v === 'object' ? v.en : String(v == null ? '' : v);

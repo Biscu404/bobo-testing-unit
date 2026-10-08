@@ -105,7 +105,8 @@ export function step(w, st, now, dt, rate, earn) {
       const per = sp.drop * 1000;
       while (p.acc >= per && held < capN) {
         p.acc -= per;
-        const add = (s.blessed && Math.random() < s.blessed) ? 2 : 1;
+        const dbl = !!(s.blessed && Math.random() < s.blessed), add = dbl ? 2 : 1;
+        if (dbl) st.blessedN = (st.blessedN || 0) + 1;                 /* the trophies count the doubled tokens (BLESSED) */
         p.tok = (p.tok || 0) + add;
         held += add;
       }

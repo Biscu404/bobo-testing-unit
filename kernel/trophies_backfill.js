@@ -10,8 +10,8 @@ export function backfill(T) {
   if ((T.st.seen.backfilled || 0) >= BACKFILL_VERSION) return 0;
   const ids = [];
   BACKFILL.forEach(f => { try { (f(read, T) || []).forEach(id => ids.push(id)); } catch (e) { /* somebody else's save */ } });
-  const seeds = ids.filter(id => String(id).indexOf('stat:') === 0), n = T.backfill(ids.filter(id => String(id).indexOf('stat:') !== 0));
-  seeds.forEach(sd => { const p = sd.split(':'); T.seed(p[1], p[2], +p[3]); });
+  const seeds = ids.filter(id => /^(stat|set):/.test(String(id))), n = T.backfill(ids.filter(id => !/^(stat|set):/.test(String(id))));
+  seeds.forEach(sd => { const p = sd.split(':'); if (p[0] === 'stat') T.seed(p[1], p[2], +p[3]); else T.seedSet(p[1], p[2], p.slice(3).join(':')); });
   T.st.seen.backfilled = BACKFILL_VERSION; T.save();
   return n;
 }
