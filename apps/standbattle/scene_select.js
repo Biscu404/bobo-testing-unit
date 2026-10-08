@@ -83,9 +83,9 @@ export function selectScene(app) {
         if (lock[0] && on1 || lock[1] && on2) px(g, r.x + 2, r.y + r.h - 5, r.w - 4, 3, '#5FD672');
       });
       const a = ROSTER[PLAYABLE[cur[0]]], b = ROSTER[PLAYABLE[cur[1]]], showB = two() || step === 'opp' || step === 'stage';
-      drawIdle(g, a, 96, 246, 1, tsec, dt); if (showB) drawIdle(g, b, W - 96, 246, -1, tsec, dt);
+      drawIdle(g, a, 52, 246, 1, tsec, dt); if (showB) drawIdle(g, b, W - 52, 246, -1, tsec, dt);
       const info = step === 'opp' ? b : a;
-      panel(g, 150, 108, 180, 112);
+      panel(g, 96, 108, 288, 112);
       text(g, info.short, W / 2, 114, { scale: 2, align: 'center', color: '#FFFFFF', outline: '#1E0A2A' });
       text(g, info.stand, W / 2, 132, { scale: 1, align: 'center', color: '#C8A0FF' });
       info.blurb.forEach((l, i) => text(g, l, W / 2, 148 + i * 11, { scale: 1, align: 'center', color: i === 0 ? '#FFE86A' : '#C8D0F0' }));

@@ -175,7 +175,8 @@ damage, no scaling, no juggle; they end in a knockdown.
 ## 11. Modes
 
 ### 11.1 Title and attract
-`title` cycles every 9 s: the logo card; a **live CPU-vs-CPU fight** (two AIs on HARD, seeded, 25 s, random roster); the high-score table; the control sheet. Any key, click or gamepad button goes to the menu.
+`title` cycles: the logo card (8 s); a **live CPU-vs-CPU fight** (two AIs on HARD, seeded, one round of up to 25 s, random roster; 30 s at most on screen); the high-score table (9 s); the control sheet (9 s).
+Any key, click or gamepad button goes to the menu (`scene_title.js`).
 
 ### 11.2 Menu and character select
 Menu: ARCADE, VERSUS 2P, VERSUS CPU, SURVIVAL, TIME ATTACK, TRAINING, OPTIONS. One player at the cabinet picks with P1. **Pick-up choice:** on the select screen a second player who presses a button with
@@ -183,25 +184,28 @@ the P2 keys or pad joins in, the mode becomes a two-player versus, and both pick
 shows the CONTROLS sheet.
 
 ### 11.3 Arcade ladder
-* **Seven fights.** The four other fighters in a per-character order of rising danger, then **your own fighter as a mirror** (the CPU takes the other colours), then the **rival** (the strongest of
-  the four again, on a different stage), then the **boss**: Killer Queen, Kira's Stand at full (phase art follows his remaining HP; he has extra moves — SHEER HEART ATTACK, BITES THE DUST —
-  and no extra health or damage).
-* **Three difficulty tiers** (EASY, NORMAL, HARD) change only the CPU's profile (10), the number of continues (5, 3, 1) and the score multiplier (×0.5, ×1, ×2). Within a ladder the profile ramps from
-  its base at fight 1 to its top at the boss.
-* **Continue countdown:** after a lost match a 10-second countdown; a press of `START` (or a click) *starts that fight again* (new match, same opponent) and costs a continue; at zero it is game over.
+* **Six fights.** The four other fighters in order of rising danger (Delinquent, Angelo, Kira, Polnareff, Jotaro, skipping your own), then **your own fighter as a mirror** (the CPU takes the other colours), then
+  the **boss**: Killer Queen, Kira's Stand at full (phase art follows his remaining HP; he has extra moves, SHEER HEART ATTACK and BITES THE DUST, and no extra health or damage). Stages go round alley, street and
+  park; the boss is at the store (`ladder.js`). (A seventh fight, "the rival", was in the first draft and is gone: see D18.)
+* **Three difficulty tiers** (EASY, NORMAL, HARD) change only the CPU's profile (12), the number of continues (**7, 5, 3**) and the score multiplier (×0.5, ×1, ×2). Within a ladder the profile climbs from the
+  tier's own at fight 1 to a stronger one at the boss and never eases on the way (`ladderProfile`; the last fight of EASY is NORMAL's first, of NORMAL a little below the human-pace bot, of HARD beyond HARD).
+* **Continue countdown:** after a lost match a 10-second countdown; a press of `START` (or a click) *starts that fight again* (new match, same opponent) and costs a continue; at zero, or with no continues left, it is game over.
 * **Score:** per round won 1,000; time bonus (60 − seconds) × 20; flawless round 2,000; every combo hit over 3 (50 each); ring-out 500; × tier multiplier; −5 % per continue used. Cleared ladders are
   recorded per fighter and tier.
 * **High scores:** the top 10 keep **three initials** (arrows/`WASD` to choose, `START` to confirm; the previous initials are the default). Saved through `save.js`.
+* **Pause** (`ESC` or the pad's Start) has CONTINUE and QUIT TO MENU; quitting abandons the run and records and pays nothing.
 
 ### 11.4 Versus
 **VS 2P**: two people, both pick, stage picked by P1 (or random), best of three with a rematch option. **VS CPU**: one person, the opponent and the tier are picked; stage random or picked.
 
 ### 11.5 Survival
-One round of 45 s per opponent, a seeded endless sequence that ramps the CPU one step per win. HP **carries over**, with 25 % of the maximum restored after a win (never above max). Over at 0 HP. Record: most
-wins in a row, best fighter, saved as `meta.survival`.
+One round of 45 s per opponent, a seeded endless sequence (every sixth win the boss). The CPU climbs with the number of wins whatever the arcade tier is (`survivalProfile`): EASY to NORMAL over the first seven,
+NORMAL to HARD over the next seven, then HARD to beyond itself. HP **carries over**, with 25 % of the maximum (30) restored after a win (never above max). Over at 0 HP. Record: most wins in a row, best
+fighter, saved as `meta.survival`. The tier only scales the pay and the score.
 
 ### 11.6 Time attack
-Five opponents, one round each of up to 45 s, normal tier, no continues; the clock runs across all five (including the intros, not the menus). Record: fastest clear per fighter, saved as `meta.timeattack`.
+Five fights: the first four of the ladder's others and the boss, one round each of up to 45 s, no continues (the first loss ends the attempt); the clock runs across all five (including the intros, not
+the menus). The CPU climbs from EASY to NORMAL (`timeAttackProfile`): it is a race against the clock, not a test of the CPU. Record: fastest clear per fighter, saved as `meta.timeattack`.
 
 ### 11.7 Training
 A flat stage with walls, infinite time and HP that refills. On screen: the **frame data** of the move you are doing (name, height, `iN`, active, recovery, on hit, on block) and the **measured
@@ -212,34 +216,55 @@ inputs the dummy's for up to 600 frames, `PLAY` loops them. `RESET` puts both at
 ## 12. The CPU
 
 The CPU is a player: each frame it produces the same integer a keyboard would (`ai.js`). It reads **only** the state a human sees (positions, the opponent's state, the move and frame the opponent
-is in, the opponent's height), **delayed** by its reaction time, and it chooses from its own movelist using the same frame data (what is safe, what is a punisher, what reaches).
+is in, whether the opponent is guarding or crouching, a thrown thing), **delayed** by its reaction time (`ai_check.js` proves the delay to the frame, for a move, for a thrown thing and for a throw it has to break),
+and it chooses from its own movelist using the same frame data (what is safe, what is a punisher, what reaches). Positions are seen as they are: a person tracks distance continuously and reacts late to *events*.
+
+What it does, in the order it asks itself (`ai_think.js`, `ai_neutral.js`): (1) **every free frame**, whatever else it is doing (standing still, walking, resting), has something started that it should answer? A move it can see starts
+(guard at the right height, or step out of a linear one), a thrown thing comes (step out of one that flies straight, hold back against one that follows, and keep holding until it is gone); one decision per threat, so the dice are
+rolled once and not once a frame. (2) Is something recovering that it can punish? (3) Is the other fighter in a combo it can carry on, up to the profile's route length? (4) Otherwise the **neutral**, which it plays by distance like a
+person: out of everyone's reach it walks in or waits; where it reaches and they do not it takes the free poke nearly every time; where they reach and it does not it backs off or guards; where both reach it is a race (attack as often as
+`aggro`, otherwise guard, sometimes crouching when the other fighter has a low that reaches, step back, or stand still). It walks up to a guarding fighter to throw, and detonates a bomb it has placed.
 
 | Profile field | EASY | NORMAL | HARD | Meaning |
 |---|---|---|---|---|
-| `reaction` (frames) | 24 | 15 | 8 | how stale its view of the opponent is |
-| `error` | 0.20 | 0.09 | 0.025 | chance a decision is replaced by a wrong one (wrong height guarded, a button mashed) |
-| `punish` | 0.35 | 0.70 | 0.97 | chance it presses a guaranteed punish when one is open |
-| `tech` | 0.10 | 0.45 | 0.85 | chance it breaks a throw |
-| `step` | 0.10 | 0.30 | 0.55 | chance it sidesteps a linear move it saw start |
-| `combo` | 3 | 6 | 12 | longest route it will attempt |
-| `aggro` | 0.35 | 0.55 | 0.70 | how often it advances instead of waiting |
+| `reaction` (frames) | 30 | 24 | 18 | how stale its view of the opponent is |
+| `error` | 0.24 | 0.16 | 0.10 | chance a decision is replaced by a wrong one (wrong height guarded, a button mashed) |
+| `punish` | 0.20 | 0.35 | 0.55 | chance it presses a guaranteed punish when one is open |
+| `tech` | 0.05 | 0.20 | 0.35 | chance it breaks a throw (it can only if `reaction` ≤ 11: a throw must be seen inside the 14-frame window) |
+| `step` | 0.05 | 0.10 | 0.20 | chance it sidesteps a linear move it saw start |
+| `combo` | 2 | 2 | 3 | longest route it will attempt |
+| `aggro` | 0.35 | 0.50 | 0.55 | how often it advances instead of waiting |
+| `think` (frames) | 30–70 | 16–50 | 12–40 | how long it rests between decisions |
 
-Difficulty is **only** these numbers and the seeded dice. There are no health, damage or speed multipliers for the CPU, hidden or otherwise. A fighter is the same fighter whoever plays it.
+Difficulty is **only** these numbers and the seeded dice. There are no health, damage or speed multipliers for the CPU, hidden or otherwise (`content_check.js`: a profile has exactly these keys). A fighter is the same fighter whoever plays it.
+
+**Within a ladder** the profile moves from the tier's own at fight 1 to a stronger one at the boss: EASY to NORMAL's first, NORMAL to *reaction 19, error 0.105, punish 0.535, tech 0.33, step 0.19, think 12–41* (a little under the human-pace bot),
+HARD to *reaction 10, error 0.04, punish 0.9, tech 0.7, step 0.45, combo 8, aggro 0.65, think 4–16* (a player who has played many fighting games). **Survival** and **time attack** have their own ramps (11.5, 11.6).
+
+**Calibration, and why the tiers are what they are (D20).** A first draft had NORMAL a notch *better* than the human-pace bot (reaction 15 against its 18); that bot then won a quarter of its matches and never cleared a ladder. The tiers were moved until the
+bot (`HUMAN` = HARD's own numbers: reaction 18, error 0.10, punish 0.55, tech 0.35, step 0.20, route of three) beats a NORMAL ladder about two matches in three. The same bot on both sides is an even match (`ai_check.js`), HARD beats NORMAL beats EASY
+by a margin, and a NOVICE (= NORMAL) and a SKILLED player (reaction 12, error 0.05, punish 0.85, tech 0.65, step 0.40, route of eight) are the other two points on the scale the budget reports (17, 20).
 
 ## 13. Roster
 
-Five playable fighters and one boss-only fighter. The Morioh enemies and Kira are the base of the roster, as asked. All 120 HP; walk speeds differ by ±10 % as data.
+Five playable fighters and one boss-only fighter. The Morioh enemies and Kira are the base of the roster, as asked. All 120 HP; walk speeds differ by ±10 % as data (`walk` in `roster.js`).
 
 | Fighter | Stand | Identity | Moves |
 |---|---|---|---|
-| **Jotaro Kujo** | Star Platinum | Brawler. Big mids, strong throws, Stand-assisted rushes (STAR FINGER long poke, ORA barrage, STAR BREAKER charge launcher). Few tracking moves. | 27 |
-| **Yoshikage Kira** | Killer Queen | Trickster. Best lows and mix-ups; **TOUCH** puts a bomb on the opponent (status), **DETONATE** blows it (damage, timer 5 s). | 26 |
-| **Morioh Delinquent** | — | Rushdown. Fast pokes, hard lows, a headbutt and a sweep; simple to learn, easy to guard once read. | 25 |
-| **Angelo** | Aqua Necklace | Zoner. Long limbs, thrown rocks (projectiles), a grab that starts **drowning** (damage over time), tracks to the near lane. | 26 |
-| **Jean Pierre Polnareff** | Silver Chariot | Fencer. The longest reach and the fastest pokes, thrusts that track one lane, low damage. New sprite (`sprite_polnareff.js`). | 26 |
-| *Killer Queen (boss)* | | Kira's list plus SHEER HEART ATTACK (slow tracking bomb) and BITES THE DUST (a counter). | 28 |
+| **Jotaro Kujo** | Star Platinum | Brawler. Big mids, strong throws, Stand-assisted rushes (STAR FINGER long poke, ORA barrage, STAR BREAKER charge launcher). Few tracking moves (5 of 23 strikes). | 29 |
+| **Yoshikage Kira** | Killer Queen | Trickster. Best lows and mix-ups; **TOUCH** puts a bomb on the opponent (status), **DETONATE** blows it from anywhere (damage 26, the mark lasts 5 s). | 31 |
+| **Morioh Delinquent** | — | Rushdown. Fast pokes, hard lows, a headbutt and a sweep; simple to learn, easy to guard once read. | 29 |
+| **Angelo** | Aqua Necklace | Zoner. Long limbs, thrown rocks (projectiles), a grab that starts **drowning** (damage over time), tracks to the near lane. | 30 |
+| **Jean Pierre Polnareff** | Silver Chariot | Fencer. The longest reach and the fastest pokes, thrusts that track one lane, low damage. New sprite (`sprite_polnareff.js`). | 29 |
+| *Killer Queen (boss)* | | Kira's list plus SHEER HEART ATTACK (slow homing bomb, 18 damage) and BITES THE DUST (a counter, 30 damage if a hit arrives in frames 8–24). | 33 |
 
-**Movelist template** (every fighter gets about 25): 4 standing normals (`LP RP LK RK`), 4 forward normals (`F+LP/RP/LK/RK`), 2 back normals, 3 strings (`LP,RP`, `LP,RP,LK`, `RP,LK`), 4 crouching normals
+**Balance is measured, not felt (D23).** `fairness_check.js` holds the authoring guide; on top of it the five were played against each other, both sides the same bot (the human-pace profile), sides swapped half the time,
+400 matches a pair, until every fighter sat between 41 and 59 %. What it took, and what it says about the game: the first round robin ranked the fighters by **reach** (the longest quick poke won and a fighter who was out-ranged by
+ten units won one match in six), so the quick pokes of all five were pulled to within a few units of each other and the long ones were made slow; Kira's damage was raised by a fifth, because a trickster whose every hit does less than
+the others' loses without ever being outplayed; Jotaro's and Polnareff's long pokes (STAR FINGER, PIERCE) were made slower and weaker. The result is in section 20. It is a measure of how well *this CPU* plays each list, not of how
+a person would: a person will find the tricks the CPU does not (Kira's bomb, Angelo's drowning grab) and the order may move.
+
+**Movelist template** (every fighter gets about 25 and a few more for its own tricks; the totals are above): 4 standing normals (`LP RP LK RK`), 4 forward normals (`F+LP/RP/LK/RK`), 2 back normals, 3 strings (`LP,RP`, `LP,RP,LK`, `RP,LK`), 4 crouching normals
 (`D+LP/RP/LK/RK`), 2 launchers (`D/F+RP`, `D/F+LK`), 3–4 specials by motion (`qcf+LP`, `qcf+RP`, `qcb+RK`, charge `B~F+RP`), 1 dash attack (`F,F+RP`), 3 throws, 2 wake-up kicks, plus
 character-specific rows (a stomp, a projectile, a counter). The rows are the data; this table is the shape.
 
@@ -249,8 +274,9 @@ character-specific rows (a stomp, a projectile, a counter). The rows are the dat
   Everything else (Jotaro, Star Platinum, Delinquent, Angelo, Killer Queen, the four stages, the font, the effects) is reused. Pixel rules unchanged.
 * **Every move is animated from its frame data** (`pose_fighter.js`). A row names a style (`anim`) and a side; the style (`anim_styles.js`) gives three key poses (wind-up, strike, recover) as joint angles of
   the existing rig, and the engine places them on the move's own frames: **wind-up spans frames 1 … startup − 1, the strike is held across the active frames, the recovery eases back over `recovery` frames.**
-  A move with a longer startup has a longer, more visible wind-up; there are no hand-timed loops. `anim_check.js` proves that every row has a style, that the striking limb is displaced from the guard
-  pose by a visible amount during the wind-up (the telegraph), and that no two consecutive wind-up frames of a move longer than i12 are identical.
+  A move with a longer startup has a longer, more visible wind-up; there are no hand-timed loops. `anim_check.js` proves, for every move of every fighter, that the row has a style, that by the end of the wind-up of
+  any move of i11 or slower the body is a visible amount of joint angle away from the stance (the telegraph; it caught the KNEE, whose wind-up hardly moved), that no two consecutive wind-up frames of a move slower than i12 are identical,
+  that the strike is held across the active frames, and that the body is back at the stance exactly when the move is over, after exactly `recovery` frames of easing.
 * States (guard, crouch, sidestep, hit, launch, knockdown, wake, throw/thrown, intro, win, KO) have poses of their own in the same file.
 * The Star Platinum Stand appears on a move flagged `stand` (Jotaro's specials and heavies), driven by the same frame data.
 
@@ -264,15 +290,21 @@ a counter-hit sting, a round-start bell, a KO boom and a round-end sting, a cont
 
 * **Save** (`save.js`, the single choke point, migration v1 → v2): `meta` gains `difficulty`, `keymap {p1,p2,pad}`, `hiscores[10]`, `survival`, `timeattack`, `cleared {fighter: {tier}}`, `training`; the old `run` blob (a node map checkpoint) is
   removed on first load.
-* **Trophies** go through `trophies_bridge.js` (rewritten for the new events). The old 24 are reworked into the new modes and more are added (`trophies.js`, `scripts/check-trophies.mjs`, the catalogue in `docs/achievements/games-2.md`).
-* **Pay** (`pay.js`, `scripts/check-sun.mjs`): a round won, a match won, a ladder cleared by tier, a survival streak, a time-attack clear, all with once-a-session decay as the other games have, held to the band the
-  SUN check already enforces.
+* **Trophies** go through `trophies_bridge.js` (rewritten for the new events; `setSink` lets a test hear what it emits). The old 24 were reworked into the new modes and 23 were added: **47** in all, 26 bronze, 15 silver, 6 gold,
+  two of them secret (`trophies.js`, `scripts/check-trophies.mjs`, the catalogue in `docs/achievements/games-2.md`). `trophy_check.js` plays a witness through the sim for each trophy a fight can earn and shows that a near miss does not.
+  The ledger is 417 trophies and about 139,000 SUN; the completion table in `kernel/trophy_rewards.js` follows the renamed ones (FIVE LADDERS 1,200, PERFECT MATCH 500, HARD, AND STILL STANDING 700).
+* **Pay** (`pay.js`, `scripts/check-sun.mjs`): a won arcade match pays 100 + 30 for every stage already cleared (+25 a flawless round), a ladder cleared +1,000, versus CPU 80, survival 60 a win, time attack 600 (+300 under four
+  minutes), all times the tier (0.5 / 1 / 2); nothing for a fight lost or for two people fighting each other; every payment in the last half hour takes 10 % off the next, down to 40 %. Three NORMAL ladders in an hour
+  pay about 2,800 SUN, in the middle of the band the SUN check holds every game to.
 
 ## 17. Time budget (target: about two hours; measured by `budget_bot.js`)
 
-The player sees every mode once on NORMAL and clears the arcade ladder with each of the five fighters. Mastery and trophies are on top. All figures are in-game time in a first-time play, from the
-bot's play at a human pace (reaction 18 frames, 10 % errors, no routes over three hits). The *model* below is what the bot's measurement is checked against; the *measured* column is filled in by the run
-(section 20).
+The player sees every mode once on NORMAL and clears the arcade ladder with each of the five fighters; a ladder that ends in a game over is started again with a fresh credit until it is cleared. Mastery and trophies are on top.
+All figures are in-game time in a first-time play, from a bot that plays at a human pace (`HUMAN`: reaction 18 frames, one decision in ten wrong, a punish taken about one time in two, no route over three hits). The time of a
+fight is the sim's own count of real time (`fight.realFrames`: the KO beat at 0.30 speed included, hit-stop included); everything that is not a fight is the `timing.js` table, which the screens use to time themselves, so the figure
+the bot reports and what a screen takes are the same number.
+
+**The model** (written before the measurement, and what it was checked against):
 
 | Block | Model | Justification |
 |---|---|---|
@@ -282,17 +314,11 @@ bot's play at a human pace (reaction 18 frames, 10 % errors, no routes over thre
 | Continues, title, select, initials | 1.7 min | 3 continues × 8 s, 40 s of menus, 25 s of initials |
 | **One ladder** | **≈ 20.4 min** | |
 | **Five ladders** | **≈ 102 min** | |
-| Versus 2P (one match, two humans, a rematch declined) | 4.5 min | longer rounds when both are learning |
-| Versus CPU (two matches, two tiers) | 5 min | |
-| Survival (a first run: six wins) | 4.5 min | six single rounds of ≈ 40 s |
-| Time attack (one clear) | 3 min | five single rounds at the pace of a clear |
-| Training (a look at every panel) | 4 min | by the player's choice; the least certain figure |
-| Title, menus, options, controls | 3 min | |
-| **Everything else** | **≈ 20 min** | |
+| Everything else (versus 2P, versus CPU, survival, time attack, training, title and menus) | ≈ 20 min | one match each, a first survival run, one time-attack clear, four minutes in training |
 | **Total** | **≈ 122 min** | within 10 % of two hours |
 
-If the measurement says otherwise the knobs are, in order: the ladder length (7 fights), the CPU ramp (a harder CPU makes longer matches and more tries), the round count of survival/time attack, and the
-timer (fixed at 60 s by the brief, so not a knob).
+**What the measurement changed** (the knobs were, in the order the spec promised: the ladder length, the CPU ramp, the continues): the first measurement with seven fights and a CPU that was a notch better than the bot was **337 minutes and no clear at all**;
+recalibrating the tiers around the bot (D20) brought it to 174 minutes; dropping the rival fight (D18) and raising the continues (D19) to 125; the NORMAL ladder's last step was then eased a little (D20) to land at the figure in section 20.
 
 ## 18. Decisions (and why)
 
@@ -310,19 +336,89 @@ timer (fixed at 60 s by the brief, so not a knob).
 | D10 | The CPU sees a stale view and has a numeric error rate; no stat boosts. | The brief. It also makes the human-pace bot the same program with slower numbers, which is what the budget needs. |
 | D11 | Boss has more *moves*, not more health or damage. | Same rule: difficulty is never a hidden number; a boss that is longer or harder to read is honest. |
 | D12 | Five playable fighters, one boss-only. | Five ladders at about 20 minutes each is the bulk of the two hours; a sixth would be 20 more minutes the brief did not ask for. The boss is Kira's Stand, whose art already has three phases. |
-| D13 | The ladder has seven fights, four others + mirror + rival + boss. | Seven is the arcade norm, and the four other fighters, the mirror and the rematch fill it without a sixth fighter. |
+| D13 | The ladder is the four other fighters, a mirror and the boss (six). | The four fighters are the roster, the mirror is the arcade classic, and the boss closes it. (The first draft had a seventh, the rival: D18.) |
 | D14 | Movelists are data in `char_*.js`, the row format in `moves.js`. | 125 rows cannot live in one 300-line file; the format is the single place a column is defined. |
 | D15 | Retire the effect-content registry, `stats.js`, `resources.js`, `poise.js`, `defense.js`. | They implement Persistence, Momentum, poise and Fragments, none of which exist now; keeping them would leave dead code that a check still has to pass. `content_check.js` now validates the roster and movelists. |
 | D16 | `fairness_check.js` is rewritten as the reactability and range rules of 5, not removed. | The old rule ("no attack you cannot react to") still applies; it now reads frame data (lows ≥ i14, throws ≥ i12, nothing faster than i10, projectiles reactable). |
 | D17 | Check and bot scripts are dev-only and are not packaged. | `electron-builder.yml` and `check-package.mjs` get the new file names; nothing in the app imports a `*_check.js` any more. |
+| D18 | The rival fight is cut: the ladder is six fights. | Measured, not guessed: with seven fights the human-pace bot needed 174 minutes; the rival was the strongest fighter a second time, so it added the most tries for the least new. Six lands at about two hours. |
+| D19 | Continues are 7 / 5 / 3 (EASY / NORMAL / HARD), not 5 / 3 / 1. | A ladder has about three lost matches in it for a person who is winning two in three; with three continues a game over came before the end and the whole ladder was started again, which is where the first draft's hours went. |
+| D20 | The CPU's tiers are calibrated against the human-pace bot, and the NORMAL ladder ends a little below it. | NORMAL was first written by feel and was stronger than the bot: it won a quarter of its matches. Difficulty is seven numbers, so the fix is seven numbers: EASY → NORMAL → HARD are the scale the bot, a novice (= NORMAL) and a skilled player sit on, and each skill has a tier where the game is about two hours (section 20). |
+| D21 | Survival and time attack ramp by their own rule, whatever the arcade tier is. | One round with carried-over life is much harsher than a best of three: survival from NORMAL gave a first run 0.8 wins; time attack from NORMAL was cleared one time in five. They are about lasting and about the clock, not about the CPU, so they start at EASY. The tier still scales the pay and the score. |
+| D22 | The CPU answers a threat on every free frame, once per threat, and reads stance from the view it had a moment ago. | It used to ignore everything while it was standing still or resting (a quarter of its time) and to choose its attacks by the live stance of the other fighter, which is a view no person has. Both fixes made it a better opponent *and* a more honest one; `ai_check.js` holds the delay to the frame. |
+| D23 | The roster is balanced by a round robin of one bot against itself, and the reach of quick pokes is kept within a few units. | Without a number the five drift: the first round robin put the fighters at 75 / 63 / 60 / 32 / 20 %, and the order followed reach (the long-poke fighters on top). After the pass they sit between 42 and 59 % (section 20). It measures this CPU, not a person: said so in 13. |
+| D24 | The boss gets two moves that matter and nothing else. | Kira's list plus two cheap moves won 43 % of the boss's matches against the five (Kira himself is the weakest of them). Making SHEER HEART ATTACK and BITES THE DUST worth their long startup (18 and 30 damage) brought him to about 55 % (60 / 67 / 51 / 41 / 54 against Jotaro, Kira, the Delinquent, Angelo and Polnareff), a fight that is a little better than an average fighter's with no health or damage bonus; what makes him the last fight is that the ladder gives him its strongest CPU profile. |
+| D25 | The pause menu has QUIT TO MENU. | The first version of the pause could only resume: a versus match or a run could not be left. Quitting abandons the run and pays and records nothing. |
+| D26 | The hook bus keeps only its events. | The effect and query hooks served Fragments and Relics that no longer exist; keeping them was dead code with a validator. `hooks.js` is now the list of events and a bus that throws on a name not in it. |
 
 ## 19. Verification
 
-`headless_harness.js` (a seeded bot that plays every mode: arcade, versus, survival, time attack, training), `content_check.js` (roster and movelist validity), `fairness_check.js` (5's ranges, reactability),
-`framedata_check.js` (sim equals table, every move), `anim_check.js` (telegraphs), `input_check.js` (motion windows, tap/hold, buffer), `combat_check.js` (heights, sidestep, throw, juggle, bounce,
-splat, wake-up, ring-out, scaling, rounds, draws), `ai_check.js` (profiles act only on delayed views, difficulty ordering), `trophy_check.js`, `budget_bot.js`; then `npm run check:paths`, `check:apps`, `check:listeners`,
-`check:perf`, `check:trophies`, `check:sun`, `check:package`.
+Pure Node (no browser): `node apps/standbattle/framedata_check.js` (the sim reproduces the table for every move: first contact, free tick, on-hit and on-block advantage, late contact, throws, bombs, thrown things),
+`combat_check.js` (heights, sidestep, throw, juggle, bounce, splat, wake-up, ring-out, scaling, rounds, draws), `input_check.js` (motion windows, tap and hold, buffer, charge), `content_check.js` (roster, movelists, ladder, profiles,
+save, high scores, keymaps, stages, hook names, pay), `fairness_check.js` (5's authoring guide as ranges), `anim_check.js` (telegraphs and frame placement), `ai_check.js` (the delay, the ordering of the tiers, techs, dice),
+`trophy_check.js` (a witness for every trophy), `headless_harness.js` (a seeded bot plays every mode and proves the same seed gives the same game), `budget_bot.js` (the hours). In the shell (Electron, Xvfb on Linux):
+`npm run check:standbattle` (the screens, played with real keys, against the source and against the packaged app), `check:paths`, `check:shell`, `check:apps`, `check:listeners`, `check:perf`, `check:props`, `check:contrast`,
+`check:music`, `check:trophies`, `check:sun`, `check:package` (after `npm run pack`).
 
 ## 20. Measured results
 
-*(filled in at the end of the work; see the final section of this file)*
+All of this is a bot with a person's numbers, never a person (see "what this cannot say" below). Every figure is reproducible: `node apps/standbattle/budget_bot.js 100 --all` (100 players for the budget, 50 for each other skill; a player is a seed).
+
+### 20.1 The budget (`budget_bot.js`, the human-pace bot on NORMAL, 100 players, 500 ladders)
+
+| Block | Model (17) | Measured |
+|---|---|---|
+| A round (intro, fight, KO beat at 0.30 speed, win pose) | 41 s | **41 s** |
+| A match (rounds per match; fighting time) | 2.47 rounds, 109 s with the screens | **2.43 rounds, 99 s of fighting** (+ 4 s versus screen, 3 s result) |
+| The bot's match win rate on a NORMAL ladder | 68 % | **68 %** (74–96 % in the first fights, 42–63 % against the boss) |
+| Ladders cleared on the first credit; credits to clear one | – | **87 %**; 1.17 credits |
+| One ladder (menu 6 s, select 14 s, the fights, screens, continues, initials) | 20.4 min | **18.3 min** (Jotaro 18, Kira 19, Delinquent 21, Angelo 15, Polnareff 21; sd 3 to 13 within a character) |
+| Five ladders | 102 min | **91.6 min** |
+| Versus 2P (one match, the rematch screen declined) | – | 2.6 min |
+| Versus CPU (two matches, EASY and NORMAL) | – | 3.8 min |
+| Survival (two runs; the first run reaches 2.6 wins on average) | – | 5.7 min |
+| Time attack (up to two attempts; 74 % of players clear it) | – | 5.5 min |
+| Training (a look at every panel) | 4 min | 4.0 min (an assumption: the player's choice) |
+| Title, menus, options, controls, move list | 3 min | 3.0 min (an assumption) |
+| **Everything else** | ≈ 20 min | **24.7 min** |
+| **Total** | **≈ 122 min** | **116.3 min** (sd 19.3 between players, range 85 to 188; the band the bot checks is 110 to 130) |
+
+The same bot at other points of the scale, to read the budget as a range and not a point: **a novice** (NORMAL's own numbers, who does not learn between credits) takes 118 minutes on EASY (91 % of ladders on the first credit) and would take 425 on NORMAL (6 %);
+**a skilled player** (reaction 12 frames, one decision in twenty wrong, routes of eight) takes 77 minutes on NORMAL and 220 on HARD (34 %). Each skill has a tier where the game is about two hours, and NORMAL is the one for the bot the
+brief describes. A person learns between credits and the bot does not, so the novice figure on NORMAL is a ceiling, not a forecast.
+
+**What this cannot say.** The bot is a program with a human's numbers: it does not learn a fighter, does not read the CPU's habits, cannot be bored or stuck and plays one move set the same way every time. It says that the data
+is *shaped* for two hours (a round, a match, a ladder and the pay of each are the lengths a plan of two hours needs, and nothing in it is an outlier), and the spread between players says how much the number depends on who plays. It
+does not say how long *you* will take; only a person can.
+
+### 20.2 Balance (a round robin of the same bot on both sides, 400 matches a pair, sides swapped half the time)
+
+| | Jotaro | Kira | Delinquent | Angelo | Polnareff | average |
+|---|---|---|---|---|---|---|
+| **Jotaro** | – | 62 % | 51 % | 47 % | 48 % | **52 %** |
+| **Kira** | 38 % | – | 49 % | 38 % | 43 % | **42 %** |
+| **Delinquent** | 49 % | 51 % | – | 43 % | 56 % | **50 %** |
+| **Angelo** | 53 % | 62 % | 57 % | – | 64 % | **59 %** |
+| **Polnareff** | 52 % | 57 % | 44 % | 36 % | – | **47 %** |
+
+The boss against the five (as player 1, 100 matches each): 60 / 67 / 51 / 41 / 54 %. The mirror of a fighter is an even match (`ai_check.js`: the same tier both sides, 35 to 65 %).
+
+### 20.3 The CPU scale (win rate of a profile against another, five fighters mixed, 300 matches)
+
+HUMAN beats EASY 98 %, beats a NOVICE (= NORMAL) 84 %, plays HARD's first fight (= itself) evenly and loses to SKILLED 8 %; `ai_check.js` holds HARD > NORMAL > EASY by a margin on every run.
+
+### 20.4 The checks and what they said (last run, on this branch)
+
+| Check | Result |
+|---|---|
+| `framedata_check.js` | pass: 1,217 checks, the sim reproduces the table for all 181 moves (first contact, free tick, on hit, on block, late contact, throws, bombs, thrown things) |
+| `combat_check.js`, `input_check.js` | pass: 66 and 44 checks |
+| `content_check.js`, `fairness_check.js`, `anim_check.js`, `ai_check.js`, `trophy_check.js` | pass: 555, 574, 1,910, 15 and 21 checks (`anim_check` found a real fault, the KNEE's wind-up, and `fairness_check` found three, a low at i13, a sweep at i17 and a move that could not be punished; all fixed) |
+| `headless_harness.js` | pass: every mode played, the same seed played twice gives the same fight |
+| `npm run check:standbattle` (source and packaged app) | pass: 30 checks of the screens with real keys; the fight draws at 61 frames a second and steps at 60.1 ticks a second |
+| `check:paths`, `check:shell`, `check:apps` (all 34 apps), `check:listeners`, `check:persist`, `check:contrast`, `check:props`, `check:trophies`, `check:sun`, `check:package` | pass |
+| `check:perf` | pass: idle desktop 60 fps; Stand Battle's title 48 fps under Xvfb's software drawing (the floor is 20); in a fight 61 fps (`check:standbattle`) |
+| `check:music` | one failure that is **not this branch's**: "every held instrument has a usable loop: synthpad 81" fails identically on the commit this branch started from |
+
+Not verified: a person playing it (the feel, whether the CPU is fun to fight, whether the motion windows are kind), a gamepad (the bindings are tested with synthetic input only), the Windows installer (built and tested on Linux; the same code and
+the same checks run in CI on both), and the time a first-time player really needs.
