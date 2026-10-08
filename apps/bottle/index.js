@@ -9,6 +9,7 @@ import { makeGlass3D, setLiquor } from './glass3d.js';
 import { drinkById, paletteOf } from './drinks.js';
 import { DRINKS } from '../../kernel/cos_data.js';
 import { scopedListeners, whenGone } from '../lifecycle.js';
+import { poured, drank } from './trophy_calls.js';
 
 const JAG_KEY = 'templeos.bottle.v1';
 /* what the machine says as you go down, by how far you are */
@@ -229,13 +230,14 @@ export default {
       S.gls.vol = Math.min(0.95, (S.gls0 || 0) + POURED_FILL);
       S.foam = 2.4;
       sfx.clink(); save();
-      say('ONE MEASURE. FORTY MILLILITRES.');
+      say('ONE MEASURE. FORTY MILLILITRES.'); poured();
     }
     function doneDrink() {
       S.phase = 'idle'; S.drunk++; S.rest = BREATHER;
       S.gls.vol = Math.min(S.gls.vol, 0.03);
       sfx.down(); sfx.ahh(); save();
       if (window.Drunk) window.Drunk.drink(drink.strength);
+      drank(drink.id, drink.strength);
       const lines = JAG_LINES[window.Drunk ? window.Drunk.stage() : 'SOBER'] || JAG_LINES.SOBER;
       say(lines[S.drunk % lines.length]);
     }
