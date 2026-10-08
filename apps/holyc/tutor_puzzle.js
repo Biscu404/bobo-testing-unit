@@ -7,6 +7,7 @@ import { puzzleSun, CHAPTER_SUN, SEEN_SHARE } from './pay.js';
 import { PICS } from './puzzles_d.js';
 import { CHAPTERS, chapterOf } from './puzzles.js';
 import { VGA } from './stage_view.js';
+import { solved as solvedCall } from './trophy_calls.js';
 
 export function makePuzzleTutor(host, o) {
   const panel = el('div', 'hc-coach hc-brief'), snd = o.snd, lab = o.lab, P = o.progress, HC = o.HC;
@@ -110,6 +111,7 @@ export function makePuzzleTutor(host, o) {
       banner(panel, 'SOLVED  +' + sun + ' SUN', 'big', 3600);
       const ch = chapterOf(p), all = ch.list.every(x => P.solved(x.id));
       if (all && !P.data.chapters[ch.id]) { P.data.chapters[ch.id] = true; P.save(); setTimeout(() => { o.pay(CHAPTER_SUN, 'HOLYC: ' + ch.title + ' COMPLETE'); banner(panel, ch.title + ' COMPLETE  +' + CHAPTER_SUN + ' SUN', 'big', 4200); snd.done(); }, 1500); }
+      solvedCall(P, p, { tries: pr.tries, hints: T.hints, seen: pr.seen });
       o.solved(p);
     }
     renderList(); renderHints(); render2();

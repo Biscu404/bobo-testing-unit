@@ -3,6 +3,7 @@
    the icon opens HOLYC.EXE in its player, which is only the stage). Starting points are the TEMPLATES, and the reference card is always on the page. */
 import { el, button, rich } from './tutor_ui.js';
 import { TEMPLATES, REFERENCE } from './templates.js';
+import { saved, installed, template } from './trophy_calls.js';
 
 const DIR = '::/Home/HolyC';
 const clean = n => String(n || '').replace(/\.(HC|APP)$/i, '').replace(/[^A-Za-z0-9_ -]/g, '').trim().slice(0, 24);
@@ -24,7 +25,7 @@ export function makeWorkshop(host, o) {
     body.appendChild(rich(el('p', 'hc-p'), 'Write anything. [SAVE] keeps it as an ordinary .HC file in HOME / HolyC. [INSTALL] puts it on the desktop as an app of its own.'));
     body.appendChild(el('div', 'hc-sub', 'START FROM'));
     const tpl = el('div', 'hc-tpls');
-    TEMPLATES.forEach(t => tpl.appendChild(button(t.name, 'sm', () => { lab.load(t.code); W.fresh = true; lab.focus(); }, snd)));
+    TEMPLATES.forEach(t => tpl.appendChild(button(t.name, 'sm', () => { lab.load(t.code); W.fresh = true; template(t.name); lab.focus(); }, snd)));
     body.appendChild(tpl);
     body.appendChild(el('div', 'hc-sub', 'NAME'));
     const nm = el('input', 'hc-name'); nm.value = W.name; nm.maxLength = 24; nm.spellcheck = false;
@@ -53,7 +54,7 @@ export function makeWorkshop(host, o) {
   }
   async function save() {
     const name = clean(W.name) || 'MyApp'; W.name = name;
-    try { await ctx.fs.write(DIR + '/' + name + '.HC', { type: 'code', content: lab.get() }); changed(DIR); ctx.toast('SAVED ' + name + '.HC IN HOME / HolyC.'); snd.step(); }
+    try { await ctx.fs.write(DIR + '/' + name + '.HC', { type: 'code', content: lab.get() }); changed(DIR); ctx.toast('SAVED ' + name + '.HC IN HOME / HolyC.'); snd.step(); saved(); }
     catch (e) { ctx.toast('COULD NOT SAVE: ' + (e.message || e)); snd.error(); }
     refreshList();
   }
@@ -63,7 +64,7 @@ export function makeWorkshop(host, o) {
     try {
       if (await ctx.fs.stat('::/' + name)) { ctx.toast(name + ' IS ALREADY ON THE DESKTOP. PICK ANOTHER NAME.'); snd.error(); return; }
       await ctx.fs.write('::/' + name, { type: 'app', app: 'holyc', args: { run: true, name: name }, content: lab.get() });
-      changed('::'); snd.done(); ctx.toast(name + ' IS ON THE DESKTOP. IT OPENS AS AN APP.');
+      changed('::'); snd.done(); ctx.toast(name + ' IS ON THE DESKTOP. IT OPENS AS AN APP.'); installed(name);
       if (o.onInstall) o.onInstall(name);
     } catch (e) { ctx.toast('COULD NOT INSTALL: ' + (e.message || e)); snd.error(); }
   }

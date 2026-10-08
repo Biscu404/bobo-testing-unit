@@ -4,6 +4,7 @@ import { runProgram } from './engine.js';
 import { makeStageView } from './stage_view.js';
 import { el } from './tutor_ui.js';
 import { whenGone } from '../lifecycle.js';
+import { played } from './trophy_calls.js';
 
 export async function mountPlayer(root, ctx, args, HC, snd) {
   root.classList.add('hc', 'hc-player');
@@ -31,7 +32,7 @@ export async function mountPlayer(root, ctx, args, HC, snd) {
     R.stage.onChange(() => { out.style.display = out.childElementCount ? '' : 'none'; });
     last = performance.now();
   }
-  start();
+  start(); played();
   const clock = setInterval(() => { const now = performance.now(), dt = now - last; last = now; if (R && !R.err && R.stage.timers.length && root.isConnected && dt < 2000) R.stage.advance(dt); }, 100);
   snd.preload();
   whenGone(root, () => { clearInterval(clock); sv.destroy(); snd.stop(); });

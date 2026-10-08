@@ -5,6 +5,7 @@
 import { makeEditor } from './editor.js';
 import { makeStageView } from './stage_view.js';
 import { makeTrace } from './trace_view.js';
+import { ran, traced } from './trophy_calls.js';
 import { runProgram } from './engine.js';
 
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
@@ -73,7 +74,7 @@ export function createLab(host, o) {
     const t0 = performance.now();
     let printed = 0;
     const R = runProgram(HC, src, { rand: Math.random, sound: snd, trace: !!opts.watch, onOut: line => { consoleApi.add(line); snd.out(printed++); } });
-    L.R = R; L.lastRunAt = performance.now();
+    L.R = R; L.lastRunAt = performance.now(); ran(R.err);
     if (R.err) {
       consoleApi.add((R.err.line ? 'LINE ' + R.err.line + ': ' : '') + R.err.message, 'l-err');
       if (R.err.line) ed.setMark('err', R.err.line);
@@ -85,7 +86,7 @@ export function createLab(host, o) {
     }
     sv.attach(R.stage);
     R.stage.warnings.forEach(w => consoleApi.add(w, 'l-warn'));
-    if (opts.watch && !R.err) trace.show(R);
+    if (opts.watch && !R.err) { trace.show(R); traced(); }
     else if (opts.watch && R.err) note('THERE IS NOTHING TO WATCH: IT DID NOT RUN. FIX THE ERROR FIRST.', 'l-warn');
     if (o.onRun) o.onRun(R, opts);
     return R;

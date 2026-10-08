@@ -5,6 +5,7 @@
 import { el, para, button, checkRow, banner, rich } from './tutor_ui.js';
 import { startOf, modelOf } from './lessons.js';
 import { LESSON_SUN } from './pay.js';
+import { lessonDone } from './trophy_calls.js';
 
 export function makeLessonTutor(host, o) {
   const panel = el('div', 'hc-coach'), snd = o.snd, lab = o.lab, P = o.progress;
@@ -91,7 +92,7 @@ export function makeLessonTutor(host, o) {
     T.done = true; P.stepDone(T.lesson.id, T.lesson.steps[T.i].id);
     snd.step(); renderState(); render2();
     if (P.lessonComplete(T.lesson) && !P.lesson(T.lesson.id).paid) {
-      P.lesson(T.lesson.id).paid = true; P.save(); snd.done();
+      P.lesson(T.lesson.id).paid = true; P.save(); snd.done(); lessonDone(P);
       o.pay(LESSON_SUN, 'HOLYC: LESSON ' + T.lesson.id.slice(1) + ' ' + T.lesson.title);
       banner(panel, 'LESSON COMPLETE  +' + LESSON_SUN + ' SUN', 'big', 4200);
     }
