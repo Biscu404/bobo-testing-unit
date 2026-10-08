@@ -46,6 +46,7 @@ node apps/magen/auto_check.js # Magen's auto-press ladder, its unlock at 1,000 p
 node apps/magen/music_check.js # Magen's score, its band's energy and the seams between tunes (pure Node); apps/bekkedal/music_check.js likewise
 npm run check:music     # instruments, the studio, every game's score, and the style meter's recording
 npm run check:sun       # the SUN budget: every game's real pay tables through a model of an hour of playing it, held to a band (docs/sun-economy.md)
+node apps/holyc/holyc_check.js # HOLYC.EXE: the language, the stage, all thirty-four lesson steps and fifty-six puzzles proved against their model answers (pure Node)
 node apps/sweeper/run_check.js # Dungeon Sweeper: a bot does random things in every room and then finishes it; spells, flags, the compass, the pay (pure Node)
 node apps/garage/edit_check.js # the Garage's note, segment and undo logic (pure Node)
 ```
@@ -137,6 +138,16 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   **A pane that holds a picture centres it with auto margins, never with `justify/align-items: center`** (`kernel/theme.css`: `.gamepane`, `.godpane`,
   `.vidpane`, the Garage's `.drawwrap`): centring that overflows is clipped on its near side for good, so zoomed in the left and the top of the picture could
   never be scrolled to, and zoomed out a short pane left the picture in the top of the window. A new app with a pane that holds a canvas uses one of those classes.
+- **HolyC is four pure files and a wrapper.** `kernel/holyc_lex.js`, `holyc_parse.js`, `holyc_run.js` and `holyc_lib.js` are the language (no `window`, no sound, so Node can run them);
+  `kernel/holyc.js` adds the builtins that need the machine (Beep, Rand, GodWord...) and `window.HolyC`, which is how an app reaches the compiler without importing from `kernel/`.
+  What the lab needed, and the terminal got for free: a variable lives in the block that declared it (a function's own, a loop's counter), an integer is an integer (`I64 x = 7 / 2` is 3;
+  a point or an F64 makes a float, and a typed parameter keeps its type), run-time errors say their line, `continue` and `do while`, `%5d` and `%.2f`, character literals, and
+  the sixteen colours by TempleOS's names. **The lab reads strictly** (`opts.strict`, `hooks.strict`: a missing `;` is an error on the line that lacks it, an undeclared name or a division by
+  zero is an error); the terminal reads leniently, as it always did. `hooks.trace(line, vars, kind)` is told before every statement (WATCH IT RUN) and `hooks.session(api)` is handed, once
+  the program has run, `call(name, args)`: that is how a button on the stage calls back into what you wrote. `hooks.builtins` adds functions (the stage's), `hooks.rand` replaces the dice.
+- **Installed programs are app records.** `HOLYC.EXE`'s workshop INSTALL writes `::/<Name>` as `{ type: 'app', app: 'holyc', args: { run: true, name }, content: <the program> }`;
+  `vfs.list` hands `args` through and `openItem` (`kernel/fileops.js`) opens an app record with `{ from: <its own path>, ...args }`, which the player reads. `RUN IT` on a `.HC` file that uses
+  Button, Label, Field, Bar, Pixel, Fill, Note or Every opens the same player (`kernel/compile.js`) instead of a terminal run.
 - **Help** is built in (`kernel/help.js`, pages in `help_text.js`, DolDoc): it is not a file on the VFS, so it cannot be deleted.
 - **The Jäger is a journey, and it fits in one bottle.** `kernel/drunk_bac.js` is the arithmetic (pure; `scripts/check-drunk.mjs` holds it to its numbers): a
   measure sits in the stomach and reaches the blood with a time constant of 30 s, the body clears one per 60 s, and what the screen
@@ -560,6 +571,17 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   need Shift still works) and heard from the document whenever TheStack is the front window and nothing is being typed into (a click on the title bar
   or the taskbar moves focus off the canvas, and the digits used to go to the desktop). A preset puts a bypassed EQ in circuit, and it is the curve the next
   discs inherit unless a disc has an EQ of its own saved with it, so a track change does not put the flat curve back.
+- `holyc`: `apps/holyc/index.js` - **HOLYC.EXE**, learn HolyC by typing it and then make small apps with it. Three tabs: **LESSONS** (seven, thirty-four steps: `lessons_a/b.js`), **PUZZLES**
+  (nine chapters, fifty-six, three hints each: `puzzles_a..d.js`) and the **WORKSHOP** (templates, SAVE to `::/Home/HolyC/NAME.HC`, INSTALL on the desktop). The lab (`lab.js`) is the same in all of them: an
+  editor (`editor.js` + `highlight.js`: a textarea over a coloured copy, line numbers, auto-indent, error lines, text typed in a letter at a time for TYPE IT FOR ME / SHOW ME), RUN (CTRL+ENTER),
+  WATCH IT RUN (`trace_view.js`: step through the statements with the variables beside it), what was printed, and **the stage** (`stage.js` pure model, `stage_view.js`).
+  **A program can be clicked**: `Label`, `Button(text, "Function")` (the function named in quotes is what a press calls), `Field`, `Bar`, `SetText/GetText/GetNum/SetBar/Color`, a 16x16 board
+  (`Pixel`, `Fill`), `Note(60, 300)` (the studio's piano on its own `'holyc'` channel, so MUS and the mixer's HOLYC.EXE slider set how loud) and `Every(1000, "Tick")`.
+  **A lesson step has goals** (`tests.js`), ticked off after every RUN or click on the stage, each tick a step higher in pitch; **a puzzle is judged by tests** run against fresh runs of the program
+  (`T.out`, `T.cases` for a function's answers, `T.board` for the picture, `T.scenario` for a person at the stage: click these buttons by their words, type in these boxes by their hints,
+  let this much time pass). **`node apps/holyc/holyc_check.js`** holds all of it: every model answer passes every test and every starting program fails at least one, every lesson step is met by its
+  model answer (after the clicks a person would make) and is not already met by the code it opens on, every template runs. A new puzzle is `P(chapter, id, title, stars, brief, start, hints, model, tests)` in
+  the matching `puzzles_*.js`. It pays SUN once (`pay.js`: a lesson 70, a puzzle 90 to 460 by stars, a quarter if the answer was shown, 250 for a whole chapter); the budget is in `check-sun.mjs`.
 - `standbattle`: `apps/standbattle/index.js` - Stand Battle Arena, a JoJo's Bizarre Adventure roguelike combat prototype (see `docs/stand-battle-arena-spec.md`), ported in full from the jojo-roguelike repo's current, far more developed build (replacing this repo's earlier prototype port). Playable Jotaro Kujo/Star Platinum vs. Morioh enemies and boss Yoshikage Kira/Killer Queen, across a 6-node Act 1 (Morioh) map. Zero meta-progression by design; internal 480×270 canvas on a 720×260 belt plane (x, z) with a tracking camera, integer-only upscale.
   **Combat engine:** dodge (Step) is edge-triggered and gated by a 2-charge meter (`fighter.js`, GDD §3.7) with a HUD pip readout. All action inputs are queued in a 9-frame input buffer (`combat.js`) and fire the instant the player returns to idle. Arena world bounds are centralized in `arena_bounds.js`, shared by the sim (`combat.js`) and camera (`render.js`).
   **Simulation core:** the sim steps in whole frames at a fixed 60Hz (`sim_loop.js`'s `createFixedStepLoop`) on a real (x, z) belt plane. `fighter.js` is the entity/component store (`combat.entities = [player, enemy]`). `render_adapter.js` handles depth projection/sorting/camera targeting. Depth movement (`input.js`'s forward/back, W/S by default) is clamped via `arena_bounds.js`; hit detection remains x-only per Phase 1 scope. `headless_harness.js` (`node apps/standbattle/headless_harness.js`) runs the sim with no canvas for reproducible, seeded testing.

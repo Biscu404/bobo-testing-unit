@@ -33,7 +33,7 @@ export function openItem(dir, item) {
   if (item.type === 'folder') job = openWindow('folder', { path: p });
   else if (item.type === 'terminal') job = openWindow('terminal');
   else if (item.type === 'bin' || item.type === 'binfull') job = openWindow('trash');
-  else if (item.type === 'app') job = item.app ? openWindow(item.app) : (toast('NO SUCH APP: ' + item.name), null);
+  else if (item.type === 'app') job = item.app ? openWindow(item.app, item.args ? Object.assign({ from: p }, item.args) : undefined) : (toast('NO SUCH APP: ' + item.name), null);
   else if (item.type === 'song') job = openWindow('garage', { path: p });
   else if (['code', 'doc', 'text'].includes(item.type)) job = openWindow('editor', { path: p, type: item.type });
   else job = openWindow('viewer', { path: p, type: item.type });

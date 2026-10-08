@@ -173,6 +173,7 @@ const APP_ALIASES = {
   ACCOUNT: 'account', GODDOODLE: 'goddoodle', DOODLE: 'goddoodle',
   NEOFETCH: 'neofetch', FETCH: 'neofetch',
   GARAGE: 'garage', MUSIC: 'garage', BAND: 'garage', STUDIO: 'garage',
+  HOLYC: 'holyc', PUZZLES: 'holyc', LESSONS: 'holyc', TUTOR: 'holyc',
   TRASH: 'trash', RECYCLE: 'trash'
 };
 const APP_HELLO = {
@@ -186,6 +187,7 @@ const APP_HELLO = {
   elephant: 'HE HAS BEEN WAITING TO TELL YOU SOMETHING.',
   bottle: 'ONE MEASURE IS FORTY MILLILITRES.',
   garage: 'THIRTY INSTRUMENTS AND A DRUM KIT. PRESS LEARN IF YOU ARE NEW.',
+  holyc: 'SEVEN LESSONS, FIFTY PUZZLES, AND A WORKSHOP. TYPE IT.',
   trash: 'NOTHING IS GONE UNTIL YOU SAY SO.',
   defrag: 'MOVING CLUSTERS.'
 };

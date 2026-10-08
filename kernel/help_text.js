@@ -154,6 +154,13 @@ $FG,11$  "HELLO, TEMPLE.\\n";$FG$
 Type that into the terminal. It compiles and runs.
 $TR-$
 
+$TR,"LEARNING IT"$
+HOLYC.EXE (the icon on the desktop, or type HOLYC) teaches it:
+seven lessons that tick off as you type, fifty puzzles judged by
+tests, and a workshop. A program that uses Button, Label, Field,
+Pixel or Note is an app: RUN IT on a .HC file opens it as one.
+$TR-$
+
 $TR,"TYPES"$
 $FG,10$  U0$FG$   nothing
 $FG,10$  I64$FG$  a signed 64 bit integer

@@ -14,6 +14,9 @@ import { BEK_QUESTS } from '../apps/bekkedal/data.js';
 import { fightSun, RUN_CLEAR } from '../apps/standbattle/pay.js';
 import { classicPay, roomPay, parOf, SUN_PER_GEO } from '../apps/sweeper/pay.js';
 import { CLASSIC, NODES } from '../apps/sweeper/data.js';
+import { LESSONS } from '../apps/holyc/lessons.js';
+import { PUZZLES, CHAPTERS } from '../apps/holyc/puzzles.js';
+import { LESSON_SUN, puzzleSun, CHAPTER_SUN, SEEN_SHARE } from '../apps/holyc/pay.js';
 import * as COS from '../kernel/cos_data.js';
 
 let bad = 0;
@@ -97,11 +100,20 @@ const LO = 1500, HI = 12000;
   ok(SUN_PER_GEO === 4, 'SWEEPER: four SUN a geo');
 }
 
+/* HOLYC.EXE: seven lessons and fifty-odd puzzles, once each, over about six and a half hours of reading and typing (a puzzle is a few minutes, a
+   lesson ten). Reading the answer pays a quarter of a puzzle, and a player who does that for all of them is paid a fraction. */
+{
+  const all = PUZZLES.reduce((a, p) => a + puzzleSun(p.stars, false), 0) + LESSONS.length * LESSON_SUN + CHAPTERS.length * CHAPTER_SUN;
+  const copied = PUZZLES.reduce((a, p) => a + puzzleSun(p.stars, true), 0) + LESSONS.length * LESSON_SUN;
+  row('HOLYC.EXE', PUZZLES.length + ' puzzles, ' + LESSONS.length + ' lessons and ' + CHAPTERS.length + ' chapters, once each, in 6.5 hours (' + all + ' SUN)', all / 6.5, 1500, 3500);
+  ok(copied < all * 0.5 && SEEN_SHARE === 0.25, 'HOLYC.EXE: looking up every answer pays less than half');
+}
+
 /* ---- the shop: what there is to buy, and how long it is to buy it ------------------------------------------------------------------ */
 {
   let total = 0, frame = 0;
   ['FRAMES', 'LOGOS', 'CURSORS', 'SCHEMES', 'POTS', 'SPECIES', 'WALLS', 'CRAYON', 'GARAGE', 'DRINKS', 'ELEPHANT'].forEach(k => COS[k].forEach(it => { total += it.price || 0; if ((it.price || 0) >= 99999) frame = it.price; }));
-  const rest = total - frame, steady = rows.filter(r => /^(SOLITAIRE|THE COOK|MAGEN|BEKKEDAL|STAND BATTLE|SWEEPER THE HIVE)/.test(r[0])).map(r => r[2]);
+  const rest = total - frame, steady = rows.filter(r => /^(SOLITAIRE|THE COOK|MAGEN|BEKKEDAL|STAND BATTLE|SWEEPER THE HIVE|HOLYC)/.test(r[0])).map(r => r[2]);
   const mean = steady.reduce((a, b) => a + b, 0) / steady.length;
   ok(frame === 99999, 'the third temple frame is the 99,999 joke');
   ok(rest > 60000 && rest < 140000, 'the rest of the shelves cost ' + rest + ' SUN');

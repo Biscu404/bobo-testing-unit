@@ -38,6 +38,13 @@
     "app": "garage"
   },
   {
+    "path": "::/HolyC",
+    "content": "",
+    "src": "",
+    "type": "app",
+    "app": "holyc"
+  },
+  {
     "path": "::/Notes",
     "content": "",
     "src": "",

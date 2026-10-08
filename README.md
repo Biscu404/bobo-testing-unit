@@ -280,6 +280,13 @@ spend, charms in notches, a shade where you fell. FOCUS, SCRY and DIVE are
 learnt by clearing the map, and the Wayward Compass, which takes every notch,
 is found by clearing all eighteen rooms perfectly. It pays SUN.
 
+**HOLYC.EXE** — learn HolyC by typing it. Seven lessons whose goals tick off the moment the
+program meets them, fifty-six puzzles judged by tests (print a line, find the missing `;`,
+FizzBuzz, a calculator, a stopwatch, a painting program), and a workshop that saves what you
+write and installs it on the desktop as an app. A program can put buttons, boxes, a health bar,
+a 16 by 16 board and notes on the stage, and a button calls back into your own functions.
+WATCH IT RUN steps through the statements with the variables beside them.
+
 **League Solitaire** — Klondike, draw three, unlimited redeals. Four lanes
 instead of four suits — Mid and Bot are the red pair, Top and Support the black —
 and one champion per lane wearing three faces. Pays `max(40, 300 - moves × 2)`,

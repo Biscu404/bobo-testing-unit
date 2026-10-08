@@ -73,8 +73,16 @@ export async function openCompile() {
   });
 }
 
+/* a program that puts things on the stage (Button, Label, Pixel...) is an app, not a run for a terminal: HOLYC.EXE's player opens it */
+const STAGE_CALLS = /\b(Label|Button|Field|Bar|Pixel|Fill|Note|Every)\s*\(/;
+
 export async function runFileHolyC(path) {
   const file = await vfs.read(path);
+  if (file && STAGE_CALLS.test(String(file.content || '').replace(/\/\/[^\n]*/g, ''))) {
+    openWindow('holyc', { run: true, from: path, name: path.split('/').pop().replace(/\.HC$/i, '') }).catch(console.error);
+    if (window.Snd) window.Snd.bell();
+    return;
+  }
   const rows = [];
   let bad = null;
   try {
