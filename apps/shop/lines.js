@@ -63,6 +63,15 @@ export const DAVE_BROKE = [
    A line is at most SPEECH_MAX characters: three lines of the bubble at the shop's own size, which is as tall as it starts
    (the bubble grows with what it says, and a taller bubble pushes the shelves down while the pointer is on them).
    apps/shop/lines_check.js holds all of that to its numbers. */
+/* a card that is a secret: Dave will not say what it is, or what it takes (the name on the card is ??? too). Never longer than SPEECH_MAX. */
+export const DAVE_SECRET = [
+  'THAT ONE\'S UNDER THE COUNTER. I\'M NOT ALLOWED TO TELL YOU WHAT IT IS. I\'M NOT ALLOWED TO TELL YOU WHY.',
+  'SHH. IT\'S A SECRET. EVEN I FORGET IT\'S A SECRET, SOME DAYS, AND SAY IT OUT LOUD.',
+  'I HAVE BEEN TOLD NOT TO DISCUSS THE QUESTION MARKS. BY WHO. I CAN\'T SAY.',
+  'YOU\'LL KNOW WHEN YOU\'VE EARNED IT. THE CARD GOES FROM ??? TO A WORD. THAT\'S THE WHOLE TRICK.',
+  'NOT FOR SALE. NOT FOR ASKING ABOUT. NOT EVEN FOR LOOKING AT, REALLY, BUT HERE WE ARE.'
+];
+
 export const CRAZY_RATE = 0.1;
 export const SPEECH_MAX = 140;
 

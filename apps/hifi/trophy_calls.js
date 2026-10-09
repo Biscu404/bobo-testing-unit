@@ -10,7 +10,8 @@ export function createCalls() {
   return {
     /* once a frame: the disc that is on, and whether it is playing */
     tick(dt, playing, discKey) { if (discKey !== key) { key = discKey; secs = 0; } if (playing) secs += dt; },
-    play(t) { guard(() => TR.emit('play', { folder: t.folder || null, own: !t.builtin && !t.folder && !t.spec })); },
+    /* a folder of your own is not one of the games' folders, and a disc of yours is yours wherever you filed it */
+    play(t) { guard(() => TR.emit('play', { folder: t.builtin ? t.folder || null : null, own: !t.builtin && !t.spec })); },
     /* the disc has run out (or is crossfading into the next one): told only if most of it was played, not scrubbed to */
     ended(dur) { guard(() => { if (dur > 0 && secs >= dur * 0.6) TR.emit('ended', {}); }); },
     folder: name => guard(() => TR.mark('folders', name)),

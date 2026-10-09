@@ -9,6 +9,8 @@
  * `k` is the drawing kit of the window ({ R, B, oval }); `env` is { br } the breath he is taking, so a hat rides his head.
  * The little desktop elephant has his own pictures of the same twelve things (kernel/pet_art.js). */
 
+import { MORE } from './wear_more.js';
+
 /* a ring: an ellipse's outline, `th` thick, so what is inside it (an eye) stays seen */
 function ring(R, cx, cy, rx, ry, th, c) {
   for (let y = -ry; y <= ry; y++) {
@@ -147,9 +149,10 @@ export function drawWear(layer, wear, k, env) {
   if (layer === 'back') { if (w.body === 'cape') BACK.cape(k, env); return; }
   /* 'neck': what is round the throat goes on after the head and BEFORE the trunk, so the trunk hangs in front of the knot and the
      collar (it used to be drawn last, over the trunk, which put the bow tie on top of it) */
-  if (layer === 'neck') { if (w.body === 'cape') COLLAR.cape(k, env); if (w.neck && NECK[w.neck]) NECK[w.neck](k, env); return; }
+  if (layer === 'neck') { if (w.body === 'cape') COLLAR.cape(k, env); const n = NECK[w.neck] || MORE.neck[w.neck]; if (w.neck && n) n(k, env); return; }
   if (layer === 'feet') { if (w.feet === 'boots') BOOTS(k, env); return; }
-  if (layer === 'body') { if (w.body === 'blanket') BODY.blanket(k, env); return; }
-  if (w.face && FACE[w.face]) FACE[w.face](k, env);
-  if (w.head && HEAD[w.head]) HEAD[w.head](k, env);
+  if (layer === 'body') { if (w.body === 'blanket') BODY.blanket(k, env); else if (w.body && MORE.body[w.body]) MORE.body[w.body](k, env); return; }
+  const f = FACE[w.face] || MORE.face[w.face], h = HEAD[w.head] || MORE.head[w.head];
+  if (w.face && f) f(k, env);
+  if (w.head && h) h(k, env);
 }

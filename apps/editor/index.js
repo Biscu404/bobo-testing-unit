@@ -1,44 +1,7 @@
 import { ddRender } from '../../kernel/doldoc.js';
-import { createWindow } from '../../kernel/wm.js';
-import { hcLex, hcParse, hcRun } from '../../kernel/holyc.js';
 import { restoreSystemFiles } from '../../kernel/fileops.js';
-import { sys } from '../../kernel/trophy_hook.js';
-
-/* a macro button in a document has nowhere to print, so it gets a window */
-function runHolyCToast(cmd, ctx) {
-  const rows = [];
-  let ok = true;
-  try {
-    const ast = hcParse(hcLex(cmd));
-    hcRun(ast, line => rows.push(line), null, {
-      godDoodle: () => ctx.openWindow('goddoodle').catch(console.error),
-      dirNames: () => []
-    });
-    sys.holyc(ast, null);
-  } catch (e) {
-    ok = false;
-    rows.push(e && e.holyc ? 'HolyC: ' + e.message : 'FAULT: ' + (e && e.message));
-  }
-  if (window.Snd) { if (ok) window.Snd.holy(); else window.Snd.err(); }
-  if (!rows.length) return;
-  createWindow({
-    kind: 'terminal', title: 'HolyC JIT', w: 420, h: 220, appId: 'editor',
-    build: body => {
-      const t = document.createElement('div');
-      t.className = 'term';
-      const o = document.createElement('div');
-      o.className = 'termout';
-      rows.forEach(r => {
-        const d = document.createElement('div');
-        d.className = ok ? 'l-holyc' : 'l-err';
-        d.textContent = r;
-        o.appendChild(d);
-      });
-      t.appendChild(o);
-      body.appendChild(t);
-    }
-  });
-}
+import { runMacro, openPath } from '../../kernel/macro_run.js';
+import { runFileHolyC } from '../../kernel/compile.js';
 
 /* a file that is not there is said out loud, with the two ways to get it back,
    rather than an empty page that looks like an empty file */
@@ -115,16 +78,8 @@ export default {
     ta.value = val;
     ta.style.display = showSource ? 'block' : 'none';
     
-    const draw = () => ddRender(ta.value, pane,
-      async (target) => { // onLink
-        const targetPath = target.startsWith('::') ? target : `::/${target}`;
-        ctx.openWindow('editor', { path: targetPath }).catch(console.error);
-        if (window.Snd) window.Snd.open();
-      },
-      (cmd) => { // onMacro: a button in a document has nowhere to print, so it gets a window
-        runHolyCToast(cmd, ctx);
-      }
-    );
+    /* a link opens what is at its path (a folder as a folder, a picture in the viewer...); a button runs a word the terminal knows, or HolyC, in a window of its own */
+    const draw = () => ddRender(ta.value, pane, target => { openPath(target).catch(console.error); }, cmd => { runMacro(cmd).catch(console.error); });
 
     if (isDoc) draw();
     
@@ -168,6 +123,19 @@ export default {
             }
           });
           bar.insertBefore(btn, bar.querySelector('.m'));
+          /* a program can be run from where it is read */
+          if (/\.HC$/i.test(path)) {
+            const run = document.createElement('span');
+            run.className = 'm srcbtn';
+            run.textContent = '[RUN]';
+            run.addEventListener('mousedown', async ev => {
+              ev.stopPropagation();
+              const f = await ctx.fs.read(path);
+              if (f) { f.content = ta.value; await ctx.fs.write(path, f); }
+              runFileHolyC(path);
+            });
+            bar.insertBefore(run, btn);
+          }
         }
       }, 0);
     }

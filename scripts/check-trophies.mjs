@@ -191,13 +191,13 @@ all.forEach(d => {
   const seals = [...T.defs.values()].filter(d => d.mastery);
   ok(seals.length === 10 && seals.every(d => d.pay >= 1000 && d.pay === masteryPay(d.size())), 'all ten seals pay by what they ask for (' + seals.map(d => d.pay).join(', ') + ')');
   ok(seals.every(d => d.pay > 10 * MASTERY_PAY * 0.2), 'and none pays what it used to (' + MASTERY_PAY + ')');
-  /* the items: on Dave's shelves, not for sale, earned by a trophy that is a milestone */
+  /* the items: on Dave's shelves, not for sale, earned by a trophy that is a milestone (the second stock, `more`, is earned by any real trophy: scripts/check-dave.mjs) */
   const lists = { FRAMES, LOGOS, CURSORS, SCHEMES, ELEPHANT, DRINKS }, by = rewardsByTrophy();
   let items = 0;
   Object.keys(lists).forEach(k => lists[k].forEach(it => {
     if (!it.reward) return; items++;
     const d = T.get(it.reward);
-    ok(!!d && !d.legacy && (d.tier === 'G' || d.mastery || d.epic) && it.price === 0 && /\.$/.test(it.blurb), k + '.' + it.id + ': a reward of "' + (d && T.plainName(d)) + '", not for sale, with a blurb');
+    ok(!!d && !d.legacy && (it.more || d.tier === 'G' || d.mastery || d.epic) && it.price === 0 && /\.$/.test(it.blurb), k + '.' + it.id + ': a reward of "' + (d && T.plainName(d)) + '", not for sale, with a blurb');
     ok(forSale(lists[k]).indexOf(it) < 0 && lists[k].indexOf(it) > lists[k].filter(x => !x.reward).length - 1, k + '.' + it.id + ': after everything for sale, and never counted as for sale');
   }));
   ok(items >= 14, 'the milestone trophies give ' + items + ' things Dave does not sell');

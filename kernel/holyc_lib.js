@@ -43,6 +43,18 @@ export const PURE = {
   Ceil: a => Math.ceil(num(a[0])),
   Round: a => Math.round(num(a[0])),
   MemSet: (a, io) => { io.emit('MemSet(' + (a[0] == null ? 'SCREEN' : a[0]) + ', ' + (a[1] | 0) + ', ' + (a[2] | 0) + ')\n'); return 0; },
-  Cd: (a, io) => { io.emit('Cd("' + a[0] + '")\n'); return 0; },
-  Dir: (a, io) => { io.emit((io.hooks.dirNames ? io.hooks.dirNames() : []).join('  ') + '\n'); return 0; }
+  /* Cd and Dir are the shell's: a program run from the terminal changes the terminal's folder and lists the real one (kernel/holyc_env.js is what they ask);
+     run anywhere else they have no folder to change, and say so */
+  Cd: (a, io) => {
+    const p = a[0] == null ? '::' : String(a[0]);
+    if (!io.hooks.cd) { io.emit('Cd("' + p + '")  (NO SHELL HERE TO MOVE)\n'); return 0; }
+    const ok = io.hooks.cd(p);
+    if (!ok) io.emit('PATH NOT FOUND: ' + p + '\n');
+    return ok ? 1 : 0;
+  },
+  Dir: (a, io) => {
+    const names = io.hooks.dirNames ? io.hooks.dirNames(a[0] == null ? undefined : String(a[0])) : [];
+    io.emit((names && names.length ? names.join('  ') : '(NOTHING HERE)') + '\n');
+    return names ? names.length : 0;
+  }
 };

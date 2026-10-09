@@ -137,7 +137,7 @@ const Cos = {
     this.rewardOf(trophyId).forEach(({ cat, it }) => {
       if (this.has(cat, it.id)) return;
       this.st.owned[cat].push(it.id); n++;
-      if (!quiet) this.tell(cat, it.id, true);
+      if (!quiet) { this.tell(cat, it.id, true); if (it.secret) import('./wm.js').then(m => m.toast('DAVE LEFT YOU SOMETHING: ' + it.name + '  (' + COS_CATS[cat].label + ' SHELF)')).catch(() => {}); }
     });
     if (n) this.save();
     return n;

@@ -1,8 +1,12 @@
+import { ddSprite } from './dd_sprites.js';
+
 export function ddTokens(line) {
   const out = [];
   let i = 0, buf = '';
   while (i < line.length) {
     if (line.charAt(i) !== '$') { buf += line.charAt(i); i++; continue; }
+    /* $$ is one dollar sign, as it is in DolDoc: it is how a document shows a command instead of running it */
+    if (line.charAt(i + 1) === '$') { buf += '$'; i += 2; continue; }
     let j = i + 1, q = false;
     while (j < line.length) {
       const c = line.charAt(j);
@@ -102,11 +106,22 @@ export function ddRenderLine(line, host, state, onLink, onMacro) {
         fresh();
         break;
       }
+      case 'SP': {
+        /* $SP,"temple"$: a picture in the line (kernel/dd_sprites.js). A name the machine has no picture for is said, not skipped. */
+        const svg = ddSprite(args.q[0]);
+        const sp = document.createElement('span');
+        sp.className = 'ddsp' + (svg ? '' : ' missing');
+        if (svg) sp.innerHTML = svg; else sp.textContent = '[' + (args.q[0] || '?') + ']';
+        sp.title = args.q[0] || '';
+        row.appendChild(sp);
+        fresh();
+        break;
+      }
       case 'CL': row.innerHTML = ''; fresh(); break;
       default: break;
     }
   });
-  if (!row.textContent && !row.querySelector('.ddspwrap,.ddhr,.ddlink,.ddmacro')) {
+  if (!row.textContent && !row.querySelector('.ddsp,.ddhr,.ddlink,.ddmacro')) {
     row.innerHTML = '&nbsp;';
   }
   host.appendChild(row);

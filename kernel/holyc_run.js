@@ -73,6 +73,7 @@ export function hcRun(ast, out, env, hooks) {
 
   function callFn(name, args, line) {
     const f = fns[name];
+    if (name === 'Main') globals.__ranMain = 1;                      /* a Main the program called itself is not called again by the JIT afterwards */
     if (f) {
       if (depth >= MAX_DEPTH) throw err(name + ' keeps calling itself and never stops (too deep)', line);
       depth++;

@@ -27,11 +27,22 @@ function getDB() {
 /* bump this whenever assets/seed.json's shape changes (new fields, new
    apps) so a browser that already seeded an older shape gets patched
    instead of silently keeping stale records forever */
-const SEED_VERSION = 8;
+const SEED_VERSION = 10;
 const SEED_VERSION_KEY = 'templeos.vfs.seedVersion';
 /* An app that was renamed: the old seeded icon is carried to the new name (desktop.js carries its place on the desk), so nobody ends up
    with both. Only an untouched app marker moves; anything else at the old path is the user's and stays. */
 const RENAMED = { '::/Sweeper': '::/DungeonSweeper' };
+/* A file the machine used to ship and no longer does (::/TheBibel.TXT: the Bibel is an app now). An install that still has it loses it once, but only
+   while it is the file we shipped (it opens with the book's title); one the owner has written over is theirs and stays. */
+const RETIRED = { '::/TheBibel.TXT': c => typeof c === 'string' && c.startsWith('THE BIBEL') };
+/* A document the machine ships and has since corrected (the sprites and dollar signs DolDoc.DD describes now draw, Hardware.DD no longer describes a LENS, the
+   programs in Adam/ and Kernel/ now say something when they run). An install that still has the old text exactly, by the hash of what we shipped, is given the new
+   one; anything the owner has touched has a different hash and is never overwritten. */
+const REVISED = {
+  '::/Adam/Adam.HC': [3431279228], '::/Adam/Seth.HC': [1741935257], '::/Kernel/Panic.HC': [1734657371], '::/Kernel/Kernel.DD': [2122848473],
+  '::/Doc/Welcome.DD': [1060416738], '::/Doc/DolDoc.DD': [306520750], '::/Doc/Hardware.DD': [3710651871], '::/Home/Notes.DD': [1452306417]
+};
+function fnv(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
 
 async function initVFS() {
   const db = await getDB();
@@ -82,11 +93,24 @@ async function initVFS() {
           const rec = await new Promise(r => { const q = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(oldPath); q.onsuccess = () => r(q.result); q.onerror = () => r(null); });
           if (rec && rec.type === 'app') moved.push(oldPath);
         }
+        const revised = new Set();
+        for (const path of Object.keys(REVISED)) {
+          if (!existingKeys.has(path)) continue;
+          const rec = await new Promise(r => { const q = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(path); q.onsuccess = () => r(q.result); q.onerror = () => r(null); });
+          if (rec && typeof rec.content === 'string' && REVISED[path].indexOf(fnv(rec.content)) >= 0) revised.add(path);
+        }
+        const retired = [];
+        for (const gone of Object.keys(RETIRED)) {
+          if (!existingKeys.has(gone)) continue;
+          const rec = await new Promise(r => { const q = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(gone); q.onsuccess = () => r(q.result); q.onerror = () => r(null); });
+          if (rec && RETIRED[gone](rec.content)) retired.push(gone);
+        }
         const tx2 = db.transaction(STORE_NAME, 'readwrite');
         const store2 = tx2.objectStore(STORE_NAME);
         moved.forEach(oldPath => { store2.delete(oldPath); existingKeys.delete(oldPath); });
+        retired.forEach(gone => { store2.delete(gone); existingKeys.delete(gone); });
         for (const item of seed) {
-          if (item.type === 'app' || !existingKeys.has(item.path)) {
+          if (item.type === 'app' || !existingKeys.has(item.path) || revised.has(item.path)) {
             store2.put({ type: item.type, content: item.content, src: item.src, app: item.app }, item.path);
           }
         }

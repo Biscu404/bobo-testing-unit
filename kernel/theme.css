@@ -26,7 +26,7 @@ html, body {
   overflow: hidden;
   background: #0b0b0e;
   color: var(--phos-dim);
-  font-family: 'VT323', 'Courier New', monospace;
+  font-family: 'VT323', 'Galmuri11', 'Courier New', monospace;
   font-size: 20px;
   line-height: 1.05;
   -webkit-font-smoothing: none;
@@ -738,8 +738,9 @@ textarea.editor {
   background: #555555;
   margin: 3px 0;
 }
-.ddspwrap { display: inline-block; vertical-align: -3px; }
-.ddsp { width: 18px; height: 18px; display: inline-block; }
+.ddsp { width: 18px; height: 18px; display: inline-block; vertical-align: -3px; image-rendering: pixelated; }
+.ddsp svg { display: block; width: 100%; height: 100%; }
+.ddsp.missing { width: auto; color: #FF5555; }
 .ddlink {
   color: #55FFFF;
   text-decoration: underline;
@@ -864,15 +865,6 @@ textarea.editor {
 .slbox { color: #55FF55; }
 
 /* ---- defrag ------------------------------------------------------------- */
-
-/* ---- CMOS --------------------------------------------------------------- */
-.cmos { background: #0000AA; color: var(--phos); min-height: 100%; padding: 6px; }
-.cmoshead { text-align: center; background: #AAAAAA; color: #000000; margin-bottom: 6px; }
-.cmosbody { border: 1px solid var(--phos, #FFFFFF); padding: 4px 6px; }
-.cmosrow { display: flex; }
-.cmosrow .k { width: 55%; color: #FFFF55; }
-.cmosrow .v { color: #55FFFF; }
-.cmosfoot { margin-top: 6px; text-align: center; color: var(--phos-dim); }
 
 /* ---- the tube's own layers ---------------------------------------------- */
 #burn {
@@ -1549,3 +1541,9 @@ textarea.editor {
 #trophyprops { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .tprop { position: absolute; left: 0; top: 0; z-index: 26; background-size: 100% 100%; image-rendering: pixelated; pointer-events: auto; cursor: grab; touch-action: none; filter: drop-shadow(3px 4px 0 rgba(0, 0, 0, 0.55)); }
 .tprop.held { cursor: grabbing; z-index: 9000; }
+
+/* TASKS: the [END] on a row */
+.tasklist .tend { color: #FF5555; cursor: pointer; }
+.tasklist .tend:hover { background: #AA0000; color: #FFFFFF; }
+.nf-art { color: #FFFF55; white-space: pre; }
+.nf-k { color: #55FFFF; white-space: pre; }

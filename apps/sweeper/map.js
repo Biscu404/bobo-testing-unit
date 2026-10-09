@@ -24,7 +24,12 @@ export function createMap(env) {
   const pos = id => id.indexOf('bench:') === 0 ? benchAt(id.slice(6)) : NODES[id].at;
   const benchAt = rid => REGIONS.find(r => r.id === rid).bench;
 
+  /* the selection is always a room or a bench of the page on show; anything else is put right before it is read */
+  const placed = id => !!id && (id.indexOf('bench:') === 0 ? REGIONS.some(r => r.id === id.slice(6)) : !!NODES[id]);
+  const mend = () => { if (!placed(M.sel)) M.sel = nodesHere().find(id => nodeOpen(camp, NODES[id]) && camp.cleared[id] == null) || nodesHere()[0]; };
+
   M.draw = (G, now) => {
+    mend();
     G.fill('#000'); G.R(0, 0, 960, 640, VELLUM);
     dots.forEach(d => { G.a(0.05 + d[2] * 0.07); G.R(d[0], d[1], 2, 2, '#c9d2c8'); }); G.a(1);
     M.hits = [];
@@ -61,10 +66,12 @@ export function createMap(env) {
   M.mouse = (type, ev, lx, ly) => {
     const h = M.hits.find(q => lx >= q.x && lx <= q.x + q.w && ly >= q.y && ly <= q.y + q.h);
     if (type === 'move') { if (h && h.id.indexOf('page:') !== 0 && open(h.id)) M.sel = h.id; return; }
-    if (type === 'down' && h) { M.sel = h.id; go(h.id); }
+    /* a tab is not a place: clicking THE DESCENT or LOCKED must never become the selection (the card and the arrow keys read a room or a bench from it) */
+    if (type === 'down' && h) { if (h.id.indexOf('page:') !== 0) M.sel = h.id; go(h.id); }
   };
   M.key = ev => {
     const k = ev.key;
+    mend();
     if (k === 'Enter') { go(M.sel); return true; }
     if (k === 'c' || k === 'C') { env.openBench(camp.bench); return true; }
     if (k === 'Tab') { turn(M.page === 1 ? 2 : 1); return true; }

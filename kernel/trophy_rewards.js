@@ -37,7 +37,8 @@ export const masteryPay = n => Math.min(MASTERY_CAP, MASTERY_BASE + MASTERY_PER 
 /* trophy id -> [{ cat, id, name }]: what Dave's shelves give for it */
 export function rewardsByTrophy() {
   const out = {}, lists = { frame: FRAMES, logo: LOGOS, cursor: CURSORS, scheme: SCHEMES, elephant: ELEPHANT, drink: DRINKS };
-  Object.keys(lists).forEach(cat => lists[cat].forEach(it => { if (it.reward) (out[it.reward] = out[it.reward] || []).push({ cat: cat, id: it.id, name: it.name }); }));
+  /* a secret item is named nowhere (the ledger, the toast and the card all list what a trophy gives): it is `???` on the shelf until the trophy is earned */
+  Object.keys(lists).forEach(cat => lists[cat].forEach(it => { if (it.reward && !it.secret) (out[it.reward] = out[it.reward] || []).push({ cat: cat, id: it.id, name: it.name }); }));
   return out;
 }
 export const CAT_NAME = { frame: 'FRAME', logo: 'LOGO', cursor: 'POINTER', scheme: 'SCHEME', elephant: 'ELEPHANT', drink: 'DRINK' };

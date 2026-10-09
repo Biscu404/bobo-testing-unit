@@ -92,50 +92,5 @@ export function hifiPress(spec, rate) {
   return oc.startRendering();
 }
 
-/* ---- 28.4 what a file says about itself ---------------------------------
-   Minimal ID3v2: enough for a title, an artist and the cover art, and
-   nothing else. Anything unparseable falls back to the filename. */
-export function hifiTags(ab) {
-  const out = { title: null, artist: null, art: null };
-  try {
-    const v = new DataView(ab), u = new Uint8Array(ab);
-    if (u.length < 10 || u[0] !== 0x49 || u[1] !== 0x44 || u[2] !== 0x33) return out;
-    const major = u[3];
-    const syncsafe = o => (u[o] << 21) | (u[o + 1] << 14) | (u[o + 2] << 7) | u[o + 3];
-    const size = syncsafe(6);
-    let p = 10;
-    const end = Math.min(u.length, 10 + size);
-    const str = (off, len, enc) => {
-      const b = u.subarray(off, off + len);
-      if (enc === 1 || enc === 2) {
-        try { return new TextDecoder(enc === 1 ? 'utf-16' : 'utf-16be').decode(b).replace(/\0+$/, ''); }
-        catch (e) { return ''; }
-      }
-      try { return new TextDecoder(enc === 3 ? 'utf-8' : 'iso-8859-1').decode(b).replace(/\0+$/, ''); }
-      catch (e) { return ''; }
-    };
-    while (p + 10 <= end) {
-      const id = String.fromCharCode(u[p], u[p + 1], u[p + 2], u[p + 3]);
-      if (!/^[A-Z0-9]{4}$/.test(id)) break;
-      const fs = major >= 4 ? syncsafe(p + 4) : v.getUint32(p + 4);
-      if (fs <= 0 || p + 10 + fs > end) break;
-      const body = p + 10;
-      if (id === 'TIT2' || id === 'TPE1') {
-        const s = str(body + 1, fs - 1, u[body]);
-        if (s) { if (id === 'TIT2') out.title = s; else out.artist = s; }
-      } else if (id === 'APIC' && !out.art) {
-        const enc = u[body];
-        let q = body + 1;
-        while (q < body + fs && u[q] !== 0) q++;          /* mime */
-        const mime = str(body + 1, q - body - 1, 0) || 'image/jpeg';
-        q++; q++;                                         /* skip picture type */
-        if (enc === 1 || enc === 2) { while (q + 1 < body + fs && !(u[q] === 0 && u[q + 1] === 0)) q += 2; q += 2; }
-        else { while (q < body + fs && u[q] !== 0) q++; q++; }
-        if (q < body + fs) out.art = new Blob([u.subarray(q, body + fs)], { type: mime });
-      }
-      p = body + fs;
-    }
-  } catch (e) { /* a tag we cannot read is a tag we do not need */ }
-  return out;
-}
-
+/* what a file says about itself is tags.js now: FLAC, Ogg, M4A and the rest as well as MP3 */
+export { hifiTags } from './tags.js';

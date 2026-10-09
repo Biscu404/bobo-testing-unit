@@ -1,11 +1,10 @@
 /* THE BIBEL: the book, with a cover, a table of contents that ticks what has been read, and pages that turn. The words are text.js; the pages are pager.js;
-   what is kept (the place, the size, the chapters read) goes through ctx.save. The desktop file ::/TheBibel.TXT is the same text, flat. */
-import { PARTS, CHAPTERS, plainText } from './text.js';
+   what is kept (the place, the size, the chapters read) goes through ctx.save. */
+import { PARTS, CHAPTERS } from './text.js';
 import { createPager, SIZES } from './pager.js';
 
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
 const KEY = 'bibel.v1';
-const OLD_TITLE = 'THE BIBEL\nAn Amalgamated Scripture, Reconciled Badly';
 const EMBLEM = '<svg viewBox="0 0 16 16" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">' +
   '<rect x="1" y="3" width="14" height="11" fill="#000000"/><rect x="2" y="4" width="6" height="9" fill="#AAAAAA"/><rect x="8" y="4" width="6" height="9" fill="#FFFFFF"/>' +
   '<rect x="3" y="6" width="4" height="1" fill="#555555"/><rect x="3" y="8" width="4" height="1" fill="#555555"/><rect x="3" y="10" width="4" height="1" fill="#555555"/>' +
@@ -181,11 +180,6 @@ export default {
     });
     ro = new ResizeObserver(() => { if (alive && S.mode === 'read' && view.clientWidth) { const keep = { ...S.pos }; layout(); P.go(P.spreadOfChapter(keep.ch) + keep.off); status(); } });
     ro.observe(view);
-
-    /* the flat copy on the desktop is the old, short text until it is brought up to date; a file the owner has edited is left alone */
-    ctx.fs.read('::/TheBibel.TXT').then(rec => {
-      if (rec && rec.type === 'doc' && typeof rec.content === 'string' && rec.content.startsWith(OLD_TITLE)) ctx.fs.write('::/TheBibel.TXT', { ...rec, content: plainText() }).catch(() => {});
-    }).catch(() => {});
 
     show('cover');
     ctx.load(KEY).then(d => {

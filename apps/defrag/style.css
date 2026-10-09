@@ -20,3 +20,5 @@
 .defraglegend span { display: flex; align-items: center; gap: 3px; }
 .defraglegend .db { width: 9px; height: 9px; padding: 0; }
 .defragstatus { color: #55FF55; padding: 2px; }
+.defragprog { height: 6px; margin: 2px; border: 1px solid #AAAAAA; background: #000000; }
+.defragprog i { display: block; height: 100%; width: 0; background: #55FF55; }

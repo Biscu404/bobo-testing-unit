@@ -4,8 +4,12 @@ import { Snd } from '../../kernel/snd.js';
 import { Saver } from '../../kernel/saver.js';
 import { degauss } from '../../kernel/hardware.js';
 import { panic } from '../../kernel/panic.js';
-import { hcLex, hcParse, hcRun, looksLikeHolyC } from '../../kernel/holyc.js';
+import { hcLex, hcParse, hcRun, looksLikeHolyC, isPanic } from '../../kernel/holyc.js';
+import { compileNode } from '../../kernel/compile.js';
+import { snapshot } from '../../kernel/holyc_env.js';
+import { lineReport } from '../../kernel/lines.js';
 import { sys } from '../../kernel/trophy_hook.js';
+import { APP_ALIASES, APP_HELLO } from '../../kernel/commands.js';
 
 /* ---- the fallback answering machine --------------------------------------
    Real commands (DIR, CD, TYPE, DEL, MD, TREE, COMPILE...) are handled
@@ -146,56 +150,6 @@ function runSL(print, host) {
     if (x % 8 === 0) Snd.type();
   }, 90);
 }
-
-let SRC_LINES = 0;
-function sourceLineCount() {
-  if (SRC_LINES) return SRC_LINES;
-  try {
-    const s = document.documentElement.outerHTML;
-    let n = 1;
-    for (let i = 0; i < s.length; i++) if (s.charCodeAt(i) === 10) n++;
-    SRC_LINES = n;
-  } catch (e) { SRC_LINES = 0; }
-  return SRC_LINES;
-}
-
-/* apps launchable straight from the prompt, by any of their aliases */
-const APP_ALIASES = {
-  TASKS: 'tasks', PS: 'tasks', ADAM: 'tasks', SETH: 'tasks',
-  AFTEREGYPT: 'aftere', EGYPT: 'aftere', GAME: 'aftere',
-  BEKKEDAL: 'bekkedal', GAARD: 'bekkedal', BEK: 'bekkedal',
-  STACK: 'hifi', HIFI: 'hifi', PLAYER: 'hifi',
-  NOTES: 'notes', VAULT: 'notes', ZETTEL: 'notes',
-  COOK: 'cook', BLUE: 'cook', CHEM: 'cook', LAB: 'cook',
-  MAGEN: 'magen', STAR: 'magen', MITZVAH: 'magen', CLICKER: 'magen',
-  ELEPHANT: 'elephant', ELE: 'elephant', FRIEND: 'elephant',
-  JAEGER: 'bottle', BOTTLE: 'bottle', SHOT: 'bottle', DRINK: 'bottle',
-  DEFRAG: 'defrag',
-  CMOS: 'cmos', SETUP: 'cmos',
-  GARDEN: 'garden', SHOP: 'shop', DAVE: 'shop',
-  SWEEPER: 'sweeper', DUNGEON: 'sweeper', DUNGEONSWEEPER: 'sweeper', MINES: 'sweeper', SOLITAIRE: 'solitaire', CRAYON: 'crayon',
-  DRAWINGS: 'drawings', ABOUT: 'about', DISPLAY: 'display',
-  ACCOUNT: 'account', GODDOODLE: 'goddoodle', DOODLE: 'goddoodle',
-  NEOFETCH: 'neofetch', FETCH: 'neofetch',
-  GARAGE: 'garage', MUSIC: 'garage', BAND: 'garage', STUDIO: 'garage',
-  HOLYC: 'holyc', PUZZLES: 'holyc', LESSONS: 'holyc', TUTOR: 'holyc',
-  TRASH: 'trash', RECYCLE: 'trash'
-};
-const APP_HELLO = {
-  tasks: 'ADAM IS TASK 0. IT DOES NOT EXIT.',
-  aftere: 'FLY DOWN THE COLONNADE.',
-  bekkedal: 'A SMALL LIFE IN NORWAY.',
-  hifi: 'THE STACK IS WARM. DROP A FILE ON IT.',
-  notes: 'WRITE [[LIKE THIS]] AND THE LINK MAKES ITSELF.',
-  cook: 'THE BENCH IS CLEAN. BEGIN.',
-  magen: 'PRESS THE STAR. THAT IS ONE.',
-  elephant: 'HE HAS BEEN WAITING TO TELL YOU SOMETHING.',
-  bottle: 'ONE MEASURE IS FORTY MILLILITRES.',
-  garage: 'THIRTY INSTRUMENTS AND A DRUM KIT. PRESS LEARN IF YOU ARE NEW.',
-  holyc: 'SEVEN LESSONS, FIFTY PUZZLES, AND A WORKSHOP. TYPE IT.',
-  trash: 'NOTHING IS GONE UNTIL YOU SAY SO.',
-  defrag: 'MOVING CLUSTERS.'
-};
 
 export default {
   id: 'terminal',
@@ -415,34 +369,6 @@ export default {
       return lines;
     }
 
-    function compileNode(path, content, printFn) {
-      const src = String(content || '');
-      const lines = src.split('\n');
-      const stmts = lines.filter(l => {
-        const t = l.trim();
-        return t.length && t.slice(0, 2) !== '//';
-      }).length;
-      const bytes = src.length;
-      const base = 0x104000 + ((bytes * 7919) % 0x9000);
-      const emitted = Math.max(16, Math.round(stmts * 11.3 + bytes * 0.4));
-      const name = path.split('/').pop();
-
-      printFn(['HOLYC JIT — ' + path, ''], 'l-dim');
-      printFn(['  LEX     ' + lines.length + ' LINE(S), ' + commas(bytes) + ' BYTE(S)',
-             '  PARSE   ' + stmts + ' STATEMENT(S)',
-             '  EMIT    0x' + base.toString(16).toUpperCase().padStart(16, '0') +
-               '   ' + commas(emitted) + ' BYTES'], 'l-ok');
-
-      if (!/\.HC$/i.test(name)) {
-        printFn(['  WARN    ' + name + ' IS NOT .HC. COMPILING IT ANYWAY.'], 'l-err');
-      }
-      if (!stmts) {
-        printFn(['', '  ERROR   NOTHING TO COMPILE. THE FILE IS EMPTY.'], 'l-err');
-        return;
-      }
-      printFn(['', 'COMPILES CLEAN. NO WARNINGS. NO LINKER.', 'NO INTERCESSOR.'], 'l-holy');
-    }
-
     async function doCompile(arg) {
       const target = arg ? resolvePath(arg) : (window._lastTextPath || cwd + '/AutoExec.HC');
       const file = await ctx.fs.read(target);
@@ -491,18 +417,8 @@ export default {
           return true;
         case 'LINES': {
           sys.mark('eggs', 'LINES'); sys.emit('cmd', { name: 'LINES' });
-          const total = sourceLineCount();
-          const pct = (total / 100000 * 100);
-          print([
-            'THE CHARTER SAID 100,000 LINES FOR THE WHOLE SYSTEM.',
-            '',
-            '  THIS FILE      ' + commas(total).padStart(9) + ' lines',
-            '  THE CHARTER    ' + commas(100000).padStart(9) + ' lines',
-            '  USED           ' + pct.toFixed(2).padStart(9) + ' %',
-            '  LEFT           ' + commas(Math.max(0, 100000 - total)).padStart(9) + ' lines',
-            '',
-            'FOR SCALE, ONE MODERN KERNEL IS ABOUT 30,000,000.'
-          ], 'l-ok');
+          const rows = await lineReport();
+          print(rows || ['THE COUNT IS NOT ON THE DISK. RUN  node scripts/make-lines.mjs'], 'l-ok');
           return true;
         }
         case 'GODWORD': case 'WORD': {
@@ -664,15 +580,17 @@ export default {
           /* then HolyC, because the shell IS the compiler */
           if (looksLikeHolyC(s)) {
             verdict = null;
+            const env = await snapshot(cwd);
             try {
               const ast = hcParse(hcLex(s));
               hcRun(ast, line => print([line], 'l-holyc'), null, {
                 godDoodle: () => ctx.openWindow('goddoodle').catch(console.error),
-                dirNames: () => []
+                dirNames: env.dirNames, cd: p => env.cd(p, t => { cwd = t; setPrompt(); })
               });
               sys.holyc(ast, null);
             } catch (e) {
-              if (e && e.holyc) {
+              if (isPanic(e)) { print(['DROPPING TO THE DEBUGGER.'], 'l-err'); panic(e, 'deliberate'); }
+              else if (e && e.holyc) {
                 print(['HolyC: ' + e.message + (e.line ? '  (line ' + e.line + ')' : '')], 'l-err');
                 Snd.err();
               } else {

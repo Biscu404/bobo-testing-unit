@@ -25,3 +25,13 @@
   src: url(../vendor/fonts/VT323-latin.woff2) format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
+/* Galmuri11: a pixel font that has what VT323 does not: Hangul (all of it), kana, six thousand kanji / hanja, Cyrillic, Greek. It is only fetched when a
+   character in these ranges is on the page, so a machine that never meets one never loads it. SIL OFL 1.1 (vendor/fonts/OFL-Galmuri.txt). */
+@font-face {
+  font-family: 'Galmuri11';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(../vendor/fonts/Galmuri11.woff2) format('woff2');
+  unicode-range: U+0370-03FF, U+0400-052F, U+1100-11FF, U+2E80-2FDF, U+3000-30FF, U+3130-318F, U+31F0-31FF, U+3200-33FF, U+3400-4DBF, U+4E00-9FFF, U+A960-A97F, U+AC00-D7FF, U+F900-FAFF, U+FE30-FE4F, U+FF00-FFEF;
+}

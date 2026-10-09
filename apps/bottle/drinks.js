@@ -72,7 +72,7 @@ export function paletteOf(d) {
       label: lb, labelHi: mix(lb, W, 0.3), labelDk: mix(lb, K, 0.25), ink, band: mix(L, K, 0.2), cap, capHi: mix(cap, W, 0.3), capLo: mix(cap, K, 0.45) };
     const base = mix(mix(L, g, 0.4), K, 0.1);
     const room = c => rgbOf(c);
-    const [sub1, sub2] = PRINT[d.id] || ['', d.abv + '% vol'];
+    const [sub1, sub2] = d.print || PRINT[d.id] || ['', d.abv + '% vol'];
     p = { shape: look.shape, capKind: look.capKind || null, colors, text: { emboss: d.name, title: d.name.length > 12 ? d.name.split(' ')[0] : d.name, sub1, sub2, icon: ICON[d.id] || null, paint: GIFT_LABELS[d.id] || null },
       bottleLiquid: { base, mid: mix(L, g, 0.3), hi: mix(L, W, 0.35), edge: mix(base, K, 0.5), foam: '#f4f4ea' },
       stream: [mix(L, K, 0.25), L, mix(L, W, 0.45)], fizz: mix(L, K, 0.12), drop: mix(L, K, 0.1), foam: mix(L, W, 0.6), title: lum(lb) > 0.3 ? lb : mix(lb, W, 0.4),

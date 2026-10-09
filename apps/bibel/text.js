@@ -14,26 +14,3 @@ export const PARTS = [
 ];
 
 export const CHAPTERS = PARTS.flatMap(p => p.chapters);
-
-/* plain text, as the desktop file ::/TheBibel.TXT keeps it */
-export function plainText(width = 72) {
-  const wrap = s => {
-    const out = []; let line = '';
-    for (const w of s.split(' ')) {
-      if (line && (line + ' ' + w).length > width) { out.push(line); line = w; } else line = line ? line + ' ' + w : w;
-    }
-    if (line) out.push(line);
-    return out.join('\n');
-  };
-  const out = ['THE BIBEL', 'An Amalgamated Scripture', ''];
-  for (const p of PARTS) {
-    if (p.name) out.push(p.name, '');
-    for (const c of p.chapters) {
-      out.push((c.no ? c.no + '. ' : '') + c.title);
-      if (c.note) out.push('(' + c.note + ')');
-      out.push('');
-      c.verses.forEach((v, i) => out.push(wrap((c.no && c.id !== 'z' ? (i + 1) + ' ' : '') + v), ''));
-    }
-  }
-  return out.join('\n');
-}

@@ -59,13 +59,13 @@ for (let r = 0; r < 5; r++) for (let q = 0; q < 5; q++) taken.add(q + ',' + r);
 ok(nearestFree(taken, 2, 2, 5, 5) === null, 'a full grid answers null');
 
 /* zones: tools top left, games top right, the bin in the corner, the machine's papers bottom left */
-const seed = ['TERMINAL', 'Trophies', 'Magen', 'TheCook', 'Solitaire', 'TheBibel.TXT', 'Notes', 'mine.txt'].map(n => ({ name: n })).concat([{ name: 'RecycleBin', type: 'bin' }]);
+const seed = ['TERMINAL', 'Trophies', 'Magen', 'TheCook', 'Solitaire', 'Welcome.DD', 'Notes', 'mine.txt'].map(n => ({ name: n })).concat([{ name: 'RecycleBin', type: 'bin' }]);
 out = layout(seed, {}, [], dims);
 const cl = n => cellOf(out.get(n).x, out.get(n).y);
 ok(cl('TERMINAL').c <= 1 && cl('Trophies').c <= 1, 'tools sit at the left');
 ok(cl('Magen').c >= cols - 3 && cl('TheCook').c >= cols - 3 && cl('Solitaire').c >= cols - 3, 'games sit at the right');
 ok(cl('RecycleBin').c === cols - 1 && cl('RecycleBin').r === rows - 1, 'the bin is in the bottom right corner');
-ok(cl('TheBibel.TXT').r >= rows - 2 && cl('TheBibel.TXT').c <= 2, 'the machine\'s papers are bottom left');
+ok(cl('Welcome.DD').r >= rows - 2 && cl('Welcome.DD').c <= 2, 'the machine\'s papers are bottom left');
 ok(cl('mine.txt').c >= 3 && cl('mine.txt').c <= 6 && cl('mine.txt').r === 0, 'your own files have a zone of their own');
 ok(new Set([...out.values()].map(cellKey)).size === seed.length, 'and nobody shares a cell');
 console.log(bad ? bad + ' FAILED' : 'all ok');

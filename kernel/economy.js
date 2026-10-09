@@ -51,6 +51,10 @@ export const Economy = (function () {
     },
     onChange(fn) {
       subs.push(fn);
+    },
+    offChange(fn) {
+      const i = subs.indexOf(fn);
+      if (i >= 0) subs.splice(i, 1);
     }
   };
 })();

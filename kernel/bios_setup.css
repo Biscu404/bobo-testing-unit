@@ -1,0 +1,28 @@
+/* The BIOS setup screen (kernel/bios_ui.js): VGA blue, grey and yellow, text mode. Over the splash when DEL is held at power-up, and the body of the CMOS window. */
+.bsu {
+  position: absolute; inset: 0; z-index: 530; box-sizing: border-box;
+  display: flex; flex-direction: column;
+  background: #0000AA; color: #AAAAAA; padding: 8px 10px;
+  font-size: clamp(12px, 2.4vmin, 18px); line-height: 1.25; user-select: none; cursor: default;
+}
+.bsu.win { position: relative; inset: auto; z-index: auto; min-height: 100%; font-size: 15px; padding: 6px 8px; }
+.bsu-title { text-align: center; background: #AAAAAA; color: #000000; padding: 1px 0; letter-spacing: 1px; }
+.bsu-tabs { display: flex; gap: 2px; margin: 6px 0 4px; border-bottom: 1px solid #AAAAAA; }
+.bsu-tab { padding: 0 12px; color: #55FFFF; cursor: pointer; }
+.bsu-tab.on { background: #AAAAAA; color: #000000; }
+.bsu-body { flex: 1 1 auto; min-height: 0; display: flex; gap: 10px; }
+.bsu-list { flex: 1 1 62%; border: 1px solid #AAAAAA; padding: 4px 0; overflow: auto; }
+.bsu-row { display: flex; justify-content: space-between; gap: 12px; padding: 0 8px; white-space: nowrap; cursor: pointer; }
+.bsu-row .k { color: #FFFF55; }
+.bsu-row .v { color: #55FFFF; text-align: right; overflow: hidden; text-overflow: ellipsis; }
+.bsu-row .v.ro { color: #FFFFFF; }
+.bsu-row .v.changed { color: #FF55FF; }
+.bsu-row.sel { background: #00AAAA; }
+.bsu-row.sel .k, .bsu-row.sel .v, .bsu-row.sel .v.ro, .bsu-row.sel .v.changed { color: #000000; }
+.bsu-help { flex: 1 1 38%; border: 1px solid #AAAAAA; padding: 4px 8px; overflow: auto; }
+.bsu-h { color: #FFFF55; text-align: center; border-bottom: 1px solid #AAAAAA; margin-bottom: 4px; }
+.bsu-ht { color: #FFFFFF; white-space: normal; }
+.bsu-dirty { margin-top: 8px; color: #FF55FF; }
+.bsu-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 10px; margin-top: 6px; border-top: 1px solid #AAAAAA; padding-top: 3px; color: #FFFFFF; }
+.bsu-ask { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: #AAAAAA; color: #000000; padding: 8px 20px; text-align: center; border: 2px solid #FFFFFF; }
+.bsu-ay { margin-top: 6px; color: #0000AA; }

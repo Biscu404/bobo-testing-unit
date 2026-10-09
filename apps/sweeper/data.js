@@ -120,6 +120,10 @@ export const baseCount = o => Object.keys(o || {}).filter(id => NODES[id] && NOD
 export const underCount = o => Object.keys(o || {}).filter(id => NODES[id] && NODES[id].act === 2).length;
 export const underOpen = camp => !!camp && camp.cleared && camp.cleared[FINAL] != null;
 
+/* GRUBSONG's pay. Focus mends a mask for 22 soul at the very best (QUICK FOCUS, or DEEP FOCUS at 44 for two) and a larva takes a mask at the least, so a hurt that gave 33 soul paid for
+   a mask and a half: take a hit, mend it, take another, forever. Anything under 22 soul loses masks on that loop; five is a small comfort in a bad room, not an engine. */
+export const GRUB_SOUL = 5;
+
 /* charms. `n` is the notches it takes up; the bench has only so many. */
 export const CHARMS = [
   /* the compass is not sold: it is found, and only by clearing every room of the descent under its par time without losing a mask
@@ -129,7 +133,7 @@ export const CHARMS = [
   { id: 'greed',    name: 'FRAGILE GREED',    n: 1, cost: 70,  text: 'Rooms pay 30% more geo.' },
   { id: 'sprint',   name: 'SPRINTMASTER',     n: 1, cost: 80,  text: 'The time bonus on a room counts double.' },
   { id: 'thorns',   name: 'THORNS OF AGONY',  n: 1, cost: 90,  text: 'When a larva hatches under you, the mines beside it are flagged.' },
-  { id: 'grubsong', name: 'GRUBSONG',         n: 1, cost: 75,  text: 'Being hurt gives 33 soul.' },
+  { id: 'grubsong', name: 'GRUBSONG',         n: 1, cost: 75,  text: 'Being hurt gives ' + GRUB_SOUL + ' soul.' },
   { id: 'quick',    name: 'QUICK FOCUS',      n: 2, cost: 120, text: 'Focus costs 22 soul, not 33.' },
   { id: 'lifeblood',name: 'LIFEBLOOD HEART',  n: 2, cost: 100, text: 'Every room begins with two lifeblood masks, spent first.' },
   { id: 'stalwart', name: 'STALWART SHELL',   n: 2, cost: 140, text: 'The first larva you hatch in a room does no harm.' },
