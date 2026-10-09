@@ -1,4 +1,4 @@
-import { varsOf, VAR_NAMES, install as installThemes } from './theme_fx.js';
+import { varsOf, VAR_NAMES, frameHex, install as installThemes } from './theme_fx.js';
 import { FRAMES, LOGOS, CURSORS, SCHEMES, POTS, SPECIES, WALLS, CRAYON, GARAGE, DRINKS, ELEPHANT, SOLITAIRE, DECO_SVG, CUR_HANDMASK, forSale } from './cos_data.js';
 import { Backdrops } from './backdrops.js';
 
@@ -270,7 +270,18 @@ const Cos = {
     if (!room) return;
     const s = this.find('scheme', this.live('scheme')) || SCHEMES[0];
     this.applySchemeVars(room, s);
+    this.dressFrames();
   },
+
+  /* the edge of a window is a border, so it is coloured here, from the VGA colour wm.js gave it (data-edge) and the scheme the window wears
+     (its own [T], else the machine's); the title bar is filtered by the stylesheet. A scheme never reaches inside a window. */
+  dressFrame(win) {
+    const edge = win && win.dataset && win.dataset.edge;
+    if (!edge || !this.st) return;
+    const s = this.find('scheme', win.dataset.scheme || this.live('scheme')) || SCHEMES[0];
+    win.style.borderColor = s.id === 'vga' ? edge : frameHex(s.v, edge);
+  },
+  dressFrames() { document.querySelectorAll('.win[data-edge]').forEach(w => this.dressFrame(w)); },
 
   /* a scheme is worn as custom properties on an element: the six inks, the gradient-map filter (kernel/theme_fx.js) and the desktop's colour */
   applySchemeVars(el, s, forWindow) {
@@ -284,11 +295,13 @@ const Cos = {
      does not remember (the window manager keeps one choice per app). */
   applyWinScheme(win, schemeId) {
     if (!win) return;
-    if (!schemeId) { VAR_NAMES.forEach(k => win.style.removeProperty(k)); win.classList.remove('themed'); return; }
+    if (!schemeId) { VAR_NAMES.forEach(k => win.style.removeProperty(k)); win.classList.remove('themed'); delete win.dataset.scheme; this.dressFrame(win); return; }
     const s = this.find('scheme', schemeId);
     if (!s) return;
     this.applySchemeVars(win, s, true);
     win.classList.add('themed');
+    win.dataset.scheme = schemeId;
+    this.dressFrame(win);
   },
 
   applyLogo() {

@@ -8,21 +8,12 @@ import { attachZoom } from './zoom.js';
 import { attachFit } from './canvas_fit.js';
 import { Studio } from './studio.js';
 import { sys } from './trophy_hook.js';
+import { TITLE_COLORS } from './win_skins.js';
 
 let zTop = 100;
 let cascadeN = 0;
 export const openWins = [];
 export const GAME_IDS = new Set(['bekkedal', 'standbattle', 'magen', 'aftere', 'cook', 'solitaire', 'sweeper', 'garden', 'bottle', 'defrag']);
-const TITLE_COLORS = {
-  folder:   { bar: '#55FFFF', border: '#00AAAA' },
-  text:     { bar: '#FFFF55', border: '#AA5500' },
-  doc:      { bar: '#55FF55', border: '#00AA00' },
-  image:    { bar: '#FF55FF', border: '#AA00AA' },
-  video:    { bar: '#FF5555', border: '#AA0000' },
-  app:      { bar: '#FF55FF', border: '#AA00AA' },
-  panic:    { bar: '#FF5555', border: '#FF5555' },
-  terminal: { bar: '#AAAAAA', border: '#FFFFFF' }
-};
 
 /* the mixer (and anything else that cares what is running) listens for this
    instead of polling the window list */
@@ -76,11 +67,13 @@ export function createWindow(opts) {
   win.style.top  = pos.y + 'px';
 
   if (opts.kind === 'panic') win.classList.add('panic');
-  /* a game's window: a theme dresses its frame and its bar, never the art inside (kernel/theme.css, "game windows") */
+  /* a game's window (the mixer, the trophies and a few checks ask which are games) */
   if (opts.appId && GAME_IDS.has(opts.appId)) win.dataset.game = '1';
 
+  /* a colour scheme dresses a window's frame and nothing inside it: the bar is filtered by theme.css, the edge is coloured by Cos.dressFrame from this VGA colour */
   const skin = TITLE_COLORS[opts.kind] || TITLE_COLORS.text;
   win.style.borderColor = skin.border;
+  win.dataset.edge = skin.border;
 
   const bar = document.createElement('div');
   bar.className = 'titlebar';
@@ -121,7 +114,7 @@ export function createWindow(opts) {
     th = document.createElement('span');
     th.className = 'th';
     th.textContent = '[T]';
-    th.title = 'WINDOW THEME. Dress just this window in one of your colour schemes. It remembers.';
+    th.title = 'WINDOW FRAME. Dress just this window\'s title bar and edge in one of your colour schemes (what is inside it is never recoloured). It remembers.';
     th.addEventListener('mousedown', async ev => {
       ev.stopPropagation();
       if (ev.button !== 0) return;
@@ -357,6 +350,7 @@ export function createWindow(opts) {
   document.addEventListener('mousemove', onMove);
   document.addEventListener('mouseup', onUp);
 
+  Cos.dressFrame(win);
   raise(win);
   Snd.open();
 

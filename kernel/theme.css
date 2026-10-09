@@ -1512,13 +1512,14 @@ textarea.editor {
 .pinnum { color: #AAAAAA; font-size: 15px; }
 .pinfoot { color: #AAAAAA; font-size: 14px; margin-top: 4px; }
 
-/* ---- THE SCHEME IS A WHOLE LOOK (kernel/theme_fx.js) -----------------------------------------------------------------------------------
+/* ---- THE SCHEME DRESSES THE CHROME (kernel/theme_fx.js) --------------------------------------------------------------------------------
    --th-filter is `none` on the default scheme and url(#th-<id>) on any other: set on #room by the scheme the machine wears, and again on one
-   window by its [T], which wins for that window's subtree. Every surface reads it, so a scheme recolours the title bars, the games' canvases, the
-   pictures, the menu bar, the taskbar, the icons and the elephant, not just the rules that read the six inks. (The desktop's own colour is
-   --sch-desk; a wallpaper picture is the user's own and is left alone.) */
-.win, #menubar, #taskbar, #icons, #pet, #deskvid { filter: var(--th-filter, none); }
-/* a window keeps the VGA inks whatever the room wears: the filter, not the variables, is what dresses it (see varsOf in theme_fx.js) */
+   window by its [T], which wins for that window's subtree. It is worn by the machine's own chrome and by nothing else: the title bar and the grip of
+   every window, the menu bar and the taskbar. The edge of a window is a border, coloured from the same ramp by Cos.dressFrame (kernel/cos.js); the
+   desktop's colour is --sch-desk; the pop-ups read the six inks. What is INSIDE a window (the terminal, the games, a picture, every canvas), the
+   icons, the elephant and a wallpaper are never filtered: an app always looks the way it was made, whatever scheme is worn. */
+.win > .titlebar, .win > .grip, #menubar, #taskbar { filter: var(--th-filter, none); }
+/* a window keeps the VGA inks whatever the room wears: the six inks the pop-ups read are not an app's business (see varsOf in theme_fx.js) */
 .win { --sch-bg: #000000; --sch-fg: #FFFFFF; --sch-ok: #55FF55; --sch-hi: #FFFF55; --sch-err: #FF5555; --sch-dim: #AAAAAA; --sch-acc: #55FFFF; }
 
 /* trophies left on the desktop (kernel/trophy_props.js): under the windows, over the icons */
