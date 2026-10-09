@@ -32,6 +32,7 @@ No anti-aliasing because a pixel is either lit or it isn't. One voice, one task
 tree, one font. This build keeps that palette absolutely — the only thing allowed
 off it is the plastic of the case, because plastic is not phosphor.
 
+This is a gift for a dear friend.
 ---
 
 ## Running it
