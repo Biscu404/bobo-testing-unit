@@ -14,6 +14,8 @@ import { VGA16 } from '../../kernel/god.js';
 import { scopedListeners, whenGone } from '../lifecycle.js';
 import { createCalls } from './trophy_calls.js';
 import { drawJesse, moodFor } from './jesse.js';
+import { createShed } from './shed.js';                 /* the owner's blueprint opens a shed (shed.js) */
+import { gifts, onGiven } from '../gifts_scope.js';
 
 /* ---- the rules -----------------------------------------------------------
    The same functions the solver ran, so what the game allows and what was
@@ -69,6 +71,7 @@ export default {
       const bUndo = mk('ckundo', 'UNDO'), bReset = mk('ckreset', 'RESET');
       const bHeat = mk('ckheat', 'HEAT +'), bCool = mk('ckcool', 'COOL -');
       const bMenu = mk('ckmenu', 'LEVELS'), bBook = mk('ckbook', 'LEDGER');
+      const bShed = mk('ckshed', 'SHED');                  /* only once the blueprint is yours */
       const info = document.createElement('span'); info.className = 'godword ckinfo';
       bar.appendChild(info);
       body.appendChild(wrap); body.appendChild(bar);
@@ -997,30 +1000,38 @@ export default {
          layers come in as it goes wrong, and a won or a ruined batch gets a stinger over the top */
       const Song = createCookMusic({ studio: () => Studio, playing: () => alive && CRT.on && Vol.mus > 0 });
 
+      /* ---- the shed: the tab the owner's blueprint opens (apps/cook/shed.js). It is given the page's own painters and the voice, and leaves by way of the menu. */
+      const shed = createShed({ R, wash, txt, g: () => g, Snd, blip, playBlip, wrapTo, calm: typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches, leave: () => { mode = 'menu'; sfx.page(); refresh(); } });
+      const offGift = onGiven(() => refresh());                     /* the SHED button appears the moment the blueprint is given */
+
       /* ---- 33.15 input ----------------------------------------------------- */
       function refresh() {
-        const on = mode === 'play';
-        bUndo.disabled = !on; bReset.disabled = !on;
-        bHeat.style.display = (L && L.heat) ? '' : 'none';
-        bCool.style.display = (L && L.cool) ? '' : 'none';
-        if (L && on) {
+        const inShed = mode === 'shed', on = mode === 'play' || (inShed && shed.playing());
+        bUndo.disabled = !(mode === 'play' || (inShed && shed.canUndo())); bReset.disabled = !on;
+        bShed.style.display = gifts().has('blueprint') ? '' : 'none';
+        bHeat.style.display = (L && L.heat && !inShed) ? '' : 'none';
+        bCool.style.display = (L && L.cool && !inShed) ? '' : 'none';
+        if (L && mode === 'play') {
           bHeat.textContent = 'HEAT + (' + st.heat + ')';
           bCool.textContent = 'COOL - (' + st.cool + ')';
           info.textContent = L.n + '  ·  pours ' + st.steps + '/' + L.par +
             (L.cps ? '  ·  stages ' + st.cp + '/' + L.cps : '') +
             '  ·  best ' + (SV.best[L.id] ? SV.best[L.id].toFixed(1) + '%' : '—');
-        } else if (mode === 'menu') info.textContent = 'pick a level';
+        } else if (inShed) info.textContent = shed.info();
+        else if (mode === 'menu') info.textContent = 'pick a level';
         else if (mode === 'book') info.textContent = 'the ledger';
         else info.textContent = 'space to go on';
       }
       cv.addEventListener('mousemove', ev => {
         const sx = 420 / cv.clientWidth, sy = 320 / cv.clientHeight;
+        if (mode === 'shed') { shed.mouse('move', ev.offsetX * sx, ev.offsetY * sy); return; }
         hover = mode === 'play' ? bottleAt(ev.offsetX * sx, ev.offsetY * sy) : -1;
       });
       cv.addEventListener('mouseleave', () => { hover = -1; });
       cv.addEventListener('mousedown', ev => {
         const sx = 420 / cv.clientWidth, sy = 320 / cv.clientHeight;
         const mx = ev.offsetX * sx, my = ev.offsetY * sy;
+        if (mode === 'shed') { shed.mouse('down', mx, my); refresh(); return; }
         if (mode === 'story') { skipStory(); return; }
         if (mode === 'won') { if (kid && kid.hold) { kidNext(); return; } nextAfterWin(); return; }
         if (mode === 'book') { mode = 'menu'; sfx.page(); refresh(); return; }
@@ -1061,6 +1072,7 @@ export default {
       }
       cv.addEventListener('keydown', ev => {
         const k = ev.key;
+        if (mode === 'shed') { if (shed.key(k, ev)) ev.preventDefault(); refresh(); return; }
         if (k === ' ' || k === 'Enter') { ev.preventDefault();
           if (mode === 'story') skipStory(); else if (mode === 'won') { if (kid && kid.hold) kidNext(); else nextAfterWin(); } return; }
         if (mode !== 'play') { if (k === 'Escape') { mode = 'menu'; refresh(); } return; }
@@ -1071,15 +1083,16 @@ export default {
         if (k === 'c' || k === 'C') op('cool');
         if (k === 'Escape') { mode = 'menu'; sfx.page(); refresh(); }
       });
-      bUndo.addEventListener('mousedown', ev => { ev.stopPropagation(); undo(); });
-      bReset.addEventListener('mousedown', ev => { ev.stopPropagation(); reset(); });
+      bUndo.addEventListener('mousedown', ev => { ev.stopPropagation(); if (mode === 'shed') { shed.undo(); refresh(); } else undo(); });
+      bReset.addEventListener('mousedown', ev => { ev.stopPropagation(); if (mode === 'shed') { shed.reset(); refresh(); } else reset(); });
+      bShed.addEventListener('mousedown', ev => { ev.stopPropagation(); mode = 'shed'; shed.enter(); sfx.page(); refresh(); cv.focus(); });
       bHeat.addEventListener('mousedown', ev => { ev.stopPropagation(); op('heat'); });
       bCool.addEventListener('mousedown', ev => { ev.stopPropagation(); op('cool'); });
       bMenu.addEventListener('mousedown', ev => { ev.stopPropagation(); mode = 'menu'; sfx.page(); refresh(); });
       bBook.addEventListener('mousedown', ev => { ev.stopPropagation(); mode = 'book'; sfx.page(); refresh(); });
 
       /* ---- 33.16 the loop --------------------------------------------------- */
-      let raf = null, last = 0, acc = 0;
+      let raf = null, last = 0, acc = 0, shedTick = -1;
       function frame(ts) {
         if (!alive || !document.body.contains(cv)) {
           alive = false; Song.stop(); save();
@@ -1138,6 +1151,7 @@ export default {
         if (shake > 0.05) g.translate(Math.round((Math.random() - 0.5) * shake * 2),
                                       Math.round((Math.random() - 0.5) * shake * 2));
         if (mode === 'story') drawStory(t);
+        else if (mode === 'shed') { shed.draw(t, step); if (Math.floor(t * 8) !== shedTick) { shedTick = Math.floor(t * 8); refresh(); } }
         else if (mode === 'menu') drawMenu(t);
         else if (mode === 'book') drawBook(t);
         else {
@@ -1192,13 +1206,13 @@ export default {
       load();
       if (SV.lv > 1 || SV.seen.c1) { mode = 'menu'; L = CK_LV[0]; }
       else { SV.seen.c1 = 1; beginBench(1); Song.want('desert'); }
-      window.__ckDebug = { win: () => win(), start: n => startLevel(n), get mode() { return mode; }, get winT() { return winT; }, get kid() { return kid; } };
+      window.__ckDebug = { win: () => win(), start: n => startLevel(n), get shed() { return shed.state(); }, get mode() { return mode; }, get winT() { return winT; }, get kid() { return kid; } };
       refresh();
       setTimeout(() => cv.focus(), 60);
       raf = requestAnimationFrame(frame);
 
       /* the window closing is seen the moment it happens, not on the next poll */
-      whenGone(cv, () => { alive = false; Song.stop(); save(); tro.stop(); if (raf) cancelAnimationFrame(raf); });
+      whenGone(cv, () => { alive = false; Song.stop(); save(); tro.stop(); offGift(); if (raf) cancelAnimationFrame(raf); });
     }
   });
   }
