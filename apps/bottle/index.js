@@ -62,7 +62,7 @@ export default {
 
     const S = {
       ml: JAG_FULL, drunk: 0, bottles: 1, shelf: {}, phase: 'idle', t: 0, note: '', noteT: 0, rest: 0,
-      bot: { c: REST_C.slice(), a: 0, vol: BOT_FULL, capOn: true, surf: null, n0: botC.n0, slosh: makeSlosh() },
+      bot: { c: REST_C.slice(), a: 0, vol: BOT_FULL, capOn: true, surf: null, n0: botC.n0, geo: A.geo, slosh: makeSlosh() },
       gls: { pose: restPose(), vol: 0 },
       sipDrops: [], stream: 0, q: 0, lip: null, glassSurf: FLOOR, glassVol: 0, glugPh: 0, glugIn: 0, dripIn: 0,
       bubbles: [], fizz: [], rings: [], drops: [], flight: [], ringIn: 0, foam: 0, poured: 0, swallowed: 0, pending: 0
@@ -73,7 +73,7 @@ export default {
       const raw = JSON.parse(localStorage.getItem(JAG_KEY) || 'null');
       if (raw) {
         S.ml = raw.ml == null ? JAG_FULL : raw.ml; S.drunk = raw.drunk || 0; S.bottles = raw.bottles || 1; wasFull = raw.glass || 0; S.shelf = raw.shelf || {};
-        if (raw.drink && window.Cos.has('drink', raw.drink)) { drink = drinkById(raw.drink); PAL = paletteOf(drink); A = makeArt(g, PAL); R = A.R; T = A.T; botC = makeContainer(A.bottleSpec); }
+        if (raw.drink && window.Cos.has('drink', raw.drink)) { drink = drinkById(raw.drink); PAL = paletteOf(drink); A = makeArt(g, PAL); R = A.R; T = A.T; botC = makeContainer(A.bottleSpec); S.bot.n0 = botC.n0; S.bot.geo = A.geo; }
       }
     } catch (e) {}
     setLiquor(PAL.room);
@@ -185,7 +185,7 @@ export default {
       S.shelf[drink.id] = S.ml;                                  /* the one on the table goes back on the shelf, as full as it is */
       drink = d; PAL = paletteOf(d);
       A = makeArt(g, PAL); R = A.R; T = A.T;
-      botC = makeContainer(A.bottleSpec); S.bot.n0 = botC.n0;
+      botC = makeContainer(A.bottleSpec); S.bot.n0 = botC.n0; S.bot.geo = A.geo;
       setLiquor(PAL.room);
       S.ml = S.shelf[d.id] != null ? S.shelf[d.id] : JAG_FULL;
       S.bot.vol = (S.ml / JAG_FULL) * BOT_FULL; S.bot.a = 0; S.bot.c = REST_C.slice(); S.bot.capOn = true;
