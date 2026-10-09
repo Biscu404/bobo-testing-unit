@@ -13,3 +13,11 @@ export const DRINKS_G = [
   { id: 'potion', name: 'THE HOMEMADE POTION', price: 0, gift: 'teiteotei', abv: 50, strength: 1.4, potion: true, shape: 'flask', glass: '#9ed8a0', liquor: '#5ae048', label: '#e8dcb8',
     blurb: 'The creator made it at home. Somewhere between one and ninety-nine per cent, and a different one every sip. He does not know either.' }
 ];
+
+/* THE SEED BISCU GIVES. A flower whose head is a cookie, and as near the late game's power as a gift should be: more than Suncrown, a little under Thirdroot, and slow. It is a seed you own
+   from the first look at the credits, but it only comes up in the tray once the garden has `needKinds` other kinds of plant (apps/garden), so it cannot be a short cut past the early game. */
+export const SPECIES_G = [
+  { id: 'cookiebloom', name: 'COOKIEBLOOM', price: 0, gift: 'biscu', needKinds: 7, yield: 78, grow: 520, drop: 195, note: 4, hue: ['#c8863a', '#7a4a1a', '#f0c070'],
+    home: 'greenhouse', kin: 'glaze', mate: 'bellvine',
+    blurb: 'Biscu\'s. The head is a cookie with a bite out of it and the petals are cream. Likes the warm room and a glazed pot and a bellvine ringing next door. Comes up once you have seven kinds.' }
+];

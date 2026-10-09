@@ -10,11 +10,12 @@ import { createMagenMusic } from './music.js';
 import { VGA16 } from '../../kernel/god.js';
 import { mgIcon, mgUpIcon, mgTierIcon } from './icons.js';
 import { mgBackdrops, mgAchScene } from './backdrops.js';
-import { scopedListeners } from '../lifecycle.js';
+import { scopedListeners, whenGone } from '../lifecycle.js';
 import { AUTO_LEVELS, AUTO_UNLOCK, autoUnlocked, autoGap, autoRate, autoNext, owed } from './auto.js';
 import { ratesHtml } from './rates.js';
 import { createCalls } from './trophy_calls.js';
 import { achSun } from './pay.js';
+import { drawCookie, createCookie } from './cookie.js';
 
 /* the machine's own pixel face for everything the star's canvas has to say */
 const MGF = "'VT323', 'Courier New', monospace";
@@ -57,6 +58,7 @@ export default {
           '<button class="appbtn mgbuy" data-n="-1">SELL</button>' +
           '<span class="nsep"></span>' +
           '<button class="appbtn mgsave">SAVE</button>' +
+          '<button class="appbtn mgcookie" style="display:none"></button>' +
           '<button class="appbtn mgopt">&hellip;</button>' +
           '<button class="appbtn mgwipe">WIPE EVERYTHING</button>' +
           '<span class="mghint"></span>' +
@@ -951,6 +953,8 @@ export default {
         refreshAll(true);
       }));
       $('.mgsave').addEventListener('mousedown', () => { save(); Snd.save(); toast('SAVED.'); });
+      const cookieStar = createCookie($('.mgcookie'));
+      whenGone(cv, () => cookieStar.dispose());                                       /* the window was closed: stop listening for gifts */
       /* the wipe button lives behind the dots, because a one-click button that
          destroys eight hours of work does not belong next to SAVE */
       $('.mgopt').addEventListener('mousedown', () => {
@@ -1196,7 +1200,7 @@ export default {
         washOval(CX, CY, Rr + 34, Rr + 34, E.glow, 1 + Math.round((Math.sin(t * 0.8) + 1) * 0.8 + pulse * 4));
         washOval(CX, CY, Rr + 16, Rr + 16, E.glow, 3 + Math.round(pulse * 5));
         washOval(CX, CY, Rr + 7, Rr + 7, 11, 2);
-        star(CX, CY, Rr, 14, 0, 15, 6);
+        if (cookieStar.isCookie()) drawCookie(R, CX, CY, Rr); else star(CX, CY, Rr, 14, 0, 15, 6);          /* Biscu's cookie, if it was given and asked for */
         /* one glint, travelling slowly round the rim the way polish does */
         const ga = t * 0.6;
         const gx = CX + Math.round(Math.cos(ga) * Rr * 0.52), gy = CY + Math.round(Math.sin(ga) * Rr * 0.52);

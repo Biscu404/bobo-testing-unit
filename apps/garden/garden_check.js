@@ -266,5 +266,16 @@ ok(M.GATHER[2].rate > M.GATHER[1].rate && M.GATHER[2].rate < 1, 'the gatherer ne
 ok(M.chainMult(1) === 1 && approx(M.chainMult(12), 1 + 11 * M.CHAIN.step) && M.chainMult(99) === 1 + M.CHAIN.max, 'a sweep chains from nothing up to its ceiling');
 ok(SPECIES.every(s => s.home && s.kin && s.mate && species(s.mate) && ROOM_DEFS.some(d => d.id === s.home) && POTS.some(p => p.id === s.kin)), 'every plant has a home room, a kin pot and a mate that exist');
 
+/* ---- Biscu's flower: a gift, close to the late game, and not a way past the early one ---- */
+{
+  const c = species('cookiebloom'), sun = species('suncrown'), third = species('thirdroot');
+  ok(c && c.gift === 'biscu' && c.price === 0, 'COOKIEBLOOM is a gift from Biscu, not for sale');
+  ok(c.yield > sun.yield && c.yield < third.yield && c.grow > sun.grow && c.grow < third.grow && c.drop > sun.drop && c.drop < third.drop, 'it pays between Suncrown and Thirdroot (' + c.yield + ' a token, ' + c.grow + ' s to grow) and is slow like them');
+  ok(c.needKinds >= 7 && c.needKinds <= 9, 'and does not come up in the seed tray until you have ' + c.needKinds + ' other kinds: no way past the first hours');
+  const best = SPECIES.filter(s => !s.gift).reduce((a, b) => (b.yield / b.grow > a.yield / a.grow ? b : a));
+  ok(c.yield / c.grow < best.yield / best.grow * 1.25, 'a second of it is never worth much more than the best of what Dave sells (' + (c.yield / c.grow).toFixed(3) + ' against ' + (best.yield / best.grow).toFixed(3) + ' for ' + best.id + ')');
+  ok(SPECIES.filter(s => s.gift).length === 1, 'and it is the only gift in the garden');
+}
+
 console.log(fails ? fails + ' failed' : 'All checks pass.');
 process.exit(fails ? 1 : 0);

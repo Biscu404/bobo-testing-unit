@@ -7,7 +7,7 @@ export const VISITS_FOR_SET2 = 5;
 /* who gives what; `set` is the visit it comes on, `drink` the Dave's-shelf id it adds to the bottle (the drinks are kernel/cos_gifts.js), `trophy` nothing here (the visit is the trophy's) */
 export const GIVERS = ['biscu', 'gheghe', 'thea', 'teiteotei'];
 export const GIFTS = [
-  { id: 'cookie',    from: 'biscu',     set: 1, name: 'A COOKIE',               line: 'HERE. IT IS FOR THE STAR.',                    where: 'MAGEN: THE STAR CAN BE THE COOKIE. THE GARDEN GROWS COOKIEBLOOM.' },
+  { id: 'cookie',    from: 'biscu',     set: 1, name: 'A COOKIE',               line: 'HERE. IT IS FOR THE STAR.',                    where: 'MAGEN: THE STAR CAN BE THE COOKIE. THE GARDEN GROWS COOKIEBLOOM.', seed: 'cookiebloom' },
   { id: 'borsec',    from: 'gheghe',    set: 1, name: 'APA PLATA BORSEC',       line: 'APA PLATA. BORSEC. AND CHEESE FOR THE ELEPHANT.', where: 'THE BOTTLE POURS IT. A CHEESE BUTTON IS ON THE DESKTOP.', drink: 'borsec' },
   { id: 'goose',     from: 'thea',      set: 1, name: 'A GOOSE',                line: 'HONK.',                                        where: 'THE GEESE ARE ON THE WATER, IN THE SKY AND IN THE ODD CORNER.' },
   { id: 'blueprint', from: 'teiteotei', set: 1, name: 'A BLUEPRINT',            line: 'I DREW YOU SOMETHING. IT IS IN THE COOK.',     where: 'THE COOK HAS A SHED NOW.' },

@@ -14,6 +14,7 @@ const tell = (name, detail) => { try { window.dispatchEvent(new CustomEvent(name
 const core = createGifts(io, {
   onGive(g) {
     if (g.drink && window.Cos) window.Cos.grant('drink', g.drink);
+    if (g.seed && window.Cos) window.Cos.grant('seed', g.seed);
     tell('gift-given', { id: g.id, from: g.from });
     tell('gifts-changed', { id: g.id });
   }
@@ -36,6 +37,6 @@ export const Gifts = {
   missing: set => core.missing(set),
   /* at boot: a drink that was given is on the shelf (the shelf may have been reset since) */
   reset() { core.reset(); tell('gifts-changed', {}); },
-  boot() { core.given().forEach(g => { if (g.drink && window.Cos) window.Cos.grant('drink', g.drink); }); }
+  boot() { core.given().forEach(g => { if (window.Cos) { if (g.drink) window.Cos.grant('drink', g.drink); if (g.seed) window.Cos.grant('seed', g.seed); } }); }
 };
 window.Gifts = Gifts;

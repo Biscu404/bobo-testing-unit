@@ -34,7 +34,9 @@ export default {
     const room = () => st.rooms[st.active];
     const roomDef = () => ROOM_DEFS[st.active];
     const potOfRoom = ri => w.pot(M.potId(w, st.rooms[ri]));
-    const ownedSeeds = () => { const own = window.Cos.owned('seed'), l = SPECIES.filter(s => own.indexOf(s.id) >= 0); return l.length ? l : [SPECIES[0]]; };
+    /* the kinds of plant that were bought or found: a gift's seed (Biscu's COOKIEBLOOM) is not one of them, and does not come up in the tray until there are `needKinds` of them */
+    const kindsOwned = () => window.Cos.owned('seed').filter(id => { const sp = SPECIES.find(s => s.id === id); return sp && !sp.gift; }).length;
+    const ownedSeeds = () => { const own = window.Cos.owned('seed'), k = kindsOwned(), l = SPECIES.filter(s => own.indexOf(s.id) >= 0 && (!s.needKinds || k >= s.needKinds)); return l.length ? l : [SPECIES[0]]; };
     const seedNow = () => ownedSeeds()[seedIx % ownedSeeds().length];
     const say = (txt, ms = 4500) => { tip = txt; tipUntil = performance.now() + ms; };
     const likes = sp => {
@@ -79,7 +81,7 @@ export default {
       say(m === 'can' ? 'DRAG ACROSS THE POTS TO WATER THEM. CLICK WATER AGAIN TO PUT THE CAN DOWN.' : m === 'pull' ? 'DRAG ACROSS PLANTS TO PULL THEM UP. WHAT THEY WERE HOLDING IS PAID OUT FIRST.' : '');
     }
     /* TEND and the BENCH are late-game (model.js UNLOCK): until then the buttons say how far along you are */
-    const gate = () => M.gates(st, window.Cos.owned('seed').length);
+    const gate = () => M.gates(st, kindsOwned());
     const lockedSay = which => {
       const g = gate()[which];
       say(which === 'tend'
