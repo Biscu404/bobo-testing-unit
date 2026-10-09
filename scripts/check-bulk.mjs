@@ -23,7 +23,8 @@ await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { 
 await page.waitForSelector('#shell', { state: 'visible', timeout: 15000 });
 
 const icons = () => page.evaluate(() => document.querySelectorAll('#icons .icon').length);
-const before = await icons();
+const iconNames = () => page.evaluate(() => [...document.querySelectorAll('#icons .icon')].map(n => n.dataset.name));
+const before = await icons(), beforeNames = await iconNames();
 
 const paste = await page.evaluate(async N => {
   const { fs } = await import('/kernel/vfs.js');
@@ -60,8 +61,10 @@ const del = await page.evaluate(async () => {
 });
 ok(del.n === N && del.ms < 8000, `deleting all ${del.n} took ${(del.ms / 1000).toFixed(2)} s (budget 8 s)`);
 ok(del.tier >= 5, `the pile reads as a pile: the meter is at rank ${del.tier} (${del.said.replace(/\s+/g, ' ').trim().slice(0, 50)})`);
-await page.waitForFunction(n => document.querySelectorAll('#icons .icon').length <= n, before, { timeout: 15000 });
-ok((await icons()) === before, 'the desktop is back to its own icons');
+await page.waitForFunction(() => ![...document.querySelectorAll('#icons .icon')].some(n => / \(\d+\)/.test(n.dataset.name)), null, { timeout: 15000 });
+/* a pile that big takes the meter to the top, and the first gold trophy it earns puts TrophyBox on the desktop (once, and it is the machine's own: not one of the copies) */
+const own = await icons(), added = (await iconNames()).filter(n => !beforeNames.includes(n));
+ok(added.every(n => n === 'TrophyBox') && own === before + added.length, 'the desktop is back to its own icons' + (added.length ? ' (and ' + added.join(', ') + ', which the pile earned)' : ''));
 
 const undo = await page.evaluate(async () => {
   const f = await import('/kernel/fileops.js');
@@ -69,8 +72,8 @@ const undo = await page.evaluate(async () => {
   await f.undoDelete();
   return performance.now() - t0;
 });
-await page.waitForFunction(([n, b]) => document.querySelectorAll('#icons .icon').length >= n + b, [N, before], { timeout: 15000 });
-ok((await icons()) === before + N && undo < 8000, `Ctrl+Z puts all ${N} back in one go (${(undo / 1000).toFixed(2)} s)`);
+await page.waitForFunction(([n, b]) => document.querySelectorAll('#icons .icon').length >= n + b, [N, own], { timeout: 15000 });
+ok((await icons()) === own + N && undo < 8000, `Ctrl+Z puts all ${N} back in one go (${(undo / 1000).toFixed(2)} s)`);
 
 ok(errors.length === 0, `no page errors ${errors.join(' | ')}`);
 await t.close();
