@@ -1,0 +1,125 @@
+/* THE STACK: the tab strip and the LIBRARY. Everything is in the hi-fi's own metal; the accents are variables the Stack sets from the colours of the label on the disc in the
+   tray (--a and --a2), so the shelf wears the same colours as the face. */
+.sttabs { display: flex; gap: 2px; padding: 3px 4px 0; background: #0a0a0c; border-bottom: 1px solid #4a4d56; }
+.sttab { font: inherit; font-size: 17px; padding: 0 16px; background: #1c1d21; color: #9aa0ad; border: 1px solid #4a4d56; border-bottom: none; cursor: pointer; letter-spacing: 1px; }
+.sttab:hover { color: #e8ecf2; }
+.sttab.on { background: #33353c; color: var(--a, #ffb43c); border-color: var(--a, #ffb43c); }
+.hifipane { position: relative; }
+.stsearch { position: absolute; display: none; z-index: 5; box-sizing: border-box; margin: 0; padding: 0 3px; border: 1px solid var(--a, #ffb43c); background: var(--lcd, #0d2018); color: var(--lcdon, #5bff9e);
+  font-family: 'VT323', 'Galmuri11', 'Courier New', monospace; outline: none; line-height: 1; border-radius: 0; }
+
+.stl { --a: #ffb43c; --a2: #4fe3ff; --panel: #2a2c33; --panelhi: #4a4d56; --case: #1c1d21; --lcd: #0d2018; --lcdon: #5bff9e; --brush: #8d929d; --brushhi: #b4b9c4;
+  position: relative; display: flex; flex-direction: column; height: calc(100% - 28px); min-height: 0; background: #0a0a0c; color: var(--brushhi); font-size: 17px; line-height: 1.1;
+  font-family: 'VT323', 'Galmuri11', 'Courier New', monospace; outline: none; user-select: none; }
+.stl button, .stl select, .stl input { font: inherit; font-size: 16px; color: var(--brushhi); background: var(--case); border: 1px solid var(--panelhi); padding: 0 8px; cursor: pointer; border-radius: 0; }
+.stl button:hover { color: #fff; border-color: var(--a); }
+.stl button.on { background: var(--a); color: #000; border-color: var(--a); }
+.stl button:disabled { border-style: dashed; color: var(--brushhi); background: transparent; opacity: .75; cursor: default; }
+.stl input[type=text] { cursor: text; background: var(--lcd); color: var(--lcdon); min-width: 0; }
+.stl select { padding: 0 2px; }
+
+.stl-top { display: flex; flex-wrap: wrap; gap: 4px; padding: 5px 6px; background: repeating-linear-gradient(0deg, var(--case) 0 2px, var(--panel) 2px 3px); border-bottom: 1px solid var(--panelhi); align-items: center; }
+.stl-top .sp { flex: 1 1 8px; }
+.stl-top .stl-q { width: 180px; }
+.stl-seg { display: flex; }
+.stl-seg button { border-right-width: 0; } .stl-seg button:last-child { border-right-width: 1px; }
+.stl-body { display: flex; flex: 1 1 auto; min-height: 0; }
+.stl-side { flex: 0 0 168px; overflow: auto; background: var(--case); border-right: 1px solid var(--panelhi); padding: 4px 0; }
+.stl-side h4 { margin: 8px 8px 2px; font-weight: normal; font-size: 14px; letter-spacing: 2px; color: var(--brush); }
+.stl-src { display: flex; justify-content: space-between; gap: 6px; padding: 1px 8px; cursor: pointer; white-space: nowrap; overflow: hidden; }
+.stl-src .nm { overflow: hidden; text-overflow: ellipsis; }
+.stl-src .ct { color: var(--brushhi); }
+.stl-src:hover { background: var(--panel); }
+.stl-src.on { background: var(--panel); color: var(--a); box-shadow: inset 3px 0 0 var(--a); }
+.stl-src.over { background: var(--a); color: #000; }
+.stl-src .dot { display: inline-block; width: 9px; height: 7px; margin-right: 5px; background: var(--brushhi); vertical-align: 1px; }
+.stl-main { flex: 1 1 auto; min-width: 0; overflow: auto; position: relative; }
+.stl-empty { padding: 40px 20px; text-align: center; color: var(--brush); }
+.stl-empty b { display: block; color: var(--brushhi); font-weight: normal; font-size: 22px; margin-bottom: 6px; }
+
+.stl-head, .stl-row { display: grid; grid-template-columns: 34px 34px minmax(0, 1fr) minmax(0, 120px) 44px 22px 52px; align-items: center; gap: 6px; padding: 0 8px; }
+.stl-head { position: sticky; top: 0; z-index: 2; height: 22px; background: var(--case); border-bottom: 1px solid var(--panelhi); color: var(--brush); font-size: 15px; }
+.stl-head span { cursor: pointer; overflow: hidden; white-space: nowrap; } .stl-head span:hover { color: #fff; } .stl-head .cur { color: var(--a); }
+.stl-row { height: 38px; border-bottom: 1px solid #14151a; cursor: default; position: relative; }
+.stl-row:hover { background: var(--case); }
+.stl-row.sel { background: var(--panel); box-shadow: inset 0 0 0 1px var(--a); }
+.stl-row.now { box-shadow: inset 3px 0 0 var(--a); }
+.stl-row.now .tt b { color: var(--a); }
+.stl-row.before { box-shadow: inset 0 2px 0 var(--a2); } .stl-row.after { box-shadow: inset 0 -2px 0 var(--a2); }
+.stl-row .n { color: var(--brush); text-align: right; font-size: 15px; }
+.stl-row .th, .stl-tile .cv img, .stl-mini .th { width: 32px; height: 32px; image-rendering: pixelated; background: var(--case); object-fit: cover; display: block; }
+.stl-row .tt { min-width: 0; display: flex; flex-direction: column; }
+.stl-row .tt b, .stl-row .tt i { font-weight: normal; font-style: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stl-row .tt b { color: #e8ecf2; font-size: 19px; } .stl-row .tt i { color: var(--brush); font-size: 15px; }
+.stl-row .gn, .stl-row .yr { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--brush); font-size: 15px; }
+.stl-row .fv { color: var(--a); text-align: center; cursor: pointer; } .stl-row .fv.off { color: #7b808c; }
+.stl-row:hover .fv.off { color: #b4b9c4; }
+.stl-row .tm { text-align: right; color: var(--brushhi); }
+.stl-row .eq { display: none; }
+.stl-row.now .eq { display: inline-block; }
+.stl-row.now .n { font-size: 0; } .stl-row.now .n::before { content: '\25B6'; font-size: 14px; color: var(--a); }
+.stl-row.missing .tt b { color: #ff4a3c; }
+.stl-row.drag { opacity: .45; }
+.stl-wrap { padding: 4px 0 10px; }
+
+.stl-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 12px; padding: 12px; }
+.stl-tile { position: relative; cursor: default; min-width: 0; }
+.stl-tile .cv { position: relative; aspect-ratio: 1; background: var(--case); border: 1px solid var(--panelhi); overflow: hidden; }
+.stl-tile .cv img { width: 100%; height: 100%; }
+.stl-tile:hover .cv { border-color: var(--a); }
+.stl-tile.sel .cv { border-color: var(--a); box-shadow: 0 0 0 2px var(--a); }
+.stl-tile.now .cv { box-shadow: 0 0 0 2px var(--a2), 0 0 14px var(--a2); }
+.stl-tile .pl { position: absolute; right: 6px; bottom: 6px; width: 28px; height: 28px; line-height: 26px; text-align: center; background: var(--a); color: #000; border-radius: 50%; opacity: 0; transition: opacity .12s; cursor: pointer; }
+.stl-tile:hover .pl { opacity: 1; }
+.stl-tile b, .stl-tile i { display: block; font-weight: normal; font-style: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stl-tile b { color: #e8ecf2; margin-top: 3px; } .stl-tile i { color: var(--brush); font-size: 15px; }
+
+.stl-albums { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 18px 14px; padding: 16px 14px 20px; }
+.stl-alb { cursor: default; min-width: 0; }
+.stl-alb .sl { position: relative; aspect-ratio: 1; margin-right: 22%; }
+.stl-alb .cd { position: absolute; top: 4%; left: 8%; width: 92%; height: 92%; border-radius: 50%; background: radial-gradient(circle, #0a0a0c 0 9%, #d7dbe2 10% 16%, #9aa0ad 17% 62%, #c8ccd4 63% 100%); transition: transform .28s steps(7); }
+.stl-alb:hover .cd, .stl-alb.sel .cd { transform: translateX(34%); }
+.stl-alb .sv { position: absolute; inset: 0; background: var(--case); border: 1px solid var(--panelhi); box-shadow: 4px 4px 0 #000; overflow: hidden; }
+.stl-alb .sv img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; display: block; }
+.stl-alb:hover .sv, .stl-alb.sel .sv { border-color: var(--a); }
+.stl-alb.now .cd { animation: stspin 3s steps(24) infinite; transform: translateX(34%); }
+@keyframes stspin { to { transform: translateX(34%) rotate(360deg); } }
+.stl-alb b, .stl-alb i { display: block; font-weight: normal; font-style: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stl-alb b { color: #e8ecf2; margin-top: 8px; } .stl-alb i { color: var(--brush); font-size: 15px; }
+.stl-page { display: flex; gap: 16px; padding: 14px; background: linear-gradient(180deg, color-mix(in srgb, var(--a) 16%, #0a0a0c), #0a0a0c); border-bottom: 1px solid var(--panelhi); align-items: flex-end; }
+.stl-page img { width: 132px; height: 132px; image-rendering: pixelated; border: 1px solid var(--panelhi); box-shadow: 5px 5px 0 #000; object-fit: cover; flex: none; }
+.stl-page h2 { margin: 0 0 4px; font-weight: normal; font-size: 30px; color: #fff; line-height: 1; overflow-wrap: anywhere; }
+.stl-page p { margin: 0 0 8px; color: var(--brushhi); }
+.stl-page .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.stl-sel { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 4px 6px; background: var(--a); color: #000; border-top: 1px solid var(--a); }
+.stl-sel button { background: #0a0a0c; color: var(--a); border-color: #000; }
+.stl-sel button:hover { color: #fff; border-color: #fff; }
+.stl-sel .sp { flex: 1 1 8px; }
+.stl-mini { display: flex; align-items: center; gap: 8px; padding: 4px 8px; background: repeating-linear-gradient(0deg, var(--case) 0 2px, var(--panel) 2px 3px); border-top: 1px solid var(--panelhi); }
+.stl-mini .tt { flex: 0 1 220px; min-width: 90px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } .stl-mini .tt b { display: block; font-weight: normal; color: #fff; overflow: hidden; text-overflow: ellipsis; } .stl-mini .tt i { font-style: normal; color: var(--brush); font-size: 15px; display: block; overflow: hidden; text-overflow: ellipsis; }
+.stl-mini .bar { flex: 1 1 120px; height: 10px; background: #000; border: 1px solid var(--panelhi); cursor: pointer; position: relative; }
+.stl-mini .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--a); }
+.stl-mini .tmv { color: var(--lcdon); min-width: 86px; text-align: center; background: var(--lcd); padding: 0 4px; border: 1px solid var(--panelhi); }
+.stl-mini .vol { width: 70px; padding: 0; accent-color: var(--a); }
+
+.stl-modal { position: absolute; inset: 0; z-index: 20; background: rgba(0,0,0,.72); display: flex; align-items: center; justify-content: center; padding: 14px; }
+.stl-dlg { background: var(--case); border: 2px solid var(--a); min-width: 340px; max-width: 94%; max-height: 92%; overflow: auto; box-shadow: 6px 6px 0 #000; }
+.stl-dlg h3 { margin: 0; padding: 3px 10px; font-weight: normal; background: var(--a); color: #000; letter-spacing: 1px; }
+.stl-dlg .bd { padding: 10px; display: flex; flex-direction: column; gap: 6px; } .stl-dlg .bd p { margin: 0; color: var(--brushhi); }
+.stl-dlg .ft { display: flex; gap: 6px; justify-content: flex-end; padding: 6px 10px 10px; }
+.stl-dlg label { display: grid; grid-template-columns: 70px 1fr; gap: 8px; align-items: center; color: var(--brush); } .stl-dlg label input { width: 100%; box-sizing: border-box; }
+.stl-dlg .lst { max-height: 240px; overflow: auto; border: 1px solid var(--panelhi); background: #0a0a0c; }
+.stl-dlg .lst div { display: flex; justify-content: space-between; gap: 10px; padding: 1px 8px; }
+.stl-dlg .lst div:nth-child(odd) { background: var(--case); }
+.stl-dlg .lst .ct { color: var(--a); }
+.stl-dlg .lbls .r { display: grid; grid-template-columns: 44px 1fr 1fr; gap: 8px; align-items: center; padding: 2px 6px; border-bottom: 1px solid #14151a; }
+.stl-dlg .lbls img { width: 40px; height: 40px; object-fit: cover; image-rendering: pixelated; }
+.stl-dlg .lbls select { width: 100%; }
+.stl-menu { position: absolute; z-index: 30; min-width: 190px; max-height: 70%; overflow: auto; background: var(--case); border: 1px solid var(--a); box-shadow: 4px 4px 0 #000; padding: 2px 0; }
+.stl-menu div { padding: 1px 12px; cursor: pointer; white-space: nowrap; } .stl-menu div:hover { background: var(--a); color: #000; }
+.stl-menu hr { border: 0; border-top: 1px solid var(--panelhi); margin: 2px 0; }
+.stl-menu .off { color: var(--brush); cursor: default; } .stl-menu .off:hover { background: none; color: var(--brush); }
+.stl-drop { position: absolute; inset: 4px; border: 2px dashed var(--a); background: rgba(0,0,0,.6); display: none; align-items: center; justify-content: center; z-index: 10; color: var(--a); font-size: 26px; pointer-events: none; }
+.stl.over .stl-drop { display: flex; }
+@media (prefers-reduced-motion: reduce) { .stl-alb.now .cd { animation: none; } .stl-alb .cd { transition: none; } }

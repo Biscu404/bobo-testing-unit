@@ -2,8 +2,13 @@ import { createWindow, raise } from '../../kernel/wm.js';
 import { Snd } from '../../kernel/snd.js';
 import { Cos } from '../../kernel/cos.js';
 import { fs as vfs } from '../../kernel/vfs.js';
-import { HFN, HFP, hifiPress, hifiTags } from './discs.js';
+import { HFN, HFP, hifiPress } from './discs.js';
 import { stackFolders } from './library.js';
+import { createLibraryIO, peaksPack } from './library_io.js';
+import { drawLabel, nextMode, MODE_NAME, thumbUrl } from './art.js';
+import { themeFrom, lerpTheme, palOfNamed, mix } from './palette.js';
+import { matches, fold } from './shelf.js';
+import { createLibrary } from './lib_ui.js';
 import { Vault } from '../../kernel/vault.js';
 import { scopedListeners, whenGone } from '../lifecycle.js';
 import { Studio } from '../../kernel/studio.js';
@@ -14,10 +19,16 @@ export default {
   id: 'hifi',
   title: 'HIFI',
   width: 812,
-  height: 706,
+  height: 740,
   resizable: true,
   mount(root, _ctx) {
   const body = root;
+      const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'apps/hifi/style.css'; body.appendChild(css);
+      const tabs = document.createElement('div');
+      tabs.className = 'sttabs';
+      const mkTab = (id, label) => { const b = document.createElement('button'); b.className = 'sttab'; b.textContent = label; b.dataset.tab = id; tabs.appendChild(b); return b; };
+      const tPlayer = mkTab('player', 'PLAYER'), tLib = mkTab('library', 'LIBRARY');
+      body.appendChild(tabs);
       const wrap = document.createElement('div');
       wrap.className = 'gamepane hifipane';
       const cv = document.createElement('canvas');
@@ -29,15 +40,19 @@ export default {
 
       /* the cassette slot: a file input nobody ever sees */
       const pick = document.createElement('input');
-      pick.type = 'file'; pick.accept = 'audio/*'; pick.multiple = true; pick.style.display = 'none';
+      pick.type = 'file'; pick.accept = 'audio/*,image/*,.flac,.m4a,.opus,.ogg,.aac,.wma'; pick.multiple = true; pick.style.display = 'none';
       const pickArt = document.createElement('input');
       pickArt.type = 'file'; pickArt.accept = 'image/jpeg,image/png,image/*'; pickArt.style.display = 'none';
       wrap.appendChild(pick); wrap.appendChild(pickArt);
+      /* the search slot is a real text field laid over the glass: a Japanese or Korean title is typed through the system's own input method, which a bare key press cannot be */
+      const search = document.createElement('input');
+      search.type = 'text'; search.className = 'stsearch'; search.autocomplete = 'off'; search.spellcheck = false; search.placeholder = 'SEARCH';
+      wrap.appendChild(search);
 
       const bar = document.createElement('div');
       bar.className = 'appbar';
-      const mk = t => { const b = document.createElement('button'); b.className = 'appbtn'; b.textContent = t; bar.appendChild(b); return b; };
-      const bLoad = mk('LOAD'), bArt = mk('LABEL'), bSave = mk('SAVE'), bFlat = mk('FLAT');
+      const mk = t => { const b = document.createElement('button'); b.className = 'appbtn'; b.textContent = t; b.style.whiteSpace = 'nowrap'; bar.appendChild(b); return b; };
+      const bLoad = mk('LOAD'), bArt = mk('LABEL'), bFit = mk('LABEL: CROP'), bSave = mk('SAVE'), bFlat = mk('FLAT');
       const info = document.createElement('span'); info.className = 'godword';
       bar.appendChild(info);
       body.appendChild(wrap); body.appendChild(bar);
@@ -65,6 +80,9 @@ export default {
       ];
       const ROOMS = ['DRY', 'BOOTH', 'ROOM', 'HALL', 'PLATE'];
 
+      /* the face is painted in P: the hi-fi's own inks (HFP) with the label's colours laid over them, fading from one disc's to the next (see theme() below) */
+      const P = Object.assign({}, HFP, { lcdOff: '#153f2a', digOff: '#12301f' });
+      let LIFT = {};
       const N = {};                                   /* every node, by name */
       N.pre    = ctx.createGain();
       N.join   = ctx.createGain();                    /* where EQ and bypass meet */
@@ -183,7 +201,7 @@ export default {
       /* ---- state ---------------------------------------------------------- */
       /* declared up here because the disc presses start before the loop does
          and need to know whether the window is still open */
-      let alive = true, raf = null, last = 0;
+      let alive = true, raf = null, last = 0, playSave = null, modeKey = '';
       const SAVE = 'templeos.stack.v1';
       const S = {
         list: [], ix: -1, playing: false, voices: [],
@@ -194,7 +212,8 @@ export default {
         tray: 0, trayDir: 0, disc: 0, spin: 0, sheen: 0, touched: false,
         vuL: 0, vuR: 0, vuLv: 0, vuRv: 0, peakL: 0, peakR: 0, corr: 0,
         glow: 0, marquee: 0, drag: null, note: '', noteT: 0, loading: 0, xfaded: false,
-        filter: '', sort: 0, scroll: 0, folder: null
+        filter: '', sort: 0, scroll: 0, folder: null,
+        queue: [], order: null, userDirs: [], tab: 'player', view: 'list', labelMode: 'fill', resume: null, hover: -1, hoverT: 0
       };
       const eqGains = EQ_BANDS.map(() => 0);
       const say = t => { S.note = t; S.noteT = 3.2; };
@@ -306,74 +325,13 @@ export default {
                    art: makeArt(f[0] + d[0], spec.tint || f[1]), dur: secs });
       }));
 
-      /* ---- the library on disk ---------------------------------------------
-         A shelf of two hundred records is the case this has to survive, so
-         nothing heavy is kept in the settings drawer: the audio lives in the
-         vault under a key, and the record card carries only what the list and
-         the scrubber need to draw before a note has been played. Decoding
-         happens the first time you actually put a disc on. */
-      const LIB_KEY = 'templeos.stack.lib.v1';
-      const P64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-      function peaksPack(p) {
-        /* 240 buckets of min/max at one byte each: a shape, not a signal */
-        const n = 240, out = new Uint8Array(n * 2), step = p.length / 2 / n;
-        for (let i = 0; i < n; i++) {
-          let lo = 0, hi = 0;
-          for (let k = Math.floor(i * step); k < Math.floor((i + 1) * step) && k * 2 + 1 < p.length; k++) {
-            if (p[k * 2] < lo) lo = p[k * 2];
-            if (p[k * 2 + 1] > hi) hi = p[k * 2 + 1];
-          }
-          out[i * 2] = Math.round(Math.max(-1, lo) * 127) + 128;
-          out[i * 2 + 1] = Math.round(Math.min(1, hi) * 127) + 128;
-        }
-        let s = '';
-        for (let i = 0; i < out.length; i += 3) {
-          const a = out[i], b = out[i + 1] || 0, c = out[i + 2] || 0;
-          s += P64[a >> 2] + P64[((a & 3) << 4) | (b >> 4)] + P64[((b & 15) << 2) | (c >> 6)] + P64[c & 63];
-        }
-        return s;
-      }
-      function peaksUnpack(s) {
-        if (!s) return null;
-        const bytes = [];
-        for (let i = 0; i < s.length; i += 4) {
-          const a = P64.indexOf(s[i]), b = P64.indexOf(s[i + 1]), c = P64.indexOf(s[i + 2]), d = P64.indexOf(s[i + 3]);
-          bytes.push((a << 2) | (b >> 4), ((b & 15) << 4) | (c >> 2), ((c & 3) << 6) | d);
-        }
-        const n = 240, out = new Float32Array(n * 2);
-        for (let i = 0; i < n * 2 && i < bytes.length; i++) out[i] = (bytes[i] - 128) / 127;
-        return out;
-      }
-      function saveLibrary() {
-        const recs = S.list.filter(t => !t.builtin && t.vault).map(t => ({
-          name: t.name, artist: t.artist, vault: t.vault, tint: t.tint,
-          dur: t.dur, eq: t.eq, art: t.artData || null, pk: t.pk || null
-        }));
-        try { localStorage.setItem(LIB_KEY, JSON.stringify(recs)); }
-        catch (e) { say('THE SHELF IS FULL. NEWER DISCS MAY NOT COME BACK.'); }
-      }
-      async function loadLibrary() {
-        let recs = [];
-        try { recs = JSON.parse(localStorage.getItem(LIB_KEY) || '[]'); } catch (e) { return; }
-        if (!recs.length) return;
-        S.loading += recs.length;
-        for (const r of recs) {
-          S.loading--;
-          if (!alive) return;
-          const t = { name: r.name, artist: r.artist, vault: r.vault, tint: r.tint || 'amber',
-                      dur: r.dur || 0, buf: null, builtin: false, pk: r.pk,
-                      peaks: peaksUnpack(r.pk), art: null, artData: r.art || null };
-          if (r.art) { const im = new Image(); im.onload = () => {
-            const c = document.createElement('canvas'); c.width = 96; c.height = 96;
-            c.getContext('2d').drawImage(im, 0, 0, 96, 96); t.art = c; }; im.src = r.art; }
-          else t.art = makeArt(t.name, t.tint);
-          const saved = store()[keyOf(t)];
-          t.eq = (r.eq || (saved && saved.eq) || EQ_BANDS.map(() => 0)).slice(0, EQ_BANDS.length);
-          S.list.push(t);
-        }
-        say(recs.length + ' DISC' + (recs.length > 1 ? 'S' : '') + ' BACK ON THE SHELF.');
-      }
-      /* a disc off the shelf is only decoded when somebody plays it */
+      /* ---- the library on disk ----------------------------------------------
+         Persistence, importing, labels and removing are library_io.js; this is the wiring. A disc off the shelf is only decoded when somebody plays it. */
+      let lib = null;
+      const io = createLibraryIO({
+        S, say, ctx, EQ_BANDS, alive: () => alive, store, keyOf, analysePeaks, makeArt, addTrack, loadDisc, stop,
+        changed: () => { if (lib) lib.refresh(); }, trayIn: on => { S.trayDir = on ? 1 : -1; }
+      });
       async function ensureBuf(t) {
         if (!t || t.buf) return t && t.buf;
         if (t.decoding) return null;
@@ -393,20 +351,10 @@ export default {
           const ab = await blob.arrayBuffer();
           const buf = await new Promise((res, rej) => ctx.decodeAudioData(ab, res, rej));
           t.buf = buf; t.dur = buf.duration;
-          if (!t.peaks) { t.peaks = analysePeaks(buf, 480); t.pk = peaksPack(t.peaks); saveLibrary(); }
+          if (!t.peaks) { t.peaks = analysePeaks(buf, 480); t.pk = peaksPack(t.peaks); io.saveLibrary(); }
         } catch (e) { t.missing = true; say('COULD NOT READ ' + t.name); }
         t.decoding = false;
         return t.buf;
-      }
-      function forget(i) {
-        const t = S.list[i];
-        if (!t || t.builtin) { say('THE PRESSED DISCS DO NOT COME OFF THE SHELF.'); return; }
-        if (t.vault) Vault.del(t.vault);
-        S.list.splice(i, 1);
-        if (S.ix === i) { stop(); S.ix = Math.min(i, S.list.length - 1); if (S.ix >= 0) loadDisc(S.ix, false); }
-        else if (S.ix > i) S.ix--;
-        saveLibrary();
-        say('REMOVED ' + t.name);
       }
 
       /* ---- what the list is showing right now -------------------------------
@@ -415,21 +363,22 @@ export default {
          you asked for, and scrolled. Everything that acts on "a row" acts on
          the real index this view maps back to. */
       function view() {
-        const q = S.filter.trim().toUpperCase();
+        const q = S.filter.trim();
         let idx = S.list.map((t, i) => i);
-        if (q) idx = idx.filter(i => (S.list[i].name + ' ' + S.list[i].artist + ' ' + (S.list[i].folder || '')).toUpperCase().indexOf(q) >= 0);
+        if (q) idx = idx.filter(i => matches(S.list[i], q));
         else idx = idx.filter(i => (S.list[i].folder || null) === S.folder);
-        const by = S.sort;
-        if (by === 1) idx.sort((a, b) => S.list[a].name.localeCompare(S.list[b].name));
-        else if (by === 2) idx.sort((a, b) => S.list[a].artist.localeCompare(S.list[b].artist) || S.list[a].name.localeCompare(S.list[b].name));
+        const by = S.sort, cmp = (a, b, k) => fold(S.list[a][k]).localeCompare(fold(S.list[b][k]));
+        if (by === 1) idx.sort((a, b) => cmp(a, b, 'name'));
+        else if (by === 2) idx.sort((a, b) => cmp(a, b, 'artist') || cmp(a, b, 'name'));
         else if (by === 3) idx.sort((a, b) => (S.list[a].dur || 0) - (S.list[b].dur || 0));
         return idx;
       }
 
-      /* the folders a shelf shows at its top level: none while searching */
+      /* the folders a shelf shows at its top level: none while searching. Yours first (empty ones too), then the games'. */
       function dirs() {
         if (S.folder || S.filter.trim()) return [];
         const seen = {}, out = [];
+        S.userDirs.forEach(d => { seen[d.name] = { name: d.name, tint: d.tint, count: 0, user: true }; out.push(seen[d.name]); });
         S.list.forEach(t => {
           if (!t.folder) return;
           if (!seen[t.folder]) { seen[t.folder] = { name: t.folder, tint: t.folderTint, count: 0 }; out.push(seen[t.folder]); }
@@ -438,49 +387,9 @@ export default {
         return out;
       }
 
-      /* ---- importing ------------------------------------------------------- */
-      const TINTS = ['green', 'cyan', 'amber', 'white', 'red'];
-      function importFiles(files) {
-        const arr = [].slice.call(files || []).filter(f => /^audio\//.test(f.type) || /\.(mp3|ogg|wav|m4a|flac|aac|opus|webm)$/i.test(f.name));
-        if (!arr.length) { say('NOTHING IN THERE THIS MACHINE CAN PLAY.'); return; }
-        S.trayDir = 1;                                   /* the tray comes out to receive it */
-        say('READING ' + arr.length + ' FILE' + (arr.length > 1 ? 'S' : '') + '...');
-        S.loading += arr.length;
-        arr.forEach(f => {
-          const fr = new FileReader();
-          fr.onload = async () => {
-            const ab = fr.result;
-            const tags = hifiTags(ab.slice(0, Math.min(ab.byteLength, 1200000)));
-            ctx.decodeAudioData(ab.slice(0), async buf => {
-              S.loading--;
-              const nm = (tags.title || f.name.replace(/\.[^.]+$/, '')).toUpperCase().slice(0, 40);
-              const tint = TINTS[S.list.length % TINTS.length];
-              const peaks = analysePeaks(buf, 480);
-              const t = addTrack({ name: nm, artist: (tags.artist || 'IMPORTED').toUpperCase().slice(0, 34),
-                                   buf: buf, builtin: false, tint: tint, art: makeArt(nm + f.size, tint),
-                                   peaks: peaks, pk: peaksPack(peaks), dur: buf.duration });
-              /* the file goes to the vault so the disc is still on the shelf
-                 after the machine has been switched off */
-              t.vault = await Vault.put(f);
-              if (!t.vault) say('NO DISK — ' + t.name + ' LASTS UNTIL RELOAD.');
-              if (tags.art) {
-                const url = URL.createObjectURL(tags.art), im = new Image();
-                im.onload = () => { const c = document.createElement('canvas'); c.width = 96; c.height = 96;
-                  c.getContext('2d').drawImage(im, 0, 0, 96, 96); t.art = c; t.artData = c.toDataURL('image/jpeg', 0.7);
-                  URL.revokeObjectURL(url); saveLibrary(); };
-                im.onerror = () => URL.revokeObjectURL(url);
-                im.src = url;
-              }
-              saveLibrary();
-              say('LOADED ' + t.name);
-              S.trayDir = -1;
-              if (S.ix < 0) { S.ix = S.list.indexOf(t); loadDisc(S.ix, false); }
-            }, () => { S.loading--; say('COULD NOT DECODE ' + f.name.toUpperCase()); S.trayDir = -1; });
-          };
-          fr.onerror = () => { S.loading--; say('COULD NOT READ ' + f.name.toUpperCase()); S.trayDir = -1; };
-          fr.readAsArrayBuffer(f);
-        });
-      }
+      /* ---- the search slot is a real text field while it is in use ---- */
+      function startSearch() { S.searching = true; search.value = S.filter; search.style.display = 'block'; search.focus(); }
+      function endSearch() { S.searching = false; search.style.display = 'none'; cv.focus(); }
 
       /* ---- transport -------------------------------------------------------- */
       function killVoice(v, fade) {
@@ -517,6 +426,7 @@ export default {
         S.voices.slice().forEach(v => killVoice(v, 0.12));
         S.ix = i;
         const t = S.list[i];
+        if (S.order && S.order.indexOf(t) < 0) S.order = null;
         if (!t.buf && !t.decoding) {
           if (t.spec) say('PRESSING ' + t.name + '...');
           ensureBuf(t).then(() => {
@@ -543,6 +453,7 @@ export default {
         S.voices.slice().forEach(v => killVoice(v, 0.05));
         const v = startVoice(t, S.seekBase, 0.04);
         S.startedAt = ctx.currentTime; S.playing = true; tro.play(t);
+        if (S.seekBase < 0.5 && !t.builtin) { t.plays = (t.plays || 0) + 1; clearTimeout(playSave); playSave = setTimeout(() => io.saveLibrary(), 2500); }
         S.xfaded = false;
         return v;
       }
@@ -562,13 +473,16 @@ export default {
       /* next and previous stay inside the folder the disc is in: a lobby
          track runs into the next lobby track, not into a cook song */
       function siblings() {
-        const f = S.list[S.ix] ? (S.list[S.ix].folder || null) : null;
+        const cur = S.list[S.ix];
+        if (S.order && cur && S.order.indexOf(cur) >= 0) return S.order.map(t => S.list.indexOf(t)).filter(i => i >= 0);   /* what the library was showing when it was played */
+        const f = cur ? (cur.folder || null) : null;
         const out = [];
         S.list.forEach((t, i) => { if ((t.folder || null) === f) out.push(i); });
         return out;
       }
       function nextIx() {
         if (!S.list.length) return -1;
+        while (S.queue.length) { const q = S.queue.shift(), i = S.list.indexOf(q); if (lib) lib.refresh(); if (i >= 0) return i; }      /* what was put next plays next */
         const sib = siblings();
         if (!sib.length) return -1;
         if (S.shuffle) { if (sib.length === 1) return S.ix; let n; do { n = sib[Math.floor(Math.random() * sib.length)]; } while (n === S.ix); return n; }
@@ -607,7 +521,7 @@ export default {
         g.fillRect(x0, y0, Math.max(1 / K, dv((x | 0) + (w | 0)) - x0), Math.max(1 / K, dv((y | 0) + (h | 0)) - y0));
       };
       /* the dimmest inks are for panels, not for reading: when they are words they are lifted */
-      const LIFT = { [HFP.screw]: '#7d8494', [HFP.lcdDim]: '#4cc088', '#153f2a': '#46b27e', [HFP.brush]: '#a3acbc', [HFP.amberDim]: '#c08a30' };
+      const lift = () => { LIFT = { [P.screw]: '#7d8494', [P.lcdDim]: mix(P.lcdDim, '#ffffff', 0.42), [P.lcdOff]: mix(P.lcdOff, '#ffffff', 0.5), [P.brush]: mix(P.brush, '#ffffff', 0.3), [P.amberDim]: mix(P.amberDim, '#ffffff', 0.4) }; }; lift();
       const FACE = '"VT323", "Courier New", monospace', FS = 1.7;
       const TXT = (t, x, y, c, size, align) => {
         g.fillStyle = LIFT[c] || c; g.font = Math.round((size || 8) * FS) + 'px ' + FACE;
@@ -615,35 +529,49 @@ export default {
         g.fillText(String(t), x | 0, y | 0); g.textAlign = 'left';
       };
       const MEAS = (t, size) => { g.font = Math.round((size || 8) * FS) + 'px ' + FACE; return g.measureText(String(t)).width; };
+      /* a name too long for its place ends in an ellipsis; the disc under the pointer and the one playing scroll instead, and the status line says the whole of it */
+      const FITC = new Map();
+      const fitText = (txt, maxW, size) => {
+        txt = String(txt == null ? '' : txt);
+        const key = (size || 7) + '|' + maxW + '|' + txt;
+        if (FITC.has(key)) return FITC.get(key);
+        let out = txt;
+        if (MEAS(txt, size) > maxW) { let lo = 0, hi = txt.length; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (MEAS(txt.slice(0, m) + '\u2026', size) <= maxW) lo = m; else hi = m - 1; } out = txt.slice(0, lo) + '\u2026'; }
+        if (FITC.size > 900) FITC.clear();
+        FITC.set(key, out);
+        return out;
+      };
+      const scrollOff = (tw, avail) => { const span = tw - avail + 16, cyc = S.marquee % (span * 2 + 60); return cyc < 30 ? 0 : cyc < span + 30 ? cyc - 30 : cyc < span + 60 ? span : span * 2 + 60 - cyc; };
+      let slot = null;                                                  /* where the search field is, so the real one can be laid over it */
       function bevel(x, y, w, h, face, lit, dark) {
         R(x, y, w, h, face);
         R(x, y, w, 1, lit); R(x, y, 1, h, lit);
         R(x, y + h - 1, w, 1, dark); R(x + w - 1, y, 1, h, dark);
       }
       function brushed(x, y, w, h) {
-        bevel(x, y, w, h, HFP.panel, HFP.panelHi, HFP.black);
-        for (let i = 2; i < h - 2; i += 3) R(x + 2, y + i, w - 4, 1, i % 6 ? HFP.case_ : HFP.panelHi);
+        bevel(x, y, w, h, P.panel, P.panelHi, P.black);
+        for (let i = 2; i < h - 2; i += 3) R(x + 2, y + i, w - 4, 1, i % 6 ? P.case_ : P.panelHi);
       }
       function screw(x, y) {
-        R(x - 2, y - 2, 5, 5, HFP.screw);
-        R(x - 1, y - 1, 3, 3, HFP.brush);
-        R(x - 1, y, 3, 1, HFP.black);
+        R(x - 2, y - 2, 5, 5, P.screw);
+        R(x - 1, y - 1, 3, 3, P.brush);
+        R(x - 1, y, 3, 1, P.black);
       }
       function unit(x, y, w, h, title) {
-        bevel(x, y, w, h, HFP.case_, HFP.panelHi, HFP.black);
+        bevel(x, y, w, h, P.case_, P.panelHi, P.black);
         brushed(x + 3, y + 3, w - 6, h - 6);
         screw(x + 8, y + 9); screw(x + w - 8, y + 9);
         screw(x + 8, y + h - 9); screw(x + w - 8, y + h - 9);
-        if (title) TXT(title, x + 16, y + 12, HFP.brushHi, 7);
+        if (title) TXT(title, x + 16, y + 12, P.brushHi, 7);
       }
       function led(x, y, on, col) {
-        R(x - 2, y - 2, 5, 5, HFP.black);
-        R(x - 1, y - 1, 3, 3, on ? col : HFP.screw);
+        R(x - 2, y - 2, 5, 5, P.black);
+        R(x - 1, y - 1, 3, 3, on ? col : P.screw);
         if (on) { g.globalAlpha = 0.35; R(x - 2, y - 2, 5, 5, col); g.globalAlpha = 1; }
       }
       function button(id, x, y, w, h, label, active, col) {
-        bevel(x, y, w, h, active ? LIFT[HFP.brush] : HFP.case_, active ? HFP.brushHi : HFP.panel, HFP.black);
-        TXT(label, x + w / 2, y + h / 2 + 3, active ? HFP.black : HFP.brushHi, 7, 'center');
+        bevel(x, y, w, h, active ? LIFT[P.brush] : P.case_, active ? P.brushHi : P.panel, P.black);
+        TXT(label, x + w / 2, y + h / 2 + 3, active ? P.black : P.brushHi, 7, 'center');
         hits.push({ k: 'btn', id: id, x: x, y: y, w: w, h: h });
       }
       /* a pot with a tick ring, a detent at the middle and a dot that glows */
@@ -652,17 +580,17 @@ export default {
         for (let i = 0; i <= 10; i++) {
           const ta = a0 + (a1 - a0) * (i / 10), tr = r + 3;
           const on = (i / 10) <= frac + 0.001;
-          R(cx + Math.cos(ta) * tr - 1, cy + Math.sin(ta) * tr - 1, 2, 2, on ? (tint || HFP.amber) : HFP.screw);
+          R(cx + Math.cos(ta) * tr - 1, cy + Math.sin(ta) * tr - 1, 2, 2, on ? (tint || P.amber) : P.screw);
         }
-        g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fillStyle = HFP.black; g.fill();
-        g.beginPath(); g.arc(cx, cy, r - 1, 0, Math.PI * 2); g.fillStyle = HFP.brush; g.fill();
-        g.beginPath(); g.arc(cx, cy, r - 3, 0, Math.PI * 2); g.fillStyle = HFP.panel; g.fill();
-        for (let i = -r + 4; i < r - 3; i += 3) R(cx - r + 4, cy + i, (r - 4) * 2, 1, HFP.case_);
+        g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fillStyle = P.black; g.fill();
+        g.beginPath(); g.arc(cx, cy, r - 1, 0, Math.PI * 2); g.fillStyle = P.brush; g.fill();
+        g.beginPath(); g.arc(cx, cy, r - 3, 0, Math.PI * 2); g.fillStyle = P.panel; g.fill();
+        for (let i = -r + 4; i < r - 3; i += 3) R(cx - r + 4, cy + i, (r - 4) * 2, 1, P.case_);
         const dx = Math.cos(a), dy = Math.sin(a);
-        R(cx + dx * (r - 6) - 1, cy + dy * (r - 6) - 1, 3, 3, tint || HFP.amber);
-        R(cx + dx * (r - 3) - 1, cy + dy * (r - 3) - 1, 2, 2, HFP.white);
-        TXT(label, cx, cy + r + 11, HFP.brushHi, 7, 'center');
-        if (val != null) TXT(val, cx, cy + r + 19, tint || HFP.amber, 7, 'center');
+        R(cx + dx * (r - 6) - 1, cy + dy * (r - 6) - 1, 3, 3, tint || P.amber);
+        R(cx + dx * (r - 3) - 1, cy + dy * (r - 3) - 1, 2, 2, P.white);
+        TXT(label, cx, cy + r + 11, P.brushHi, 7, 'center');
+        if (val != null) TXT(val, cx, cy + r + 19, tint || P.amber, 7, 'center');
         hits.push({ k: 'knob', id: id, x: cx - r - 4, y: cy - r - 4, w: (r + 4) * 2, h: (r + 4) * 2, cx: cx, cy: cy });
       }
 
@@ -689,10 +617,10 @@ export default {
         const lift = S.disc;                              /* 1 = just changed, 0 = seated */
         const yy = cy - Math.sin(Math.min(1, lift) * Math.PI) * 14;
         /* the well it sits in */
-        g.beginPath(); g.arc(cx, cy + 3, rad + 6, 0, Math.PI * 2); g.fillStyle = HFP.black; g.fill();
-        R(cx - rad - 7, cy + 3, (rad + 7) * 2, rad + 10, HFP.black);
+        g.beginPath(); g.arc(cx, cy + 3, rad + 6, 0, Math.PI * 2); g.fillStyle = P.black; g.fill();
+        R(cx - rad - 7, cy + 3, (rad + 7) * 2, rad + 10, P.black);
         const t = S.list[S.ix];
-        const tint = { green: HFP.green, cyan: HFP.cyan, amber: HFP.amber, white: HFP.white, red: HFP.red }[t ? t.tint : 'amber'] || HFP.amber;
+        const tint = P.amber;
 
         /* radial spectrum, wrapped round the outside */
         if (S.style !== 2 && freq) {
@@ -703,7 +631,7 @@ export default {
             const r0 = rad + 4, r1 = r0 + 2 + f * 13;
             for (let r = r0; r < r1; r += 2) {
               const px = cx + Math.cos(a) * r, py = yy + Math.sin(a) * r;
-              R(px, py, 2, 2, r > r0 + (r1 - r0) * 0.7 ? HFP.white : tint);
+              R(px, py, 2, 2, r > r0 + (r1 - r0) * 0.7 ? P.white : tint);
             }
           }
         }
@@ -731,13 +659,8 @@ export default {
         /* The art is printed on the disc, not stuck in the middle of it: it
            covers the whole face out to the rim and stops at the clamping
            ring, which is the one part of a disc that never carries ink. */
-        if (t && t.art) {
-          g.save();
-          g.beginPath(); g.arc(0, 0, rad - 1, 0, Math.PI * 2);
-          g.arc(0, 0, 11, 0, Math.PI * 2, true);            /* hole for the hub */
-          g.clip('evenodd');
-          g.drawImage(t.art, -rad, -rad, rad * 2, rad * 2);
-          g.restore();
+        if (t && (t.label || t.art)) {
+          drawLabel(g, t, rad, 11, t.artMode || S.labelMode);       /* CROP, FIT or STRETCH, a hole for the hub */
           /* a hint of the pressing still reads through the ink */
           g.globalAlpha = 0.16;
           for (let r = rad - 3; r > 13; r -= 4) {
@@ -749,8 +672,8 @@ export default {
         /* the clamping ring and the hole */
         g.beginPath(); g.arc(0, 0, 11, 0, Math.PI * 2); g.fillStyle = '#d7dbe2'; g.fill();
         g.beginPath(); g.arc(0, 0, 11, 0, Math.PI * 2); g.strokeStyle = '#8b909b'; g.lineWidth = 1; g.stroke();
-        g.beginPath(); g.arc(0, 0, 5, 0, Math.PI * 2); g.fillStyle = HFP.case_; g.fill();
-        g.beginPath(); g.arc(0, 0, 4, 0, Math.PI * 2); g.fillStyle = HFP.black; g.fill();
+        g.beginPath(); g.arc(0, 0, 5, 0, Math.PI * 2); g.fillStyle = P.case_; g.fill();
+        g.beginPath(); g.arc(0, 0, 4, 0, Math.PI * 2); g.fillStyle = P.black; g.fill();
         g.restore();
         /* the ring of light under it responds to bass */
         g.globalAlpha = 0.10 + bass * 0.5;
@@ -760,13 +683,13 @@ export default {
 
       /* ---- the tray ----------------------------------------------------------- */
       function drawTray(x, y, w, h) {
-        bevel(x, y, w, h, HFP.black, HFP.case_, HFP.black);
+        bevel(x, y, w, h, P.black, P.case_, P.black);
         const open = S.tray;
-        R(x + 2, y + 2, (w - 4) * open, h - 4, HFP.case_);
-        if (open > 0.05) { R(x + 3, y + 4, (w - 6) * open, 2, HFP.brush);
-          R(x + 3, y + h - 6, (w - 6) * open, 2, HFP.screw); }
+        R(x + 2, y + 2, (w - 4) * open, h - 4, P.case_);
+        if (open > 0.05) { R(x + 3, y + 4, (w - 6) * open, 2, P.brush);
+          R(x + 3, y + h - 6, (w - 6) * open, 2, P.screw); }
         TXT(open > 0.5 ? 'DROP A FILE — OR PRESS LOAD DISC' : 'DISC TRAY', x + w / 2, y + h / 2 + 3,
-            open > 0.5 ? HFP.amber : HFP.brush, 7, 'center');
+            open > 0.5 ? P.amber : P.brush, 7, 'center');
         hits.push({ k: 'btn', id: 'tray', x: x, y: y, w: w, h: h });
       }
 
@@ -775,7 +698,7 @@ export default {
          it overshoots a transient and settles back. That lag is the whole
          reason an analogue meter reads as analogue. */
       function drawVU(x, y, w, h, val, peak, label) {
-        bevel(x, y, w, h, HFP.lcd, HFP.black, HFP.panelHi);
+        bevel(x, y, w, h, P.lcd, P.black, P.panelHi);
         R(x + 2, y + 2, w - 4, h - 4, '#e8e2c8');                 /* the cream face */
         const cx = x + w / 2, cy = y + h - 6, rad = Math.min(w / 2 - 5, h - 16);
         for (let i = 0; i <= 10; i++) {
@@ -791,31 +714,31 @@ export default {
         R(cx - 2, cy - 2, 4, 4, '#201c18');
         const pa = Math.PI * (1.20 + Math.max(0, Math.min(1, peak)) * 0.60);
         R(cx + Math.cos(pa) * (rad - 1) - 1, cy + Math.sin(pa) * (rad - 1) - 1, 2, 2, '#c03020');
-        if (val > 0.86) led(x + w - 7, y + 8, true, HFP.red);
+        if (val > 0.86) led(x + w - 7, y + 8, true, P.red);
       }
 
       function drawCorr(x, y, w, h) {
-        bevel(x, y, w, h, HFP.black, HFP.case_, HFP.panelHi);
-        TXT('PHASE', x + 4, y + 9, HFP.brushHi, 7);
+        bevel(x, y, w, h, P.black, P.case_, P.panelHi);
+        TXT('PHASE', x + 4, y + 9, P.brushHi, 7);
         const bx = x + 4, bw = w - 8, by = y + 13, bh = 6;
-        R(bx, by, bw, bh, HFP.case_);
-        for (let i = 0; i <= 4; i++) R(bx + (bw - 1) * (i / 4), by - 2, 1, 2, HFP.brush);
+        R(bx, by, bw, bh, P.case_);
+        for (let i = 0; i <= 4; i++) R(bx + (bw - 1) * (i / 4), by - 2, 1, 2, P.brush);
         const p = (S.corr + 1) / 2;
-        R(bx + Math.max(0, Math.min(bw - 3, (bw - 3) * p)), by, 3, bh, S.corr < -0.2 ? HFP.red : S.corr < 0.35 ? HFP.amber : HFP.green);
-        TXT('-1', bx, by + bh + 8, HFP.brush, 7);
-        TXT('+1', bx + bw, by + bh + 8, HFP.brush, 7, 'right');
-        TXT(S.corr >= 0 ? '+' + S.corr.toFixed(2) : S.corr.toFixed(2), bx + bw / 2, by + bh + 8, HFP.cyan, 7, 'center');
+        R(bx + Math.max(0, Math.min(bw - 3, (bw - 3) * p)), by, 3, bh, S.corr < -0.2 ? P.red : S.corr < 0.35 ? P.amber : P.green);
+        TXT('-1', bx, by + bh + 8, P.brush, 7);
+        TXT('+1', bx + bw, by + bh + 8, P.brush, 7, 'right');
+        TXT(S.corr >= 0 ? '+' + S.corr.toFixed(2) : S.corr.toFixed(2), bx + bw / 2, by + bh + 8, P.cyan, 7, 'center');
       }
 
       /* ---- analyser ------------------------------------------------------------ */
       let freq = null, wave = null, waveL = null, waveR = null;
       function drawSpectrum(x, y, w, h) {
-        R(x, y, w, h, HFP.black);
+        R(x, y, w, h, P.black);
         for (let i = 0; i < w; i += 6) R(x + i, y, 1, h, '#0f1418');
         for (let i = 0; i < h; i += 6) R(x, y + i, w, 1, '#0f1418');
         if (!freq) return;
         const t = S.list[S.ix];
-        const tint = { green: HFP.green, cyan: HFP.cyan, amber: HFP.amber, white: HFP.white, red: HFP.red }[t ? t.tint : 'amber'] || HFP.amber;
+        const tint = P.amber;
         const bars = 48, bw = Math.floor(w / bars);
         if (S.style === 0 || S.style === 1) {
           const mid = y + h / 2;
@@ -827,20 +750,20 @@ export default {
             const bx = x + i * bw + 1, ww = bw - 1;
             if (S.style === 0) {                       /* mirrored, top and bottom */
               for (let s = 0; s < v; s += 3) {
-                const c = s > (h / 2) * 0.72 ? HFP.red : s > (h / 2) * 0.45 ? HFP.amber : tint;
+                const c = s > (h / 2) * 0.72 ? P.red : s > (h / 2) * 0.45 ? P.amber : tint;
                 R(bx, mid - s - 2, ww, 2, c); R(bx, mid + s, ww, 2, c);
               }
-              R(bx, mid - 1, ww, 1, HFP.case_);
+              R(bx, mid - 1, ww, 1, P.case_);
             } else {                                   /* standing on the floor */
               for (let s = 0; s < v * 2; s += 3) {
-                const c = s > h * 0.72 ? HFP.red : s > h * 0.45 ? HFP.amber : tint;
+                const c = s > h * 0.72 ? P.red : s > h * 0.45 ? P.amber : tint;
                 R(bx, y + h - s - 3, ww, 2, c);
               }
             }
             /* peak hold: hangs, then falls */
             const pk = peakBar[i] = Math.max((peakBar[i] || 0) - 0.9, v);
-            if (S.style === 0) { R(bx, mid - pk - 3, ww, 1, HFP.white); R(bx, mid + pk + 2, ww, 1, HFP.white); }
-            else R(bx, y + h - pk * 2 - 4, ww, 1, HFP.white);
+            if (S.style === 0) { R(bx, mid - pk - 3, ww, 1, P.white); R(bx, mid + pk + 2, ww, 1, P.white); }
+            else R(bx, y + h - pk * 2 - 4, ww, 1, P.white);
           }
         } else {                                       /* the scope, filling the pane */
           if (!wave) return;
@@ -856,19 +779,19 @@ export default {
       const peakBar = [];
 
       function drawScope(x, y, w, h) {
-        R(x, y, w, h, HFP.black);
+        R(x, y, w, h, P.black);
         R(x, y + h / 2, w, 1, '#16303f');
         if (!wave) return;
         for (let i = 0; i < w; i += 2) {
           const v = (wave[Math.floor(i / w * wave.length)] - 128) / 128;
           const py = y + h / 2 + v * (h / 2 - 2);
-          R(x + i, py - 1, 2, 2, HFP.cyan);
+          R(x + i, py - 1, 2, 2, P.cyan);
         }
       }
 
       /* the whole track's shape, and where in it we are */
       function drawScrub(x, y, w, h) {
-        bevel(x, y, w, h, HFP.black, HFP.case_, HFP.panelHi);
+        bevel(x, y, w, h, P.black, P.case_, P.panelHi);
         const t = S.list[S.ix];
         if (t && t.peaks) {
           const n = t.peaks.length / 2, mid = y + h / 2;
@@ -877,18 +800,18 @@ export default {
             const lo = t.peaks[b * 2], hi = t.peaks[b * 2 + 1];
             const played = (i / (w - 4)) <= (S.dur ? S.pos / S.dur : 0);
             const a = Math.max(1, (hi - lo) * (h / 2 - 2));
-            R(x + 2 + i, mid - a / 2, 1, a, played ? HFP.amber : HFP.panelHi);
+            R(x + 2 + i, mid - a / 2, 1, a, played ? P.amber : P.panelHi);
           }
           const px = x + 2 + (w - 4) * (S.dur ? S.pos / S.dur : 0);
-          R(px, y + 1, 1, h - 2, HFP.white);
-        } else TXT('NO DISC', x + w / 2, y + h / 2 + 3, HFP.brush, 7, 'center');
+          R(px, y + 1, 1, h - 2, P.white);
+        } else TXT('NO DISC', x + w / 2, y + h / 2 + 3, P.brush, 7, 'center');
         hits.push({ k: 'scrub', id: 'scrub', x: x, y: y, w: w, h: h });
       }
 
       /* ---- the display ---------------------------------------------------------- */
       function drawLCD(x, y, w, h) {
-        bevel(x, y, w, h, HFP.lcd, HFP.black, HFP.panelHi);
-        R(x + 2, y + 2, w - 4, h - 4, HFP.lcd);
+        bevel(x, y, w, h, P.lcd, P.black, P.panelHi);
+        R(x + 2, y + 2, w - 4, h - 4, P.lcd);
         const t = S.list[S.ix];
         const title = t ? t.name : (S.loading ? 'READING...' : 'NO DISC');
         /* marquee only when it will not fit, and it pauses at each end */
@@ -900,41 +823,40 @@ export default {
           const cyc = (S.marquee % (span * 2 + 60));
           tx = x + 6 - (cyc < 30 ? 0 : cyc < span + 30 ? cyc - 30 : cyc < span + 60 ? span : span * 2 + 60 - cyc);
         }
-        TXT(title, tx, y + 14, HFP.lcdOn, 9);
+        TXT(title, tx, y + 14, P.lcdOn, 9);
         g.restore();
-        TXT(t ? t.artist : '—', x + 6, y + 25, HFP.lcdDim, 7);
+        TXT(t ? fitText(t.artist + (t.album ? '  \u00B7  ' + t.album : ''), w - 12, 7) : '\u2014', x + 6, y + 25, P.lcdDim, 7);
 
         const el = mmss(S.pos), tot = mmss(S.dur);
         let dx = x + 6;
-        for (let i = 0; i < el.length; i++) { digit(el[i], dx, y + 30, 9, 16, HFP.lcdOn, '#12301f'); dx += el[i] === ':' ? 6 : 11; }
-        TXT('/ ' + tot, dx + 4, y + 43, HFP.lcdDim, 7);
+        for (let i = 0; i < el.length; i++) { digit(el[i], dx, y + 30, 9, 16, P.lcdOn, P.digOff); dx += el[i] === ':' ? 6 : 11; }
+        TXT('/ ' + tot, dx + 4, y + 43, P.lcdDim, 7);
 
         const flags = [['PLAY', S.playing], ['EQ', S.eqOn], ['LOUD', S.loud], ['MONO', S.mono],
                        ['RPT', S.repeat > 0], ['SHF', S.shuffle]];
         let fx = x + 6;
-        flags.forEach(f => { TXT(f[0], fx, y + h - 5, f[1] ? HFP.lcdOn : '#153f2a', 7); fx += f[0].length * 6 + 6; });
-        TXT(Math.round(ctx.sampleRate / 100) / 10 + 'kHz', x + w - 6, y + h - 5, HFP.lcdDim, 7, 'right');
+        flags.forEach(f => { TXT(f[0], fx, y + h - 5, f[1] ? P.lcdOn : P.lcdOff, 7); fx += f[0].length * 6 + 6; });
+        TXT(Math.round(ctx.sampleRate / 100) / 10 + 'kHz', x + w - 6, y + h - 5, P.lcdDim, 7, 'right');
       }
 
       const SORTS = ['SHELF', 'TITLE', 'ARTIST', 'LENGTH'];
       function drawList(x, y, w, h) {
-        bevel(x, y, w, h, HFP.black, HFP.case_, HFP.panelHi);
+        bevel(x, y, w, h, P.black, P.case_, P.panelHi);
         const v = view();
         /* the search slot, and what it has narrowed the shelf down to */
         const sy = y + 3;
-        bevel(x + 3, sy, w - 42, 11, HFP.lcd, HFP.black, HFP.panelHi);
-        const q = S.filter ? S.filter.toUpperCase() : '';
-        TXT(q || 'SEARCH', x + 7, sy + 9, q ? HFP.lcdOn : HFP.lcdDim, 7);
-        if (S.searching) R(x + 8 + MEAS(q, 7), sy + 2, 1, 7, HFP.lcdOn);
+        bevel(x + 3, sy, w - 42, 11, P.lcd, P.black, P.panelHi);
+        slot = { x: x + 3, y: sy, w: w - 42, h: 11 };
+        if (!S.searching) { const q = S.filter || ''; TXT(q ? fitText(q, w - 52, 7) : 'SEARCH', x + 7, sy + 9, q ? P.lcdOn : P.lcdDim, 7); }
         hits.push({ k: 'btn', id: 'search', x: x + 3, y: sy, w: w - 42, h: 11 });
         button('sort', x + w - 37, sy, 34, 11, SORTS[S.sort], S.sort > 0);
 
         const dl = dirs();
         const head = S.filter ? v.length + '/' + S.list.length : S.folder ? S.folder : 'SHELF  ' + S.list.length;
-        TXT(head, x + 5, y + 24, HFP.brushHi, 7);
-        if (S.loading) TXT('...' + S.loading, x + w - 5, y + 24, HFP.amber, 7, 'right');
-        else if (S.drag && S.drag.k === 'row') TXT('DRAG TO REORDER', x + w - 5, y + 24, HFP.amber, 7, 'right');
-        else TXT('DEL = REMOVE', x + w - 5, y + 24, HFP.screw, 7, 'right');
+        TXT(head, x + 5, y + 24, P.brushHi, 7);
+        if (S.loading) TXT('...' + S.loading, x + w - 5, y + 24, P.amber, 7, 'right');
+        else if (S.drag && S.drag.k === 'row') TXT('DRAG TO REORDER', x + w - 5, y + 24, P.amber, 7, 'right');
+        else TXT('TAB = LIBRARY', x + w - 5, y + 24, P.screw, 7, 'right');
 
         /* the rows: [back] or the folders, then the discs */
         const entries = [];
@@ -951,38 +873,39 @@ export default {
         for (let i = 0; i < rows && S.scroll + i < entries.length; i++) {
           const e = entries[S.scroll + i], yy = top + i * 11;
           if (e.back) {
-            TXT('\u25C4 .. BACK TO SHELF', x + 5, yy + 8, HFP.amber, 7);
+            TXT('\u25C4 .. BACK TO SHELF', x + 5, yy + 8, P.amber, 7);
             hits.push({ k: 'back', id: 0, x: x + 2, y: yy, w: w - 4, h: 10 });
             continue;
           }
           if (e.dir) {
-            R(x + 2, yy, w - 4, 10, HFP.case_);
-            R(x + 5, yy + 2, 8, 6, TINT[e.dir.tint] || HFP.amber);
-            R(x + 5, yy + 1, 4, 1, TINT[e.dir.tint] || HFP.amber);
-            TXT(e.dir.name, x + 18, yy + 8, HFP.white, 7);
-            TXT(e.dir.count + '', x + w - 5, yy + 8, HFP.brush, 7, 'right');
+            R(x + 2, yy, w - 4, 10, P.case_);
+            R(x + 5, yy + 2, 8, 6, TINT[e.dir.tint] || P.amber);
+            R(x + 5, yy + 1, 4, 1, TINT[e.dir.tint] || P.amber);
+            TXT(e.dir.name, x + 18, yy + 8, P.white, 7);
+            TXT(e.dir.count + '', x + w - 5, yy + 8, P.brush, 7, 'right');
             hits.push({ k: 'dir', id: e.dir.name, x: x + 2, y: yy, w: w - 4, h: 10 });
             continue;
           }
           const n = e.n, t = S.list[n];
-          const on = n === S.ix;
-          if (on) R(x + 2, yy, w - 4, 10, HFP.panel);
-          TXT((S.folder && !S.filter.trim() ? v.indexOf(n) + 1 : n + 1) + '.', x + 5, yy + 8, on ? HFP.white : HFP.brush, 7);
-          g.save(); g.beginPath(); g.rect(x + 18, yy, w - 46, 10); g.clip();
-          TXT(t.name, x + 18, yy + 8, t.missing ? HFP.red : on ? HFP.amber : HFP.brushHi, 7);
-          g.restore();
+          const on = n === S.ix, hot = S.hover === n;
+          if (on) R(x + 2, yy, w - 4, 10, P.panel); else if (hot) R(x + 2, yy, w - 4, 10, P.case_);
+          TXT((S.folder && !S.filter.trim() ? v.indexOf(n) + 1 : n + 1) + '', x + 4, yy + 8, on ? P.white : P.brush, 7);
+          if (t.art) g.drawImage(t.art, x + 19, yy + 1, 8, 8);                                 /* its little picture */
+          const nx = x + 30, avail = w - 30 - 29, col = t.missing ? P.red : on ? P.amber : P.brushHi, tw = MEAS(t.name, 7);
+          if ((on || hot) && tw > avail) { g.save(); g.beginPath(); g.rect(nx, yy, avail, 10); g.clip(); TXT(t.name, nx - scrollOff(tw, avail), yy + 8, col, 7); g.restore(); }
+          else TXT(fitText(t.name, avail, 7), nx, yy + 8, col, 7);
           TXT(t.buf || t.builtin ? mmss(t.dur) : (t.decoding ? '...' : mmss(t.dur)),
-              x + w - 5, yy + 8, on ? HFP.white : HFP.brush, 7, 'right');
+              x + w - 5, yy + 8, on ? P.white : P.brush, 7, 'right');
           hits.push({ k: 'row', id: n, x: x + 2, y: yy, w: w - 4, h: 10 });
         }
         /* a thumb, so two hundred discs feel like a shelf and not a hole */
         if (entries.length > rows) {
           const tr = h - (top - y) - 3, th = Math.max(8, tr * rows / entries.length);
-          R(x + w - 3, top, 2, tr, HFP.case_);
-          R(x + w - 3, top + (tr - th) * (S.scroll / Math.max(1, maxScroll)), 2, th, HFP.brush);
+          R(x + w - 3, top, 2, tr, P.case_);
+          R(x + w - 3, top + (tr - th) * (S.scroll / Math.max(1, maxScroll)), 2, th, P.brush);
         }
-        if (!S.list.length) TXT('TRAY EMPTY', x + w / 2, y + h / 2, HFP.brush, 7, 'center');
-        else if (!entries.length) TXT('NOTHING MATCHES', x + w / 2, y + h / 2 + 8, HFP.brush, 7, 'center');
+        if (!S.list.length) TXT('TRAY EMPTY', x + w / 2, y + h / 2, P.brush, 7, 'center');
+        else if (!entries.length) TXT('NOTHING MATCHES', x + w / 2, y + h / 2 + 8, P.brush, 7, 'center');
       }
 
       /* ---- one frame of the whole face -------------------------------------- */
@@ -990,9 +913,9 @@ export default {
         fit();
         hits = [];
         const t = S.list[S.ix];
-        const tint = { green: HFP.green, cyan: HFP.cyan, amber: HFP.amber, white: HFP.white, red: HFP.red }[t ? t.tint : 'amber'] || HFP.amber;
+        const tint = P.amber;
 
-        R(0, 0, 480, 386, HFP.black);
+        R(0, 0, 480, 386, P.black);
         /* the room behind the rack, lit by whatever the bass is doing */
         if (S.glow > 0.01) {
           const gr = g.createRadialGradient(240, 90, 10, 240, 150, 300);
@@ -1011,8 +934,9 @@ export default {
         button('shuffle', 262, 80, 32, 20, 'SHF', S.shuffle);
         button('repeat', 296, 80, 32, 20, S.repeat === 2 ? 'RP1' : 'RPT', S.repeat > 0);
         drawTray(128, 104, 200, 20);
-        TXT(S.note || (t ? 'DISC ' + (S.ix + 1) + ' OF ' + S.list.length : 'LOAD A DISC TO BEGIN'),
-            128, 138, S.note ? HFP.amber : HFP.brush, 7);
+        const hv = S.hover >= 0 ? S.list[S.hover] : null;
+        TXT(fitText(S.note || (hv ? hv.name + '  \u2014  ' + hv.artist + (hv.album ? '  \u2014  ' + hv.album : '') : (t ? 'DISC ' + (S.ix + 1) + ' OF ' + S.list.length : 'LOAD A DISC TO BEGIN')), 204, 7),
+            128, 138, S.note ? P.amber : hv ? P.brushHi : P.brush, 7);
         drawList(336, 16, 136, 124);
 
         /* ---------- unit two: the amplifier ---------- */
@@ -1046,10 +970,14 @@ export default {
         button('roomsel', 358, 318, 112, 14, 'ROOM: ' + ROOMS[S.roomIx], S.roomIx > 0);
         button('ab', 358, 336, 112, 14, 'A/B — HOLD TO BYPASS', false);
         TXT('PRE ' + (S.pre > 0 ? '+' : '') + S.pre.toFixed(1) + 'dB   ' + Math.round(S.speed * 100) + '%',
-            358, 358, HFP.brush, 7);
+            358, 358, P.brush, 7);
         drawScrub(12, 364, 458, 14);
 
         /* the glass, if it is switched on */
+        if (S.searching && slot) {
+          const r = cv.getBoundingClientRect(), wr = wrap.getBoundingClientRect(), k = r.width / 480, st = search.style;
+          st.left = (r.left - wr.left + slot.x * k) + 'px'; st.top = (r.top - wr.top + slot.y * k) + 'px'; st.width = slot.w * k + 'px'; st.height = slot.h * k + 'px'; st.fontSize = 7 * FS * k + 'px';
+        }
         if (S.scan) {
           g.globalAlpha = 0.20;
           for (let y = 0; y < 386; y += 2) R(0, y, 480, 1, '#000000');
@@ -1058,6 +986,20 @@ export default {
           vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.55)');
           g.fillStyle = vg; g.fillRect(0, 0, 480, 386);
         }
+      }
+
+      /* ---- the face wears the label ------------------------------------------
+         Each disc has a palette (its picture's colours, or the tint it was given): the knobs' lights, the LCD, the scrubber, the glow and a little of the metal take it,
+         and a change of disc fades from one face to the next instead of cutting. */
+      let thFrom = null, thTo = null, thKey = null, thFade = 1;
+      const themeOf = t => themeFrom(t && t.pal ? t.pal : palOfNamed(t ? t.tint : 'amber'), HFP);
+      function theme(dt) {
+        const t = S.list[S.ix], key = t ? (t.pal ? t.pal.a + t.pal.a2 : t.tint) : '';
+        if (key !== thKey) { thKey = key; thFrom = Object.assign({}, P); thTo = themeOf(t); thFade = 0; }
+        if (thFade >= 1) return;
+        thFade = Math.min(1, thFade + dt * 3);
+        Object.assign(P, lerpTheme(thFrom, thTo, thFade)); lift();
+        if (lib) lib.setTheme(P);
       }
 
       /* ---- reading the meters --------------------------------------------- */
@@ -1147,8 +1089,9 @@ export default {
           else if (!S.xfaded) { skip(1); }
         }
         applyAll();
-        meters(dt);
-        draw();
+        theme(dt);
+        { const cur = S.list[S.ix], mk = S.ix + ':' + (cur && cur.artMode) + ':' + S.labelMode; if (mk !== modeKey) { modeKey = mk; showMode(); } }
+        if (S.tab === 'player') { meters(dt); draw(); } else if (lib) lib.frame(dt);
       }
 
       function teardown() {
@@ -1157,6 +1100,7 @@ export default {
         S.voices.slice().forEach(v => killVoice(v, 0.05));
         if (texSrc) { try { texSrc.stop(); } catch (e) {} texSrc = null; }
         try { N.master.disconnect(); } catch (e) {}
+        try { io.saveSettings(); if (lib) lib.destroy(); } catch (e) { /* closing */ }
       }
 
       /* ---- hands on the front panel ------------------------------------------- */
@@ -1201,8 +1145,8 @@ export default {
           case 'stop': stop(); break;
           case 'prev': if (S.pos > 3) seek(0); else skip(-1); break;
           case 'next': skip(1); break;
-          case 'shuffle': S.shuffle = !S.shuffle; say('SHUFFLE ' + (S.shuffle ? 'ON' : 'OFF')); break;
-          case 'repeat': S.repeat = (S.repeat + 1) % 3; say(['REPEAT OFF', 'REPEAT ALL', 'REPEAT ONE'][S.repeat]); break;
+          case 'shuffle': S.shuffle = !S.shuffle; say('SHUFFLE ' + (S.shuffle ? 'ON' : 'OFF')); io.saveSettings(); break;
+          case 'repeat': S.repeat = (S.repeat + 1) % 3; say(['REPEAT OFF', 'REPEAT ALL', 'REPEAT ONE'][S.repeat]); io.saveSettings(); break;
           case 'tray': pick.click(); break;
           case 'eqon': S.eqOn = !S.eqOn; routeEQ(); say(S.eqOn ? 'EQUALISER IN CIRCUIT' : 'EQUALISER BYPASSED'); break;
           case 'loud': S.loud = !S.loud; say('LOUDNESS ' + (S.loud ? 'ON' : 'OFF')); break;
@@ -1222,14 +1166,14 @@ export default {
         const p = at(ev), h = hitAt(p);
         if (!h) return;
         if (h.k === 'btn') {
-          if (h.id === 'search') { S.searching = true; say('TYPE TO SEARCH — ESC CLEARS'); return; }
+          if (h.id === 'search') { startSearch(); say('TYPE TO SEARCH \u2014 ESC CLEARS'); return; }
           if (h.id === 'sort') { S.sort = (S.sort + 1) % 4; S.userScrolled = false; say('ORDER BY ' + SORTS[S.sort]); return; }
           if (h.id === 'ab') { const was = S.eqOn; S.eqOn = false; routeEQ();
             const up = () => { S.eqOn = was; routeEQ(); window.removeEventListener('mouseup', up); };
             window.addEventListener('mouseup', up); return; }
           press(h.id); return;
         }
-        if (h.k === 'dir') { tro.folder(h.id); S.folder = h.id; S.scroll = 0; S.userScrolled = true; S.filter = ''; say('FOLDER: ' + h.id); return; }
+        if (h.k === 'dir') { if (!S.userDirs.some(d => d.name === h.id)) tro.folder(h.id); S.folder = h.id; S.scroll = 0; S.userScrolled = true; S.filter = ''; say('FOLDER: ' + h.id); return; }
         if (h.k === 'back') { S.folder = null; S.scroll = 0; S.userScrolled = false; return; }
         if (h.k === 'row') { S.drag = { k: 'row', from: h.id, moved: false }; return; }
         if (h.k === 'scrub') { seek((p.x - h.x - 2) / (h.w - 4) * S.dur); S.drag = { k: 'scrub', h: h }; return; }
@@ -1242,7 +1186,7 @@ export default {
         if (S.drag.k === 'row') {
           const over = hitAt(p);
           if (!over || over.k !== 'row' || over.id === S.drag.from) return;
-          if ((S.list[over.id].folder || null) !== (S.list[S.drag.from].folder || null)) return;
+          if ((S.list[over.id].folder || null) !== (S.list[S.drag.from].folder || null) || S.list[over.id].builtin || S.list[S.drag.from].builtin) return;
           const from = S.drag.from, to = over.id;
           const moving = S.list[from];
           S.list.splice(from, 1); S.list.splice(to, 0, moving);
@@ -1261,12 +1205,15 @@ export default {
         k.set(Math.round(v / k.step) * k.step);
       });
       winL.on(window, 'mouseup', () => {
+        if (S.drag && S.drag.k === 'knob' && S.drag.id === 'vol') io.saveSettings();
         if (S.drag && S.drag.k === 'row') {
-          if (S.drag.moved) say('ORDER CHANGED.');
+          if (S.drag.moved) { say('ORDER CHANGED.'); io.saveLibrary(); if (lib) lib.refresh(); }
           else { S.touched = true; loadDisc(S.drag.from, true); }
         }
         S.drag = null;
       });
+      cv.addEventListener('mousemove', ev => { const h = hitAt(at(ev)); S.hover = h && h.k === 'row' ? h.id : -1; });
+      cv.addEventListener('mouseleave', () => { S.hover = -1; });
       cv.addEventListener('wheel', ev => {
         const p = at(ev), h = hitAt(p);
         if (h && h.k === 'knob') { ev.preventDefault(); nudge(h.id, ev.deltaY < 0 ? 1 : -1); return; }
@@ -1304,19 +1251,10 @@ export default {
       }
       cv.addEventListener('keydown', ev => {
         const k = ev.key;
-        /* while the search slot has focus it takes the keys, so a title with
-           an N or a 4 in it does not skip a track and load a preset */
-        if (S.searching) {
-          ev.preventDefault();
-          if (k === 'Escape') { if (S.filter) { S.filter = ''; } else S.searching = false; S.userScrolled = false; return; }
-          if (k === 'Enter') { S.searching = false; const v = view(); if (v.length) { S.touched = true; loadDisc(v[0], true); } return; }
-          if (k === 'Backspace') { S.filter = S.filter.slice(0, -1); S.scroll = 0; S.userScrolled = false; return; }
-          if (k.length === 1) { S.filter += k; S.scroll = 0; S.userScrolled = false; }
-          return;
-        }
+        if (k === 'Tab') { ev.preventDefault(); setTab('library'); return; }
         if (k === ' ' || k === 'ArrowLeft' || k === 'ArrowRight' || k === 'ArrowUp' || k === 'ArrowDown') ev.preventDefault();
-        if (k === '/' ) { ev.preventDefault(); S.searching = true; return; }
-        if (k === 'Delete' || k === 'Backspace') { ev.preventDefault(); forget(S.ix); return; }
+        if (k === '/' ) { ev.preventDefault(); startSearch(); return; }
+        if (k === 'Delete' || k === 'Backspace') { ev.preventDefault(); io.removeTracks([S.ix]); return; }
         if (k === ' ') { toggle(); return; }
         if (k === 'ArrowRight') { seek(S.pos + (ev.shiftKey ? 30 : 5)); return; }
         if (k === 'ArrowLeft')  { seek(S.pos - (ev.shiftKey ? 30 : 5)); return; }
@@ -1352,20 +1290,23 @@ export default {
 
       /* ---- the buttons on the chin ------------------------------------------- */
       bLoad.addEventListener('click', () => { S.trayDir = 1; pick.click(); });
-      pick.addEventListener('change', () => { importFiles(pick.files); pick.value = ''; cv.focus(); });
+      /* a folder to put what comes in into: the one open on the shelf, if it is one of yours */
+      const into = () => (S.folder && S.userDirs.some(d => d.name === S.folder) ? S.folder : null);
+      pick.addEventListener('change', () => { const f = [].slice.call(pick.files); pick.value = ''; io.importFiles(f, { folder: into() }); cv.focus(); });
       bArt.addEventListener('click', () => { if (S.list.length) pickArt.click(); else say('LOAD A DISC FIRST.'); });
       pickArt.addEventListener('change', () => {
         const f = pickArt.files && pickArt.files[0]; pickArt.value = '';
         const t = S.list[S.ix]; if (!f || !t) return;
-        const url = URL.createObjectURL(f), im = new Image();
-        im.onload = () => { const c = document.createElement('canvas'); c.width = 96; c.height = 96;
-          const q = c.getContext('2d');
-          const side = Math.min(im.width, im.height);
-          q.drawImage(im, (im.width - side) / 2, (im.height - side) / 2, side, side, 0, 0, 96, 96);
-          t.art = c; t.artData = c.toDataURL('image/png'); URL.revokeObjectURL(url); saveLibrary(); say('LABEL PRINTED.'); };
-        im.onerror = () => { URL.revokeObjectURL(url); say('THAT IS NOT A PICTURE THIS MACHINE KNOWS.'); };
-        im.src = url;
+        if (t.builtin) { say('THE PRESSED DISCS KEEP THEIR OWN LABELS.'); return; }
+        io.setLabel([S.ix], f).then(n => { if (n) say('LABEL PRINTED.'); });
         cv.focus();
+      });
+      /* CROP fills the disc with the middle of the picture, FIT shows all of it, STRETCH pulls it to the disc: this disc's, and the next label printed starts that way */
+      const showMode = () => { const t = S.list[S.ix]; bFit.textContent = 'LABEL: ' + MODE_NAME[(t && t.artMode) || S.labelMode]; };
+      bFit.addEventListener('click', () => {
+        const t = S.list[S.ix]; if (!t) { say('LOAD A DISC FIRST.'); return; }
+        t.artMode = nextMode(t.artMode || S.labelMode); S.labelMode = t.artMode; showMode(); say('LABEL: ' + MODE_NAME[t.artMode]);
+        io.saveLibrary(); io.saveSettings(); cv.focus();
       });
       bSave.addEventListener('click', () => {
         const t = S.list[S.ix]; if (!t) return;
@@ -1388,15 +1329,51 @@ export default {
       wrap.addEventListener('drop', e => {
         stopEv(e);
         const dt2 = e.dataTransfer;
-        if (dt2 && dt2.files && dt2.files.length) importFiles(dt2.files); else S.trayDir = -1;
+        if (dt2 && dt2.files && dt2.files.length) io.importFiles([].slice.call(dt2.files), { folder: into() }); else S.trayDir = -1;
       });
       wrap.addEventListener('mousedown', () => setTimeout(() => cv.focus(), 0));
       setTimeout(() => cv.focus(), 40);
 
-      loadLibrary();
+      /* the search field: a real text input, so Japanese and Korean go in through the input method */
+      search.addEventListener('input', () => { S.filter = search.value; S.scroll = 0; S.userScrolled = false; });
+      search.addEventListener('keydown', ev => {
+        ev.stopPropagation();
+        if (ev.isComposing || ev.keyCode === 229) return;
+        if (ev.key === 'Escape') { ev.preventDefault(); if (S.filter) { S.filter = ''; search.value = ''; } else endSearch(); S.userScrolled = false; }
+        else if (ev.key === 'Enter') { ev.preventDefault(); const v = view(); endSearch(); if (v.length) { S.touched = true; S.order = v.map(i => S.list[i]); loadDisc(v[0], true); } }
+      });
+      search.addEventListener('blur', () => { if (S.searching) { S.searching = false; search.style.display = 'none'; } });
+      search.addEventListener('mousedown', ev => ev.stopPropagation());
+
+      window.__stackDebug = () => ({ S, io, P, lib });
+      /* PLAYER is the face; LIBRARY is the whole shelf laid out to look at (apps/hifi/lib_ui.js) */
+      lib = createLibrary(body, {
+        S, io, say, view, startSearch, toggle, skip, seek, loadDisc, folder: n => tro.folder(n),
+        play: (i, order) => { S.touched = true; S.order = order || null; loadDisc(i, true); },
+        pickFiles: () => { S.trayDir = 1; pick.click(); },
+        theme: () => P, thumb: (t, cb) => thumbUrl(t, cb), builtinDirs: () => [...new Set(S.list.filter(t => t.builtin && t.folder).map(t => t.folder))],
+        setTab: id => setTab(id), setVol: v => { S.vol = Math.max(0, Math.min(1, v)); io.saveSettings(); },
+        remap: map => { if (map.has(S.ix)) S.ix = map.get(S.ix); }, afterLabel: showMode
+      });
+      function setTab(id) {
+        S.tab = id;
+        tPlayer.classList.toggle('on', id === 'player'); tLib.classList.toggle('on', id === 'library');
+        wrap.style.display = id === 'player' ? '' : 'none'; bar.style.display = id === 'player' ? '' : 'none';
+        lib.root.style.display = id === 'library' ? '' : 'none';
+        if (id === 'library') { lib.setTheme(P); lib.refresh(); lib.focus(); } else cv.focus();
+        io.saveSettings();
+      }
+      tPlayer.addEventListener('click', () => setTab('player'));
+      tLib.addEventListener('click', () => setTab('library'));
+      const loading = io.loadLibrary();
+      setTab(S.tab);
+      loading.then(() => {
+        if (S.ix < 0 && S.resume) { const i = S.list.findIndex(t => t.vault === S.resume); if (i >= 0) { S.ix = i; loadDisc(i, false); } }
+        showMode(); setTab(S.tab);
+      });
       applyAll();
       raf = requestAnimationFrame(frame);
       whenGone(cv, () => { alive = false; teardown(); });
-      info.textContent = 'SPACE · ARROWS · N/P · 1-9 EQ · B BYPASS · DROP FILES ON IT';
+      info.textContent = 'SPACE · ARROWS · N/P · 1-9 EQ · B BYPASS · TAB LIBRARY · DROP FILES ON IT';
   }
 };

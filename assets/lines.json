@@ -1,0 +1,201 @@
+{
+ "total": 82935,
+ "files": 623,
+ "areas": [
+  {
+   "name": "kernel",
+   "lines": 16640,
+   "files": 124
+  },
+  {
+   "name": "bekkedal",
+   "lines": 20662,
+   "files": 95
+  },
+  {
+   "name": "standbattle",
+   "lines": 8075,
+   "files": 98
+  },
+  {
+   "name": "magen",
+   "lines": 4221,
+   "files": 22
+  },
+  {
+   "name": "garage",
+   "lines": 3776,
+   "files": 38
+  },
+  {
+   "name": "hifi",
+   "lines": 3231,
+   "files": 20
+  },
+  {
+   "name": "cook",
+   "lines": 2145,
+   "files": 12
+  },
+  {
+   "name": "holyc",
+   "lines": 2095,
+   "files": 31
+  },
+  {
+   "name": "sweeper",
+   "lines": 2018,
+   "files": 18
+  },
+  {
+   "name": "elephant",
+   "lines": 1602,
+   "files": 8
+  },
+  {
+   "name": "bottle",
+   "lines": 1596,
+   "files": 17
+  },
+  {
+   "name": "aftere",
+   "lines": 1545,
+   "files": 19
+  },
+  {
+   "name": "garden",
+   "lines": 1245,
+   "files": 13
+  },
+  {
+   "name": "solitaire",
+   "lines": 1148,
+   "files": 9
+  },
+  {
+   "name": "crayon",
+   "lines": 1071,
+   "files": 13
+  },
+  {
+   "name": "shop",
+   "lines": 774,
+   "files": 4
+  },
+  {
+   "name": "terminal",
+   "lines": 635,
+   "files": 2
+  },
+  {
+   "name": "notes",
+   "lines": 584,
+   "files": 4
+  },
+  {
+   "name": "credits",
+   "lines": 545,
+   "files": 6
+  },
+  {
+   "name": "trophies",
+   "lines": 545,
+   "files": 6
+  },
+  {
+   "name": "bibel",
+   "lines": 537,
+   "files": 8
+  },
+  {
+   "name": "viewer",
+   "lines": 239,
+   "files": 3
+  },
+  {
+   "name": "folder",
+   "lines": 222,
+   "files": 2
+  },
+  {
+   "name": "defrag",
+   "lines": 216,
+   "files": 3
+  },
+  {
+   "name": "editor",
+   "lines": 146,
+   "files": 2
+  },
+  {
+   "name": "trash",
+   "lines": 142,
+   "files": 2
+  },
+  {
+   "name": "drawings",
+   "lines": 119,
+   "files": 1
+  },
+  {
+   "name": "neofetch",
+   "lines": 82,
+   "files": 1
+  },
+  {
+   "name": "tasks",
+   "lines": 74,
+   "files": 1
+  },
+  {
+   "name": "account",
+   "lines": 71,
+   "files": 2
+  },
+  {
+   "name": "trophybox",
+   "lines": 66,
+   "files": 2
+  },
+  {
+   "name": "goddoodle",
+   "lines": 58,
+   "files": 1
+  },
+  {
+   "name": "display",
+   "lines": 44,
+   "files": 1
+  },
+  {
+   "name": "tools",
+   "lines": 28,
+   "files": 2
+  },
+  {
+   "name": "cmos",
+   "lines": 27,
+   "files": 1
+  },
+  {
+   "name": "about",
+   "lines": 26,
+   "files": 1
+  },
+  {
+   "name": "placeholder",
+   "lines": 19,
+   "files": 1
+  },
+  {
+   "name": "electron",
+   "lines": 232,
+   "files": 4
+  },
+  {
+   "name": "the page and shared app kits",
+   "lines": 6434,
+   "files": 26
+  }
+ ]
+}

@@ -22,6 +22,9 @@ export default {
     const again = document.createElement('button');
     again.className = 'appbtn';
     again.textContent = 'ASK AGAIN';
+    const save = document.createElement('button');
+    save.className = 'appbtn';
+    save.textContent = 'SAVE';
     const word = document.createElement('span');
     word.className = 'godword';
     
@@ -32,7 +35,20 @@ export default {
     };
     
     again.addEventListener('mousedown', ev => { ev.stopPropagation(); roll(); });
+    /* what God drew is kept as a picture in ::/Home/Doodles, the next free name, and opens in the viewer like any other */
+    save.addEventListener('mousedown', async ev => {
+      ev.stopPropagation();
+      try {
+        let n = 1, path;
+        do { path = '::/Home/Doodles/GodDoodle' + String(n++).padStart(3, '0') + '.PNG'; } while (await ctx.fs.stat(path));
+        await ctx.fs.write(path, { type: 'image', src: cv.toDataURL('image/png') });
+        window.dispatchEvent(new CustomEvent('vfs-changed', { detail: { dir: '::/Home/Doodles' } }));
+        ctx.toast('KEPT AS ' + path.split('/').pop() + ' IN ::/Home/Doodles');
+        if (window.Snd && window.Snd.ok) window.Snd.ok();
+      } catch (e) { ctx.toast('COULD NOT KEEP IT.'); }
+    });
     bar.appendChild(again);
+    bar.appendChild(save);
     bar.appendChild(word);
     root.appendChild(pane);
     root.appendChild(bar);

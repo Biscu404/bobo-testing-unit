@@ -20,6 +20,7 @@ import { SunUI } from './economy.js';
 import { MixerUI } from './mixer.js';
 import { panic } from './panic.js';
 import { runBootSequence, cancelBoot } from './bootseq.js';
+import { createSetup } from './bios_ui.js';
 import { wireCtxGuard } from './ctxguard.js';
 window.Music = Music;
 
@@ -99,9 +100,10 @@ function stampSeen() {
 }
 /* the machine has been away if nothing was ever recorded, or the last mark
    is eight hours old. A mark from the future (a clock set back) is not away. */
-let owesLongBoot = true;
+let owesLongBoot = true, lastSeen = 0;
 const seenReady = readSeen().then(seen => {
   const now = Date.now();
+  lastSeen = seen;
   owesLongBoot = !seen || (seen <= now && now - seen >= COLD_MS);
   stampSeen();
 });
@@ -123,6 +125,33 @@ function onEnterKey(ev) {
   ev.preventDefault();
   dismissSplash();
 }
+
+/* ---- BIOS SETUP: hold DEL while the machine powers up ---------------------
+   POST says PRESS DEL TO ENTER SETUP and means it, at any point before the desktop (the memory count, the temple, the line that waits for ~). The boot
+   stops where it is, SETUP takes the glass (kernel/bios_ui.js), and leaving it runs POST again from the top, as a real machine does after SETUP:
+   the long boot, if it is owed, is still owed and is not skipped by going in and out. A held key repeats; only the first press opens it. */
+let setup = null;
+const onSplash = () => { const sp = document.getElementById('splash'); return !!sp && sp.style.display !== 'none' && CRT.on; };
+function enterSetup() {
+  if (setup || !onSplash()) return;
+  document.removeEventListener('keydown', onEnterKey, true);
+  cancelBoot();
+  booting = false; bootDone = false;
+  if (window.Music && window.Music.bootEnd) window.Music.bootEnd();
+  setup = createSetup(document.getElementById('splash'), {
+    snd: window.Snd,
+    info: () => ({ away: lastSeen ? Math.max(0, (Date.now() - lastSeen) / 1000) : null, cold: owesLongBoot }),
+    onExit: () => { setup = null; if (CRT.on) window.runBoot(); }
+  });
+}
+function closeSetup() { if (setup) { const s = setup; setup = null; s.destroy(); } }
+document.addEventListener('keydown', ev => {
+  if (setup) { if (setup.key(ev)) { ev.preventDefault(); ev.stopImmediatePropagation(); } return; }
+  if (ev.key !== 'Delete' || ev.ctrlKey || ev.metaKey || ev.altKey || ev.shiftKey) return;
+  if (!onSplash()) return;
+  ev.preventDefault(); ev.stopImmediatePropagation();
+  if (!ev.repeat) enterSetup();
+}, true);
 
 function runBootLines() {
   bootDone = false;
@@ -153,6 +182,7 @@ window.runBoot = async function() {
 window.powerOff = function() {
   if (!CRT.on) return;
   CRT.on = false;
+  closeSetup();
   document.removeEventListener('keydown', onEnterKey, true);
   cancelBoot();
   booting = false;

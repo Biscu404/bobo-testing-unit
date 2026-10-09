@@ -13,6 +13,7 @@
    (the marker the checks wait for). boot.js owns what happens next. */
 import { BIRTHDAY_TEXT } from './boot_text.js';
 import { CRT, lampDip } from './hardware.js';
+import { load as loadBios, post as biosPost, memSteps, holdLine } from './bios_cfg.js';
 
 export const LONG_MS = 10000;
 export const STRUGGLE_MS = 7000;
@@ -28,6 +29,8 @@ const BOOT_LINES = [
   ['Ring 0. No user mode. No network.', 'y']
 ];
 
+/* what BIOS SETUP (hold DEL at power-up: kernel/bios_ui.js) says this power-on does; read again at the start of every boot */
+let P = biosPost(loadBios());
 let ids = [];
 let alive = false;
 let runId = 0;
@@ -50,12 +53,12 @@ export function cancelBoot() {
 }
 
 /* ---- the sounds of a machine that is not well --------------------------- */
-const beep = (f, ms) => snd() && snd().tone(f, ms, { mech: true, type: 'square', vol: 0.035 });
+const beep = (f, ms) => P.speaker && snd() && snd().tone(f, ms, { mech: true, type: 'square', vol: 0.035 });
 const seek = n => {
-  if (!snd()) return;
+  if (!snd() || !P.speaker) return;
   for (let i = 0; i < n; i++) snd().noise(26, { mech: true, freq: 700 + (i % 3) * 260, q: 2.4, vol: 0.1, delay: i * 0.085 });
 };
-const whir = (ms, from, to) => snd() && snd().tone(from, ms, { mech: true, type: 'sawtooth', to: to, vol: 0.022 });
+const whir = (ms, from, to) => P.speaker && snd() && snd().tone(from, ms, { mech: true, type: 'sawtooth', to: to, vol: 0.022 });
 
 /* ---- a text screen -------------------------------------------------------
    The BIOS is a column of lines that scrolls off the top when it runs out
@@ -64,6 +67,10 @@ function biosOpen() {
   const b = el('bios'), sp = el('splash');
   b.textContent = ''; b.className = ''; b.style.display = 'block';
   sp.classList.add('posting');
+  /* the line a real BIOS keeps at the foot of the screen: it stays while the lines above it scroll */
+  const del = document.createElement('div');
+  del.className = 'biosdel'; del.textContent = 'PRESS DEL TO ENTER SETUP';
+  b.appendChild(del);
   return b;
 }
 function print(text, cls) {
@@ -72,9 +79,10 @@ function print(text, cls) {
   const d = document.createElement('div');
   d.className = 'bl' + (cls ? ' ' + cls : '');
   d.textContent = text;
-  b.appendChild(d);
-  const max = Math.max(8, Math.floor((b.clientHeight - 20) / (d.offsetHeight || 20)) - 1);
-  while (b.childNodes.length > max) b.removeChild(b.firstChild);
+  const del = b.querySelector('.biosdel');
+  b.insertBefore(d, del);
+  const max = Math.max(8, Math.floor((b.clientHeight - 20) / (d.offsetHeight || 20)) - 2);
+  while (b.childNodes.length - (del ? 1 : 0) > max) b.removeChild(b.firstChild);
   return d;
 }
 const jolt = (cls, ms) => {
@@ -102,9 +110,8 @@ function memCount(line, step, tick, stallAt, onStall, done) {
 function reveal() {
   const sp = el('splash');
   sp.classList.remove('posting', 'flashing');
-  sp.classList.add('revealing');
+  if (P.warm) { sp.classList.add('revealing'); setTimeout(() => sp.classList.remove('revealing'), 900); }
   const b = el('bios'); b.style.display = 'none'; b.textContent = '';
-  setTimeout(() => sp.classList.remove('revealing'), 900);
 }
 
 function prompt(box, done) {
@@ -129,12 +136,20 @@ function quick(done) {
   at(0, () => { whir(700, 55, 150); });
   at(120, () => { print('HOLYTRON DM-640 BIOS v0.97'); beep(880, 70); });
   at(380, () => {
+    const m = memSteps(P.memtest, false);
+    if (!m) { print('Memory test: 640K OK (SKIPPED)'); return; }
     const l = print('Memory test: 0K');
-    memCount(l, 40, 28, 0, null, () => {});
+    memCount(l, m.step, m.tick, 0, null, () => {});
   });
   at(1150, () => { const l = print('IDE0: ST351A 20MB ...'); at(300, () => { l.textContent += ' OK'; seek(2); }); });
   at(1750, () => { print('Booting from IDE0 ...'); });
-  at(2150, () => {
+  /* POST HOLD SCREEN (SETUP, ADVANCED): the BIOS waits, counting down, for a hand that is slow to reach DEL */
+  const holdMs = P.holdSecs * 1000;
+  if (holdMs) at(1850, () => {
+    const l = print(holdLine(P.holdSecs), 'warn');
+    for (let s = P.holdSecs - 1; s >= 0; s--) at((P.holdSecs - s) * 1000, () => { l.textContent = holdLine(s); });
+  });
+  at(2150 + holdMs, () => {
     reveal();
     let i = 0;
     const step = () => {
@@ -236,6 +251,7 @@ function long(done) {
 /* mode: 'long' | 'quick'; done() once the prompt is up and ~ is the only way on */
 export function runBootSequence(mode, done) {
   cancelBoot();
+  P = biosPost(loadBios());
   alive = true;
   if (mode === 'long') long(done); else quick(done);
 }

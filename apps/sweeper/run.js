@@ -2,7 +2,7 @@
    run_draw.js; the board's own rules are in board.js. This file decides what
    a click means, what a larva costs, and what a spell does. */
 import { mk, lay, open, each, around, chordTargets, blocked, hiddenSafe, won as boardWon, flagsUsed, underFlags } from './board.js';
-import { CHARM, SPELLS, SPELL_HINT, spellOpen, maxMasks, modsOf } from './data.js';
+import { CHARM, SPELLS, SPELL_HINT, GRUB_SOUL, spellOpen, maxMasks, modsOf } from './data.js';
 
 export function createRun(env) {
   const node = env.node || null;                 /* null = a classic game */
@@ -70,7 +70,7 @@ export function createRun(env) {
       if (S.blue) { const t = Math.min(S.blue, d); S.blue -= t; d -= t; }
       S.hp -= d; S.maskLoss += d; S.shake = 1; S.flash = 1; env.snd.err();
       float(i, '-' + dmg, '#ff6070'); S.say('A LARVA HATCHES. -' + dmg + ' MASK' + (dmg > 1 ? 'S' : ''), '#ff8090');
-      if (has('grubsong')) { gainSoul(33); float(i, '+33 SOUL', '#cfe6ff'); }
+      if (has('grubsong')) { gainSoul(GRUB_SOUL); float(i, '+' + Math.round(GRUB_SOUL * soulK) + ' SOUL', '#cfe6ff'); }
     }
     if (has('thorns')) each(b, i, j => { if (b.mine[j] && !b.def[j] && !b.flag[j] && !b.rev[j]) { b.flag[j] = true; pop(j, 4, '#7fe09a'); } });
     if (S.hp <= 0) { die(); return; }

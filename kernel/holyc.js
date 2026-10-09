@@ -21,7 +21,12 @@ export { HolyCError, hcLex, hcParse, hcFormat };
 /* the builtins that need the machine; `hooks.rand` replaces the dice so a check can roll the same numbers every time */
 const MACHINE = {
   Beep: () => { Snd.ok(); return 0; },
-  BellRing: a => { Snd.bell(); return Math.trunc(a[0] || 1); },
+  /* BellRing(n) rings n times (at most twelve), a beat apart: it rang once whatever n was */
+  BellRing: a => {
+    const n = Math.max(1, Math.min(12, Math.trunc(a[0] || 1)));
+    for (let i = 0; i < n; i++) setTimeout(() => { try { Snd.bell(); } catch (e) { /* no sound */ } }, i * 520);
+    return n;
+  },
   Rand: (a, io) => { if (io.hooks.rand) return io.hooks.rand(); godStir(); return godNext() / 4294967296; },
   RandU16: (a, io) => io.hooks.rand ? Math.floor(io.hooks.rand() * 65536) : godRand(65536),
   GodWord: (a, io) => { const w = godWords(Math.max(1, Math.trunc(a[0] || 1))); io.emit(w.join(' ').toUpperCase() + '\n'); toolWord(w.length); return w.length; },
@@ -39,6 +44,9 @@ export function runHolyC(source, print, hooks) {
   const ast = hcParse(hcLex(source));
   hcRun(ast, line => print(line), null, hooks);
 }
+
+/* Panic and DebuggerEnter are not errors of the program's: they ARE the debugger. A caller that can show the debugger does, instead of printing a line of red. */
+export const isPanic = e => !!e && !!e.holyc && /^(Panic:|DebuggerEnter)/.test(String(e.message));
 
 /* is this line HolyC, or is it a word for the answering machine? */
 export function looksLikeHolyC(s) {

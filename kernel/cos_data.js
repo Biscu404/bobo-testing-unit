@@ -454,7 +454,7 @@ export const SCHEMES = [
     v: { bg: '#E8E2D4', fg: '#1A1A1A', ok: '#1A4A1A', hi: '#8B1A1A', err: '#B23A2A', dim: '#60594E', acc: '#4A2C3D' } },
   { id: 'uv',     name: 'ULTRAVIOLET',  price: 300, blurb: 'Everything here is slightly radioactive.',
     v: { bg: '#0a0016', fg: '#E8D0FF', ok: '#C060FF', hi: '#FFFF80', err: '#FF60C0', dim: '#9873BD', acc: '#A0A0FF' } },
-  { id: 'cga',    name: 'CGA MAGENTA', price: 130, blurb: 'The other palette. The one that made a generation squint.',
+  { id: 'cga',    name: 'TV GIRL',     price: 130, blurb: 'Hot pink and cyan on black. Played on a loop, in a bedroom, with the lights off.',
     v: { bg: '#000000', fg: '#55FFFF', ok: '#FF55FF', hi: '#FFFFFF', err: '#FF5555', dim: '#C455C4', acc: '#55FFFF' } },
   { id: 'sepia',  name: 'SEPIA',       price: 190, blurb: 'An old photograph of a terminal.',
     v: { bg: '#1c1208', fg: '#E8D3A8', ok: '#C8A060', hi: '#FFF0C8', err: '#D8602A', dim: '#A2865B', acc: '#D8B070' } },
