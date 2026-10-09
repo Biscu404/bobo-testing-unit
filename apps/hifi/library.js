@@ -15,6 +15,7 @@ import * as BEK from '../bekkedal/score.js';
 import * as SB from '../standbattle/score.js';
 import * as AE from '../aftere/score.js';
 import * as SOL from '../solitaire/score.js';
+import * as SW from '../sweeper/score.js';
 import * as Lang from '../../kernel/songtext.js';
 import { unlocked } from '../../kernel/style_track.js';
 import { FILE as STYLE_SONG } from '../../kernel/style_track_plan.js';
@@ -66,6 +67,9 @@ export function stackFolders() {
 
   /* Solitaire's three tunes, with the whole band in */
   out.push(['SOLITAIRE', 'green', SOL.IDS.map(k => [SOL.NAMES[k], disc(SOL.song(Lang, k), 'green', 'SOLITAIRE')])]);
+
+  /* Dungeon Sweeper's five tunes: the gate, the crossway, the moss, the Hollow One and the Underdeep */
+  out.push(['DUNGEON SWEEPER', 'red', SW.IDS.map(k => [SW.NAMES[k], disc(SW.song(Lang, k), 'red', 'DUNGEON SWEEPER')])]);
 
   /* the Garage's own songs: real instruments, bounced by the studio rather than synthesised here */
   out.push(['THE GARAGE', 'white', demoSongs(Lang).map(sg => [sg.title, {

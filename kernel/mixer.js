@@ -22,6 +22,7 @@ const CHANNELS = [
   { id: 'standbattle', n: 'STAND BATTLE', app: 'standbattle' },
   { id: 'aftere',     n: 'AFTEREGYPT', app: 'aftere' },
   { id: 'solitaire',  n: 'SOLITAIRE',  app: 'solitaire' },
+  { id: 'sweeper',    n: 'DUNGEON SWEEPER', app: 'sweeper' },
   { id: 'garage',     n: 'THE GARAGE', app: 'garage' },
   { id: 'solitaire',  n: 'SOLITAIRE',  app: 'solitaire' },
   { id: 'holyc',      n: 'HOLYC.EXE',  app: 'holyc' }

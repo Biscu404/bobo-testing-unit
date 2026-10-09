@@ -11,6 +11,7 @@ import { createMap } from './map.js';
 import { createBench, notchesUsed } from './bench.js';
 import { createTitle } from './title.js';
 import * as calls from './trophy_calls.js';
+import { createSweeperMusic } from './music.js';
 
 const SWP_KEY = 'templeos.sweeper';
 
@@ -39,6 +40,8 @@ const Sweeper = {
 Sweeper.boot();
 window.Sweeper = Sweeper;
 const TITLE = 'DUNGEON SWEEPER.EXE';
+/* the rooms of the Underdeep (act two): the music there is its own tune */
+const ACT2 = new Set(REGIONS.filter(r => r.act === 2).flatMap(r => r.nodes.map(n => n.id)));
 
 /* the campaign save: a fresh one is the START table, copied */
 const newCamp = () => JSON.parse(JSON.stringify(START));
@@ -235,12 +238,23 @@ export default {
       if (scene.key && scene.key(ev)) ev.preventDefault();
     });
 
+    /* the music (apps/sweeper/music.js): the place you are in picks the tune, on the studio's 'sweeper' channel */
+    const Song = createSweeperMusic({ studio: () => window.Studio, playing: () => document.body.contains(made.win) && !!window.CRT && window.CRT.on && window.CRT.mus > 0 });
+    const placeNow = () => {
+      if (kind === 'title') return 'gate';
+      if (kind !== 'run' || !run) return 'camp';
+      if (run.node && ACT2.has(run.node.id)) return 'under';
+      if (run.node && run.node.boss) return 'hollow';
+      return 'moss';
+    };
+
     /* ---- the loop ---------------------------------------------------------- */
     function frame() {
       if (!document.body.contains(made.win)) {
-        cancelAnimationFrame(raf); clearInterval(dripT); ro.disconnect(); sweepWin = null; return;
+        cancelAnimationFrame(raf); clearInterval(dripT); ro.disconnect(); Song.stop(); sweepWin = null; return;
       }
       raf = requestAnimationFrame(frame);
+      Song.setPlace(placeNow()); Song.sync(); Song.rotStep();
       if (made.win.classList.contains('hidden') || !cv.width) return;
       const now = performance.now();
       if (kind === 'run') {
