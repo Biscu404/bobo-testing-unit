@@ -40,7 +40,8 @@
     "check:bios": "node scripts/check-bios.mjs",
     "check:demo": "node scripts/check-demo.mjs",
     "check:stack": "node scripts/check-stack.mjs",
-    "check:lines": "node scripts/check-lines.mjs"
+    "check:lines": "node scripts/check-lines.mjs",
+    "check:dave": "node scripts/check-dave.mjs"
   },
   "devDependencies": {
     "electron": "^44.5.1",

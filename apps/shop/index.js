@@ -1,5 +1,5 @@
 import { Cos, COS_CATS } from '../../kernel/cos.js';
-import { DAVE_LINES, DAVE_BROKE, makeHoverTalk } from './lines.js';
+import { DAVE_LINES, DAVE_BROKE, DAVE_SECRET, makeHoverTalk } from './lines.js';
 import { drawDave, drawThumb, GOOSE_ROOM } from './thumbs.js';
 import { DAVE_GOOSE_LAND, DAVE_GOOSE_POKE, DAVE_GOOSE_HONK } from './lines_goose.js';
 import { gifts } from '../gifts_scope.js';
@@ -135,13 +135,14 @@ export default {
         /* a reward says which trophy gives it, on the card: the only thing Dave cannot be bargained with over */
         if (locked(it)) {
           const T = window.Trophies, d = T && T.get(it.reward || it.earn), rw = document.createElement('div');
-          rw.className = 'rw'; rw.textContent = (owned ? 'FOR ' : 'EARN ') + (d ? T.plainName(d) : 'A TROPHY');
+          rw.className = 'rw'; rw.textContent = it.secret && it.reward && !owned ? 'A SECRET TROPHY' : (owned ? 'FOR ' : 'EARN ') + (d ? T.plainName(d) : 'A TROPHY');
           card.appendChild(rw);
         }
         card.appendChild(bt);
         /* no title attribute: the browser would pop up a second box that says again what Dave is already saying */
 
         card.addEventListener('mouseenter', () => {
+          if (it.secret && !owned) { say(pick(DAVE_SECRET)); return; }       /* a secret says nothing of itself, and the crazy lines are not drawn for it */
           { const talk = hoverTalk(cat, it); say(talk.text); if (talk.crazy) { try { window.Trophies && window.Trophies.emit('system', 'crazy', {}); } catch (e) { /* never into the shop */ } } }
           if (cat === 'frame' || cat === 'cursor' || cat === 'scheme') window.Cos.hover(cat, it.id);
         });
@@ -157,6 +158,7 @@ export default {
       if (!owned && locked(it)) {
         /* not for sale at any price: the trophy that gives it is opened in the ledger */
         const T = window.Trophies, tid = it.reward || it.earn, d = T && T.get(tid);
+        if (it.secret && it.reward) { say(pick(DAVE_SECRET)); if (window.Snd) window.Snd.deny && window.Snd.deny(); return; }       /* a secret reward's trophy is a secret too: the ledger is not opened on it */
         say('THAT ONE IS NOT FOR SALE. I HAVE NEVER BEEN ABLE TO SELL IT. YOU HAVE TO EARN IT' + (d ? ': ' + T.plainName(d) + '.' : '.'));
         if (window.Snd) window.Snd.deny && window.Snd.deny();
         if (T && T.openLedger) T.openLedger(tid);

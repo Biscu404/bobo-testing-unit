@@ -10,9 +10,11 @@ export async function props() {
   const L = [];
   DRINKS.forEach(d => {
     const pal = paletteOf(d);
-    L.push(prop('BOTTLE_' + fname(d.name), 140, 220, g => {
+    /* the sprite is 80 x 246 and draws itself from its own origin (art.js BOT: 40, 242), so it is put on a sheet that holds all of it: a shorter bottle (the squat one, the flask)
+       used to land below the bottom of a 140 x 220 sheet and the picture was blank */
+    L.push(prop('BOTTLE_' + fname(d.name), 100, 250, g => {
       const A = makeArt(g, pal), s = A.bottleSpec;
-      g.save(); g.translate(s.cx || 70, s.cy || 200);
+      g.save(); g.translate(10, 2);
       if (s.base) s.base(g);
       if (s.over && s.over[0]) s.over[0](g);
       g.restore();

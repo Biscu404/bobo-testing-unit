@@ -1,6 +1,7 @@
 import { DECO_NEW } from './cos_deco.js';
 import { FRAMES_R, LOGOS_R, CURSORS_R, SCHEMES_R, ELEPHANT_R, DRINKS_R } from './cos_rewards.js';
 import { DRINKS_G, SPECIES_G } from './cos_gifts.js';
+import { FRAMES_M, DECO_M, LOGOS_M, cursorsM, SCHEMES_M, DRINKS_M, ELEPHANT_M } from './cos_more.js';
 
 export const FRAMES = [
   {
@@ -670,9 +671,10 @@ export const ELEPHANT = [
 ];
 
 /* what Dave does not sell (kernel/cos_rewards.js): on the same shelves, after everything that is for sale */
-FRAMES.push(...FRAMES_R); LOGOS.push(...LOGOS_R); CURSORS.push(...CURSORS_R); SCHEMES.push(...SCHEMES_R); ELEPHANT.push(...ELEPHANT_R);
+FRAMES.push(...FRAMES_R, ...FRAMES_M); LOGOS.push(...LOGOS_R, ...LOGOS_M); CURSORS.push(...CURSORS_R, ...cursorsM(CUR_ARROW)); SCHEMES.push(...SCHEMES_R, ...SCHEMES_M); ELEPHANT.push(...ELEPHANT_R, ...ELEPHANT_M);
+Object.assign(DECO_SVG, DECO_M);                                /* the little plates on the second stock's frames (kernel/cos_more_frames.js) */
 /* DRINKS: what the four on the credits screen give (not on the shelf until given: kernel/gifts.js), then what a trophy gives, after everything for sale */
-DRINKS.push(...DRINKS_G, ...DRINKS_R);
+DRINKS.push(...DRINKS_G, ...DRINKS_R, ...DRINKS_M);
 SPECIES.push(...SPECIES_G);                                     /* and Biscu's flower, which is not on the shelf until it is given */
 const unsold = a => (a.reward || a.earn || a.gift) ? 1 : 0;
 [FRAMES, LOGOS, CURSORS, SCHEMES, WALLS].forEach(l => l.sort((a, b) => unsold(a) - unsold(b) || a.price - b.price));

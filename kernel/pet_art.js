@@ -11,6 +11,7 @@
  *   wear  { head, face, neck, body, feet } -> ids from cos_data.js ELEPHANT
  * Clothes are rectangles from the ground up, each a few pixels, so they read at this size. */
 import { VGA16 } from './god.js';
+import { WEAR_MORE, BODY_MORE, NECK_MORE } from './pet_art_more.js';
 
 export const MINI_W = 80, MINI_H = 60;
 const C = i => 'rgb(' + VGA16[i].join(',') + ')';
@@ -45,8 +46,9 @@ const WEAR = {
   medal:    (R, o) => { R(55 + o.nx, 35 + o.hy + o.ny, 3, 7, 12); R(56 + o.nx, 35 + o.hy + o.ny, 1, 7, 15); R(53 + o.nx, 41 + o.hy + o.ny, 7, 5, 0); R(54 + o.nx, 42 + o.hy + o.ny, 5, 3, 14); R(56 + o.nx, 43 + o.hy + o.ny, 1, 1, 6); },
   boots:    (R, o) => { o.feet.forEach(f => { R(f[0] - 1, f[1] - 2, 11, 4, 12); R(f[0] - 1, f[1] - 2, 11, 1, 4); R(f[0] + 1, f[1] + 1, 11, 1, 0); }); }
 };
+Object.assign(WEAR, WEAR_MORE);                                  /* Dave's second stock: kernel/pet_art_more.js */
 const BEHIND = { cape: 1 };
-const NECKWEAR = { bowtie: 1, scarf: 1, medal: 1 };                         /* round the throat: drawn before the trunk, so the trunk hangs in front of it */
+const NECKWEAR = Object.assign({ bowtie: 1, scarf: 1, medal: 1 }, NECK_MORE);                         /* round the throat: drawn before the trunk, so the trunk hangs in front of it */
 const HAT_DROP = 3;                                              /* a hat sits on the head, not above it */
 
 export function drawMini(g, o) {
@@ -73,7 +75,7 @@ export function drawMini(g, o) {
     R(63, 44, 5, 1, 0);                                         /* the eye, shut */
     R(66, 52, 5, 2, 15);                                        /* a tusk, on the floor */
     R(45, 30 + br, 8, 2, 0); R(10, 36, 4, 14, 8); R(9, 48, 2, 4, 0);   /* the tail */
-    if (wear.body === 'blanket') WEAR.blanket(R, { by: 12 + br });
+    if (wear.body === 'blanket' || BODY_MORE[wear.body]) WEAR[wear.body](R, { by: 12 + br });
     ['neck', 'face', 'head'].forEach(s => { const w = wear[s]; if (w && WEAR[w] && !BEHIND[w]) WEAR[w](R, { hy: 22 + br + (s === 'head' ? HAT_DROP : 0), fx: 2, fy: 0, nx: 2, ny: -4 - br, by: 12 + br, lying: true }); });
     g.restore();
     /* his dreams */
@@ -97,7 +99,7 @@ export function drawMini(g, o) {
   ellipse(g, 36, 31 + bob + br, 23, 13, 7, 15, 8);
   [[22 - fl, 50], [50 + fl, 50]].forEach(f => { ellipse(g, f[0], f[1], 6, 8, 7, 15, 8); R(f[0] - 5, 56, 11, 1, 0); });
   if (wear.feet === 'boots') WEAR.boots(R, { feet: [[22 - fl - 5, 54], [50 + fl - 5, 54]] });
-  if (wear.body === 'blanket') WEAR.blanket(R, { by: bob + br });
+  if (wear.body === 'blanket' || BODY_MORE[wear.body]) WEAR[wear.body](R, { by: bob + br });
   /* ear, head, trunk, tusk, eye */
   ellipse(g, 54 + headX, 24 + bob + hy, 7, 10, 8, 7);
   ellipse(g, 60 + headX, 26 + bob + hy, 11, 11, 7, 15, 8);

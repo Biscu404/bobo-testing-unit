@@ -55,7 +55,7 @@ function paint(o, f) {
     const v = document.createElement('span'); v.textContent = r[i] ? r[i][1] : '';
     d.append(a, k, v); o.appendChild(d);
   }
-  const bar = (from, to) => { const b = document.createElement('div'); b.style.paddingTop = '4px'; b.appendChild(document.createTextNode('  ')); for (let i = from; i < to; i++) { const c = document.createElement('span'); c.textContent = '███'; c.style.color = VGA[i]; b.appendChild(c); } o.appendChild(b); };
+  const bar = (from, to) => { const b = document.createElement('div'); b.style.paddingTop = '4px'; b.appendChild(document.createTextNode('  ')); for (let i = from; i < to; i++) { const c = document.createElement('span'); c.style.cssText = 'display:inline-block;width:3ch;height:1.1em;vertical-align:text-bottom;background:' + VGA[i]; c.setAttribute('aria-hidden', 'true'); b.appendChild(c); }       /* a swatch is a block of colour, not text (the contrast check reads text) */ o.appendChild(b); };
   bar(0, 8); bar(8, 16);
   const h = document.createElement('div'); h.className = 'l-dim'; h.style.paddingTop = '6px'; h.textContent = '  R: READ IT AGAIN'; o.appendChild(h);
 }

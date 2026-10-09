@@ -10,6 +10,7 @@ import { VGA16 } from '../../kernel/god.js';
 import { Pet } from '../../kernel/pet.js';
 import { ELEPHANT } from '../../kernel/cos_data.js';
 import { drawWear } from './wear.js';
+import { LIFT_MORE } from './wear_more.js';
 import { scopedListeners, whenGone } from '../lifecycle.js';
 import { talked, heard, placed } from './trophy_calls.js';
 import { eatPose, EAT_SECS, PICK_AT, CHEW_FROM, drawPile, drawWedge, nextEatIn } from '../cheese_art.js';
@@ -113,7 +114,7 @@ export default {
       /* what he has on (kernel/pet.js keeps it, so the elephant on the desktop wears the same), and whether he is out of the window */
       let wear = Pet.wear();
       const kit = { R, B, oval };
-      const HAT_LIFT = { partyhat: 54, tophat: 46, wizard: 62, crown: 40, halo: 30 };
+      const HAT_LIFT = Object.assign({ partyhat: 54, tophat: 46, wizard: 62, crown: 40, halo: 30 }, LIFT_MORE);
 
       /* the same dither, poured into an ellipse rather than a box, because a
          square halo around a round sun is a square halo around a round sun */
