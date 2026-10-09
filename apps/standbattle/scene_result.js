@@ -18,7 +18,7 @@ export function resultScene(app) {
     else app.go(lab === 'CONTINUE' && S.mode === 'arcade' ? 'title' : 'menu');
   }
   return {
-    enter(a) { kind = a.kind || 'match'; S = app.session; sel = 0; t = 0; build(); app.music(0); if (kind === 'clear' || kind === 'match') sfxVictory(); },
+    enter(a) { kind = a.kind || 'match'; S = app.session; sel = 0; t = 0; build(); app.music(0, 'menu'); if (kind === 'clear' || kind === 'match') sfxVictory(); },
     update(dt) {
       t += dt / 1000;
       let n;

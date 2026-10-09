@@ -86,11 +86,11 @@ const r = await page.evaluate(async () => {
   /* the games' scores, and the symphony */
   const mods = { bekkedal: await import('/apps/bekkedal/score.js'), elephant: await import('/apps/elephant/score.js'), magen: await import('/apps/magen/score.js') };
   const sb = await import('/apps/standbattle/score.js');
-  const songs = [].concat(mods.bekkedal.IDS.map(i => mods.bekkedal.song(L, i)), mods.elephant.IDS.map(i => mods.elephant.song(L, i)), mods.magen.IDS.map(i => mods.magen.song(L, i)), [sb.song(L)]);
+  const songs = [].concat(mods.bekkedal.IDS.map(i => mods.bekkedal.song(L, i)), mods.elephant.IDS.map(i => mods.elephant.song(L, i)), mods.magen.IDS.map(i => mods.magen.song(L, i)), sb.IDS.map(i => sb.song(L, i)));
   const badNote = n => !(n[1] > 0 && n[0] >= 0 && n[2] >= 24 && n[2] <= 108 && n[3] > 0 && n[3] <= 1.0001);
   out.scores = songs.map(sg => sg.title + ':' + sg.tracks.filter(t => (t.notes || []).some(badNote)).length).filter(x => !/:0$/.test(x));
   out.scoreCount = songs.length;
-  out.layers = [...new Set(sb.song(L).tracks.map(t => t.layer))].sort().join();
+  out.layers = [...new Set(sb.song(L, 'backalley').tracks.map(t => t.layer))].sort().join();
   /* Magen: the bare core is a tune on its own, and the full band with every layer in is loud and does not clip */
   const mg = mods.magen.song(L, 'freygish'), bare = JSON.parse(JSON.stringify(mg)), full = JSON.parse(JSON.stringify(mg));
   bare.tracks.forEach(t => { if (t.layer) t.mute = true; });
@@ -121,7 +121,7 @@ ok(r.text.notes && r.text.dotted && r.text.chord && r.text.round && r.text.prog,
 ok(r.playerMoves && r.followAfter === 0, 'the real-time player runs, its playhead moves, and it lets go of everything when stopped');
 ok(r.seek && r.fade, 'a player can be sought to a beat while it plays and faded on its own');
 ok(r.chunked, 'a long song is rendered in stretches and comes out the right length');
-ok(r.scoreCount === 17 && !r.scores.length, `the games' seventeen songs for real instruments are all valid${r.scores.length ? ': ' + r.scores.join(', ') : ''}`);
+ok(r.scoreCount === 23 && !r.scores.length, `the games' twenty-three songs for real instruments are all valid${r.scores.length ? ': ' + r.scores.join(', ') : ''}`);
 ok(r.magen.layers === 'h1,h2,h3' && r.magen.bare > 0.05 && r.magen.full > r.magen.bare * 0.9 && r.magen.full <= 1.0, `Magen's band has three layers; the core alone sounds (${r.magen.bare.toFixed(2)}) and all of it together (${r.magen.full.toFixed(2)}) does not clip`);
 ok(r.layers.includes('combat') && r.layers.includes('explore') && r.layers.includes('tension'), "Stand Battle's score carries its three layers");
 {

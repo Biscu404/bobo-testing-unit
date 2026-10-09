@@ -12,7 +12,7 @@ export function movelistScene(app) {
   let who = 0, top = 0, sel = 0;
   const list = () => movelistOf(PLAYABLE.concat(['boss'])[who]).list;
   return {
-    enter() { who = Math.max(0, PLAYABLE.indexOf(app.meta.lastChar)); top = 0; sel = 0; app.music(0); emit('movelist-open', {}); },
+    enter() { who = Math.max(0, PLAYABLE.indexOf(app.meta.lastChar)); top = 0; sel = 0; app.music(0, 'menu'); emit('movelist-open', {}); },
     update() {
       let n;
       while ((n = app.dev.popNav())) {

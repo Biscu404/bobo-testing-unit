@@ -9,7 +9,7 @@ export function vsScene(app) {
   let t = 0, S = null, defs = null, cfg = null, go = false;
   return {
     enter() {
-      S = app.session; cfg = S.fightConfig(); defs = cfg.defs; t = 0; go = false; app.music(0);
+      S = app.session; cfg = S.fightConfig(); defs = cfg.defs; t = 0; go = false; app.music(0, 'select');
       sfxPick();
     },
     update(dt) {

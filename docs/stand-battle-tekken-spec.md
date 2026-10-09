@@ -77,8 +77,11 @@ A motion special needs its command: pressing the button alone gives the plain mo
 fighter), never from the key-event stream, so keyboard, gamepad, CPU and replay agree. Where several moves match, the most specific command wins (motion > direction+button > button).
 
 ### 4.3 Devices and the keymap
-Keyboard and gamepad both work, both rebindable (`input.js`, rewritten on the old rebindable keymap). Defaults: **P1** `A D` walk, `W S` sidestep/crouch, `F G` = `LP RP`, `V B` = `LK RK`.
-**P2** arrows, `K L` = `LP RP`, `, .` = `LK RK`. With one human (arcade, CPU, survival, time attack, training) P1 accepts both maps. Gamepad: d-pad or left stick, `X Y A B` = `LP RP LK RK`,
+Keyboard and gamepad both work, both rebindable (`input.js`, rewritten on the old rebindable keymap). Defaults are laid out **for two hands**: **P1** `A D` walk, `W S` sidestep/crouch
+(the left hand), and `U I` = `LP RP` over `J K` = `LK RK` (the right hand's index and middle fingers: hands on top, feet below, left on the left, like the arcade panel). It used to be
+`F G` over `V B` beside `W A S D`, which asked one hand to steer and fight at once. **P2** arrows and the number pad, `4 5` = `LP RP` over `1 2` = `LK RK`. Two people at a keyboard with no
+number pad press SHARED KEYBOARD on the CONTROLS screen: P1 `W A S D` + `F G V B` on the left, P2 arrows + `K L , .` on the right (the old split). With one human (arcade, CPU, survival, time attack,
+training) P1 accepts both maps. A save that holds exactly the old defaults was never changed by its owner and gets the new ones. Gamepad: d-pad or left stick, `X Y A B` = `LP RP LK RK`,
 `Start` confirms, `Select`/Back opens pause. The CONTROLS screen rebinds any key or button and stores it in `meta.keymap` through `save.js`.
 
 ## 5. Frame data — the one source of truth

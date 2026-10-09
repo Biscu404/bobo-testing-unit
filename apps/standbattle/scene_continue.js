@@ -8,7 +8,7 @@ import { defOf } from './roster.js';
 export function continueScene(app) {
   let t = 0, last = 99, S = null, def = null;
   return {
-    enter() { S = app.session; t = 0; last = 99; def = defOf(S.p1); app.music(0); sfxDefeat(); },
+    enter() { S = app.session; t = 0; last = 99; def = defOf(S.p1); app.music(0, 'menu'); sfxDefeat(); },
     update(dt) {
       t += dt / 1000;
       const n = Math.max(0, Math.ceil(TIMING.CONTINUE_SECS - t));
