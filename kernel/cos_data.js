@@ -573,7 +573,8 @@ export const DECO_SVG = {
    Each list is { id, name, price, blurb }; `Cos.has(cat, id)` is how the app finds out it has been bought, and `COS_CATS[cat].app`
    (kernel/cos.js) is which app to open from the shop. Adding to a list is all it takes to put a new thing on a shelf. */
 
-/* BACKDROPS: pictures that are already in the machine, pressed to the sixteen colours (assets/blackout/). Buying one writes it into
+/* BACKDROPS: the pictures of the blackout, pressed to the sixteen colours (assets/blackout/). Each one is on this shelf only once
+   a blackout has dealt it (kernel/backdrops.js: `Cos.shelf` hides the rest, `Cos.buy` refuses them). Buying one writes it into
    ::/Home/Backdrops as a real picture too, so the viewer and a folder can set it as the background as well. */
 export const WALLS = [
   { id: 'city',      name: 'SNOWY BRIDGE', price: 300, src: 'assets/blackout/city.png',      blurb: 'A bridge in a city, in the snow. Nobody is on it.' },
@@ -582,7 +583,28 @@ export const WALLS = [
   { id: 'turtle',    name: 'LITTLE ONE',   price: 350, src: 'assets/blackout/turtle.png',    blurb: 'A baby turtle. It has somewhere to be.' },
   { id: 'boulder',   name: 'THE PROBLEM',  price: 450, src: 'assets/blackout/boulder.png',   blurb: 'A wall, a handhold, and a Saturday.' },
   { id: 'ultrakill', name: 'THE CORRIDOR', price: 450, src: 'assets/blackout/ultrakill.png', blurb: 'Stone, blood, and a long way down.' },
-  { id: 'lol',       name: 'THE MATCH',    price: 500, src: 'assets/blackout/lol.png',       blurb: 'Nineteen minutes in. Somebody should have backed.' }
+  { id: 'lol',       name: 'THE MATCH',    price: 500, src: 'assets/blackout/lol.png',       blurb: 'Nineteen minutes in. Somebody should have backed.' },
+  { id: 'posers', name: 'THE FIVE POSERS', price: 400, src: 'assets/blackout/posers.png', blurb: 'Five men, one yellow square, and a pose they have held since the first book.' },
+  { id: 'penguin', name: 'THE PENGUIN', price: 350, src: 'assets/blackout/penguin.png', blurb: 'A penguin in a leather jacket, pointing straight at you. He knows.' },
+  { id: 'shard', name: 'THE SHARD SITTER', price: 450, src: 'assets/blackout/shard.png', blurb: 'Someone sitting in a room full of broken glass, very calm about it.' },
+  { id: 'stargazing', name: 'STARGAZING', price: 400, src: 'assets/blackout/stargazing.png', blurb: 'A girl in the grass, looking up. The grass is not sure about this.' },
+  { id: 'lake', name: 'THE FROZEN LAKE', price: 350, src: 'assets/blackout/lake.png', blurb: 'A lake under the snow. Nobody has skated on it yet. Nobody will.' },
+  { id: 'mosaic', name: 'THE SKULL MOSAIC', price: 450, src: 'assets/blackout/mosaic.png', blurb: 'Pink and blue, and a great many skulls in a pattern that means nothing good.' },
+  { id: 'bedroom', name: 'THE NEON BEDROOM', price: 400, src: 'assets/blackout/bedroom.png', blurb: 'A bedroom with a television, a bed and a lot of purple. The television is on.' },
+  { id: 'stairs', name: 'THE STAIRS', price: 350, src: 'assets/blackout/stairs.png', blurb: 'A long flight of stairs, and a girl at the bottom who has decided not to.' },
+  { id: 'lawn', name: 'THE LAWN WAR', price: 500, src: 'assets/blackout/lawn.png', blurb: 'Sunflowers against zombies, on a lawn that will never be finished.' },
+  { id: 'hill', name: 'THE HILL', price: 450, src: 'assets/blackout/hill.png', blurb: 'A bear and a child on a hill at sunset. The bear has a hat and no plans.' },
+  { id: 'temple', name: 'THE THIRD TEMPLE', price: 500, src: 'assets/blackout/temple.png', blurb: 'Ninety-three percent of the third temple, and one small figure at the bottom of it.' },
+  { id: 'poster', name: 'THE BOOK AND THE MASK', price: 450, src: 'assets/blackout/poster.png', blurb: 'Two men in the dark, one with a book and one with a mask. Neither is smiling.' },
+  { id: 'glitter', name: 'THE GLITTER GIRL', price: 400, src: 'assets/blackout/glitter.png', blurb: 'Purple hair, a long dress and a great deal of static. The static is on purpose.' },
+  { id: 'chaos', name: 'WHY IS THE WORLD IN CHAOS', price: 300, src: 'assets/blackout/chaos.png', blurb: 'A question, and a man who knows the answer. He has not said it yet.' },
+  { id: 'meow', name: 'THE MEOW NIGHT', price: 350, src: 'assets/blackout/meow.png', blurb: 'Something in a hood, in a green night, asking whether that was a meow.' },
+  { id: 'grin', name: 'THE GRIN', price: 300, src: 'assets/blackout/grin.png', blurb: 'The face everybody knows the meaning of, and nobody will explain.' },
+  { id: 'boot', name: 'THE RED BOOT', price: 450, src: 'assets/blackout/boot.png', blurb: 'A red boot with a point you could hang a coat on. Dave has seen worse.' },
+  { id: 'halo', name: 'THE HALO ANGEL', price: 500, src: 'assets/blackout/halo.png', blurb: 'An angel in black and white, and a halo that is not doing its job.' },
+  { id: 'aurora', name: 'THE NORTHERN LIGHTS', price: 450, src: 'assets/blackout/aurora.png', blurb: 'A village road under green lights. The snow is the only thing keeping its temper.' },
+  { id: 'axe', name: 'THE AXE', price: 400, src: 'assets/blackout/axe.png', blurb: 'An axe with a worn handle and a blade that has done real work. Mind the edge.' },
+  { id: 'pond', name: 'THE ICE POND', price: 400, src: 'assets/blackout/pond.png', blurb: 'A boy crouched by a frozen pond with a stick, waiting for the ice to say something.' }
 ];
 
 /* CRAYON: eight more brushes, and the clear sheets it can draw on over the drawing */

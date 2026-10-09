@@ -177,7 +177,7 @@ from `runBlackout` (it already knows which scene it dealt), `bottle-empty{ drink
 | bt_flight6 | A FLIGHT | Drink a measure of six different drinks. | E | S | - | set tasted |
 | bt_flight9 | THE WHOLE SHELF | Drink a measure of all nine drinks. | E | G | - | set tasted |
 | bt_lights | LIGHTS OUT | Pass out once. | J | B | - | blackout |
-| bt_dreams | NINE DREAMS* | (hint) *The machine has nine dreams. It does not repeat itself until it has had them all.* See all nine blackout scenes. | E | G | - | set scenes |
+| bt_dreams | THIRTY DREAMS* | (hint) *The machine has thirty dreams. It does not repeat itself until it has had them all.* See all thirty blackout scenes. | E | G | - | set scenes |
 
 Notes. The blackout deck is dealt without repeats, so `bt_dreams` takes exactly nine passes; the second blackout comes much sooner than the first
 because waking leaves four measures in the blood (`BAC.WAKE`). `bt_limit` is the one with a point: it is the only trophy that rewards reading the

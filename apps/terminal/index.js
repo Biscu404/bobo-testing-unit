@@ -62,6 +62,7 @@ const TERM = {
      "  DEGAUSS ....... THE COILS",
      "  PANIC ......... RING 0 HAS NO NET",
      "  WELCOME ....... THE TOUR OF WHAT THIS MACHINE HAS",
+     "  CREDITS ....... WHO MADE IT, AND WHO TESTED IT",
      "HOLYC IS THE SHELL. A BARE STRING PRINTS:",
      "  \"HELLO\\n\";",
      "A FUNCTION NAME ON ITS OWN IS A CALL:",
@@ -654,6 +655,7 @@ export default {
         case 'EXIT': case 'QUIT':       print(['THERE IS NOWHERE TO EXIT TO.'], 'l-holy'); break;
         case 'HELP':                    print(pick(TERM.help), 'l-ok'); break;
         case 'WELCOME':                 if (window.Welcome) window.Welcome.open(); print(['THE TOUR IS OPEN.'], 'l-ok'); break;
+        case 'CREDITS':                 ctx.openWindow('credits'); print(['THE CREDITS ARE UP.'], 'l-holy'); break;
         case 'DATE': case 'TIME':       print([new Date().toLocaleString()], 'l-ok'); break;
         case 'ECHO':                    print([arg], 'l-ok'); break;
 

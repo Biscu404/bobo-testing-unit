@@ -174,11 +174,13 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
 - **The Jäger passes out.** At the limit (`BAC.LIMIT`) `kernel/blackout.js`
   takes the whole window (not just the tube: the overlay is `position:fixed` over the monitor, bezel and chin included) for ~16 s:
   nine altered scenes (`blackout_a/b.js`, bent by `blackout_fx.js`), unskippable, calmer and without the harshest effects under
-  `prefers-reduced-motion`. **Seven of them are photographs** — a snowy bridge in a city, chickens on a park bench, an ULTRAKILL corridor,
-  a bouldering wall, a heap of CDs, a baby turtle, a League of Legends match — pressed to the sixteen colours and Floyd-Steinberg dithered, 320 px wide,
-  in `assets/blackout/*.png` (made by `python3 scripts/make-blackout-art.py name=photo.jpg …`; needs Pillow + numpy, the machine never
+  `prefers-reduced-motion`. **Twenty-eight of them are photographs** — the seven first ones (a snowy bridge in a city, chickens on a park bench, an ULTRAKILL corridor,
+  a bouldering wall, a heap of CDs, a baby turtle, a League of Legends match) and twenty-one of the owner's own pictures (`posers`, `halo`, `aurora`, `temple`...
+  each named for what it shows, the scene id is the backdrop's id in `cos_data.js`) — pressed to the sixteen colours and Floyd-Steinberg dithered, 320 px wide,
+  in `assets/blackout/*.png` (made by `python3 scripts/make-blackout-art.py name=photo.jpg …`, which shares `scripts/vga_dither.py`; needs Pillow + numpy, the machine never
   runs it). `kernel/blackout_photo.js` loads them and drifts the 320×180 view up and down inside each (whole rows, never resampled; the
-  pan ranges live there). The other two are drawn: a Discord channel and a Debian/GNOME desktop with neofetch
+  pan ranges live there; 999 is the bottom of the picture). A photograph is often torn by `track` (`blackout_fx.js`, a band slid sideways, pixels only moved). **Each
+  picture is dealt, it is marked seen** (`kernel/backdrops.js`, `templeos.backdrops.v1`, `Backdrops.mark` in `blackout.js`). The other two are drawn: a Discord channel and a Debian/GNOME desktop with neofetch
   (`blackout_b.js`, text in the 3×5 font of `blackout_draw.js`; its still parts are cached once with `layer()`, shades the sixteen can't
   make are 2×2 weaves from `dith()`). A scene's photo is optional: one that fails to load is never dealt. The double exposure is a
   checkerboard of pixels, not an alpha blend, so every pixel stays one of the sixteen. To add a scene: draw it (or add a photo to `FILES`
@@ -233,7 +235,8 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
 
 - **Dave's shop is a set of shelves** (`kernel/cos_data.js` is the stock, `kernel/cos.js` the till). A category in `COS_CATS` has a `kind`:
   `look` (frames, logos, pointers, schemes: worn one at a time, previewed by hovering), `stock` (pots, seeds: what the garden grows with),
-  `wall` (BACKDROPS: the seven pressed photographs already in `assets/blackout/`; buying one sets the desktop and writes a real picture
+  `wall` (BACKDROPS: the blackout's pictures; **a backdrop is not on the shelf at all until a blackout has dealt it** (`Cos.shelf` hides it, `Cos.buy` refuses it,
+  `backdrop-seen` re-lists it in an open shop); buying one sets the desktop and writes a real picture
   to `::/Home/Backdrops/`, and equipping sets the wallpaper through `kernel/wallpaper.js`) and `unlock` (CRAYON, GARAGE, DRINKS, ELEPHANT: something an
   app was given; `app` names which one, and the card opens it). `Cos.buy` ends in `Cos.tell`: every subscriber and a `cos-changed`
   window event hear it, so an open app (a crayon with a locked brush, a garage picker) updates at once. **A new thing for sale is one
@@ -286,7 +289,7 @@ CI (`.github/workflows/build.yml`) builds and tests both installers. Record of t
   through their own `achSun` and are only shown in the ledger. **Writing a trophy** is one line in `apps/<id>/trophies.js` (`t(id, NAME, tier, kind, 'the exact condition.', rule.on('win', p => p.hits === 0))`
   from `apps/trophy_kit.js`; `secret(...)` takes a rumour as well; Bekkedal's are `{no,en}`), listed in `APPS` in `kernel/trophies_defs.js`; **a description is the exact condition**
   and a "never" is scoped to a run, a room or a session (`scope`). `scripts/check-trophies.mjs` holds ids (prefixed with their game), names (capitals, 34 characters), descriptions (one
-  sentence, no two the same), the secrets' rumours, the numbers other files promise (the nine blackout scenes, Bekkedal's crops and places) and the terminal's output.
+  sentence, no two the same), the secrets' rumours, the numbers other files promise (the thirty blackout scenes, Bekkedal's crops and places) and the terminal's output.
   **An app reaches the ledger through `apps/trophy_scope.js`** (`const T = trophies('sweeper')`; `T.emit`, `add`, `max`, `mark`, `streak`, `check`, `hold`/`release`, `drain`, `row`),
   which does nothing, quietly, if `window.Trophies` is gone: a trophy must never get into a game and a game must run without the ledger (`ctx.trophy` is the same scope, or `null`, for an app that
   is handed `ctx`). The kernel's own side is `sys.emit(...)` from `kernel/trophy_hook.js`, and `kernel/trophies_wire.js` hears what needs no line added (purchases, windows, the SUN
@@ -668,6 +671,11 @@ The machine's base rule is that all colour comes from `VGA16` (`kernel/god.js`) 
   (progression, skill, explore, creative, joke), a search, EN or EN+NO for Bekkedal's bilingual ones, and a pin whose progress is echoed in the title bar. A seal lights when every trophy of a game is
   earned. `model.js` (pure), `cards.js`, `style.css`; arrows move, Enter pins, Tab flips between games and cards, Esc closes. `fluid`.
 - `trophybox`: `apps/trophybox/index.js` - **TROPHYBOX.EXE** (see **The trophy box**): the gold trophies and seals as cups on a shelf, pulled out onto the desktop with the pointer. `fluid`.
+- `credits`: `apps/credits/index.js` - **CREDITS.EXE**, opened by `CREDITS` in the terminal. A fixed 640×520 canvas (`data-fit`, drawn once): the creator in the middle in a
+  sunburst halo (`draw.js`, rings and rays in VGA16, the portrait a disc so the halo is round his head), the three playtesters in a row beneath, each with a cross
+  behind (its arm wider than the portrait, so the cross shows round it). Portraits are `assets/credits/*.png`, made by `python3 scripts/make-credit-art.py name=photo …`
+  (64×64, dithered, the creator's transparent outside a circle). The names are the owner's (`TEITEOTEI`, `BISCU`, `GHEGHE`, `THEA`; the third playtester's
+  photo is `MagicCheese.png`, read as GHEGHE from the thanks).
 - `holyc`: `apps/holyc/index.js` - **HOLYC.EXE**, learn HolyC by typing it and then make small apps with it. Three tabs: **LESSONS** (seven, thirty-four steps: `lessons_a/b.js`), **PUZZLES**
   (nine chapters, fifty-six, three hints each: `puzzles_a..d.js`) and the **WORKSHOP** (templates, SAVE to `::/Home/HolyC/NAME.HC`, INSTALL on the desktop). The lab (`lab.js`) is the same in all of them: an
   editor (`editor.js` + `highlight.js`: a textarea over a coloured copy, line numbers, auto-indent, error lines, text typed in a letter at a time for TYPE IT FOR ME / SHOW ME), RUN (CTRL+ENTER),

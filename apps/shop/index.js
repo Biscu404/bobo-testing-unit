@@ -76,7 +76,7 @@ export default {
       const r = document.createElement('span');
       r.className = 'r';
       const n = keys.reduce((a, k) => a + window.Cos.owned(k).length, 0);
-      const tot = keys.reduce((a, k) => a + COS_CATS[k].list.length, 0);
+      const tot = keys.reduce((a, k) => a + window.Cos.shelf(k).length, 0);
       r.textContent = n + ' / ' + tot + ' OWNED';
       footEl.appendChild(l);
       footEl.appendChild(r);
@@ -99,7 +99,7 @@ export default {
       if (!gridEl) return;
       window.Cos.hover(null, null);
       gridEl.innerHTML = '';
-      const list = COS_CATS[cat].list;
+      const list = window.Cos.shelf(cat);
       list.forEach(it => {
         const owned = window.Cos.has(cat, it.id);
         const eq = isEq(cat, it.id);

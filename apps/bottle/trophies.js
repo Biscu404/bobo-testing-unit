@@ -6,7 +6,7 @@ import { t, secret, rule } from '../trophy_kit.js';
 import { DRINKS } from '../../kernel/cos_data.js';
 const on = rule.on;
 
-export const SCENES_TOTAL = 9;                         /* kernel/blackout.js: seven photographs and two drawn screens (scripts/check-trophies.mjs holds the number) */
+export const SCENES_TOTAL = 30;                        /* kernel/blackout.js: twenty-eight photographs and two drawn screens (scripts/check-trophies.mjs holds the number) */
 export const BOTTLE_MEASURES = 17;                     /* a 700 ml bottle at 40 ml a measure: seventeen pours, with a sip left */
 
 export const TROPHIES = [
@@ -19,7 +19,7 @@ export const TROPHIES = [
   t('bt_flight6', 'A FLIGHT', 'S', 'E', 'Drink a measure of six different drinks.', rule.sets('tasted', 6)),
   t('bt_flight9', 'THE WHOLE SHELF', 'G', 'E', 'Drink a measure of every drink Dave sells.', rule.sets('tasted', DRINKS.filter(d => !d.reward).length)),
   t('bt_lights', 'LIGHTS OUT', 'B', 'J', 'Pass out once.', on('blackout')),
-  secret('bt_dreams', 'NINE DREAMS', 'G', 'E', 'The machine has nine dreams. It does not repeat itself until it has had them all.', 'See all nine blackout scenes.', rule.sets('scenes', SCENES_TOTAL))
+  secret('bt_dreams', 'THIRTY DREAMS', 'G', 'E', 'The machine has thirty dreams. It does not repeat itself until it has had them all.', 'See all thirty blackout scenes.', rule.sets('scenes', SCENES_TOTAL))
 ];
 
 /* the bottle's own save: a measure drunk is a measure drunk */
