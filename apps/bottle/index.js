@@ -6,7 +6,7 @@ import { clamp, makeSlosh, stepSlosh, JAG_FULL, JAG_SHOT, POURED_FILL, BOT_FULL,
 import { startPour, pourStep } from './pour.js';
 import { startDrink, drinkStep, restPose } from './drink.js';
 import { makeGlass3D, setLiquor } from './glass3d.js';
-import { drinkById, paletteOf } from './drinks.js';
+import { drinkById, paletteOf, potionPercent, strengthOf } from './drinks.js';
 import { DRINKS } from '../../kernel/cos_data.js';
 import { scopedListeners, whenGone } from '../lifecycle.js';
 import { poured, drank, loreKnock } from './trophy_calls.js';
@@ -177,12 +177,17 @@ export default {
 
     /* ---- what a click does ----------------------------------------------- */
     function next() {
-      if (full()) { S.lore = !!(window.Drunk && window.Drunk.loreOn && window.Drunk.loreOn() && drink.abv > 0); startDrink(S); sfx.sip(); return true; }
+      if (full()) {
+        S.lore = !!(window.Drunk && window.Drunk.loreOn && window.Drunk.loreOn() && drink.abv > 0);
+        S.pct = drink.potion ? potionPercent() : null;                       /* the homemade potion: this sip is whatever it is */
+        S.sipUnits = strengthOf(drink, S.pct);
+        startDrink(S); sfx.sip(); return true;
+      }
       if (S.ml < JAG_SHOT) { say('EMPTY. BUY ANOTHER ONE.'); sfx.deny(); return false; }
       startPour(S); sfx.cap(); return true;
     }
     /* ---- which bottle is on the table ---------------------------------------- */
-    const quip = d => d.name + '.  ' + d.abv + '% VOL.  ' + (d.strength === 0 ? 'NOTHING IN IT AT ALL.' : d.strength >= 1.5 ? 'EACH ONE COUNTS AS ' + d.strength.toFixed(1) + ' JÄGER. GO CAREFULLY.' : d.strength < 0.7 ? 'GENTLE: IT TAKES A LOT OF THEM.' : 'ABOUT AS STRONG AS WHAT YOU WERE DRINKING.');
+    const quip = d => d.potion ? d.name + '.  ?% VOL.  SOMEWHERE BETWEEN ONE AND NINETY-NINE, AND A DIFFERENT ONE EVERY SIP.' : d.name + '.  ' + d.abv + '% VOL.  ' + (d.strength === 0 ? 'NOTHING IN IT AT ALL.' : d.strength >= 1.5 ? 'EACH ONE COUNTS AS ' + d.strength.toFixed(1) + ' JÄGER. GO CAREFULLY.' : d.strength < 0.7 ? 'GENTLE: IT TAKES A LOT OF THEM.' : 'ABOUT AS STRONG AS WHAT YOU WERE DRINKING.');
     function setDrink(d) {
       S.shelf[drink.id] = S.ml;                                  /* the one on the table goes back on the shelf, as full as it is */
       drink = d; PAL = paletteOf(d);
@@ -254,10 +259,11 @@ export default {
       S.phase = 'idle'; S.drunk++; S.rest = BREATHER;
       S.gls.vol = Math.min(S.gls.vol, 0.03);
       sfx.down(); sfx.ahh(); save();
-      if (window.Drunk && !S.lore) window.Drunk.drink(drink.strength);                  /* with LORE ACCURATE on, the first swallow was the whole journey */
-      drank(drink.id, drink.strength);
+      const units = S.sipUnits != null ? S.sipUnits : drink.strength;
+      if (window.Drunk && !S.lore) window.Drunk.drink(units);                           /* with LORE ACCURATE on, the first swallow was the whole journey */
+      drank(drink.id, units);
       const lines = JAG_LINES[window.Drunk ? window.Drunk.stage() : 'SOBER'] || JAG_LINES.SOBER;
-      say(S.lore ? 'LORE ACCURATE. ONE SIP.' : lines[S.drunk % lines.length]);
+      say(S.lore ? 'LORE ACCURATE. ONE SIP.' : S.pct ? 'THAT SIP WAS ' + S.pct + '%. ' + lines[S.drunk % lines.length] : lines[S.drunk % lines.length]);
     }
 
     /* ---- the simulation --------------------------------------------------- */

@@ -1,5 +1,6 @@
 import { DECO_NEW } from './cos_deco.js';
 import { FRAMES_R, LOGOS_R, CURSORS_R, SCHEMES_R, ELEPHANT_R, DRINKS_R } from './cos_rewards.js';
+import { DRINKS_G } from './cos_gifts.js';
 
 export const FRAMES = [
   {
@@ -669,11 +670,13 @@ export const ELEPHANT = [
 ];
 
 /* what Dave does not sell (kernel/cos_rewards.js): on the same shelves, after everything that is for sale */
-FRAMES.push(...FRAMES_R); LOGOS.push(...LOGOS_R); CURSORS.push(...CURSORS_R); SCHEMES.push(...SCHEMES_R); ELEPHANT.push(...ELEPHANT_R); DRINKS.push(...DRINKS_R);
-const unsold = a => (a.reward || a.earn) ? 1 : 0;
+FRAMES.push(...FRAMES_R); LOGOS.push(...LOGOS_R); CURSORS.push(...CURSORS_R); SCHEMES.push(...SCHEMES_R); ELEPHANT.push(...ELEPHANT_R);
+/* DRINKS: what the four on the credits screen give (not on the shelf until given: kernel/gifts.js), then what a trophy gives, after everything for sale */
+DRINKS.push(...DRINKS_G, ...DRINKS_R);
+const unsold = a => (a.reward || a.earn || a.gift) ? 1 : 0;
 [FRAMES, LOGOS, CURSORS, SCHEMES, WALLS].forEach(l => l.sort((a, b) => unsold(a) - unsold(b) || a.price - b.price));
 /* the items that are for sale: a count of "everything Dave has" never includes what only a trophy can give */
-export const forSale = list => list.filter(it => !it.reward && !it.earn);
+export const forSale = list => list.filter(it => !it.reward && !it.earn && !it.gift);
 
 /* Solitaire's trophies each give one thing for the table (apps/solitaire/cosmetics.js): earned, never bought */
 import { ITEMS as SOL_ITEMS } from '../apps/solitaire/cosmetics.js';

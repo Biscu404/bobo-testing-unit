@@ -5,8 +5,14 @@
      label    the paper, and the ink on it is whichever of dark or light reads on it
    The Jägermeister the game began with keeps its own hand-picked values (a stag, and green glass the liquor is nearly black behind). */
 import { DRINKS } from '../../kernel/cos_data.js';
+import { GIFT_LABELS } from './labels_gifts.js';
 
 export const drinkById = id => DRINKS.find(d => d.id === id) || DRINKS[0];
+
+/* THE HOMEMADE POTION is a different strength every sip: between one and ninety-nine per cent. `pct` is what this sip is, and a measure of it counts as that many parts in the
+   thirty-five the machine was calibrated on (Jägermeister is 1) */
+export const potionPercent = (r = Math.random()) => 1 + Math.floor(Math.min(0.9999999, Math.max(0, r)) * 99);
+export const strengthOf = (d, pct) => (d.potion ? (pct || potionPercent()) / 35 : d.strength);
 
 const rgbOf = h => [parseInt(h.substr(1, 2), 16), parseInt(h.substr(3, 2), 16), parseInt(h.substr(5, 2), 16)];
 const hexOf = c => '#' + c.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
@@ -67,7 +73,7 @@ export function paletteOf(d) {
     const base = mix(mix(L, g, 0.4), K, 0.1);
     const room = c => rgbOf(c);
     const [sub1, sub2] = PRINT[d.id] || ['', d.abv + '% vol'];
-    p = { shape: look.shape, capKind: look.capKind || null, colors, text: { emboss: d.name, title: d.name.length > 12 ? d.name.split(' ')[0] : d.name, sub1, sub2, icon: ICON[d.id] || null },
+    p = { shape: look.shape, capKind: look.capKind || null, colors, text: { emboss: d.name, title: d.name.length > 12 ? d.name.split(' ')[0] : d.name, sub1, sub2, icon: ICON[d.id] || null, paint: GIFT_LABELS[d.id] || null },
       bottleLiquid: { base, mid: mix(L, g, 0.3), hi: mix(L, W, 0.35), edge: mix(base, K, 0.5), foam: '#f4f4ea' },
       stream: [mix(L, K, 0.25), L, mix(L, W, 0.45)], fizz: mix(L, K, 0.12), drop: mix(L, K, 0.1), foam: mix(L, W, 0.6), title: lum(lb) > 0.3 ? lb : mix(lb, W, 0.4),
       room: { liq: room(L), liqDk: room(mix(L, K, 0.55)), top: room(mix(L, W, 0.3)), foam: room(mix(L, W, 0.7)) } };

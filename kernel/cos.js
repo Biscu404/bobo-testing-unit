@@ -82,8 +82,10 @@ const Cos = {
   shelf(cat) {
     const c = COS_CATS[cat];
     if (!c) return [];
-    if (c.kind !== 'wall') return c.list;
-    return c.list.filter(it => this.has(cat, it.id) || Backdrops.seen(it.id));
+    /* a gift (kernel/gifts.js) is not on the shelf until it has been given */
+    const list = c.list.filter(it => !it.gift || this.has(cat, it.id));
+    if (c.kind !== 'wall') return list;
+    return list.filter(it => this.has(cat, it.id) || Backdrops.seen(it.id));
   },
   find(cat, id) {
     const c = COS_CATS[cat];
@@ -101,7 +103,7 @@ const Cos = {
 
   buy(cat, id) {
     const it = this.find(cat, id);
-    if (!it || this.has(cat, id) || it.reward || it.earn) return false;       /* what a trophy gives is not for sale */
+    if (!it || this.has(cat, id) || it.reward || it.earn || it.gift) return false;       /* what a trophy gives, and what the four give, is not for sale */
     if (COS_CATS[cat].kind === 'wall' && !Backdrops.seen(id)) return false;   /* a backdrop is for sale once a blackout has shown it */
     if (!window.Economy.spend(it.price, 'DAVE: ' + it.name)) return false;
     this.st.owned[cat].push(id);

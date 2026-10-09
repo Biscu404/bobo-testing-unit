@@ -13,6 +13,7 @@ import { runAutoExec } from "./autoexec.js";
 import { sys } from "./trophy_hook.js";
 import "./vault.js";
 import "./drunk.js";
+import { Gifts } from "./gifts.js";
 import { Music } from './music.js';
 import { SunUI } from './economy.js';
 import { MixerUI } from './mixer.js';
@@ -225,6 +226,7 @@ const start = () => {
   initHardware();
   wireCtxGuard();
   Cos.boot();
+  try { Gifts.boot(); } catch (e) { /* a gift must never stop the machine starting */ }
   drawWordmark();
   if (CRT.on) {
     document.getElementById('screen').classList.remove('off');

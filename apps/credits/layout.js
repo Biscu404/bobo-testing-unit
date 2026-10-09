@@ -49,3 +49,13 @@ export function wordsOf(p) {
     ? [{ t: p.name, px: 26, y: below + 20, ink: 'white' }, { t: p.role, px: 18, y: below + 38, ink: 'yellow' }]
     : [{ t: p.name, px: 20, y: below + 20, ink: 'white' }];
 }
+
+/* where each giver's arm starts: on the edge of its portrait that faces `stage` (the point in the middle of the picture where a hand holds a thing out), a little inside it */
+export function anchorsOf(at, stage) {
+  const out = {};
+  CAST.forEach(c => {
+    const p = at[c.id], dx = stage.x - p.cx, dy = stage.y - p.cy, d = Math.hypot(dx, dy) || 1, r = p.box / 2 - 6;
+    out[c.id] = { x: Math.round(p.cx + dx / d * r), y: Math.round(p.cy + dy / d * r) };
+  });
+  return out;
+}
