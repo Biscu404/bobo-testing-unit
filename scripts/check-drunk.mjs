@@ -7,6 +7,7 @@
    the thing by clicking, which is the app's job (apps/bottle: nothing is queued, and a
    breather follows every measure) and is simulated here by the cycle. */
 import { BAC, newBlood, swallow, step, over, felt, levelOf, stageOf, wake } from '../kernel/drunk_bac.js';
+import { styleOf, styleIndex, schedule } from '../apps/bottle/styles.js';
 
 let bad = 0;
 const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) bad++; };
@@ -30,6 +31,21 @@ const easy = toFloor(20);
 ok(easy.n <= BOTTLE, 'even one every 20 s is out inside the bottle: ' + easy.n + ' of ' + BOTTLE + ' measures, ' + easy.t.toFixed(0) + ' s');
 ok(toFloor(60).t === Infinity, 'one a minute never gets there (settles at ' + toFloor(60).felt.toFixed(1) + ')');
 ok(toFloor(45).t > 600, 'one every 45 s is slow enough to take ten minutes or more: ' + toFloor(45).t.toFixed(0) + ' s');
+/* ...and the same with the hands: the drunker, the slower each measure goes (apps/bottle/styles.js: fifteen hands, none ever quicker than the sober one), so the journey can only be
+   longer than the cycle above, never shorter, and must still end inside one bottle */
+{
+  const cycleOf = lvl => { const st = styleOf(lvl);
+    const pour = 3.5 + (schedule(st, 0.7, 0.5).T - 0.7) + (schedule(Object.assign({}, st, { thoughts: [], lead: 0, tail: 0 }), 0.6, 1).T - 0.6) + 0.3 * styleIndex(lvl) / 14;
+    return pour + schedule(st, 3.5, 1).T + 2.6; };
+  const bb = newBlood(); let t = 0, next = 0, n = 0, hands = new Set(), longest = 0;
+  while (t < 3600 && !over(bb)) {
+    if (t >= next) { const c = cycleOf(levelOf(bb)); hands.add(styleIndex(levelOf(bb))); longest = Math.max(longest, c); swallow(bb); n++; next = t + c; }
+    step(bb, 0.1); t += 0.1;
+  }
+  ok(over(bb) && n >= 10 && n <= BOTTLE - 2, 'with the hands slowing as it goes, non-stop drinking is still out inside the bottle: ' + n + ' of ' + BOTTLE + ' measures, ' + t.toFixed(0) + ' s');
+  ok(t >= fast.t - 1 && t < 220, 'and it takes longer than the sober cycle did, never less (' + t.toFixed(0) + ' s against ' + fast.t.toFixed(0) + '), under four minutes');
+  ok(hands.size >= 10, 'on the way it goes through ' + hands.size + ' of the fifteen hands, the slowest cycle ' + longest.toFixed(1) + ' s');
+}
 const b = newBlood(); for (let i = 0; i < 8; i++) swallow(b); for (let i = 0; i < 6000; i++) step(b, 0.1);
 ok(felt(b) < 0.5, 'eight measures and ten minutes of rest: all but gone (' + felt(b).toFixed(2) + ')');
 const w = newBlood(); wake(w);

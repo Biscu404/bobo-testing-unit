@@ -10,7 +10,8 @@
 import { BOT, GLS } from './art.js';
 import { rot } from './raster.js';
 import { geometry, innerArea } from './shapes.js';
-import { clamp, lerp, ease, arc, SHOT_FRAC, POURED_FILL, GRAV, sway, drift, lurch } from './physics.js';
+import { clamp, lerp, ease, arc, SHOT_FRAC, POURED_FILL, GRAV, sway, lurch } from './physics.js';
+import { STYLES, styleOf, schedule, progress, hand, circle, overshoot, slipDown, tipError } from './styles.js';
 
 const KQ = 46;                                   /* flow, px^2 per second, per px of head ^ 1.5, from the Jägermeister's bottle */
 const N_JAG = innerArea(geometry('jag'));        /* how much that one holds, in pixels: another bottle's flow is in proportion */
@@ -26,15 +27,20 @@ const GCX = GLS.rest[0];
 export function startPour(S) {
   S.phase = 'pour'; S.t = 0; S.ml0 = S.ml; S.poured = 0; S.flight = []; S.glugIn = 0.1; S.dripIn = 0;
   S.bot.head = 0; S.vol0 = S.bot.vol; S.gls0 = S.gls.vol; S.lx = lipWorld(REST_C, 0, S.bot)[0]; S.a1 = 0; S.sub = 'carry'; S.t1 = 0; S.handA = 0;
+  /* the hand this measure is poured with: one of fifteen, by how drunk it is (styles.js); the sober one is the way it always went */
+  const st = S.sty = S.forceStyle != null ? STYLES[S.forceStyle] : styleOf(sway());
+  S.csched = schedule(st, CARRY, 0.5);                                                        /* the carry: its second thoughts are shorter than a drink's */
+  S.rsched = schedule(Object.assign({}, st, { thoughts: [], lead: 0, tail: 0, fumble: null }), RETURN, 1);   /* the way back is just slower */
+  S.slipped = false;
 }
 
 export function pourStep(S, dt, fx) {
   const B = S.bot;
   S.t += dt;
   const t = S.t;
-  /* the hand: steady when sober, and less so with every measure; it drifts sideways and rocks the bottle */
-  const lv = sway(), seed = S.drunk || 0;
-  const handX = drift(t, seed) * lv * 15, handA = drift(t * 1.3 + 2, seed + 7) * lv * 0.16;
+  /* the hand: steady when sober, and unsteady in the way of its style; it drifts sideways, rocks the bottle and goes round in circles */
+  const st = S.sty || STYLES[0], seed = S.drunk || 0, hd = hand(st, t, seed), cc = circle(st, t, seed);
+  const handX = hd.x + cc.x, handA = hd.a;
   const surfG = fx.glassSurf;                    /* where the liquor in the glass stands, from the last frame */
   /* how far the surface stands above the lower edge of the lip, a little smoothed: a
      real neck does not flicker open and shut a dozen times a second */
@@ -47,17 +53,20 @@ export function pourStep(S, dt, fx) {
   const restLip = lipWorld(REST_C, 0, B);
 
   if (S.sub === 'carry') {
-    const u = clamp(t / CARRY, 0, 1), e = ease(lurch(u, 0.6 * lv));
-    if (t > 0.18 && B.capOn) { B.capOn = false; fx.sfx.cap(); }
-    const lx = lerp(restLip[0], GCX - 46, e), ly = lerp(restLip[1], 150, e) - 54 * Math.sin(Math.PI * e);
+    const u = progress(S.csched, t), e = ease(lurch(u, st.lurch * 0.75)), ov = overshoot(st, u);
+    if (u > 0.05 && B.capOn) { B.capOn = false; fx.sfx.cap(); }
+    const dip = slipDown(st, u);
+    if (dip > 4 && !S.slipped) { S.slipped = true; fx.sfx.clink && fx.sfx.clink(); }                /* it slips, and knocks the glass */
+    const lx0 = lerp(restLip[0], GCX - 46, e), ly0 = lerp(restLip[1], 150, e) - 54 * Math.sin(Math.PI * e);     /* where the hand is going */
+    const lx = lx0 + ov * 120, ly = ly0 - ov * 70 + dip + cc.y;                                                  /* where it is */
     B.a = 1.0 * ease(clamp((u - 0.2) / 0.8, 0, 1)) + handA * u;
     B.c = centreFor([lx + handX * u, ly], B.a, B);
     S.handA = handA * u;
-    S.lx = lx; S.ly = ly;
-    if (u >= 1) { S.sub = 'pour'; S.t1 = t; }
+    S.lx = lx0; S.ly = ly0;
+    if (t >= S.csched.T) { S.sub = 'pour'; S.t1 = t; }
   } else if (S.sub === 'pour' || S.sub === 'cut') {
     const cutting = S.sub === 'cut';
-    const want = S.poured > SHOT_FRAC * 0.85 ? 3 : 4.5;
+    const want = (S.poured > SHOT_FRAC * 0.85 ? 3 : 4.5) + tipError(st, t, seed) * 2;      /* a hand that tips too far, then not far enough */
     if (!cutting) {
       B.a = clamp(B.a + clamp(2.2 * (want - head), -0.5, 0.9) * dt + (handA - (S.handA || 0)), 0, 2.7);
     S.handA = handA;
@@ -73,7 +82,7 @@ export function pourStep(S, dt, fx) {
     const hit = arc(lw[0], lw[1], vx0, vy0, surfG);
     S.lx += ((GCX - vx0 * hit.t) - S.lx) * Math.min(1, 7 * dt);
     S.ly = lerp(S.ly, 156 - 10 * clamp(B.a - 1, 0, 1), Math.min(1, 3 * dt));
-    B.c = centreFor([S.lx + handX, S.ly + Math.abs(handA) * 20], B.a, B);
+    B.c = centreFor([S.lx + handX, S.ly + cc.y + Math.abs(handA) * 20], B.a, B);
 
     /* a bottle that holds less lets less through, so a measure takes as long from any of them */
     const kq = KQ * (B.n0 || N_JAG) / N_JAG;
@@ -109,13 +118,13 @@ export function pourStep(S, dt, fx) {
       }
     }
   } else if (S.sub === 'return') {
-    const u = clamp((t - S.tr) / RETURN, 0, 1), e = ease(lurch(u, 0.6 * lv));
+    const u = progress(S.rsched, t - S.tr), e = ease(lurch(u, st.lurch * 0.75));
     B.a = lerp(S.aR, 0, e) + handA * (1 - u);
     const c = centreFor([lerp(S.lx + handX, restLip[0], e), lerp(S.ly, restLip[1], e) - 40 * Math.sin(Math.PI * e)], B.a, B);
     B.c = c;
     if (u > 0.82 && !B.capOn) { B.capOn = true; fx.sfx.cap(); }
     S.stream = Math.max(0, S.stream - dt * 6);
-    if (u >= 1) return true;
+    if (t - S.tr >= S.rsched.T) return true;
   }
   return false;
 }

@@ -2,7 +2,7 @@ import { Snd } from '../../kernel/snd.js';
 import { makeSfx } from './sfx.js';
 import { makeArt, BW, BH, C, GLS, BOT } from './art.js';
 import { makeContainer } from './raster.js';
-import { clamp, makeSlosh, stepSlosh, JAG_FULL, JAG_SHOT, POURED_FILL, BOT_FULL } from './physics.js';
+import { clamp, makeSlosh, stepSlosh, JAG_FULL, JAG_SHOT, POURED_FILL, BOT_FULL, sway } from './physics.js';
 import { startPour, pourStep } from './pour.js';
 import { startDrink, drinkStep, restPose } from './drink.js';
 import { makeGlass3D, setLiquor } from './glass3d.js';
@@ -10,6 +10,7 @@ import { drinkById, paletteOf } from './drinks.js';
 import { DRINKS } from '../../kernel/cos_data.js';
 import { scopedListeners, whenGone } from '../lifecycle.js';
 import { poured, drank } from './trophy_calls.js';
+import { STYLES, styleOf } from './styles.js';
 
 const JAG_KEY = 'templeos.bottle.v1';
 /* what the machine says as you go down, by how far you are */
@@ -137,7 +138,7 @@ export default {
       if (!drinking) {
         R(136, 300, 108, 8, '#1a1008');
         R(137, 301, Math.round(106 * frac), 6, frac > 0.25 ? C.label : '#c8542a');
-        T('BOTTLE ' + S.bottles + (window.Drunk ? '  ·  ' + window.Drunk.stage() : ''), 190, 322, C.dim, 8, 'center');
+        T('BOTTLE ' + S.bottles + (window.Drunk ? '  ·  ' + window.Drunk.stage() : '') + '  ·  HAND: ' + (S.forceStyle != null ? STYLES[S.forceStyle] : styleOf(sway())).name, 190, 322, C.dim, 8, 'center');
         T('DRUNK: ' + S.drunk + ' MEASURE' + (S.drunk === 1 ? '' : 'S') +
           '  (' + (S.drunk * JAG_SHOT / 1000).toFixed(2) + ' L)', 190, 336, C.white, 8, 'center');
       }
