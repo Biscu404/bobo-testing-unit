@@ -1171,6 +1171,12 @@ textarea.editor {
 }
 #mixerbox:hover { border-color: #55FFFF; }
 #taskbar #mixerbox { flex: 0 0 auto; margin-left: 6px; }
+/* Gheghe's present: the cheese button, in the tray beside the mixer (kernel/cheese.js), and the pile it puts on the desk */
+#cheesebtn { display: flex; align-items: center; justify-content: center; flex: 0 0 auto; margin-left: auto; width: 24px; height: 20px; border: 1px solid #555555; background: #000000; cursor: pointer; user-select: none; }
+#cheesebtn:hover { border-color: #FFFF55; }
+#cheesebtn canvas { width: 14px; height: 9px; image-rendering: pixelated; display: block; }
+#taskbar #cheesebtn + #mixerbox { margin-left: 6px; }
+#cheesepile { position: absolute; z-index: 3; pointer-events: none; image-rendering: pixelated; display: none; }
 #mixerpanel {
   position: absolute;
   z-index: 455;

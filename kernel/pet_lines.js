@@ -120,6 +120,20 @@ export const PUSH_LINES = [
   'for your own good, kiddo. i mean the icon'
 ];
 
+/* ---- when he eats the cheese Gheghe left (kernel/cheese.js): a wedge, and now and then a word about it ----------------------------------------- */
+export const CHEESE_LINES = [
+  'cheese. somebody thought of me, pal',
+  'this is the best thing that has happened today',
+  'gheghe has good taste. i have it too. now',
+  'i believe in cheese, friend. and in you',
+  'a wedge. then another wedge. that is the plan',
+  'mm. there are holes in it. i like that for it',
+  'thank you for the cheese, kiddo. i mean it',
+  'nobody has ever said no to this, you know',
+  'i\'m not saying it was the best wedge. i\'m saying it was the best this week'
+];
+export const CHEESE_DONE = ['all gone. i\'m not sad. i\'m thinking about more', 'that was the last of it. thank you, pal', 'an empty corner now. a full elephant. a good swap'];
+
 /* ---- a small goodbye before he lies down ------------------------------------------------------------------------------------ */
 export const GOODBYES_DAY = [
   'i\'m going to lie down for a bit. you carry on, pal',
