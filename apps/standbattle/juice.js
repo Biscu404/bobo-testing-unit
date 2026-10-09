@@ -1,4 +1,4 @@
-/* Juice: hit-stop, directional screen shake, capped particles. §10.
+/* Juice: directional screen shake and capped particles (hit-stop is the sim's now, in frames: fight.js). §10.
    All offsets are snapped to whole pixels — no shimmering at pixel-art
    scale (§11). Shake respects an accessibility toggle (§10, required). */
 
@@ -7,14 +7,11 @@ const PARTICLE_CAP = 140;
 export function createJuice(shakeEnabled) {
   return {
     shakeEnabled: shakeEnabled !== false,
-    hitstopMs: 0,
     shakeDirX: 0, shakeDirY: 0, shakeMag: 0, shakeTime: 0, shakeElapsed: 0,
     shakeX: 0, shakeY: 0,
     particles: [],
 
     setShakeEnabled(on) { this.shakeEnabled = on; },
-
-    triggerHitstop(ms) { this.hitstopMs = Math.max(this.hitstopMs, ms); },
 
     /* dirX/dirY: unit-ish vector along the hit, e.g. (1,0) for a rightward
        punch, (0,1) for a downward slam — never randomized. */
@@ -43,12 +40,8 @@ export function createJuice(shakeEnabled) {
       }
     },
 
-    /* returns true while the sim should stay frozen on a hit-stop frame */
-    update(dtMs) {
-      if (this.hitstopMs > 0) {
-        this.hitstopMs = Math.max(0, this.hitstopMs - dtMs);
-        return true;
-      }
+    /* real time in; `frozen` is the fight's own hit-stop (sim frames, fight.js): the particles hang in the air with everything else, the shake keeps playing */
+    update(dtMs, frozen) {
       const dt = dtMs / 1000;
       if (this.shakeTime > 0) {
         this.shakeElapsed += dt;
@@ -58,6 +51,7 @@ export function createJuice(shakeEnabled) {
         this.shakeY = Math.round(this.shakeDirY * k);
         if (t >= 1) { this.shakeTime = 0; this.shakeX = 0; this.shakeY = 0; }
       }
+      if (frozen) return;
       for (let i = this.particles.length - 1; i >= 0; i--) {
         const p = this.particles[i];
         p.life += dt;
@@ -66,7 +60,6 @@ export function createJuice(shakeEnabled) {
         p.y += p.vy * dt;
         p.vy += 340 * dt;
       }
-      return false;
     }
   };
 }

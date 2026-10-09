@@ -31,7 +31,7 @@ progression, skill, exploration, creative and system-wide goals, and explicit tr
 | Garden | 20 | 9 | 7 | 4 | The Garage | 19 | 9 | 9 | 1 |
 | The Cook | 9 (+24) | 5 | 2 | 2 | The Stack | 7 | 3 | 4 | 0 |
 | Magen | 18 (+98) | 4 | 9 | 5 | Notes | 9 | 5 | 4 | 0 |
-| Stand Battle | 24 | 10 | 10 | 4 | Small tools | 6 | 6 | 0 | 0 |
+| Stand Battle | 47 | 26 | 15 | 6 | Small tools | 6 | 6 | 0 | 0 |
 | Bekkedal | 52 | 18 | 25 | 9 | System | 62 | 34 | 19 | 9 |
 | | | | | | Meta | 15 | 6 | 5 | 4 |
 | **Total** | **342** | **150** | **134** | **58** | | | | | |
@@ -56,7 +56,7 @@ resources,moves,index,map}` and the GDD, `bekkedal/{data,spine,mine,chop,sleep,i
 | Garden | **none** | Synergy tags, 5 perfect racks, chain sweep, night plants, automation | Make the hover text matter: find the perfect racks |
 | The Cook | **24** (`CK_ACH`) | BFS-proved par, kid reactions, undo | Undo-free par, kid collection; keep the 24 |
 | Magen | **98** (`MG_ACH`), 60 of them "own N of building X" | Chain, golden star timing, Shabbat, machloket, ascent | **No skill content at all today**: chain, reaction, discipline, restriction runs |
-| Stand Battle | **none** | Perfect Clash, Step charges, Guard, poise, Momentum, boss phases, 3 run buffs | Skill rows via the hook bus, read-only |
+| Stand Battle | **none** (before the arcade rework; now 47, see `games-2.md`) | Perfect Clash, Step charges, Guard, poise, Momentum, boss phases, 3 run buffs (the belt-scroller) | Skill rows via the hook bus, read-only |
 | Bekkedal | **none** (loft and endings are the completions) | 3 legend fish with 3-part conditions, chop rhythm, mine, 24 heart events, 8 friendships, loft of 64 | Exploration puzzles, restraint, the speed pair |
 | Bottle | **none** | Fixed BAC arithmetic, 7 stages, 9 drinks, 9 blackout scenes | Restraint and collection rather than quantity |
 | Elephant, Crayon, Garage, Stack, Notes | **none** | No score by design | Celebrate what was made or found; never count presses |

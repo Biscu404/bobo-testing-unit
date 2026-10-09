@@ -1,147 +1,66 @@
-/* Shared attack-pattern module library — §9. A boss is a recombination of
-   these plus exactly one bespoke signature move, not a bespoke state
-   machine per enemy. This file only decides WHAT an enemy is doing and for
-   how long; combat.js resolves collisions and damage against that state.
+/* The CPU (spec 12). It is a player: every frame it produces the one integer a keyboard would, from the same movelist and the same frame data a human has, and it
+   sees only what a human sees -- positions, the other fighter's state and the move and frame it is in -- and only as it was `reaction` frames ago.
 
-   Timing is whole frames at the sim's fixed 60Hz step (tech §5 Phase 1) --
-   the ms in each comment is the pre-Phase-1 authored value, kept only for
-   traceability. projectileSpeed stays authored in px/sec (content-author
-   -friendly units); combat.js resolves it to a per-frame delta exactly
-   once, at the moment a projectile spawns. */
-/* `glyph` (GDD §21, Phase 2 deliverable 7): a distinct outline shape per
-   telegraph so colour-blind/male-colour-deficient players (~8% per the
-   GDD) still read which attack is coming -- ring = sweep, chevron = slam,
-   crosshair = ranged. Drawn by arena.js's telegraph(); purely a render
-   hint, the sim never reads it.
+   `bits()` is asked once per sim frame. A decision (ai_think.js) fills `queue` with the inputs of a move (input_plan.js, the very inputs the checks use) or sets a `mode`
+   (hold guard, walk). Being hit throws the plan away. Breaking a throw and the wake-up choice are decided here, once each. */
 
-   `hitbox` (melee patterns only, tech §2.4/§2.5): the AABB rectangle
-   checked once, the instant the pattern's active window opens, via
-   hitbox.js's overlaps() -- replacing the old `Math.abs(dx) <= range`
-   scalar test. Ranged patterns keep `range` only as an AI pattern-
-   selection distance heuristic (pickPattern below); their actual hit test
-   is the projectile-vs-player distance loop in combat_enemy.js, which
-   applies the same tag-based depth tolerance via hitbox.js.
+import { BIT, RULES } from './rules.js';
+import { think, alert } from './ai_think.js';
 
-   `armor` (bool, GDD §3.9): true means this pattern cannot be poise-
-   interrupted during its windup -- always paired with the mandatory
-   telegraph, so it is firm, never unfair (poise.js checks this before
-   forcing a Stagger). `tags` include 'heavy' on patterns that should
-   break a held Guard (defense.js). */
-export const PATTERNS = {
-  sweep: {
-    id: 'sweep', label: 'SWEEP', windupFrames: 20, activeFrames: 10, recoverFrames: 18, // 340/160/300ms
-    range: 84, dmgMult: 1, knockback: 18, hitstopMs: 60, telegraph: '#FFFF55', glyph: 'ring',
-    armor: false, tags: ['melee', 'medium'],
-    hitbox: { x: 42, z: 0, w: 84, tags: ['melee', 'medium'] }
-  },
-  telegraphed_slam: {
-    id: 'telegraphed_slam', label: 'SLAM', windupFrames: 37, activeFrames: 8, recoverFrames: 28, // 620/140/460ms
-    range: 74, dmgMult: 1.9, knockback: 32, hitstopMs: 110, telegraph: '#FF5555', glyph: 'chevron',
-    armor: true, tags: ['melee', 'heavy'],
-    hitbox: { x: 37, z: 0, w: 74, tags: ['melee', 'heavy'] }
-  },
-  projectile: {
-    id: 'projectile', label: 'RANGED', windupFrames: 19, activeFrames: 54, recoverFrames: 18, // 320/900/300ms
-    range: 400, dmgMult: 0.9, knockback: 11, hitstopMs: 50, telegraph: '#55FFFF', glyph: 'crosshair',
-    armor: false, tags: ['ranged'],
-    projectileSpeed: 440, ranged: true
-  },
-  sheer_heart_attack: {
-    id: 'sheer_heart_attack', label: 'SHEER HEART ATTACK', windupFrames: 42, activeFrames: 72, recoverFrames: 31, // 700/1200/520ms
-    range: 460, dmgMult: 1.7, knockback: 25, hitstopMs: 90, telegraph: '#FF55FF', glyph: 'crosshair',
-    armor: true, tags: ['ranged', 'heavy'],
-    projectileSpeed: 360, ranged: true, homing: true
-  }
-};
+const ABORT = { hitstun: 1, blockstun: 1, air: 1, down: 1, thrown: 1, wake: 1, roll: 1, ko: 1 };
 
-const MELEE_MAX_RANGE = 110;
+function snap(o) { return { x: o.x, lane: o.lane, state: o.state, moveId: o.move ? o.move.id : null, mf: o.mf, crouch: o.crouch, guard: o.guard, y: o.y }; }
 
-/* Choose a pattern from the enemy's list, biased by distance: melee
-   patterns need to be in range, ranged patterns are picked more often when
-   the player is far away. `rng` is the run's 'ai' stream (rng.js) -- AI
-   choices must be reproducible from the run seed, never Math.random(). */
-export function pickPattern(patternIds, dist, rng) {
-  const near = patternIds.filter(id => PATTERNS[id].range <= MELEE_MAX_RANGE || dist <= PATTERNS[id].range);
-  const pool = near.length ? near : patternIds;
-  const weighted = [];
-  pool.forEach(id => {
-    const p = PATTERNS[id];
-    const farBias = p.ranged && dist > MELEE_MAX_RANGE ? 3 : 1;
-    for (let i = 0; i < farBias; i++) weighted.push(id);
-  });
-  return weighted[Math.floor(rng.random() * weighted.length)];
-}
-
-/* The enemy must stop closing distance within its shortest MELEE pattern's
-   reach, never beyond it -- otherwise it can plant itself just outside
-   every pattern's actual hitbox and attack forever without ever
-   connecting (and the player can't reach it either). Ranged patterns
-   don't gate this: they can fire from anywhere within their own range. */
-export function defaultApproachRange(patternIds) {
-  const meleeRanges = patternIds.map(id => PATTERNS[id]).filter(p => !p.ranged).map(p => p.range);
-  return meleeRanges.length ? Math.min(...meleeRanges) : MELEE_MAX_RANGE;
-}
-
-export function createEnemyAI(patternIds, approachRange) {
+export function createAI(fight, slot, profile, rng) {
+  const me = fight.fighters[slot], o = fight.fighters[1 - slot], r = rng || fight.rng.stream('ai' + slot);
+  const b = { fight, me, o, P: profile, rng: r, hist: [], seen: null, queue: [], mode: null, rest: 0, tech: null, wake: null, slot };
+  const back = () => (me.facing > 0 ? BIT.LEFT : BIT.RIGHT), fwd = () => (me.facing > 0 ? BIT.RIGHT : BIT.LEFT);
   return {
-    state: 'approach', timer: 0, pattern: null, staggerMult: 1,
-    approachRange: approachRange || defaultApproachRange(patternIds),
-    patternIds
+    profile, brain: b,
+    bits() {
+      b.hist.push(snap(o));
+      if (b.hist.length > profile.reaction + 2) b.hist.shift();
+      b.seen = b.hist[Math.max(0, b.hist.length - 1 - profile.reaction)];
+      if (fight.phase !== 'fight') { b.queue.length = 0; b.mode = null; b.rest = 20; return 0; }
+      const st = me.state;
+      /* grabbed: break it, if this CPU is going to and has seen it in time */
+      if (st === 'thrown') {
+        if (b.tech === null) b.tech = r.random() < profile.tech && profile.reaction <= RULES.BREAK - 3;
+        if (b.tech && me.t >= profile.reaction) { b.tech = false; return me.throwMove.throw.brk === 'RP' ? BIT.RP : BIT.LP; }
+        return 0;
+      }
+      b.tech = null;
+      if (st === 'down') {
+        if (me.t > RULES.DOWN_FRAMES) {
+          if (!b.wake) { const d = r.random(); b.wake = d < 0.4 ? { bits: 0, n: 1 } : d < 0.6 ? { bits: fwd(), n: 3 } : d < 0.75 ? { bits: back(), n: 3 } : d < 0.9 ? { bits: me.lane ? BIT.DOWN : BIT.UP, n: 3 } : { bits: r.random() < 0.5 ? BIT.LK : BIT.RK, n: 2 }; }
+          if (b.wake.n-- > 0) return b.wake.bits;
+        }
+        return 0;
+      }
+      b.wake = null;
+      if (ABORT[st]) {
+        b.queue.length = 0;
+        if (st === 'blockstun' && b.mode && b.mode.kind === 'guard') return back() | (b.mode.crouch ? BIT.DOWN : 0);
+        if (st !== 'blockstun') b.mode = null;
+        return 0;
+      }
+      if (b.queue.length) { const v = b.queue.shift(); if (!b.queue.length) b.rest = b.restAfter || 0; return v; }
+      if (st === 'idle') {
+        if (!(b.mode && b.mode.react) && alert(b) && b.queue.length) return b.queue.shift();
+        if (b.mode) {
+          if (fight.tick >= b.mode.until || (b.mode.proj && fight.projectiles.indexOf(b.mode.proj) < 0)) b.mode = null;
+          else if (b.mode.kind === 'guard') return back() | (b.mode.crouch ? BIT.DOWN : 0);
+          else if (b.mode.kind === 'walk') return b.mode.dir > 0 ? fwd() : back();
+          else return 0;
+        }
+        const hot = o.comboIn.active && (o.state === 'air' || o.state === 'hitstun');
+        if (b.rest > 0 && !hot) { b.rest--; return 0; }
+        think(b);
+        if (b.queue.length) return b.queue.shift();
+        if (b.mode && b.mode.kind === 'guard') return back() | (b.mode.crouch ? BIT.DOWN : 0);
+        if (b.mode && b.mode.kind === 'walk') return b.mode.dir > 0 ? fwd() : back();
+      }
+      return 0;
+    }
   };
-}
-
-/* Forces the AI into a Stagger (GDD §3.9's poise-break, or a successful
-   Clash's 24f free-punish window, GDD §3.7) -- whatever pattern it was
-   mid-execution is abandoned. `mult` scales damage taken while staggered
-   (x1.5 on a poise break; 1 -- no bonus -- on a Clash stagger, which is a
-   punish window, not extra damage). */
-export function enterStagger(ai, frames, mult) {
-  ai.state = 'staggered';
-  ai.timer = frames;
-  ai.pattern = null;
-  ai.staggerMult = mult == null ? 1 : mult;
-}
-
-/* Advances the AI state machine by exactly one sim frame. Returns an event
-   object for combat.js to act on ('spawnMelee' | 'spawnProjectile' | null),
-   or null when nothing new happened this frame. `rng` is the run's 'ai'
-   stream (rng.js). */
-export function stepEnemyAI(ai, dist, rng) {
-  ai.timer -= 1;
-  if (ai.state === 'staggered') {
-    if (ai.timer <= 0) { ai.state = 'approach'; ai.staggerMult = 1; }
-    return null;
-  }
-  if (ai.state === 'approach') {
-    if (dist <= ai.approachRange || rng.random() < 0.002) {
-      ai.pattern = PATTERNS[pickPattern(ai.patternIds, dist, rng)];
-      ai.state = 'windup';
-      ai.timer = ai.pattern.windupFrames;
-    }
-    return null;
-  }
-  if (ai.state === 'windup') {
-    if (ai.timer <= 0) {
-      ai.state = 'active';
-      ai.timer = ai.pattern.activeFrames;
-      return { type: ai.pattern.ranged ? 'spawnProjectile' : 'spawnMelee', pattern: ai.pattern };
-    }
-    return null;
-  }
-  if (ai.state === 'active') {
-    if (ai.timer <= 0) {
-      ai.state = 'recover';
-      ai.timer = ai.pattern.recoverFrames;
-    }
-    return null;
-  }
-  if (ai.state === 'recover') {
-    if (ai.timer <= 0) { ai.state = 'approach'; ai.pattern = null; }
-    return null;
-  }
-  return null;
-}
-
-export function enemyIsVulnerableToStagger(ai) {
-  return ai.state === 'windup' || ai.state === 'approach';
 }

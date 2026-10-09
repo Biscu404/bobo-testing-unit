@@ -28,7 +28,7 @@ real pay tables through a model of an hour of playing it and fails if the answer
 | The Cook | three medals on each of eleven benches, once each: 7,260 SUN over ~3.5 hours of puzzles (a bench already medalled pays nothing) | ~2,100 |
 | Magen | ninety-eight mitzvot (about 14,700 SUN in all) over ~6 hours of attention: log-scaled to how hard each is | ~2,400 |
 | Bekkedal | seven requests on the board (1,710), the house by the water (4,000), the loft (8,000) over an 8-hour run; the repeatable requests are on top | ~1,700 |
-| Stand Battle | thug 90 (x1.6 aggressive), Angelo 300, Kira 800, +500 for clearing Act 1, +50 % for a fight won untouched; nothing for a fight lost. A run is ~15 min and cleared half the time | ~4,000 |
+| Stand Battle | a won arcade match 100 + 30 for each stage already cleared (+25 a flawless round), a ladder cleared +1,000, versus CPU 80, survival 60 a win, time attack 600 (+300 under four minutes), all times the tier (0.5 / 1 / 2); nothing for a fight lost or for two people fighting each other. A NORMAL ladder is ~20 minutes (`budget_bot.js`); the last half hour's payments each take 10 % off the next, so three ladders an hour are ~2,800 | ~2,800 |
 | Dungeon Sweeper, plain | SHALLOWS 80 / THE HIVE 400 / THE DEEP 1,200 + a time bonus; each win of a size in the last half hour pays 10 % less (floor 15 %) | 2,500 / 5,200 / 4,300 for an expert's SHALLOWS |
 | Dungeon Sweeper, the descent | four SUN per geo a room is worth, +100 for a first clear (+400 for a guardian), +25 % for no larva hatched, 40 % of the room on a repeat. A first walk is ~11,000 SUN | ~2,900 first walk, ~1,300 again |
 

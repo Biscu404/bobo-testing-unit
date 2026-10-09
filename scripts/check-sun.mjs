@@ -11,7 +11,8 @@ import { achSun } from '../apps/magen/pay.js';
 import { MG_ACH } from '../apps/magen/data.js';
 import { questSun, HOUSE_SUN, LOFT_SUN } from '../apps/bekkedal/pay.js';
 import { BEK_QUESTS } from '../apps/bekkedal/data.js';
-import { fightSun, RUN_CLEAR } from '../apps/standbattle/pay.js';
+import { matchSun, clearSun, pay as sbPay, resetDecay as sbReset, BASE as SB } from '../apps/standbattle/pay.js';
+import { LADDER_LENGTH as SB_FIGHTS } from '../apps/standbattle/ladder.js';
 import { classicPay, roomPay, parOf, SUN_PER_GEO } from '../apps/sweeper/pay.js';
 import { CLASSIC, NODES } from '../apps/sweeper/data.js';
 import { LESSONS } from '../apps/holyc/lessons.js';
@@ -75,14 +76,23 @@ const LO = 1500, HI = 12000;
   ok(LOFT_SUN > HOUSE_SUN && HOUSE_SUN > questSun(1000), 'BEKKEDAL: the loft pays more than the house, the house more than any one request');
 }
 
-/* STAND BATTLE: a run of Act 1 is a thug, an aggressive thug, Angelo and Kira, a quarter of an hour, cleared one time in two; a fight won
-   without being touched is half as much again; a fight lost pays nothing. */
+/* STAND BATTLE: the arcade ladder on NORMAL, six fights, a ladder in about twenty minutes (apps/standbattle/budget_bot.js measures it: 17 to 24 a ladder, a lost match in three), so three in an hour.
+   A won match pays 100 + 30 a stage already cleared and a clear 1,000; the last half hour's payments each take 10 % off the next (pay.js decay, run here through the real function with the
+   real clock of the model: a win about every three minutes, the clear at the end of a ladder), so the second and third ladder of an hour are worth much less than the first. A lost match pays nothing. */
 {
-  const clear = fightSun('morioh_thug', false, false) + fightSun('morioh_thug', true, false) + fightSun('angelo', false, false) + fightSun('killer_queen', false, false) + RUN_CLEAR;
-  const flawless = fightSun('morioh_thug', false, true) + fightSun('morioh_thug', true, true) + fightSun('angelo', false, true) + fightSun('killer_queen', false, true) + RUN_CLEAR;
-  const lostAtAngelo = fightSun('morioh_thug', false, false) + fightSun('morioh_thug', true, false);
-  const perRun = 0.5 * clear + 0.3 * lostAtAngelo + 0.2 * 90;
-  row('STAND BATTLE', 'a run every 15 min, cleared half the time (a clear is ' + clear + ', flawless ' + flawless + ')', perRun * 4, 3000, 9000);
+  sbReset();
+  let total = 0, t = 0;
+  for (let ladder = 0; ladder < 3; ladder++) {
+    for (let i = 0; i < SB_FIGHTS; i++) { t += 3 * 60 * 1000; total += sbPay(matchSun('arcade', 'normal', i, true, 0), 'win', t); }
+    total += sbPay(clearSun('arcade', 'normal'), 'clear', t);
+  }
+  sbReset();
+  const first = (() => { let s2 = 0, t2 = 0; for (let i = 0; i < SB_FIGHTS; i++) { t2 += 3 * 60 * 1000; s2 += sbPay(matchSun('arcade', 'normal', i, true, 0), 'win', t2); } return s2 + sbPay(clearSun('arcade', 'normal'), 'clear', t2); })();
+  sbReset();
+  row('STAND BATTLE', 'three NORMAL ladders in an hour, a win every 3 min, decay on (the first ladder alone is ' + first + ')', total, 2500, 9000);
+  ok(clearSun('arcade', 'hard') === 2 * clearSun('arcade', 'normal') && clearSun('arcade', 'easy') * 2 === clearSun('arcade', 'normal'), 'STAND BATTLE: a tier is a multiplier on the pay, 0.5 / 1 / 2');
+  ok(matchSun('arcade', 'normal', 0, false, 0) === 0 && matchSun('versus', 'normal', 0, true, 0) === 0, 'STAND BATTLE: a lost fight and two people fighting each other pay nothing');
+  ok(matchSun('survival', 'normal', 0, true, 0) === SB.survival && matchSun('cpu', 'normal', 0, true, 0) === SB.cpu, 'STAND BATTLE: survival and versus CPU pay their table');
 }
 
 /* DUNGEON SWEEPER, the plain game: THE HIVE won in about four minutes, one game in two, back to back. The farm factor (pay.js) is in it. */

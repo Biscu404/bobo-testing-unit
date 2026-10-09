@@ -38,13 +38,21 @@ export function createFx() {
     update(dt) {
       for (let i = list.length - 1; i >= 0; i--) {
         const e = list[i];
+        if (e.delay > 0) { e.delay -= dt / 1000; continue; }
         e.t += dt / 1000;
         if (e.vy != null) { e.x += (e.vx || 0) * dt / 1000; e.y += e.vy * dt / 1000; e.vy += 260 * dt / 1000; }
         if (e.t >= e.life) list.splice(i, 1);
       }
     },
-    draw(g, W, H) {
-      for (const e of list) DRAW[e.type] && DRAW[e.type](g, e, e.t / e.life, W, H);
+    /* effects live in world coordinates and are drawn through the camera; the full-screen flash is the one screen-space effect */
+    draw(g, W, H, camX) {
+      for (const e of list) {
+        if (e.delay > 0 || !DRAW[e.type]) continue;
+        if (e.type === 'flash') { DRAW.flash(g, e, e.t / e.life, W, H); continue; }
+        g.save(); g.translate(-(camX || 0), 0);
+        DRAW[e.type](g, e, e.t / e.life, W, H);
+        g.restore();
+      }
     },
     clear() { list.length = 0; }
   };
@@ -210,84 +218,66 @@ const DRAW = {
   }
 };
 
-/* ---- hook wiring -------------------------------------------------------- */
+/* ---- what the fight announces, and what the screen does about it (spec 2, 15) ------------------------------------------------------------------------------- */
 
-export function wireFx(combat, fx, groundY) {
-  const d = combat.dispatcher;
-  const P = combat.player, E = combat.enemy;
-  const mid = () => ({ x: (P.x + E.x) / 2, y: groundY - 52 });
+const rnd = () => Math.random();
 
+export function wireFx(fight, fx, juice, zoff, groundY) {
+  const d = fight.bus, F = fight.fighters;
+  const gy = f => groundY + zoff(f.z) - f.y;
+  const chest = f => gy(f) - 56;
+  d.on('onSwing', ev => {
+    const a = F[ev.slot], m = ev.move;
+    if (m.h === 't' || m.dmg < 8) return;
+    fx.spawn('arc', { x: a.x + a.facing * 6, y: gy(a) - 62, r: m.reach * 0.62, dir: a.facing, delay: (m.startup - 1) / 60, life: m.dmg >= 14 ? 0.26 : 0.18, sweep: m.dmg >= 14 ? 2.1 : 1.4, a0: -1.35, color: m.dmg >= 14 ? FX.spark[2] : FX.spark[3] });
+  });
   d.on('onHit', ev => {
-    const big = ev.moveType === 'heavy' || ev.finishing;
-    const x = E.x - P.facing * 12, y = groundY - 54 - Math.random() * 12;
-    fx.spawn('impact', { x, y, size: big ? 15 : 9, dir: P.facing > 0 ? 0 : Math.PI, life: big ? 0.3 : 0.2, big });
-    fx.spawn('lines', { x, y, dir: P.facing, count: big ? 11 : 6, len: big ? 54 : 30, life: 0.22, color: '#FFFFFF' });
+    const a = F[ev.slot], t = F[ev.target];
+    const big = ev.dmg >= 14 || ev.ko || ev.reaction === 'launch' || ev.reaction === 'bounce' || ev.reaction === 'down';
+    const x = t.x - a.facing * 10, y = chest(t) - rnd() * 10;
+    fx.spawn('impact', { x, y, size: big ? 15 : 9, dir: a.facing > 0 ? 0 : Math.PI, life: big ? 0.3 : 0.2, big });
+    fx.spawn('lines', { x, y, dir: a.facing, count: big ? 11 : 6, len: big ? 54 : 30, life: 0.22, color: '#FFFFFF' });
     if (big) fx.spawn('shock', { x, y, size: 46, life: 0.3, color: FX.spark[4], squash: 0.7 });
-    for (let i = 0; i < (big ? 7 : 3); i++) {
-      fx.spawn('spark', {
-        x, y, vx: (Math.random() - 0.5) * 220 + P.facing * 120, vy: -Math.random() * 190,
-        size: Math.random() < 0.4 ? 3 : 2, life: 0.3 + Math.random() * 0.3,
-        color: FX.spark[Math.floor(Math.random() * 3) + 2]
-      });
-    }
-    if (ev.combo === 3 || ev.combo === 6 || ev.combo >= 9) {
-      const i = ev.combo >= 9 ? 2 : ev.combo === 6 ? 1 : 0;
-      fx.spawn('bark', { text: BARKS[i], x: P.x + P.facing * 30, y: groundY - 96, scale: 2 + i, life: 0.55, solo: 'bark' });
+    for (let i = 0; i < (big ? 7 : 3); i++) fx.spawn('spark', { x, y, vx: (rnd() - 0.5) * 220 + a.facing * 120, vy: -rnd() * 190, size: rnd() < 0.4 ? 3 : 2, life: 0.3 + rnd() * 0.3, color: FX.spark[Math.floor(rnd() * 3) + 2] });
+    juice.triggerShake(a.facing, 0, ev.ko ? 6 : big ? 4 : 2, ev.ko ? 260 : 140);
+    juice.spawnBurst(x, y, '#FFFF55', ev.ko ? 18 : big ? 9 : 5, 90, a.facing, -0.4);
+    if (ev.counter) {
+      fx.spawn('flash', { color: '#FFFFFF', alpha: 0.22, life: 0.12, solo: 'flash' });
+      fx.spawn('bark', { text: 'COUNTER', x: t.x, y: gy(t) - 108, scale: 2, life: 0.55, color: '#FFB040', shadow: '#5A1A06', solo: 'bark' });
     }
   });
-
-  d.on('onParrySuccess', () => {
-    const x = P.x + P.facing * 20, y = groundY - 56;
-    fx.spawn('flash', { color: '#FFFFFF', alpha: 0.34, life: 0.14, solo: 'flash' });
-    fx.spawn('burstBg', { x, y, life: 0.34, color: FX.guard[4], solo: 'burst' });
-    fx.spawn('shock', { x, y, size: 66, life: 0.4, color: FX.guard[4] });
-    fx.spawn('impact', { x, y, size: 16, dir: 0, life: 0.35, big: true });
-    fx.spawn('bark', { text: 'PARRY', x, y: groundY - 100, scale: 3, life: 0.6, color: FX.guard[4], shadow: '#0B2E4A', solo: 'bark' });
+  d.on('onBlock', ev => {
+    const a = F[ev.slot], t = F[ev.target];
+    const x = t.x - a.facing * 12, y = chest(t);
+    fx.spawn('shock', { x, y, size: 22, life: 0.22, color: FX.guard[4] });
+    fx.spawn('impact', { x, y, size: 7, dir: a.facing > 0 ? 0 : Math.PI, life: 0.16, big: false });
+    juice.spawnBurst(x, y, '#AAD8FF', 4, 70, a.facing, -0.2);
   });
-
-  d.on('onDodgeSuccess', () => {
-    fx.spawn('dust', { x: P.x, y: groundY - 2, dir: -P.facing, size: 20, life: 0.4 });
-    fx.spawn('bark', { text: 'MISS', x: P.x, y: groundY - 94, scale: 2, life: 0.5, color: FX.ghost[4], shadow: '#152A55', solo: 'bark' });
+  d.on('onSidestep', ev => { const f = F[ev.slot]; fx.spawn('dust', { x: f.x, y: gy(f) - 2, dir: -f.facing, size: 14, life: 0.3 }); });
+  d.on('onSidestepDodge', ev => { const f = F[ev.slot]; fx.spawn('bark', { text: 'MISS', x: f.x, y: gy(f) - 100, scale: 2, life: 0.5, color: FX.ghost[4], shadow: '#152A55', solo: 'bark' }); });
+  d.on('onThrow', ev => { const a = F[ev.slot], t = F[1 - ev.slot]; fx.spawn('flash', { color: '#FFFFFF', alpha: 0.18, life: 0.1, solo: 'flash' }); fx.spawn('shock', { x: (a.x + t.x) / 2, y: chest(t), size: 30, life: 0.25, color: '#FFE070' }); });
+  d.on('onThrowBreak', ev => {
+    const t = F[ev.slot];
+    fx.spawn('shock', { x: t.x, y: chest(t), size: 60, life: 0.35, color: FX.guard[4] });
+    fx.spawn('bark', { text: 'BREAK!', x: t.x, y: gy(t) - 100, scale: 2, life: 0.55, color: FX.guard[4], shadow: '#0B2E4A', solo: 'bark' });
+    juice.triggerShake(0, 0.5, 3, 120);
   });
-
-  d.on('onDamageTaken', ev => {
-    const x = P.x + P.facing * 8, y = groundY - 58;
-    fx.spawn('impact', { x, y, size: ev.heavy ? 14 : 9, dir: P.facing > 0 ? Math.PI : 0, life: 0.26, big: ev.heavy });
-    fx.spawn('lines', { x, y, dir: -P.facing, count: 8, len: 44, life: 0.24, color: FX.blood[4] });
-    for (let i = 0; i < 6; i++) {
-      fx.spawn('spark', {
-        x, y, vx: (Math.random() - 0.5) * 200 - P.facing * 90, vy: -Math.random() * 170,
-        size: 2, life: 0.4, color: FX.blood[2 + (i % 3)]
-      });
-    }
+  d.on('onLaunch', ev => { const f = F[ev.slot]; fx.spawn('shock', { x: f.x, y: gy(f), size: 40, life: 0.3, color: FX.dust[3], squash: 0.25 }); });
+  d.on('onBounce', ev => { const f = F[ev.slot]; fx.spawn('shock', { x: f.x, y: groundY + zoff(f.z), size: 54, life: 0.35, color: FX.dust[3], squash: 0.22 }); fx.spawn('dust', { x: f.x, y: groundY + zoff(f.z) - 2, dir: 1, size: 22, life: 0.4 }); juice.triggerShake(0, 1, 3, 130); });
+  d.on('onKnockdown', ev => { const f = F[ev.slot]; fx.spawn('dust', { x: f.x, y: groundY + zoff(f.z) - 2, dir: -f.facing, size: 26, life: 0.45 }); juice.triggerShake(0, 1, ev.ko ? 5 : 2, 150); });
+  d.on('onWallSplat', ev => {
+    const f = F[ev.slot];
+    fx.spawn('shock', { x: f.x, y: chest(f), size: 80, life: 0.45, color: FX.spark[4] });
+    fx.spawn('burstBg', { x: f.x, y: chest(f), life: 0.4, color: FX.spark[3], solo: 'burst' });
+    fx.spawn('bark', { text: 'WALL', x: f.x, y: gy(f) - 104, scale: 3, life: 0.6, solo: 'bark' });
+    juice.triggerShake(-F[1 - ev.slot].facing, 0, 7, 220);
   });
-
-  d.on('onKill', () => {
-    const x = E.x, y = groundY - 54;
-    fx.spawn('flash', { color: '#FFFFFF', alpha: 0.30, life: 0.18, solo: 'flash' });
-    fx.spawn('burstBg', { x, y, life: 0.5, color: FX.spark[3], solo: 'burst' });
-    fx.spawn('shock', { x, y, size: 90, life: 0.5, color: FX.spark[4] });
-    fx.spawn('shock', { x, y: groundY, size: 70, life: 0.45, color: FX.dust[3], squash: 0.25 });
-    for (let i = 0; i < 16; i++) {
-      fx.spawn('spark', {
-        x, y, vx: (Math.random() - 0.5) * 300, vy: -Math.random() * 260,
-        size: Math.random() < 0.5 ? 3 : 2, life: 0.5 + Math.random() * 0.4,
-        color: FX.spark[Math.floor(Math.random() * 4) + 1]
-      });
-    }
-  });
-
-  d.on('onPhaseTransition', () => {
-    fx.spawn('flash', { color: '#FF4A7E', alpha: 0.38, life: 0.3, solo: 'flash' });
-    fx.spawn('burstBg', { x: E.x, y: groundY - 60, life: 0.6, color: '#FF4A7E', solo: 'burst' });
-    fx.spawn('shock', { x: E.x, y: groundY - 60, size: 120, life: 0.6, color: '#FFC2D8' });
-    for (let i = 0; i < 20; i++) {
-      fx.spawn('aura', { x: E.x + (Math.random() - 0.5) * 40, y: groundY - Math.random() * 20, size: 30 + Math.random() * 30, life: 0.8, color: '#FF6B9E' });
-    }
-  });
-
-  d.on('onTelegraphStart', ev => {
-    if (!ev.pattern) return;
-    fx.spawn('shock', { x: E.x, y: groundY - 2, size: ev.pattern.range * 1.2, life: 0.45, color: ev.pattern.telegraph, squash: 0.22, alpha: 0.7 });
+  d.on('onKO', ev => {
+    const loser = ev.winner < 0 ? null : F[1 - ev.winner];
+    const at = loser || F[0];
+    fx.spawn('flash', { color: '#FFFFFF', alpha: 0.30, life: 0.2, solo: 'flash' });
+    fx.spawn('burstBg', { x: at.x, y: chest(at), life: 0.55, color: FX.spark[3], solo: 'burst' });
+    fx.spawn('shock', { x: at.x, y: chest(at), size: 90, life: 0.5, color: FX.spark[4] });
+    for (let i = 0; i < 16; i++) fx.spawn('spark', { x: at.x, y: chest(at), vx: (rnd() - 0.5) * 300, vy: -rnd() * 260, size: rnd() < 0.5 ? 3 : 2, life: 0.5 + rnd() * 0.4, color: FX.spark[Math.floor(rnd() * 4) + 1] });
   });
 }

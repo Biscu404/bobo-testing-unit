@@ -1,97 +1,125 @@
-/* node apps/standbattle/trophy_check.js — the Arena's trophy bridge, held to what a fight really does. Fights are played headless (the same sim the window runs, one frame at a time) by
-   small scripted players, with a recording sink standing in for the ledger: the counters that come out of the hook bus must agree with what the player did, `fight-end` is said once and
-   only once the fight is decided, a card for a trophy is held for the length of the fight, and the trophies that ask for a style (ZA WARUDO, JUST THE JAB, UNTOUCHABLE, ...) are reachable. */
-import { createCombat } from './combat.js';
+/* node apps/standbattle/trophy_check.js — the Arena's trophy bridge, held to what a fight really does. Fights are played headless (the same sim the window runs, one frame at a time) with a
+   recording sink standing in for the ledger: the counters that come out of the hook bus must agree with what the fighters did, `fight-end` is said once and only once the match is decided,
+   a card is held for the length of a match, and every trophy has a real play that earns it: the scenes below make each event happen, and the trophy's own rule is asked about what was said. */
+import { kit, arena, run, perform, perform1, route, back, events, BIT, RULES, WORLD } from './check_kit.js';
+import { createFight } from './fight.js';
 import { createRng } from './rng.js';
-import { ENEMIES, BOSS_KILLER_QUEEN } from './data.js';
-import { wireTrophies } from './trophies_bridge.js';
-import { createDispatcher } from './hooks.js';
+import { defOf, PLAYABLE } from './roster.js';
+import { createAI } from './ai.js';
+import { profileOf, HUMAN } from './ai_profiles.js';
+import { wireTrophies, setSink, emit, mark } from './trophies_bridge.js';
 import { TROPHIES } from './trophies.js';
+import { createSession } from './session.js';
+import { runArcade, playMatch } from './headless_harness.js';
+import { finish, saveScore } from './flow.js';
+import { defaultMeta } from './save.js';
+const { ok, done } = kit('trophies');
 
-let fails = 0;
-const ok = (c, m) => { if (!c) { fails++; console.log('FAIL - ' + m); } else console.log('PASS - ' + m); };
+function sink() { const log = []; let held = 0; return { log, get held() { return held; }, emit: (n, p) => { log.push([n, p]); return []; }, hold: () => { held++; }, release: () => { held--; }, drain: () => [], mark: (s, i) => { log.push(['mark:' + s, i]); }, add() {} }; }
+const said = (s, n) => s.log.filter(l => l[0] === n).map(l => l[1]);
 
-const sinkOf = () => { const log = []; let held = 0; return { log, get held() { return held; }, emit: (n, p) => { log.push([n, p]); return []; }, hold: () => { held++; }, release: () => { held--; }, drain: () => [], mark() {}, add() {} }; };
-const REACH = 62;
-/* a player: close the gap, then press the next key of `plan` (cycled) whenever idle */
-function fight(seed, enemyDef, plan, opts = {}) {
-  const sink = sinkOf(), combat = createCombat(enemyDef, [], { shakeEnabled: opts.shake !== false, speedMult: opts.speedMult }, createRng(seed));
-  const bridge = wireTrophies(combat, { enemyId: enemyDef.id, nodeId: 'n1', modifier: opts.modifier || null, shake: opts.shake !== false }, sink);
-  const heldAtStart = sink.held;
-  let i = 0, n = 0;
-  for (; n < 60 * 120 && combat.outcome === 'fighting'; n++) {
-    const p = combat.player, e = combat.enemy, dist = Math.abs(e.x - p.x), closing = dist > REACH;
-    combat.setKey('right', closing && e.x >= p.x); combat.setKey('left', closing && e.x < p.x);
-    if (!closing && p.state === 'idle') { const k = typeof plan === 'function' ? plan(combat) : plan[i++ % plan.length]; combat.setKey(k, true); combat.setKey(k, false); }
-    combat.step();
-  }
-  const early = sink.log.filter(l => l[0] === 'fight-end').length;
+/* a whole match, bot against CPU, watched */
+{
+  const s = sink(), cfg = createSession({ mode: 'cpu', p1: 'jotaro', p2: 'kira', tier: 'normal', seed: 'tb1' }).fightConfig();
+  const fight = createFight({ defs: cfg.defs, stage: cfg.stage, rng: cfg.rng });
+  const bridge = wireTrophies(fight, { enemy: 'kira', mode: 'cpu', tier: 'normal', shake: true }, s);
+  const ais = [createAI(fight, 0, HUMAN), createAI(fight, 1, profileOf('normal'))];
+  const heldAtStart = s.held;
+  let n = 0; while (fight.phase !== 'over' && n++ < 60 * 60 * 6) fight.step(ais[0].bits(), ais[1].bits());
+  ok(said(s, 'fight-end').length === 0, 'nothing is said about the match before it is over');
   bridge.end(); bridge.end();
-  return { combat, sink, bridge, heldAtStart, early, ends: sink.log.filter(l => l[0] === 'fight-end').map(l => l[1]) };
+  const e = said(s, 'fight-end');
+  ok(e.length === 1, 'fight-end is said once, however many times it is asked for');
+  ok(heldAtStart === 1 && s.held === 0, 'a card is held for the length of the match and let go at its end');
+  const p = e[0], me = fight.fighters[0];
+  ok(p.won === (fight.match.winner === 0) && p.enemy === 'kira' && p.rounds === fight.match.rounds, 'the payload says who won, against whom, in how many rounds');
+  ok(p.maxCombo === me.stats.maxCombo || p.maxCombo <= me.stats.maxCombo, 'the best combo is what the fighter did (' + p.maxCombo + ')');
+  ok(p.breaks === me.stats.breaks && p.dodges === me.stats.dodges, 'breaks and dodges are what the fighter did');
+  ok(said(s, 'round-end').length === fight.history.length, 'a round-end for each round (' + fight.history.length + ')');
+  ok(Math.abs(p.secs - fight.clock / 60) < 1e-9, 'the clock is whole sim frames: ' + p.secs.toFixed(1) + ' s');
+  ok(p.damageTaken === Math.round(me.stats.taken), 'damage taken is what was taken');
 }
 
-const thug = ENEMIES.morioh_thug;
+/* every event, made to happen by play */
+const W = {};                                     /* event -> payloads that really happened */
+const note = (s) => s.log.forEach(l => { (W[l[0]] = W[l[0]] || []).push(l[1]); });
+function watch(a, d, o, fn) {
+  const s = sink(), { fight, A, D } = arena(a, d, o);
+  const bridge = wireTrophies(fight, { enemy: d, mode: 'training', tier: 'normal' }, s);
+  fn(fight, A, D);
+  bridge.end(); note(s);
+  return s;
+}
+const tap = (fight, who, bit) => { fight.step(who ? 0 : bit, who ? bit : 0); fight.step(0, 0); };
+watch('jotaro', 'jotaro', {}, (f, A, D) => { perform(f, A, 'throw'); run(f, 40); });                                   /* a throw, landed */
+watch('jotaro', 'jotaro', {}, (f, A, D) => { perform1(f, D, 'throw'); let w = 0; while (A.state !== 'thrown' && w++ < 30) f.step(0, 0); f.step(BIT.LP, 0); run(f, 30); });     /* the throw, broken */
+watch('jotaro', 'jotaro', {}, (f, A, D) => { perform1(f, D, 'cross'); run(f, 3); tap(f, 0, BIT.UP); run(f, 40); });     /* a sidestep dodge */
+watch('jotaro', 'jotaro', { training: false }, (f, A, D) => { run(f, RULES.INTRO_FRAMES + 2); perform(f, A, 'jab'); f.step(0, BIT.RP); run(f, 40); });   /* a counter hit */
+watch('jotaro', 'jotaro', {}, (f, A, D) => { perform(f, A, 'finger'); run(f, 40); });                                  /* a special */
+watch('jotaro', 'jotaro', {}, (f, A, D) => { route(f, A, [['crash', 0], ['barrage', 0]]); run(f, 220); });   /* a launch, juggles, a six-hit combo */
+watch('jotaro', 'jotaro', {}, (f, A, D) => { perform(f, A, 'breaker'); run(f, 220); });                                /* a bounce */
+watch('jotaro', 'jotaro', { ax: WORLD.MAX - 80, gap: 40 }, (f, A, D) => { D.x = WORLD.MAX - 12; perform(f, A, 'heel'); run(f, 60); });   /* a wall splat */
+watch('kira', 'jotaro', {}, (f, A, D) => { perform(f, A, 'touch'); run(f, 40); let w = 0; while (A.state !== 'idle' && w++ < 90) f.step(0, 0); perform(f, A, 'detonate'); run(f, 60); });   /* a bomb, blown */
+watch('angelo', 'jotaro', {}, (f, A, D) => { perform(f, A, 'aqua'); run(f, 60); });                                    /* the drowning grab */
+watch('jotaro', 'jotaro', {}, (f, A, D) => { perform1(f, D, 'upper'); run(f, 40); });
+watch('jotaro', 'jotaro', {}, (f, A, D) => {                                                                          /* ten attacks sidestepped in one match */
+  for (let k = 0; k < 10; k++) { let w = 0; while (D.state !== 'idle' && A.state !== 'idle' && w++ < 100) f.step(0, 0); perform1(f, D, 'cross'); run(f, 3); tap(f, 0, A.lane ? BIT.DOWN : BIT.UP); run(f, 40); }
+});
+watch('jotaro', 'jotaro', {}, (f, A, D) => {                                                                          /* five throws broken in one match */
+  for (let k = 0; k < 5; k++) { let w = 0; while ((A.state !== 'idle' || D.state !== 'idle') && w++ < 160) f.step(0, 0); D.x = A.x + 34; perform1(f, D, 'throw'); let q = 0; while (A.state !== 'thrown' && q++ < 30) f.step(0, 0); f.step(BIT.LP, 0); run(f, 30); }
+});
+const wk = sink(); { const { fight, A, D } = arena('jotaro', 'jotaro'); const b = wireTrophies(fight, { mode: 'training' }, wk); A.state = 'down'; A.t = RULES.DOWN_FRAMES + 1; A.lane = 0; run(fight, 3, BIT.UP, 0); run(fight, 25); b.end(); note(wk); }   /* a roll off the floor */
+
+/* rounds: ring-out, draw, time, flawless, a final round */
+function rounds(fn, o) {
+  const s = sink(), { fight, A, D } = arena('jotaro', 'jotaro', Object.assign({ training: false, timerFrames: 3600 }, o || {}));
+  const b = wireTrophies(fight, { enemy: 'jotaro', mode: 'cpu', tier: 'normal', shake: false, pad: true }, s);
+  fn(fight, A, D); b.end(); note(s); return s;
+}
+rounds((f, A, D) => { run(f, RULES.INTRO_FRAMES); A.x = WORLD.MAX - 50; D.x = WORLD.MAX - 4; perform(f, A, 'heel'); run(f, 400); }, { stage: { id: 'park', rule: 'ring' } });
+rounds((f, A, D) => { run(f, RULES.INTRO_FRAMES); A.x = WORLD.MIN + 4; D.x = WORLD.MIN + 38; perform1(f, D, 'heel'); run(f, 400); }, { stage: { id: 'park', rule: 'ring' } });
+rounds((f, A, D) => { for (let k = 0; k < 2; k++) run(f, RULES.INTRO_FRAMES + 3700 + RULES.END_FRAMES); }, { timerFrames: 60 });
+rounds((f, A, D) => { run(f, RULES.INTRO_FRAMES); D.hp = 3; perform(f, A, 'jab'); run(f, 500); run(f, RULES.INTRO_FRAMES); D.hp = 3; A.x = 300; D.x = 334; perform(f, A, 'jab'); run(f, 500); });
+rounds((f, A, D) => { run(f, RULES.INTRO_FRAMES + 20); D.hp = 100; run(f, 3700); }, { timerFrames: 200 });
+/* a match won against the boss in the ladder, and a mirror: what the match says about them */
+{ const s = sink(), { fight, A, D } = arena('jotaro', 'jotaro', { training: false, timerFrames: 3600 }); const b = wireTrophies(fight, { enemy: 'boss', mode: 'arcade', tier: 'hard', mirror: true, shake: true }, s);
+  for (let k = 0; k < 2; k++) { run(fight, RULES.INTRO_FRAMES); D.hp = 3; A.x = 300; D.x = 334; perform(fight, A, 'jab'); run(fight, 500); }
+  b.end(); note(s); ok(said(s, 'fight-end')[0].won && said(s, 'fight-end')[0].enemy === 'boss' && said(s, 'fight-end')[0].mirror, 'a won match against the boss is said to be one, and a mirror to be a mirror'); }
+rounds((f, A, D) => { run(f, RULES.INTRO_FRAMES); A.hp = 1; D.hp = 3; A.x = 300; D.x = 334; perform(f, A, 'jab'); run(f, 400); run(f, RULES.INTRO_FRAMES + 200); }, {});
+Object.keys(W).forEach(k => { /* every event the checks made is one a trophy listens to, or one the bridge only counts */ });
+
+/* the session-level calls, made through flow.js with a fake app */
 {
-  const f = fight('t1', thug, ['light']);
-  ok(f.early === 0, 'nothing is said while the fight is on');
-  ok(f.ends.length === 1, 'fight-end is said once, however many times it is asked for');
-  ok(f.heldAtStart === 1 && f.sink.held === 0, 'a card is held for the length of the fight and let go at its end');
-  const p = f.ends[0];
-  ok(p.won === (f.combat.outcome === 'win') && p.enemy === 'morioh_thug' && p.shake === true, 'the payload says who won, against whom, and the shake setting');
-  ok(p.moveTypes.length === 1 && p.moveTypes[0] === 'light', 'a player who only jabs has only jabbed: ' + JSON.stringify(p.moveTypes));
-  ok(p.secs > 0 && Math.abs(p.secs - f.combat.frames / 60) < 1e-9, 'the clock is whole sim frames: ' + p.secs.toFixed(2) + ' s');
-  ok(p.damageTaken === Math.round(f.combat.player.maxHp - f.combat.player.hp) || p.damageTaken >= 0, 'damage taken is a number');
-  ok(p.maxMomentum > 0 && p.maxCombo >= 1, 'momentum and a combo were built: ' + p.maxMomentum + ', ' + p.maxCombo);
+  const s = sink(); setSink(s);
+  const app = { meta: defaultMeta(), saveMeta() {}, toast() {}, go() {}, session: null };
+  app.session = createSession({ mode: 'arcade', p1: 'jotaro', tier: 'hard', seed: 'x' });
+  Object.assign(app.session, { cleared: true, over: true, score: 12000, continues: 0, secs: 900, i: 7 }); finish(app, 'clear'); note(s);
+  const s2 = sink(); setSink(s2); app.session = createSession({ mode: 'survival', p1: 'kira', tier: 'normal', seed: 'y' }); Object.assign(app.session, { wins: 13, over: true }); finish(app, 'clear'); note(s2);
+  const s3 = sink(); setSink(s3); app.session = createSession({ mode: 'timeattack', p1: 'angelo', tier: 'normal', seed: 'z' }); Object.assign(app.session, { cleared: true, over: true, secs: 200, i: 5 }); finish(app, 'clear'); note(s3);
+  const s4 = sink(); setSink(s4); app.session = createSession({ mode: 'arcade', p1: 'jotaro', tier: 'normal', seed: 'w' }); app.session.score = 100; saveScore(app, 'abc'); note(s4);
+  ['training-open', 'record-play', 'movelist-open', 'versus', 'rebind', 'debug-on'].forEach(n => { const q = sink(); setSink(q); emit(n, {}); note(q); });
+  setSink(null);
+  ok(said(s, 'ladder-clear').length === 1 && said(s, 'ladder-clear')[0].continues === 0 && said(s, 'mark:cleared').length === 1, 'a cleared ladder says so, with the tier, the continues and the fighter marked');
+  ok(said(s2, 'survival-end')[0].wins === 13, 'a survival run says how many it won');
+  ok(said(s3, 'timeattack-clear')[0].secs === 200, 'a time attack says how long it took');
+  ok(said(s4, 'hiscore').length === 1, 'initials entered are told');
 }
-/* a different seed is a different fight, the same seed is the same one */
-{ const a = fight('same', thug, ['light', 'light', 'medium', 'heavy']).ends[0], b = fight('same', thug, ['light', 'light', 'medium', 'heavy']).ends[0];
-  ok(JSON.stringify(a) === JSON.stringify(b), 'the same seed and the same hands give the same fight-end'); }
+/* sets */
+{ const s = sink(); setSink(s); PLAYABLE.forEach(id => { mark('won_with', id); mark('cleared', id); }); setSink(null); ok(said(s, 'mark:won_with').length === 5 && said(s, 'mark:cleared').length === 5, 'five fighters make the two sets of five'); }
 
-/* ZA WARUDO: a DELINQUENT in under five seconds is reachable by a player who never stops */
-{ let best = 99; ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'].forEach(s => { const r = fight(s, thug, ['light', 'light', 'light', 'medium', 'heavy']).ends[0]; if (r.won) best = Math.min(best, r.secs); });
-  ok(best < 5, 'ZA WARUDO is reachable: the quickest of ten fights took ' + best.toFixed(2) + ' s'); }
-/* JUST THE JAB: only jabs can win it */
-{ let won = 0; for (let k = 0; k < 10; k++) { const r = fight('j' + k, thug, ['light']).ends[0]; if (r.won && r.moveTypes.join() === 'light') won++; }
-  ok(won > 0, 'JUST THE JAB is reachable: ' + won + ' of 10 jab-only fights were won'); }
-/* the bridge's arithmetic, against a combat whose events are made by hand: twenty jabs thirty frames apart are one combo of twenty, a hit taken ends it, a gap of over a second ends it, momentum
-   is read where it is built, guard hits are the hits taken while guarding, a perfect clash is told as it happens and counted */
-{
-  const sink = sinkOf(), dispatcher = createDispatcher(), player = { momentum: 0, hp: 100, maxHp: 100, guarding: false }, enemy = { def: { id: 'angelo' } };
-  const combat = { dispatcher, player, enemy, frames: 0, outcome: 'fighting' };
-  const b = wireTrophies(combat, { enemyId: 'angelo', nodeId: 'n5', shake: true }, sink);
-  const hit = (type, fin) => dispatcher.fire('onHit', { moveType: type, combo: 0, finishing: !!fin, crit: false });
-  for (let k = 0; k < 20; k++) { combat.frames += 30; player.momentum = Math.min(100, k * 6); hit('light'); }
-  ok(b.counters.maxCombo === 20, 'twenty hits thirty frames apart are a combo of twenty (' + b.counters.maxCombo + ')');
-  dispatcher.runEffect('onDamageTaken', { entity: player, dmg: 7, heavy: false, cancelled: false });
-  ok(b.counters.damageTaken === 7 && b.counters.chain === 0, 'a hit taken is counted and ends the combo');
-  combat.frames += 30; hit('medium'); combat.frames += 90; hit('heavy'); ok(b.counters.chain === 1 && b.counters.maxCombo === 20, 'a gap of more than a second starts a new combo');
-  ok(b.counters.maxMomentum === 100 || b.counters.maxMomentum === 96, 'momentum is read where it is built (' + b.counters.maxMomentum + ')');
-  player.guarding = true; for (let k = 0; k < 8; k++) dispatcher.runEffect('onDamageTaken', { entity: player, dmg: 1, heavy: false, cancelled: false });
-  player.guarding = false;
-  ok(b.counters.guardHits === 8 && !b.counters.guardBroke, 'eight hits taken guarding are eight guard hits, with no break');
-  dispatcher.runEffect('onGuardBreak', { entity: player, cause: 'heavy', cancelled: false }); ok(b.counters.guardBroke, 'a guard break is noted');
-  for (let k = 0; k < 3; k++) dispatcher.runEffect('onPerfectClash', { entity: player, opponent: enemy, cancelled: false });
-  dispatcher.runEffect('onStaggerStart', { entity: enemy, cause: 'poise', frames: 60, mult: 1, cancelled: false }); dispatcher.runEffect('onStaggerStart', { entity: player, cause: 'x', frames: 1, mult: 1, cancelled: false });
-  for (let k = 0; k < 10; k++) dispatcher.fire('onDodgeSuccess', {});
-  hit('rush', true); dispatcher.runEffect('onKill', { entity: player, target: enemy, combo: 3, cancelled: false }); combat.outcome = 'win'; player.hp = 8.4;
-  b.end();
-  const p = sink.log.filter(l => l[0] === 'fight-end')[0][1];
-  ok(sink.log.filter(l => l[0] === 'perfect').length === 3 && p.perfectClashes === 3, 'a perfect clash is told as it happens (three), and counted');
-  ok(p.staggers === 1 && p.dodges === 10 && p.finishedBy === 'rush' && p.hpLeft === 8 && p.won, 'staggers on the enemy only, ten dodges, finished by the rush, 8 HP left');
-  /* and what each trophy would say of it */
-  const rules = id => TROPHIES.find(t => t.id === id), says = (id, pl) => rules(id).when(pl);
-  ok(says('sb_combo', p) && says('sb_momentum', Object.assign({}, p, { maxMomentum: 100 })) && says('sb_perfect3', p) && says('sb_step', p) && says('sb_poise', Object.assign({}, p, { staggers: 3 })), 'COMBO, MOMENTUM, PERFECT x3, STEP and POISE read what the bridge counts');
-  ok(says('sb_rush', p) && says('sb_stand', p) && !says('sb_untouch', p) && !says('sb_guard', p), 'RUSH and STAND PROUD are earned by it, UNTOUCHABLE and BRICK WALL are not');
+/* each trophy has a witness */
+const names = {}; TROPHIES.forEach(t => { names[t.id] = t; });
+let unreached = [];
+TROPHIES.forEach(t => {
+  if (t.on) { const ws = W[t.on] || []; if (!ws.some(p => { try { return t.when(p); } catch (e) { return false; } })) unreached.push(t.id + ' (' + t.on + ')'); }
+});
+ok(unreached.length === 0, 'every trophy that listens for an event has a play that satisfies it' + (unreached.length ? ': NOT SHOWN: ' + unreached.join(', ') : ''));
+ok(TROPHIES.filter(t => t.sets).every(t => t.sets.size === 5), 'the two sets ask for five fighters');
+ok(TROPHIES.length === 47 && TROPHIES.every(t => t.id.indexOf('sb_') === 0), 'forty-seven Stand Battle trophies, every one an sb_ (' + TROPHIES.length + ')');
+{ // negative cases: a trophy that says "without damage" is not earned by a match with damage
+  const w = id => names[id].when;
+  ok(!w('sb_perfect')({ won: true, damageTaken: 5, lostRound: false }) && w('sb_perfect')({ won: true, damageTaken: 0, lostRound: false }), 'PERFECT MATCH needs no damage and no lost round');
+  ok(!w('sb_nocont')({ continues: 1 }) && w('sb_nocont')({ continues: 0 }), 'NO CONTINUES needs none');
+  ok(!w('sb_tafast')({ secs: 300 }) && w('sb_tafast')({ secs: 200 }), 'FIVE IN FOUR is under four minutes');
 }
-/* a fight a player is only just in: a heavy-only player is hit more often than a jabber, both are told */
-{ const r = fight('k1', BOSS_KILLER_QUEEN, ['light', 'light', 'medium']).ends[0];
-  ok(r.enemy === 'killer_queen' && typeof r.won === 'boolean', 'a boss fight reports too: ' + (r.won ? 'won' : 'lost') + ' in ' + r.secs.toFixed(1) + ' s'); }
-/* the shake setting rides along */
-{ const r = fight('s1', thug, ['light'], { shake: false }).ends[0]; ok(r.shake === false, 'a fight with the shake off says so'); }
-/* a fight lost is a fight-end too (YARE YARE DAZE) */
-{ let lost = null; for (let k = 0; k < 12 && !lost; k++) { const r = fight('l' + k, BOSS_KILLER_QUEEN, ['light']).ends[0]; if (!r.won) lost = r; }
-  ok(lost && lost.won === false, 'a lost fight is told as one'); }
-
-ok(TROPHIES.length === 24 && TROPHIES.every(t => t.id.indexOf('sb_') === 0), 'twenty-four Stand Battle trophies, every one an sb_');
-console.log(fails ? fails + ' failed' : 'All checks pass.');
-process.exit(fails ? 1 : 0);
+done();

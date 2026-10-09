@@ -56,6 +56,17 @@ export const ANGELO = {
   ink: '#070806'
 };
 
+export const POLNAREFF = {
+  vest: ['#0C1E2A', '#163447', '#22506A', '#367894', '#62AACA'],
+  shirt: ['#5E6478', '#8E94A8', '#C2C6D6', '#E6E8F2', '#FFFFFF'],
+  pants: ['#16191E', '#252A32', '#3A414D', '#545D6C', '#7C8798'],
+  boot: ['#08090C', '#121419', '#1F232B', '#31373F', '#4C5461'],
+  skin: ['#855642', '#B27A5E', '#DFA484', '#F3C6A8', '#FFE4CF'],
+  hair: ['#6A7080', '#9098AC', '#C0C8D8', '#E4E8F2', '#FFFFFF'],
+  steel: ['#4A5266', '#7A84A0', '#B4BED6', '#E4EAFA', '#FFFFFF'],
+  ink: '#08080E'
+};
+
 export const KQ = {
   pink: ['#4A1030', '#7A1D4E', '#B02F72', '#E15A9C', '#FFA0CB'],
   black: ['#050508', '#0D0D14', '#1A1A26', '#2C2C3E', '#4A4A62'],
