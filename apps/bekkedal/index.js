@@ -58,6 +58,7 @@ import { lampState, createLamp, bandStates } from './lamp.js';
 import { hintFor, holdingLine } from './hint.js';
 import { createCalls as createTrophyCalls } from './trophy_calls.js';
 import { FURN, furnitureAct } from './furniture_act.js';
+import { createGeese } from './geese.js';
 import { lifeFor } from './life.js';
 import { fogLevel, FOG_BLOCK } from './fog.js';
 import { helloFor } from './hellos.js';
@@ -4022,6 +4023,7 @@ export default {
          handed `() => g` rather than `g`, because `g` is repointed at the
          offscreen terrain canvas for the length of a cache rebuild. */
       const { drawIcon, person, lying, bear, goat, chicken } = createActors(() => g, C);
+      const geese = createGeese(() => g, C);               /* Thea's geese on the deep water, once the credits have given you one (geese.js) */
 
       const { text, textW, wrapText } = createText(g, C);
 
@@ -4193,6 +4195,7 @@ export default {
         hudHint = interactHint(actors.filter(a => a.n).map(a => a.n));
         BEK_GOATS.filter(gt => gt.map === S.map).forEach(gt => actors.push({ goat: gt, y: gt.y }));
         if (S.map === 'farm') S.animals.forEach(a => actors.push({ animal: a, y: a.y }));
+        geese.here(S.map).forEach(b => actors.push({ goose: b, y: b.y }));
         actors.sort((a, b) => a.y - b.y);
         const spots = {};
         actors.forEach(a => {
@@ -4216,6 +4219,7 @@ export default {
             inLight(L, me.x, me.y, () => person(Math.round(me.x * BEK_T_SRC) + 4 + jx, Math.round(me.y * BEK_T_SRC) + 2, S.dir, S.step, PLAYER_HAIR, PLAYER_SHIRT, PLAYER_PANTS, held, (S.bag.ullgenser || 0) > 0));
             return;
           }
+          if (a.goose) { geese.draw(a.goose); return; }
           if (a.goat) { goat(a.goat.x * BEK_T_SRC + 1, a.goat.y * BEK_T_SRC + 1, t); return; }
           if (a.animal) {
             if (a.animal.kind === 'goat') goat(a.animal.x * BEK_T_SRC + 1, a.animal.y * BEK_T_SRC + 1, t);
@@ -4656,6 +4660,7 @@ export default {
         sceneTick(dt); leavingTick(dt); bubblesTick(dt);
         mineSync();
         tickSwing(dt); fx.step(dt);
+        geese.step(dt, S.map, me.x, me.y);
         if (mode === 'end' || mode === 'loftend') S.ending += dt;
         if (mode === 'nap') napTick(dt);
         tickClock(dt);

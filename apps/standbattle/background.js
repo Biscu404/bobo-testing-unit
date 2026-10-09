@@ -15,6 +15,7 @@ import { poly, px, dither, ellipse, disc, vband, line } from './draw.js';
 import { facade, windows, acUnit, fireEscape, shopSign, hills, cloudPuff } from './bg_props.js';
 import { buildNear, buildGround } from './bg_scenes.js';
 import { SKY, TOWN, FX, haze, S, SH, BASE, LT, RIM } from './palette.js';
+import { drawFlyover } from './geese.js';
 
 const LW = 760;
 
@@ -120,7 +121,7 @@ export function drawBackground(g, W, H, sceneId, camX, tsec, groundY) {
     const x = off(k);
     g.drawImage(L[k].cv, Math.round(x), 0);
     if (x + LW < W) g.drawImage(L[k].cv, Math.round(x + LW), 0);
-    if (k === 'sky') drawClouds(g, W, H, L.cfg, camX, tsec, groundY);
+    if (k === 'sky') { drawClouds(g, W, H, L.cfg, camX, tsec, groundY); drawFlyover(g, W, H, tsec, camX, L.cfg.kind); }
   }
   atmosphere(g, W, H, L.cfg, tsec, groundY);
 }

@@ -13,6 +13,7 @@ import { drawWear } from './wear.js';
 import { scopedListeners, whenGone } from '../lifecycle.js';
 import { talked, heard, placed } from './trophy_calls.js';
 import { eatPose, EAT_SECS, PICK_AT, CHEW_FROM, drawPile, drawWedge, nextEatIn } from '../cheese_art.js';
+import { createGeese } from './geese.js';
 
 export default {
   open() {
@@ -106,6 +107,8 @@ export default {
         }
       }
       const disc = (cx, cy, r, c) => oval(cx, cy, r, r, c);
+      /* Thea's geese: on the oasis, and in the sky (apps/elephant/geese.js) */
+      const geese = createGeese(R);
 
       /* what he has on (kernel/pet.js keeps it, so the elephant on the desktop wears the same), and whether he is out of the window */
       let wear = Pet.wear();
@@ -279,6 +282,7 @@ export default {
           const w = Math.min(16 + i * 3, hw);
           R(Math.min(240 + hw - w, 356 - i * 5) + Math.round(Math.sin(t * 1.1 + i) * 3), y, w, 2, 15);
         }
+        geese.draw('oase');
         palm(52, 240, t, 0, 96);
         palm(438, 236, t, 1.7, 108);
         palm(96, 224, t, 3.4, 74);
@@ -377,6 +381,7 @@ export default {
         bank(t * 5,  56,  0.55, 15);
         bank(t * 9,  126, 0.8,  15);
         bank(t * 15, 238, 1.05, 15);
+        geese.draw('sky');
         /* the one he is standing on */
         B(112, 258, 256, 40, 15, 19);
         B(150, 246, 180, 30, 15, 14);
@@ -943,6 +948,7 @@ export default {
           }
         } else if (eatT >= 0 && !(CH && CH.appBites() > 0)) eatT = -1;
         stepMotes(step);
+        geese.step(step, P.id);
         (PLACE_FN[P.id] || placeSun)(t);
         if (CH && CH.appBites() > 0 && !away) drawPile(R, 338, 230, CH.appBites(), 2);                  /* his cheese, beside him on the ground */
         if (!away) { if (arr) drawArriving(t, arr); else drawEle(t, phase, eatT >= 0 ? eatPose(eatT / EAT_SECS) : null); }

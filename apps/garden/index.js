@@ -8,6 +8,7 @@ import { makeWorld, loadState } from './world.js';
 import { createBench } from './bench.js';
 import { createCalls } from './trophy_calls.js';
 import * as M from './model.js';
+import { createFlyover } from './geese.js';  /* Thea's geese */
 
 const PENTA = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25];
 const SWEEP_MS = 85;
@@ -252,7 +253,7 @@ export default {
     }
 
     /* ---- the loop ---- */
-    const V = { st, w, amb, skin: ri => potOfRoom(ri), mode: 'none' };
+    const V = { st, w, amb, skin: ri => potOfRoom(ri), mode: 'none', flyover: createFlyover() };
     let scanAt = 0;                                    /* the trophies look at the whole garden about once a second */
     const frame = () => {
       if (!alive || !document.body.contains(cv)) { raf = null; GardenAir.stop(); st.lastTick = Date.now(); save(); return; }
@@ -281,7 +282,6 @@ export default {
     };
     window.addEventListener('garden-stock-refresh', stock);
     const bought = () => { if (alive) refreshBar(); }; window.addEventListener('cos-changed', bought);
-
     this._stop = () => {
       alive = false;
       cancelAnimationFrame(raf); clearInterval(saveT); timers.forEach(clearTimeout);
