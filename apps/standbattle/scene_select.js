@@ -47,7 +47,7 @@ export function selectScene(app) {
     enter(a) {
       mode = a.mode || 'arcade'; step = 'p1'; joined = false; lock = [false, false]; stageSel = 0; t = 0;
       const last = Math.max(0, PLAYABLE.indexOf(app.meta.lastChar)); cur = [last, last];
-      app.dev.single = mode !== 'versus'; app.music(0);
+      app.dev.single = mode !== 'versus'; app.music(0, 'select');
     },
     update(dt) {
       t += dt / 1000;

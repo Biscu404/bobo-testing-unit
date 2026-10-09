@@ -1,6 +1,10 @@
 import { Cos, COS_CATS } from '../../kernel/cos.js';
 import { DAVE_LINES, DAVE_BROKE, makeHoverTalk } from './lines.js';
-import { drawDave, drawThumb } from './thumbs.js';
+import { drawDave, drawThumb, GOOSE_ROOM } from './thumbs.js';
+import { DAVE_GOOSE_LAND, DAVE_GOOSE_POKE, DAVE_GOOSE_HONK } from './lines_goose.js';
+import { gifts } from '../gifts_scope.js';
+import { perches, sitter, stepSitter, arrival, sitFrame, ARRIVE, honkPlan } from '../goose_life.js';
+import { playHonk } from '../goose_voice.js';
 
 /* what a card's button says, and what pressing it does, by what kind of shelf it is on (kernel/cos.js COS_CATS) */
 const KIND = {
@@ -29,7 +33,10 @@ export default {
     const dv = document.createElement('div');
     dv.className = 'shopdave';
     daveCv = document.createElement('canvas');
-    daveCv.width = 48; daveCv.height = 48;
+    /* one shop in twenty, once Thea has given you a goose, it drops onto Dave's head (apps/goose_life.js) and the picture of him is taller to hold it */
+    const sit = gifts().has('goose') && perches() ? sitter() : null;
+    daveCv.width = 48; daveCv.height = sit ? 48 + GOOSE_ROOM : 48;
+    if (sit) daveCv.style.height = (daveCv.height * 2) + 'px';
     dv.appendChild(daveCv);
     bubbleEl = document.createElement('div');
     bubbleEl.className = 'shopbubble';
@@ -205,14 +212,30 @@ export default {
 
     fill();
 
+    let lastT = performance.now(), landed = false;
     const loop = () => {
       raf = requestAnimationFrame(loop);
+      const now = performance.now(), dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
       bob += 0.06;
-      drawDave(daveCv, bob);
+      let perch = null;
+      if (sit) {
+        const plan = stepSitter(sit, dt);
+        if (plan) { playHonk(plan); if (Math.random() < 0.35) say(pick(DAVE_GOOSE_HONK)); }
+        if (!landed && sit.t >= ARRIVE) { landed = true; say(pick(DAVE_GOOSE_LAND)); talkT = 0; playHonk(honkPlan()); sit.honk.open = 0.5; }
+        const k = arrival(sit);
+        perch = { name: sitFrame(sit), flip: false, by: -6 + (2 + GOOSE_ROOM + 6) * k };
+      }
+      drawDave(daveCv, bob, perch);
       talkT++;
       if (talkT > 900) { talkT = 0; say(pick(DAVE_LINES)); }
     };
     raf = requestAnimationFrame(loop);
+    /* a poke at Dave, with a goose on him, is answered by the goose */
+    if (sit) daveCv.addEventListener('mousedown', ev => {
+      ev.stopPropagation();
+      if (!landed) return;
+      say(pick(DAVE_GOOSE_POKE)); talkT = 0; playHonk(honkPlan()); sit.honk.open = 0.6;
+    });
 
     /* a purchase made somewhere else (the garden's bench, a locked tool in the crayon) turns up here at once */
     this._onEcon = () => fill();

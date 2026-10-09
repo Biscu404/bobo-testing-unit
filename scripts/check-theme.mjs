@@ -6,7 +6,9 @@
      scheme's mapped black at 4.5:1; the dimmer colours that carry information (light red, light magenta, light blue, brown, dark grey) at 3:1;
    - every scheme has its own filter, VGA has none, and the filter is made of well-formed table values. */
 import { SCHEMES } from '../kernel/cos_data.js';
-import { rampOf, mapColour, contrast, relLum, filterOf, varsOf, deskOf, GAMMA } from '../kernel/theme_fx.js';
+import { rampOf, mapColour, contrast, relLum, filterOf, varsOf, deskOf, frameHex, GAMMA } from '../kernel/theme_fx.js';
+import { TITLE_COLORS } from '../kernel/win_skins.js';
+import { readFileSync } from 'node:fs';
 
 let bad = 0, n = 0;
 const ok = (c, m) => { n++; if (!c) { bad++; console.log('FAIL ' + m); } };
@@ -28,9 +30,24 @@ for (const s of SCHEMES) {
   const v = varsOf(s, false), w = varsOf(s, true);
   ok(s.id === 'vga' ? v['--th-filter'] === 'none' : v['--th-filter'] === 'url(#th-' + s.id + ')', s.id + ': filter variable');
   ok(!('--sch-bg' in w) && w['--th-filter'] === v['--th-filter'], s.id + ': a window gets the filter and none of the inks (nothing is recoloured twice)');
+  /* the frame: every window kind's bar is filtered and its edge is a border given the colour the ramp gives it; the edge has to be a real colour and still show against the scheme's glass */
+  for (const k in TITLE_COLORS) {
+    const e = frameHex(s.v, TITLE_COLORS[k].border);
+    ok(/^#[0-9A-F]{6}$/.test(e), s.id + ': the ' + k + ' window edge is a colour (' + e + ')');
+    ok(contrast(H(e), black) >= 1.4 || k === 'panic', s.id + ': the ' + k + ' window edge shows against the scheme\'s black (' + contrast(H(e), black).toFixed(2) + ')');
+  }
   if (s.id !== 'vga') { const f = filterOf(s.id, s.v); ok(/id="th-/.test(f) && !/NaN|undefined/.test(f) && (f.match(/tableValues="/g) || []).length === 3, s.id + ': filter markup'); }
 }
 ok(GAMMA > 0.5 && GAMMA < 1, 'the lift is a lift');
+ok(frameHex({ bg: '#000000', fg: '#FFFFFF', ok: '#55FF55', hi: '#FFFF55', err: '#FF5555', dim: '#AAAAAA', acc: '#55FFFF' }, '#AA00AA').length === 7, 'frameHex gives a colour');
+
+/* What a scheme may reach: the machine's chrome and nothing inside an app. The filter is applied in the stylesheet, so hold the stylesheet to it. */
+const css = readFileSync(new URL('../kernel/theme.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+const rules = css.split('}').map(r => r.trim()).filter(r => /filter:\s*var\(--th-filter/.test(r));
+ok(rules.length === 1, 'exactly one rule applies the scheme\'s filter (found ' + rules.length + ')');
+const sel = rules.length ? rules[0].slice(0, rules[0].indexOf('{')).split(',').map(x => x.trim().replace(/\s+/g, ' ')) : [];
+['.win > .titlebar', '#menubar', '#taskbar'].forEach(x => ok(sel.includes(x), 'the scheme dresses ' + x));
+['.win', '.wbody', '#icons', '#pet', '#deskvid', '#desktop', '#room', '#tube'].forEach(x => ok(!sel.includes(x), 'the scheme never filters ' + x + ' (the app, the icons and the elephant keep their own colours)'));
 ok(SCHEMES.some(s => s.id === 'vga'), 'the default scheme exists');
 console.log(bad ? '\nFAILED ' + bad + ' of ' + n : 'ok  - ' + SCHEMES.length + ' schemes as whole looks (' + n + ' checks)');
 process.exit(bad ? 1 : 0);

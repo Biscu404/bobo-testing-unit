@@ -14,8 +14,10 @@ import { petIcons, petMoveIcon } from './desktop.js';
 import { openWindow, openWins } from './wm.js';
 import { dressed as trophyDressed, event as trophy } from '../apps/elephant/trophy_calls.js';
 import { ELEPHANT } from './cos_data.js';
+import { Cheese } from './cheese.js';
+import { eatPose, EAT_SECS, PICK_AT } from '../apps/cheese_art.js';
 import { pickTarget, VISIT_RATE, ENTER, WATCH, CHEER, BIG_CHEER, NAP, LEAVE, FOLLOW, OUT_WHEN_SHUT } from './pet_visit.js';
-import { LINES, PUSH_LINES, GOODBYES_DAY, GOODBYES_NIGHT, WAKES, WAKES_NEAR, HOME_LINES, DOOR_LINES, choose } from './pet_lines.js';
+import { LINES, CHEESE_LINES, CHEESE_DONE, PUSH_LINES, GOODBYES_DAY, GOODBYES_NIGHT, WAKES, WAKES_NEAR, HOME_LINES, DOOR_LINES, choose } from './pet_lines.js';
 
 const KEY = 'templeos.pet.v1', S = 2, SW = MINI_W * S, SH = MINI_H * S, FOOT = 56 * S;
 const SPEED = 46, ICON_W = 84, ICON_H = 78;
@@ -27,6 +29,7 @@ let st = { out: false, wear: {}, x: 200, y: 260, last: null };
 try { st = Object.assign(st, JSON.parse(localStorage.getItem(KEY)) || {}); st.wear = st.wear || {}; } catch (e) { /* a fresh one */ }
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ out: st.out, wear: st.wear, x: Math.round(P.x), y: Math.round(P.y), last: st.last })); } catch (e) {} };
 
+Cheese.hooks.out = () => !!st.out;                  /* Gheghe's cheese goes on the desktop only when he is out of his window */
 const P = { k: 2, x: st.x, y: st.y, dir: 1, mode: 'idle', t: 0, wait: 2, to: null, job: null, say: 0, lastPush: 0, down: null, near: false, jump: null, step: 0, snore: 0 };
 /* a visit: he is inside the window `rec` (V.x, V.y are his top-left inside its frame), at one pixel to the pixel */
 const V = { rec: null, x: 0, y: 0, to: null, sub: 'idle', t: 0, wait: 0, follow: 0, abs: null, look: 0 };
@@ -69,6 +72,7 @@ function pose() {
   if (P.mode === 'visit') return V.sub === 'walk' ? 'walk' : V.sub === 'cheer' ? 'hop' : V.sub === 'nap' ? 'sleep' : 'stand';
   if (P.mode === 'sleep') return 'sleep';
   if (P.mode === 'push') return 'push';
+  if (P.mode === 'eat') return 'stand';
   if (P.mode === 'walk' || P.mode === 'home') return 'walk';
   if (P.mode === 'hop' || P.mode === 'jump' || P.mode === 'carried') return 'hop';
   return 'stand';
@@ -89,6 +93,13 @@ function goodbye() {
 function sleep() { trophy('sleep'); P.mode = 'sleep'; P.t = 0; P.wait = 25 + Math.random() * 45; P.snore = 1; speak('...', 1.6); }
 function talk() { P.mode = 'talk'; P.t = 0; P.wait = 5.6; speak(line(LINES)); }
 function hop() { P.mode = 'hop'; P.t = 0; P.wait = 0.9; snd(660, 50, { type: 'triangle', to: 880, vol: 0.02 }); }
+/* Gheghe's cheese on the desk (kernel/cheese.js): he walks up to the pile with his trunk toward it, takes a wedge, eats it, and now and then another */
+function eatCheese() {
+  const b = Cheese.deskPile();
+  if (!b) return wander();
+  const right = P.x + SW / 2 < b.x + b.w / 2;
+  goTo(right ? b.x - SW + 14 : b.x + b.w - 14, b.y + b.h - FOOT + 2, { kind: 'eat', dir: right ? 1 : -1, ate: false });
+}
 function pushIcon() {
   const list = petIcons();
   if (list.length < 3 || document.querySelector('#icons .icon.dragging')) return wander();
@@ -109,7 +120,7 @@ function recAbs(rec) {
   const r = rec.win.getBoundingClientRect(), o = d.getBoundingClientRect(), bar = rec.win.querySelector('.titlebar');
   return { x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height, th: bar ? bar.offsetHeight : 20 };
 }
-const winsNow = () => openWins.map(r => ({ appId: r.appId, hidden: r.win.classList.contains('hidden'), active: r.btn.classList.contains('active'), z: +r.win.style.zIndex || 0, rec: r }));
+const winsNow = () => openWins.filter(r => !r.palette).map(r => ({ appId: r.appId, hidden: r.win.classList.contains('hidden'), active: r.btn.classList.contains('active'), z: +r.win.style.zIndex || 0, rec: r }));
 const visitTarget = () => { const t = pickTarget(winsNow()); return t ? t.rec : null; };
 const poolFor = (table, appId) => (table[appId] || []).concat(table._ || []);
 function startVisit(rec) {
@@ -195,10 +206,10 @@ function think() {
   const sleepy = lateHour();
   { const tgt = visitTarget(); if (tgt && Math.random() < VISIT_RATE * (sleepy ? 0.6 : 1)) return startVisit(tgt); }
   const canPush = performance.now() - P.lastPush > 150000 && petIcons().length > 2;
-  const w = [['walk', 5], ['sleep', sleepy ? 6 : 1.4], ['talk', 2.2], ['push', canPush ? 1.4 : 0], ['hop', 0.7], ['stay', 1.5]];
+  const w = [['walk', 5], ['sleep', sleepy ? 6 : 1.4], ['talk', 2.2], ['push', canPush ? 1.4 : 0], ['hop', 0.7], ['stay', 1.5], ['eat', Cheese.deskBites() > 0 && !sleepy ? 5 : 0]];
   let r = Math.random() * w.reduce((a, b) => a + b[1], 0), c = 'stay';
   for (const [k, v] of w) { if ((r -= v) < 0) { c = k; break; } }
-  if (c === 'walk') wander(); else if (c === 'sleep') goodbye(); else if (c === 'talk') talk(); else if (c === 'push') pushIcon(); else if (c === 'hop') hop();
+  if (c === 'walk') wander(); else if (c === 'sleep') goodbye(); else if (c === 'talk') talk(); else if (c === 'push') pushIcon(); else if (c === 'hop') hop(); else if (c === 'eat') eatCheese();
   else { P.mode = 'idle'; P.t = 0; P.wait = 2 + Math.random() * 4; }
 }
 
@@ -226,6 +237,15 @@ function tick(ts) {
   } else if (P.mode === 'push') {
     if (P.job && !P.job.done && P.t > 0.7) { P.job.done = true; shove(); }
     if (P.t > 1.5) { P.mode = 'idle'; P.t = 0; P.wait = 2.5; P.job = null; }
+  } else if (P.mode === 'eat') {
+    const k = P.t / EAT_SECS;
+    if (k >= PICK_AT && P.job && !P.job.ate) { P.job.ate = true; Cheese.eat('desk'); snd(210, 70, { type: 'triangle', to: 150, vol: 0.03 }); }
+    if (k >= 0.72 && k < 0.96 && Math.floor(P.t * 6) !== P.chew) { P.chew = Math.floor(P.t * 6); snd(150 + Math.random() * 40, 45, { type: 'triangle', vol: 0.012 }); }
+    if (P.t > EAT_SECS) {
+      const j = P.job, left = Cheese.deskBites() > 0;
+      if (left && Math.random() < 0.5 && j) { P.t = 0; j.ate = false; }
+      else { P.mode = 'idle'; P.t = 0; P.wait = 2 + Math.random() * 3; P.job = null; speak(line(left ? CHEESE_LINES : CHEESE_DONE), 3.8); }
+    }
   } else if (P.mode === 'sleep') {
     P.snore -= dt; if (P.snore <= 0) { P.snore = 3.2; snd(104, 700, { type: 'sine', to: 78, vol: 0.008 }); }
     const c = { x: P.x + SW / 2, y: P.y + SH / 2 };
@@ -247,7 +267,7 @@ function tick(ts) {
   el.style.transform = 'translate(' + Math.round(P.x) + 'px,' + Math.round(P.y) + 'px)';
   cv.style.transform = P.dir < 0 ? 'scaleX(-1)' : '';
   if (bub && bub.style.display !== 'none') bub.style.transform = 'translate(' + Math.round(Math.min(room().w - 240, Math.max(4, P.x + MW() / 2 - 40))) + 'px,' + Math.round(Math.max(2, P.y + 6 - bubH)) + 'px)';
-  if (ts - drawAt > 80) { drawAt = ts; drawMini(g, { pose: pose(), t: ts / 1000, wear: st.wear, think: P.mode === 'talk' }); }
+  if (ts - drawAt > 80) { drawAt = ts; drawMini(g, { pose: pose(), t: ts / 1000, wear: st.wear, think: P.mode === 'talk', eat: P.mode === 'eat' ? eatPose(P.t / EAT_SECS) : null }); }
 }
 
 function arrive() {
@@ -265,6 +285,7 @@ function arrive() {
   }
   if (j && j.kind === 'visit') { enterWindow(j.rec, j.side); return; }
   if (j && j.kind === 'push') { P.dir = 1; P.mode = 'push'; P.t = 0; snd(120, 90, { type: 'triangle', to: 90, vol: 0.03 }); return; }
+  if (j && j.kind === 'eat') { if (Cheese.deskBites() <= 0) { P.mode = 'idle'; P.t = 0; P.wait = 1.5; P.job = null; return; } P.dir = j.dir; P.mode = 'eat'; P.t = 0; j.ate = false; return; }
   P.mode = 'idle'; P.t = 0; P.wait = 1.5 + Math.random() * 4; P.job = null; save();
 }
 function shove() {

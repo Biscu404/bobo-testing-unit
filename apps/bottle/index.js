@@ -2,14 +2,15 @@ import { Snd } from '../../kernel/snd.js';
 import { makeSfx } from './sfx.js';
 import { makeArt, BW, BH, C, GLS, BOT } from './art.js';
 import { makeContainer } from './raster.js';
-import { clamp, makeSlosh, stepSlosh, JAG_FULL, JAG_SHOT, POURED_FILL, BOT_FULL } from './physics.js';
+import { clamp, makeSlosh, stepSlosh, JAG_FULL, JAG_SHOT, POURED_FILL, BOT_FULL, sway } from './physics.js';
 import { startPour, pourStep } from './pour.js';
 import { startDrink, drinkStep, restPose } from './drink.js';
 import { makeGlass3D, setLiquor } from './glass3d.js';
-import { drinkById, paletteOf } from './drinks.js';
+import { drinkById, paletteOf, potionPercent, strengthOf } from './drinks.js';
 import { DRINKS } from '../../kernel/cos_data.js';
 import { scopedListeners, whenGone } from '../lifecycle.js';
-import { poured, drank } from './trophy_calls.js';
+import { poured, drank, loreKnock } from './trophy_calls.js';
+import { STYLES, styleOf } from './styles.js';
 
 const JAG_KEY = 'templeos.bottle.v1';
 /* what the machine says as you go down, by how far you are */
@@ -45,8 +46,9 @@ export default {
     bar.className = 'appbar';
     const bDrink = document.createElement('button'); bDrink.className = 'appbtn';
     const bBuy = document.createElement('button'); bBuy.className = 'appbtn'; bBuy.textContent = 'BUY A NEW BOTTLE';
+    const bLore = document.createElement('button'); bLore.className = 'appbtn';
     const info = document.createElement('span'); info.className = 'godword';
-    bar.appendChild(bDrink); bar.appendChild(bBuy); bar.appendChild(info);
+    bar.appendChild(bDrink); bar.appendChild(bBuy); bar.appendChild(bLore); bar.appendChild(info);
     body.appendChild(wrap); body.appendChild(bar);
 
     const g = cv.getContext('2d');
@@ -62,7 +64,7 @@ export default {
 
     const S = {
       ml: JAG_FULL, drunk: 0, bottles: 1, shelf: {}, phase: 'idle', t: 0, note: '', noteT: 0, rest: 0,
-      bot: { c: REST_C.slice(), a: 0, vol: BOT_FULL, capOn: true, surf: null, n0: botC.n0, slosh: makeSlosh() },
+      bot: { c: REST_C.slice(), a: 0, vol: BOT_FULL, capOn: true, surf: null, n0: botC.n0, geo: A.geo, slosh: makeSlosh() },
       gls: { pose: restPose(), vol: 0 },
       sipDrops: [], stream: 0, q: 0, lip: null, glassSurf: FLOOR, glassVol: 0, glugPh: 0, glugIn: 0, dripIn: 0,
       bubbles: [], fizz: [], rings: [], drops: [], flight: [], ringIn: 0, foam: 0, poured: 0, swallowed: 0, pending: 0
@@ -73,7 +75,7 @@ export default {
       const raw = JSON.parse(localStorage.getItem(JAG_KEY) || 'null');
       if (raw) {
         S.ml = raw.ml == null ? JAG_FULL : raw.ml; S.drunk = raw.drunk || 0; S.bottles = raw.bottles || 1; wasFull = raw.glass || 0; S.shelf = raw.shelf || {};
-        if (raw.drink && window.Cos.has('drink', raw.drink)) { drink = drinkById(raw.drink); PAL = paletteOf(drink); A = makeArt(g, PAL); R = A.R; T = A.T; botC = makeContainer(A.bottleSpec); }
+        if (raw.drink && window.Cos.has('drink', raw.drink)) { drink = drinkById(raw.drink); PAL = paletteOf(drink); A = makeArt(g, PAL); R = A.R; T = A.T; botC = makeContainer(A.bottleSpec); S.bot.n0 = botC.n0; S.bot.geo = A.geo; }
       }
     } catch (e) {}
     setLiquor(PAL.room);
@@ -83,7 +85,7 @@ export default {
       JSON.stringify({ ml: S.ml, drunk: S.drunk, bottles: S.bottles, glass: S.gls.vol > 0.55 ? 1 : 0, drink: drink.id, shelf: S.shelf })); } catch (e) {} };
     const say = t => { S.note = t; S.noteT = 3; };
     const full = () => S.gls.vol > 0.55;
-    const fx = { sfx, get glassSurf() { return S.glassSurf; } };
+    const fx = { sfx, get glassSurf() { return S.glassSurf; }, faint: () => { if (window.Drunk && window.Drunk.knockOut && window.Drunk.knockOut()) loreKnock(); } };
     let pouringSnd = false;
 
     /* ---- the picture ---------------------------------------------------- */
@@ -137,7 +139,7 @@ export default {
       if (!drinking) {
         R(136, 300, 108, 8, '#1a1008');
         R(137, 301, Math.round(106 * frac), 6, frac > 0.25 ? C.label : '#c8542a');
-        T('BOTTLE ' + S.bottles + (window.Drunk ? '  ·  ' + window.Drunk.stage() : ''), 190, 322, C.dim, 8, 'center');
+        T('BOTTLE ' + S.bottles + (window.Drunk ? '  ·  ' + window.Drunk.stage() : '') + '  ·  HAND: ' + (S.forceStyle != null ? STYLES[S.forceStyle] : styleOf(sway())).name, 190, 322, C.dim, 8, 'center');
         T('DRUNK: ' + S.drunk + ' MEASURE' + (S.drunk === 1 ? '' : 'S') +
           '  (' + (S.drunk * JAG_SHOT / 1000).toFixed(2) + ' L)', 190, 336, C.white, 8, 'center');
       }
@@ -175,17 +177,22 @@ export default {
 
     /* ---- what a click does ----------------------------------------------- */
     function next() {
-      if (full()) { startDrink(S); sfx.sip(); return true; }
+      if (full()) {
+        S.lore = !!(window.Drunk && window.Drunk.loreOn && window.Drunk.loreOn() && drink.abv > 0);
+        S.pct = drink.potion ? potionPercent() : null;                       /* the homemade potion: this sip is whatever it is */
+        S.sipUnits = strengthOf(drink, S.pct);
+        startDrink(S); sfx.sip(); return true;
+      }
       if (S.ml < JAG_SHOT) { say('EMPTY. BUY ANOTHER ONE.'); sfx.deny(); return false; }
       startPour(S); sfx.cap(); return true;
     }
     /* ---- which bottle is on the table ---------------------------------------- */
-    const quip = d => d.name + '.  ' + d.abv + '% VOL.  ' + (d.strength === 0 ? 'NOTHING IN IT AT ALL.' : d.strength >= 1.5 ? 'EACH ONE COUNTS AS ' + d.strength.toFixed(1) + ' JÄGER. GO CAREFULLY.' : d.strength < 0.7 ? 'GENTLE: IT TAKES A LOT OF THEM.' : 'ABOUT AS STRONG AS WHAT YOU WERE DRINKING.');
+    const quip = d => d.potion ? d.name + '.  ?% VOL.  SOMEWHERE BETWEEN ONE AND NINETY-NINE, AND A DIFFERENT ONE EVERY SIP.' : d.name + '.  ' + d.abv + '% VOL.  ' + (d.strength === 0 ? 'NOTHING IN IT AT ALL.' : d.strength >= 1.5 ? 'EACH ONE COUNTS AS ' + d.strength.toFixed(1) + ' JÄGER. GO CAREFULLY.' : d.strength < 0.7 ? 'GENTLE: IT TAKES A LOT OF THEM.' : 'ABOUT AS STRONG AS WHAT YOU WERE DRINKING.');
     function setDrink(d) {
       S.shelf[drink.id] = S.ml;                                  /* the one on the table goes back on the shelf, as full as it is */
       drink = d; PAL = paletteOf(d);
       A = makeArt(g, PAL); R = A.R; T = A.T;
-      botC = makeContainer(A.bottleSpec); S.bot.n0 = botC.n0;
+      botC = makeContainer(A.bottleSpec); S.bot.n0 = botC.n0; S.bot.geo = A.geo;
       setLiquor(PAL.room);
       S.ml = S.shelf[d.id] != null ? S.shelf[d.id] : JAG_FULL;
       S.bot.vol = (S.ml / JAG_FULL) * BOT_FULL; S.bot.a = 0; S.bot.c = REST_C.slice(); S.bot.capOn = true;
@@ -202,8 +209,24 @@ export default {
       setDrink(own[(own.findIndex(d => d.id === drink.id) + 1) % own.length]);
       cv.focus();
     });
-    L.on(window, 'cos-changed', () => refreshBar());
-    refreshBar();
+    /* LORE ACCURATE: earned by passing out five times and owning every bottle there is to find, then a switch. Until then it is a dashed button that says how far off it is. */
+    function refreshLore() {
+      const D = window.Drunk, st = D && D.loreStatus ? D.loreStatus() : null;
+      if (!st) { bLore.style.display = 'none'; return; }
+      bLore.style.display = '';
+      bLore.disabled = !st.unlocked;
+      bLore.textContent = !st.unlocked ? 'LORE ACCURATE: LOCKED' : 'LORE ACCURATE: ' + (D.loreOn() ? 'ON' : 'OFF');
+      bLore.title = !st.unlocked ? 'PASS OUT FIVE TIMES (' + st.blackouts + ' OF ' + st.needBlackouts + ') AND OWN EVERY BOTTLE (' + st.bottles + ' OF ' + st.of + ').'
+        : 'THE FIRST SIP OF ANYTHING WITH ALCOHOL IN IT KNOCKS YOU OUT. THE CORDIAL IS STILL SAFE.';
+    }
+    bLore.addEventListener('click', () => {
+      if (S.phase !== 'idle' || !window.Drunk) return;
+      const on = window.Drunk.setLore(!window.Drunk.loreOn());
+      say(on ? 'LORE ACCURATE. ONE SIP AND YOU ARE DOWN.' : 'LORE ACCURATE IS OFF. YOU CAN HOLD IT AGAIN.'); sfx.cork(); refreshLore(); cv.focus();
+    });
+    L.on(window, 'cos-changed', () => { refreshBar(); refreshLore(); });
+    L.on(window, 'lore-changed', refreshLore);
+    refreshBar(); refreshLore();
 
     /* a click is for now. While a measure is being poured or drunk, or while whoever
        it is gets their breath back, it does nothing at all: nothing is kept for later,
@@ -236,10 +259,11 @@ export default {
       S.phase = 'idle'; S.drunk++; S.rest = BREATHER;
       S.gls.vol = Math.min(S.gls.vol, 0.03);
       sfx.down(); sfx.ahh(); save();
-      if (window.Drunk) window.Drunk.drink(drink.strength);
-      drank(drink.id, drink.strength);
+      const units = S.sipUnits != null ? S.sipUnits : drink.strength;
+      if (window.Drunk && !S.lore) window.Drunk.drink(units);                           /* with LORE ACCURATE on, the first swallow was the whole journey */
+      drank(drink.id, units);
       const lines = JAG_LINES[window.Drunk ? window.Drunk.stage() : 'SOBER'] || JAG_LINES.SOBER;
-      say(lines[S.drunk % lines.length]);
+      say(S.lore ? 'LORE ACCURATE. ONE SIP.' : S.pct ? 'THAT SIP WAS ' + S.pct + '%. ' + lines[S.drunk % lines.length] : lines[S.drunk % lines.length]);
     }
 
     /* ---- the simulation --------------------------------------------------- */

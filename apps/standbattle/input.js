@@ -1,5 +1,11 @@
 /* Devices (spec 4.3): the keyboard and the gamepad turned into the one integer per frame the sim reads (rules.js BIT), and into the few abstract events the menus use.
-   Both are rebindable. Player 1 has the left hand of the keyboard, player 2 the arrows; with one human in the room player 1 takes both (and any pad).
+   Both are rebindable. With one human in the room player 1 takes both sides of the keyboard (and any pad).
+
+   THE KEYS ARE FOR TWO HANDS. The left hand steers (W A S D) and the right hand fights, the four buttons laid out the way the arcade panel is and the way the limbs are:
+   the hands on top, the feet below, left on the left: U (left punch) I (right punch) over J (left kick) K (right kick), under the index and middle fingers of the right
+   hand's home row. It used to be F G over V B, right beside W A S D, so one hand had to steer and fight at once. Two people at one keyboard cannot each have two
+   hands, so player 2 has the arrows and the number pad's 4 5 over 1 2, and SHARED_KEYMAP (a button on the controls screen) is the old one-hand-each split for a keyboard
+   with no number pad.
 
    A key that goes down and up between two sim frames still counts for one frame (`sticky`), so a quick tap of up or down is a sidestep and not a lost input.
    Nothing here knows about a fight; scenes ask `bits(slot)` once per sim frame and read `nav` once per render frame. */
@@ -10,20 +16,31 @@ export const ACTIONS = ['left', 'right', 'up', 'down', 'LP', 'RP', 'LK', 'RK'];
 const ACTION_BIT = { left: BIT.LEFT, right: BIT.RIGHT, up: BIT.UP, down: BIT.DOWN, LP: BIT.LP, RP: BIT.RP, LK: BIT.LK, RK: BIT.RK };
 
 export const DEFAULT_KEYMAP = {
-  p1: { KeyA: 'left', KeyD: 'right', KeyW: 'up', KeyS: 'down', KeyF: 'LP', KeyG: 'RP', KeyV: 'LK', KeyB: 'RK' },
-  p2: { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down', KeyK: 'LP', KeyL: 'RP', Comma: 'LK', Period: 'RK' },
+  p1: { KeyA: 'left', KeyD: 'right', KeyW: 'up', KeyS: 'down', KeyU: 'LP', KeyI: 'RP', KeyJ: 'LK', KeyK: 'RK' },
+  p2: { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down', Numpad4: 'LP', Numpad5: 'RP', Numpad1: 'LK', Numpad2: 'RK' },
   pad: { 2: 'LP', 3: 'RP', 0: 'LK', 1: 'RK' }
 };
+/* two people, one keyboard, no number pad: each has one hand's worth of it. Player 1 steers and fights on the left, player 2 on the right. */
+export const SHARED_KEYMAP = {
+  p1: { KeyA: 'left', KeyD: 'right', KeyW: 'up', KeyS: 'down', KeyF: 'LP', KeyG: 'RP', KeyV: 'LK', KeyB: 'RK' },
+  p2: { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down', KeyK: 'LP', KeyL: 'RP', Comma: 'LK', Period: 'RK' },
+  pad: DEFAULT_KEYMAP.pad
+};
+/* what the keys were before they were laid out for two hands: a save that holds exactly this was never changed by its owner (the controls screen writes the defaults down), so it gets the new ones */
+const OLD_DEFAULT = { p1: SHARED_KEYMAP.p1, p2: SHARED_KEYMAP.p2 };
+const same = (a, b) => JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort());
 export const PAD_DIR = { 12: 'up', 13: 'down', 14: 'left', 15: 'right' };
 const DEAD = 0.5;
 
-export const keyLabel = c => (c || '').replace(/^Key/, '').replace(/^Arrow/, '').replace('Comma', ',').replace('Period', '.').replace('Semicolon', ';').replace('Slash', '/').replace('Space', 'SPC').toUpperCase();
+export const keyLabel = c => (c || '').replace(/^Key/, '').replace(/^Arrow/, '').replace(/^Numpad/, 'NP').replace('Comma', ',').replace('Period', '.').replace('Semicolon', ';').replace('Slash', '/').replace('Space', 'SPC').toUpperCase();
+/* the four buttons of one side of the keyboard as the player would say them, from the keys as they are bound now: "U I J K" */
+export const buttonsOf = (map, slot) => ['LP', 'RP', 'LK', 'RK'].map(a => { const c = Object.keys(map[slot]).find(k => map[slot][k] === a); return c ? keyLabel(c) : '--'; }).join(' ');
 
 function clone(o) { return JSON.parse(JSON.stringify(o)); }
 
 export function createDevices(saved) {
   const map = clone(DEFAULT_KEYMAP);
-  if (saved) ['p1', 'p2', 'pad'].forEach(k => { if (saved[k] && typeof saved[k] === 'object') map[k] = Object.assign({}, saved[k]); });
+  if (saved) ['p1', 'p2', 'pad'].forEach(k => { if (saved[k] && typeof saved[k] === 'object' && !(OLD_DEFAULT[k] && same(saved[k], OLD_DEFAULT[k]))) map[k] = Object.assign({}, saved[k]); });
   const held = [0, 0], sticky = [0, 0], padHeld = [0, 0], padPrev = [{}, {}], nav = [];
   let capture = null;
   const api = {
@@ -108,6 +125,8 @@ export function createDevices(saved) {
       map.pad[button] = action;
     },
     reset() { const d = clone(DEFAULT_KEYMAP); map.p1 = d.p1; map.p2 = d.p2; map.pad = d.pad; },
+    /* the one-hand-each keys for two people at a keyboard with no number pad (the pad's buttons are left as they are) */
+    share() { const d = clone(SHARED_KEYMAP); map.p1 = d.p1; map.p2 = d.p2; },
     keyFor(slot, action) { const m = map[slot], c = Object.keys(m).find(k => m[k] === action); return c || null; },
     dump() { return clone(map); }
   };

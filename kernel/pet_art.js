@@ -4,8 +4,9 @@
  * apps/elephant is drawn front-on, one row at a time; this one has to walk, so he is a different drawing of the same animal.
  * Flip the element (CSS scaleX(-1)) to face left: nothing here ever mirrors.
  *
- * drawMini(g, { pose, t, wear, think })
+ * drawMini(g, { pose, t, wear, think, eat })
  *   pose  'stand' | 'walk' | 'sleep' | 'push' | 'sit' | 'hop'
+ *   eat   the pose of a piece of cheese being eaten (apps/cheese_art.js eatPose): the trunk goes to the floor in front of him, comes up with a wedge and brings it to his mouth
  *   t     seconds, for the breathing and the legs
  *   wear  { head, face, neck, body, feet } -> ids from cos_data.js ELEPHANT
  * Clothes are rectangles from the ground up, each a few pixels, so they read at this size. */
@@ -85,7 +86,8 @@ export function drawMini(g, o) {
   }
 
   /* standing, walking, pushing */
-  const hy = pushing ? 3 : 0, headX = pushing ? 4 : 0;
+  const E = o.eat || null, chewBob = E && E.chew ? Math.round(Math.sin(t * 20)) : 0;
+  const hy = pushing ? 3 : E ? Math.round(E.lean * 4) + chewBob : 0, headX = pushing ? 4 : E ? Math.round(E.lean * 3) : 0;
   const fl = Math.round(ph * 3);
   const feet = [[20 - fl, 55], [46 + fl, 55], [29 + fl, 55], [53 - fl, 55]];
   if (wear.body === 'cape') WEAR.cape(R, { by: bob + br });
@@ -107,6 +109,15 @@ export function drawMini(g, o) {
   if (NECKWEAR[wear.neck]) WEAR[wear.neck](R, place);
   if (pushing) {
     for (let i = 0; i < 6; i++) { R(tx + i * 2, 33 + bob + hy + (i > 3 ? 1 : 0), 4, 5, i % 2 ? 8 : 7); R(tx + i * 2, 38 + bob + hy + (i > 3 ? 1 : 0), 4, 1, 0); }
+  } else if (E) {
+    /* the trunk goes down to the floor in front of him, then comes up with a wedge to his mouth */
+    let tipX = tx, tipY = 34;
+    for (let i = 0; i < 6; i++) {
+      const k = i / 5, x = tx + Math.round(E.lean * 7 * k * k + E.curl * 3 * k), y = 34 + bob + hy + Math.round(i * 3 - E.curl * Math.max(0, i - 1) * 2.2);
+      R(x, y, 6 - (i > 3 ? 2 : 0), 4, i % 2 ? 8 : 7);
+      tipX = x; tipY = y;
+    }
+    if (E.wedge) { R(tipX - 1, tipY - 1, 6, 4, 14); R(tipX - 1, tipY + 2, 6, 1, 6); R(tipX + 1, tipY, 1, 1, 6); }
   } else if (o.think) {
     for (let i = 0; i < 6; i++) { R(tx + 1 + Math.round(i * 0.8), 34 + bob + hy + i * 3 - (i > 2 ? (i - 2) * 4 : 0), 5 - (i > 3 ? 1 : 0), 4, i % 2 ? 8 : 7); }
   } else {

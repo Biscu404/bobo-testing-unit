@@ -2,17 +2,16 @@
    colour of the machine's own desktop), a sunburst of rings and rays round the creator's head, a little
    light in the blue, and a cross behind each playtester in the way the old temple screens drew them. Every
    pixel is written by the ImageData or a whole-pixel rectangle, so the picture is exactly these colours. */
-export const W = 640, H = 520;
+import { W, H } from './layout.js';
 
 /* VGA16, the same sixteen as kernel/god.js (apps may not import from kernel/) */
 const PAL = [[0, 0, 0], [0, 0, 170], [0, 170, 0], [0, 170, 170], [170, 0, 0], [170, 0, 170], [170, 85, 0], [170, 170, 170],
   [85, 85, 85], [85, 85, 255], [85, 255, 85], [85, 255, 255], [255, 85, 85], [255, 85, 255], [255, 255, 85], [255, 255, 255]];
 export const INK = { blue: 1, cyan: 3, lightBlue: 9, yellow: 14, white: 15, rim: 11 };
-export const TEMPLE = { x: 320, y: 140, rx: 200, ry: 104 };       /* the halo: an ellipse round the creator's head */
 
 const setPx = (d, i, c) => { d[i] = PAL[c][0]; d[i + 1] = PAL[c][1]; d[i + 2] = PAL[c][2]; d[i + 3] = 255; };
 
-/* the ground, the sparkles, and the halo's rings and rays, all in one pass over the pixels */
+/* the ground, the sparkles, and the halo's rings and rays (the ellipse round the creator's head: layout.js haloOf), all in one pass over the pixels */
 export function sky(g, halo) {
   const id = g.createImageData(W, H), d = id.data;
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {

@@ -42,7 +42,7 @@ export function trainingScene(app) {
       fight = createFight({ defs: [defOf(a.p1), defOf(a.p2)], stage: STAGES.street, rng, training: true });
       wireAudio(fight); view = ensureView(fight, app.meta.shakeEnabled); tr = createTrainer(fight, rng);
       side = app.meta.training.side || 'right'; tr.dummy = Math.max(0, DUMMIES.indexOf(String(app.meta.training.dummy || 'STAND').toUpperCase())); boxes = !!app.meta.training.boxes;
-      menu = false; sel = 0; reset(); app.dev.single = true; app.music(1); emit('training-open', {});
+      menu = false; sel = 0; reset(); app.dev.single = true; app.music(1, 'street'); emit('training-open', {});
       const orig = fight.step;
       fight.step = (x, y) => { orig(x, y); tr.tick(); if (tr.again) { tr.again = false; reset(); } };
       fight.bus.on('onHit', e => { if (e.slot === 0) tr.contact(e.kind === 'throw' ? 'THROW' : 'HIT'); });

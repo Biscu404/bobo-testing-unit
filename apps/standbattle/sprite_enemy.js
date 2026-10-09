@@ -40,8 +40,10 @@ export function paint(g, pose, b) {
   /* rear leg + arm */
   drawLimb(g, sk.legRear, 13, 10, 8, b.pants);
   boot(g, sk.legRear.ankle.x, sk.legRear.ankle.y, sk.legRear.shinAng, spec, b.shoe, b.shoe);
-  drawLimb(g, sk.armRear, 11, 9, 7.4, b.cloth);
-  hand(g, sk.armRear.wrist.x, sk.armRear.wrist.y, sk.armRear.foreAng, 10, b.skin, pose.handRear);
+  if (!pose.rearOver) {
+    drawLimb(g, sk.armRear, 11, 9, 7.4, b.cloth);
+    hand(g, sk.armRear.wrist.x, sk.armRear.wrist.y, sk.armRear.foreAng, 10, b.skin, pose.handRear);
+  }
 
   if (b.coatTail) b.coatTail(g, sk, pose);
   jacket(g, sk, spec, b);
@@ -60,6 +62,11 @@ export function paint(g, pose, b) {
   b.hair(g, cx, cy, ang, spec.headScale, pose);
   if (pose.action === 'hurt' || pose.flash > 0.3) sweat(g, cx, cy, ang, spec.headScale, (pose.t || 0) * 3);
 
+  /* the rear arm, when it is the one punching, comes across the front of the body */
+  if (pose.rearOver) {
+    drawLimb(g, sk.armRear, 11, 9, 7.4, b.cloth, null, '#05060A');
+    hand(g, sk.armRear.wrist.x, sk.armRear.wrist.y, sk.armRear.foreAng, 10, b.skin, pose.handRear);
+  }
   /* front arm last, over everything */
   drawLimb(g, sk.armFront, 12, 9.6, 7.8, b.cloth, null, '#05060A');
   hand(g, sk.armFront.wrist.x, sk.armFront.wrist.y, sk.armFront.foreAng, 10.5, b.skin, pose.handFront);

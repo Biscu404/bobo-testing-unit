@@ -57,8 +57,9 @@ $TR-$
 
 $TR,"WINDOWS"$
 $FG,11$[Z]$FG$ zoom this window, bigger or smaller, and remember it.
-$FG,11$[T]$FG$ a colour scheme for just this window. On a game it dresses the frame
-                  and the bar only; the game's own picture is never recoloured.
+$FG,11$[T]$FG$ a colour scheme for just this window's frame. A scheme dresses the title
+                  bar and the edge of a window, the menu bar and the taskbar, and the
+                  colour of the desktop. What is inside a window is never recoloured.
 $FG,11$[_]$FG$ tuck it into the taskbar.  $FG,11$[□]$FG$ fill the desktop (or F11).
 $FG,11$[X]$FG$ close.
 $TR-$

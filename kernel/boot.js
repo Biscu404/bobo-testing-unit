@@ -13,6 +13,8 @@ import { runAutoExec } from "./autoexec.js";
 import { sys } from "./trophy_hook.js";
 import "./vault.js";
 import "./drunk.js";
+import { Gifts } from "./gifts.js";
+import { Cheese } from "./cheese.js";
 import { Music } from './music.js';
 import { SunUI } from './economy.js';
 import { MixerUI } from './mixer.js';
@@ -210,6 +212,7 @@ function dismissSplash() {
   try { import('./pet.js').then(m => m.Pet.boot()); } catch(e) {}      /* the elephant, if he was let out */
   try { SunUI.mount(); } catch(e) {}
   try { Trophies.boot(); } catch(e) {}
+  try { Cheese.boot(); } catch(e) {}                                                  /* Gheghe's button, if the bottle of water has been given */
   setTimeout(() => runAutoExec().catch(() => {}), 1800);        /* AutoExec.HC runs at boot */
   try { MixerUI.mount(); } catch(e) {}
   try { import('./welcome.js').then(m => m.Welcome.firstTime()); } catch(e) {}
@@ -225,6 +228,7 @@ const start = () => {
   initHardware();
   wireCtxGuard();
   Cos.boot();
+  try { Gifts.boot(); } catch (e) { /* a gift must never stop the machine starting */ }
   drawWordmark();
   if (CRT.on) {
     document.getElementById('screen').classList.remove('off');

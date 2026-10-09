@@ -69,5 +69,7 @@ export const SYSTEM_A = [
   t('sys_bare', 'EVERY SHELF BARE', 'G', 'P', 'Buy everything Dave has.', rule.sets('bare', 1)),
   t('sys_crazy', 'THE CRAZY ONE', 'B', 'E', 'Hear Dave say one of his crazy lines.', on('crazy')),
   t('sys_farewells', 'A WORD FOR EVERYONE', 'S', 'E', 'Hear five of Dave\'s seven farewells.', rule.sets('farewells', 5)),
-  secret('sys_blink', 'WINDOW SHOPPING', 'B', 'J', 'Dave notices how long you stay.', 'Close Dave\'s shop in under four seconds having bought nothing.', on('farewell', p => p.tier === 'blink'))
+  secret('sys_blink', 'WINDOW SHOPPING', 'B', 'J', 'Dave notices how long you stay.', 'Close Dave\'s shop in under four seconds having bought nothing.', on('farewell', p => p.tier === 'blink')),
+  /* ---- the four on the credits screen (kernel/gifts.js: the first visit they give you four things, the fifth four more) ---- */
+  secret('sys_credits', 'FIVE LOOKS AT FOUR FACES', 'B', 'J', 'They like to be looked at, and they notice who does.', 'Open CREDITS.EXE for the fifth time.', on('credits', p => p.n >= 5))
 ];

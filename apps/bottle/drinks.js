@@ -5,8 +5,14 @@
      label    the paper, and the ink on it is whichever of dark or light reads on it
    The Jägermeister the game began with keeps its own hand-picked values (a stag, and green glass the liquor is nearly black behind). */
 import { DRINKS } from '../../kernel/cos_data.js';
+import { GIFT_LABELS } from './labels_gifts.js';
 
 export const drinkById = id => DRINKS.find(d => d.id === id) || DRINKS[0];
+
+/* THE HOMEMADE POTION is a different strength every sip: between one and ninety-nine per cent. `pct` is what this sip is, and a measure of it counts as that many parts in the
+   thirty-five the machine was calibrated on (Jägermeister is 1) */
+export const potionPercent = (r = Math.random()) => 1 + Math.floor(Math.min(0.9999999, Math.max(0, r)) * 99);
+export const strengthOf = (d, pct) => (d.potion ? (pct || potionPercent()) / 35 : d.strength);
 
 const rgbOf = h => [parseInt(h.substr(1, 2), 16), parseInt(h.substr(3, 2), 16), parseInt(h.substr(5, 2), 16)];
 const hexOf = c => '#' + c.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
@@ -37,22 +43,37 @@ const ICON = {
   absinthe: (r, x, y, s, k) => { const q = (a, b, w, h, c) => r(x + a * s, y + b * s, Math.max(1, w * s), Math.max(1, h * s), c || k.ink); q(6, 0, 1, 11); q(2, 2, 4, 2); q(7, 4, 4, 2); q(2, 6, 4, 2); q(8, 8, 3, 2); }
 };
 
+/* which bottle each drink comes in (shapes.js), and the colour of its cap if it is not the glass darkened. A drink in Dave's list can say `shape`, `capKind` and `cap` itself. */
+const LOOK = {
+  jager:      { shape: 'jag' },
+  cordial:    { shape: 'tall', cap: '#f4f4ea' },
+  mead:       { shape: 'squat' },
+  blaabaer:   { shape: 'jag' },
+  aquavit:    { shape: 'tall' },
+  sambuca:    { shape: 'round', cap: '#202020' },
+  fernet:     { shape: 'cm', cap: '#c9a227' },
+  rum:        { shape: 'round', cap: '#2a1008' },
+  absinthe:   { shape: 'tall', capKind: 'cork' },
+  goldwasser: { shape: 'jag', cap: '#c8a020' }
+};
+
 const cache = {};
 export function paletteOf(d) {
   if (cache[d.id]) return cache[d.id];
-  const L = d.liquor;
+  const L = d.liquor, look = Object.assign({ shape: 'jag' }, LOOK[d.id], d.shape && { shape: d.shape }, d.capKind && { capKind: d.capKind }, d.cap && { cap: d.cap });
   let p;
   if (d.id === 'jager') {
-    p = { colors: {}, text: { emboss: 'JÄGERMEISTER', title: 'Jägermeister', sub1: 'KRÄUTERLIKÖR', sub2: '35% vol · 56 herbs', icon: null },
+    p = { shape: 'jag', colors: {}, text: { emboss: 'JÄGERMEISTER', title: 'Jägermeister', sub1: 'KRÄUTERLIKÖR', sub2: '35% vol · 56 herbs', icon: null },
       bottleLiquid: null, stream: ['#b26a24', '#d98a32', '#f0b868'], fizz: '#c58a44', drop: '#c8741c', foam: '#e9c98a', title: '#f08a14', room: null };
   } else {
     const g = d.glass, lb = d.label, ink = lum(lb) > 0.55 ? '#14100a' : '#f4ecd8';
+    const cap = look.cap || mix(g, K, 0.35);
     const colors = { glass: g, glassHi: mix(g, W, 0.45), glassLo: mix(g, K, 0.5), glassMid: mix(g, W, 0.14), edge: mix(g, K, 0.75),
-      label: lb, labelHi: mix(lb, W, 0.3), labelDk: mix(lb, K, 0.25), ink, band: mix(L, K, 0.2), cap: mix(g, K, 0.35), capHi: mix(g, W, 0.25) };
+      label: lb, labelHi: mix(lb, W, 0.3), labelDk: mix(lb, K, 0.25), ink, band: mix(L, K, 0.2), cap, capHi: mix(cap, W, 0.3), capLo: mix(cap, K, 0.45) };
     const base = mix(mix(L, g, 0.4), K, 0.1);
     const room = c => rgbOf(c);
     const [sub1, sub2] = PRINT[d.id] || ['', d.abv + '% vol'];
-    p = { colors, text: { emboss: d.name, title: d.name.length > 12 ? d.name.split(' ')[0] : d.name, sub1, sub2, icon: ICON[d.id] || null },
+    p = { shape: look.shape, capKind: look.capKind || null, colors, text: { emboss: d.name, title: d.name.length > 12 ? d.name.split(' ')[0] : d.name, sub1, sub2, icon: ICON[d.id] || null, paint: GIFT_LABELS[d.id] || null },
       bottleLiquid: { base, mid: mix(L, g, 0.3), hi: mix(L, W, 0.35), edge: mix(base, K, 0.5), foam: '#f4f4ea' },
       stream: [mix(L, K, 0.25), L, mix(L, W, 0.45)], fizz: mix(L, K, 0.12), drop: mix(L, K, 0.1), foam: mix(L, W, 0.6), title: lum(lb) > 0.3 ? lb : mix(lb, W, 0.4),
       room: { liq: room(L), liqDk: room(mix(L, K, 0.55)), top: room(mix(L, W, 0.3)), foam: room(mix(L, W, 0.7)) } };

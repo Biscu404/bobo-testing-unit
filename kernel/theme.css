@@ -1171,6 +1171,12 @@ textarea.editor {
 }
 #mixerbox:hover { border-color: #55FFFF; }
 #taskbar #mixerbox { flex: 0 0 auto; margin-left: 6px; }
+/* Gheghe's present: the cheese button, in the tray beside the mixer (kernel/cheese.js), and the pile it puts on the desk */
+#cheesebtn { display: flex; align-items: center; justify-content: center; flex: 0 0 auto; margin-left: auto; width: 24px; height: 20px; border: 1px solid #555555; background: #000000; cursor: pointer; user-select: none; }
+#cheesebtn:hover { border-color: #FFFF55; }
+#cheesebtn canvas { width: 14px; height: 9px; image-rendering: pixelated; display: block; }
+#taskbar #cheesebtn + #mixerbox { margin-left: 6px; }
+#cheesepile { position: absolute; z-index: 3; pointer-events: none; image-rendering: pixelated; display: none; }
 #mixerpanel {
   position: absolute;
   z-index: 455;
@@ -1362,15 +1368,30 @@ textarea.editor {
 .solpane { background: #0a0c10; padding: 2px; }
 .solcv { cursor: default; width: 880px; height: auto; max-height: none; }
 
+/* ---- palettes: a small window that belongs to another (kernel/palette.js) has only its close box ---- */
+.win.palette .titlebar .m, .win.palette .titlebar .f, .win.palette .titlebar .th, .win.palette .titlebar .z { display: none; }
+
 /* ---- crayon ------------------------------------------------------------- */
-.drawroot { display: flex; height: 100%; background: #2a2721; }
+.drawroot { display: flex; flex-direction: column; height: 100%; background: #2a2721; }
+.drawbar { flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 3px 4px; background: #1a1814; border-bottom: 2px solid #555555; }
+.drawbar .tl { font: inherit; font-size: 16px; background: #6b6357; color: #e8e2d4; border: 1px solid #1a1a1a; padding: 0 6px; cursor: pointer; text-align: left; }
+.drawbar .tl.on { background: #e8e2d4; color: #1a1a1a; }
+.drawbar .sp { flex: 1 1 auto; }
+.drawbar .now { display: flex; align-items: center; gap: 6px; color: #e8e2d4; font-size: 16px; }
+.drawbar .now i { display: inline-block; width: 18px; height: 14px; border: 2px solid #e8e2d4; box-shadow: 0 0 0 1px #1a1a1a; }
+.drawbar .now b { font-weight: normal; }
+.drawbar .now u { text-decoration: none; color: #b0a690; }
+.drawbody { flex: 1 1 auto; display: flex; min-height: 0; }
 .drawtools { width: 112px; flex: 0 0 112px; padding: 4px; display: flex; flex-direction: column; gap: 3px; background: #1a1814; border-right: 2px solid #555555; overflow-y: auto; }
+.drawpanel { width: auto; flex: 1 1 auto; border-right: 0; height: 100%; box-sizing: border-box; }
+.drawpanel .drawcols { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
+.drawpanel .drawcols.three { grid-template-columns: 1fr 1fr 1fr; }
 .drawswatch { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
 .drawswatch i { display: block; height: 18px; border: 2px solid #1a1814; cursor: pointer; }
 .drawswatch i.on { border-color: var(--phos); }
 .drawtools .tl {
   font: inherit; font-size: 16px; background: #6b6357; color: #e8e2d4;
-  border: 1px solid #1a1a1a; padding: 0 4px; cursor: pointer; text-align: left;
+  border: 1px solid #1a1a1a; padding: 0 4px; cursor: pointer; text-align: left; white-space: nowrap; overflow: hidden;
 }
 .drawtools .tl.on { background: #e8e2d4; color: #1a1a1a; }
 .drawtools .hd { color: #b0a690; font-size: 15px; margin-top: 3px; }
@@ -1512,13 +1533,14 @@ textarea.editor {
 .pinnum { color: #AAAAAA; font-size: 15px; }
 .pinfoot { color: #AAAAAA; font-size: 14px; margin-top: 4px; }
 
-/* ---- THE SCHEME IS A WHOLE LOOK (kernel/theme_fx.js) -----------------------------------------------------------------------------------
+/* ---- THE SCHEME DRESSES THE CHROME (kernel/theme_fx.js) --------------------------------------------------------------------------------
    --th-filter is `none` on the default scheme and url(#th-<id>) on any other: set on #room by the scheme the machine wears, and again on one
-   window by its [T], which wins for that window's subtree. Every surface reads it, so a scheme recolours the title bars, the games' canvases, the
-   pictures, the menu bar, the taskbar, the icons and the elephant, not just the rules that read the six inks. (The desktop's own colour is
-   --sch-desk; a wallpaper picture is the user's own and is left alone.) */
-.win, #menubar, #taskbar, #icons, #pet, #deskvid { filter: var(--th-filter, none); }
-/* a window keeps the VGA inks whatever the room wears: the filter, not the variables, is what dresses it (see varsOf in theme_fx.js) */
+   window by its [T], which wins for that window's subtree. It is worn by the machine's own chrome and by nothing else: the title bar and the grip of
+   every window, the menu bar and the taskbar. The edge of a window is a border, coloured from the same ramp by Cos.dressFrame (kernel/cos.js); the
+   desktop's colour is --sch-desk; the pop-ups read the six inks. What is INSIDE a window (the terminal, the games, a picture, every canvas), the
+   icons, the elephant and a wallpaper are never filtered: an app always looks the way it was made, whatever scheme is worn. */
+.win > .titlebar, .win > .grip, #menubar, #taskbar { filter: var(--th-filter, none); }
+/* a window keeps the VGA inks whatever the room wears: the six inks the pop-ups read are not an app's business (see varsOf in theme_fx.js) */
 .win { --sch-bg: #000000; --sch-fg: #FFFFFF; --sch-ok: #55FF55; --sch-hi: #FFFF55; --sch-err: #FF5555; --sch-dim: #AAAAAA; --sch-acc: #55FFFF; }
 
 /* trophies left on the desktop (kernel/trophy_props.js): under the windows, over the icons */

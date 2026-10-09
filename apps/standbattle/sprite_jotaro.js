@@ -170,9 +170,9 @@ function drawHead(g, sk, pose) {
 
 /* ---- limbs ------------------------------------------------------------ */
 
-function drawArm(g, j, pose, front) {
+function drawArm(g, j, pose, front, over) {
   const ramp = J.coat;
-  drawLimb(g, j, front ? 14 : 12.5, front ? 11 : 10, 8.6, ramp, null, front ? '#04050B' : null);
+  drawLimb(g, j, front ? 14 : 12.5, front ? 11 : 10, 8.6, ramp, null, front || over ? '#04050B' : null);
   /* cuff */
   const dx = j.wrist.x - j.elbow.x, dy = j.wrist.y - j.elbow.y;
   const len = Math.hypot(dx, dy) || 1;
@@ -199,12 +199,13 @@ export function drawJotaro(g, pose) {
   coatBack(g, sk, pose);
   drawLeg(g, sk.legRear, pose);
   coatFront(g, sk, pose, -1);
-  drawArm(g, sk.armRear, pose, false);
+  if (!pose.rearOver) drawArm(g, sk.armRear, pose, false);
   torso(g, sk, pose);
   drawLeg(g, sk.legFront, pose, true);
   coatFront(g, sk, pose, 1);
   collar(g, sk, pose);
   drawHead(g, sk, pose);
+  if (pose.rearOver) drawArm(g, sk.armRear, pose, false, true);        /* the rear arm is the one punching: it comes across the front of the body, not out of the back of it */
   drawArm(g, sk.armFront, pose, true);
   return sk;
 }

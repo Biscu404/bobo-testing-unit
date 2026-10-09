@@ -58,7 +58,7 @@ await shot('05-fight');
   await page.keyboard.down('KeyD'); await page.waitForTimeout(700); await page.keyboard.up('KeyD');
   const b = await fighters();
   ok(b.x[0] > a.x[0] + 10 || b.state[0] !== 'idle', 'holding D walks player 1 forward (' + a.x[0] + ' -> ' + b.x[0] + ')');
-  for (let i = 0; i < 6; i++) { await key('KeyF', 50); await page.waitForTimeout(250); await key('KeyV', 50); await page.waitForTimeout(250); }
+  for (let i = 0; i < 6; i++) { await key('KeyU', 50); await page.waitForTimeout(250); await key('KeyJ', 50); await page.waitForTimeout(250); }
   const c = await fighters();
   ok(c.moves[0] > b.moves[0] || c.hp[1] < b.hp[1], 'LP and LK swing: the fight counted the swings (' + b.moves[0] + ' -> ' + c.moves[0] + ')');
   /* the sim runs at 60 ticks a second of real time while the round is live */
@@ -83,7 +83,7 @@ ok(await waitScene('select', 3000), 'TRAINING goes to the select');
 await key('Enter'); await key('Enter');
 ok(await waitScene('training', 4000), 'TRAINING: pick yours, pick the opponent, and the training room opens');
 await page.waitForTimeout(600);
-await key('KeyF'); await page.waitForTimeout(400);
+await key('KeyU'); await page.waitForTimeout(400);
 await shot('07-training');
 await key('Tab'); await page.waitForTimeout(200);
 await shot('08-training-menu');
@@ -97,7 +97,7 @@ await key('ArrowDown');
 await key('Enter');
 ok(await waitScene('select', 3000), 'VERSUS goes to the select');
 await key('ArrowRight');
-await key('KeyF');                                    /* player 1: LP is "OK" */
+await key('KeyU');                                    /* player 1: LP is "OK" */
 await key('KeyK');                                    /* player 2: LP is "OK" */
 await shot('09-versus-stage');
 await key('Enter');

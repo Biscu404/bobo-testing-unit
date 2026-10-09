@@ -119,10 +119,11 @@ export function drawKillerQueen(g, pose, phaseIndex, tsec) {
   const sk = skeleton(SPEC, pose);
   const ph = phaseIndex || 0;
   kqLeg(g, sk.legRear, ph);
-  kqArm(g, sk.armRear, pose, false, ph);
+  if (!pose.rearOver) kqArm(g, sk.armRear, pose, false, ph);
   chest(g, sk, ph, tsec || 0);
   kqLeg(g, sk.legFront, ph, true);
   kqHead(g, sk, pose, ph, tsec || 0);
+  if (pose.rearOver) kqArm(g, sk.armRear, pose, false, ph);
   kqArm(g, sk.armFront, pose, true, ph);
   return sk;
 }

@@ -4,7 +4,7 @@
 
 import { createSaveStore } from './save.js';
 import { createDevices } from './input.js';
-import { musicStart, musicSetIntensity, musicStop } from './music.js';
+import { musicStart, musicSet, musicStep, musicStop } from './music.js';
 import { scopedListeners } from '../lifecycle.js';
 import { SCENES } from './scene_registry.js';
 
@@ -43,7 +43,8 @@ export async function createApp(root, ctx, boot) {
       app.scene = SCENES[name](app);
       app.scene.enter(args || {});
     },
-    music(level) { musicSetIntensity(level); },
+    /* how hard it is (0 explore, 1 combat, 2 tension) and, when it changes, where we are (menu, select, a stage, boss): music.js */
+    music(level, place) { musicSet(level, place); },
     debugOn: null
   };
   dev.single = true;
@@ -88,6 +89,7 @@ export async function createApp(root, ctx, boot) {
     const dt = Math.min(50, now - t0);
     t0 = now; app.tsec += dt / 1000;
     dev.poll();
+    musicStep();
     if (app.scene) {
       app.scene.update(dt);
       if (app.scene) { app.scene.draw(g, W, H, app.tsec, dt); info.textContent = app.scene.hint ? app.scene.hint() : ''; }
@@ -95,7 +97,7 @@ export async function createApp(root, ctx, boot) {
   }
   raf = requestAnimationFrame(frame);
   musicStart(ctx.studio);
-  musicSetIntensity(0);
+  musicSet(0, 'menu');
 
   app.destroy = () => {
     dead = true; cancelAnimationFrame(raf); ro.disconnect(); musicStop();

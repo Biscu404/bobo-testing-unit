@@ -4,92 +4,68 @@
    coordinates are local: the origin is the middle of the base, y up is
    negative. The glass has its own file (glass3d.js), and nobody is drawn
    here: the person drinking is the one at the monitor. */
+import { geometry } from './shapes.js';
+import { drawCap, drawCapOnBar } from './caps.js';
+import { drawLabel } from './labels.js';
+
 export const BW = 380, BH = 360;
 export const C = {
   glass: '#1f5a28', glassHi: '#46a04e', glassLo: '#0f2f16', glassMid: '#2b7434', edge: '#0a1c0e',
   liquid: '#6e3a14', liquidHi: '#b26a24', liquidLo: '#44220a', foam: '#e9c98a',
   label: '#f08a14', labelHi: '#ffae3c', labelDk: '#b8620c', ink: '#14100a', glow: '#fff3b0',
-  cap: '#195226', capHi: '#2f8a42', band: '#e07a10',
+  cap: '#195226', capHi: '#2f8a42', capLo: '#0f3318', band: '#e07a10', cork: '#c89a5a', corkHi: '#e0b878', corkLo: '#8a6232',
   wood: '#3a2415', woodHi: '#4d3020', shot: '#c9d4dc', shotHi: '#ffffff', white: '#f2f4f7', dim: '#9aa3ad'
 };
 
-/* the bottle: sprite 80 x 246, art origin at (40, 242), turns about its middle */
+/* the bottle: sprite 80 x 246, art origin at (40, 242), turns about its middle. `lip` and `lipUp` are the Jägermeister's; every bottle has its own (shapes.js geometry) */
 export const BOT = { w: 80, h: 246, ox: 40, oy: 242, cx: 40, cy: 121, lip: [13, -224], lipUp: [-13, -224], rest: [70, 246] };
 /* the tumbler is an object, not a sprite (glass3d.js); this is where its base sits on the table */
 export const GLS = { rest: [328, 292] };
 
 const mk = (_w, _h, fn) => g => { g.save(); fn(g); g.restore(); };
 const Rf = g => (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), Math.max(1, Math.round(w)), Math.max(1, Math.round(h))); };
-
-/* a size for `text` that fits in `w` pixels in a monospace face: `size` at most, `k` the width of a character per pixel of size */
-const fit = (text, w, size, k) => Math.max(4, Math.min(size, Math.floor(w / (Math.max(1, text.length) * k) * 10) / 10));
 const JAG_TEXT = { emboss: 'JÄGERMEISTER', title: 'Jägermeister', sub1: 'KRÄUTERLIKÖR', sub2: '35% vol · 56 herbs', icon: null };
 
 /* `D` is a drink's look (drinks.js); without one it is the Jägermeister the game began with */
 export function makeArt(g, D) {
-  const K = D ? Object.assign({}, C, D.colors) : C, X = D ? D.text : JAG_TEXT;
+  const K = D ? Object.assign({}, C, D.colors) : C, X = D ? D.text : JAG_TEXT, G = geometry(D && D.shape || 'jag', D && D.capKind);
   const R = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), Math.max(1, Math.round(w)), Math.max(1, Math.round(h))); };
   const T = (t, x, y, c, sz, al, font) => { g.fillStyle = c; g.font = (sz || 9) + 'px ' + (font || 'monospace');
     g.textAlign = al || 'left'; g.fillText(String(t), Math.round(x), Math.round(y)); g.textAlign = 'left'; };
 
   /* ---- layers for raster.js, in art coordinates --------------------------- */
-  const shape = f => {                                   /* f(x0, y0, w, h) fills one slab of the bottle */
-    f(-38, -150, 76, 148);                               /* body */
-    f(-36, -2, 72, 2);                                   /* the heavy base */
-    for (let y = -150; y > -178; y -= 2) {               /* shoulder: stepped in */
-      const k = (-150 - y) / 28, hw = 38 - 25 * Math.pow(k, 1.5);
-      f(-hw, y - 2, hw * 2, 2);
-    }
-    f(-13, -218, 26, 42);                                /* neck */
-    f(-16, -224, 32, 7);                                 /* lip */
-  };
-  const stag = (r, x, y, s) => {
-    const q = (a, b, w2, h2) => r(x + a * s, y + b * s, Math.max(1, w2 * s), Math.max(1, h2 * s), C.ink);
-    q(4, 5, 5, 5); q(5, 10, 3, 3); q(3, 7, 1, 2); q(9, 7, 1, 2);
-    q(3, 1, 1, 5); q(9, 1, 1, 5); q(1, 2, 2, 1); q(10, 2, 2, 1); q(1, 2, 1, 2); q(11, 2, 1, 2);
-    q(2, 0, 2, 1); q(9, 0, 2, 1); q(0, 4, 1, 2); q(12, 4, 1, 2);
-    r(x + 6 * s, y - 5.2 * s, 1.2 * s, 5 * s, C.ink); r(x + 4.6 * s, y - 3.4 * s, 4 * s, 1.2 * s, C.ink);
-    r(x + 6.2 * s, y - 5 * s, 0.8 * s, 4.6 * s, '#fffbe0'); r(x + 4.8 * s, y - 3.2 * s, 3.6 * s, 0.8 * s, '#fffbe0');
-  };
+  const slab = (r, rows, col) => rows.forEach(w => r(-w.hw, -(w.y + 2), w.hw * 2, 2, col(w)));   /* a row is two pixels tall, a half-width either side of the middle */
   const bottleSpec = {
     w: BOT.w, h: BOT.h, cx: BOT.cx, cy: BOT.cy,
     base: mk(0, 0, g2 => {
       const r = Rf(g2); g2.translate(BOT.ox, BOT.oy);
-      shape((x, y, w, h) => r(x, y, w, h, K.glass));
-      r(-36, -146, 3, 140, K.glassMid); r(28, -146, 9, 144, K.glassLo);
-      g2.fillStyle = K.glassMid; g2.font = '6px monospace'; g2.textAlign = 'center'; g2.fillText(X.emboss, 0, -152);
+      slab(r, G.rows, () => K.glass);
+      G.rows.forEach(w => {                                             /* the light on the left of the glass and the shade on the right */
+        if (w.kind !== 'body' || w.hw < 14) return;
+        r(-w.hw + 2, -(w.y + 2), 3, 2, K.glassMid); r(w.hw - Math.min(9, w.hw / 3), -(w.y + 2), Math.min(9, w.hw / 3) - 1, 2, K.glassLo);
+      });
+      if (G.emboss) { g2.fillStyle = K.glassMid; g2.font = '6px monospace'; g2.textAlign = 'center'; g2.fillText(X.emboss, 0, -G.emboss); }
     }),
     inner: mk(0, 0, g2 => {
       const r = Rf(g2); g2.translate(BOT.ox, BOT.oy);
-      /* the liquor fills the body, the shoulder and the neck, not the flange of the lip */
-      shape((x, y, w, h) => {
-        if (h > 100) r(x + 4, y + 2, w - 8, h - 4, '#fff');                 /* body */
-        else if (h === 2 && y > -224 && w > 30) r(x + 4, y, w - 8, 2, '#fff'); /* the shoulder, a step at a time */
-        else if (w === 26) r(x + 4, y, w - 8, h, '#fff');                     /* the neck */
-        else if (w === 32) r(x + 7, y + 2, w - 14, h - 2, '#fff');            /* the lip: no wider than the neck */
-      });
+      /* the liquor fills the body, the shoulder and the neck, up to the mouth: the flange of the lip is glass on the outside only */
+      G.inner.forEach(w => r(-w.hw, -(w.y + 2), w.hw * 2, 2, '#fff'));
     }),
     over: [true, false].map(capOn => mk(0, 0, g2 => {
       const r = Rf(g2); g2.translate(BOT.ox, BOT.oy);
       /* the light down the left of the glass, over whatever is behind it */
-      g2.globalAlpha = 0.34; shape((x, y, w, h) => { if (w > 16) r(x + 3, y, Math.min(7, w / 4), h, '#d8f4d8'); }); g2.globalAlpha = 1;
-      const lx = -30, ly = -126, lw = 60, lh = 94;
-      r(lx, ly, lw, lh, K.label); r(lx, ly, lw, 3, K.labelHi); r(lx, ly + lh - 3, lw, 3, K.labelDk);
-      r(lx + 3, ly + 3, lw - 6, 1, K.ink); r(lx + 3, ly + lh - 4, lw - 6, 1, K.ink);
-      r(lx + 3, ly + 3, 1, lh - 6, K.ink); r(lx + lw - 4, ly + 3, 1, lh - 6, K.ink);
-      g2.fillStyle = K.ink; g2.textAlign = 'center';
-      g2.font = 'bold ' + fit(X.title, 54, 9, 0.62) + 'px serif'; g2.fillText(X.title, 0, ly + 17);
-      if (X.icon) X.icon(r, -17, ly + 34, 2.6, K); else stag(r, -17, ly + 34, 2.6);
-      g2.font = fit(X.sub1, 54, 6, 0.6) + 'px monospace'; g2.fillText(X.sub1, 0, ly + lh - 14);
-      g2.font = fit(X.sub2, 54, 5, 0.6) + 'px monospace'; g2.fillText(X.sub2, 0, ly + lh - 7);
-      r(-13, -206, 26, 7, K.band); r(-13, -206, 26, 1, K.labelHi);
-      if (capOn) { r(-15, -238, 30, 15, K.cap); r(-15, -238, 30, 3, K.capHi); for (let x = -13; x < 14; x += 4) r(x, -234, 1, 9, K.glassLo); }
+      g2.globalAlpha = 0.34;
+      G.rows.forEach(w => { if (w.hw * 2 > 16) r(-w.hw + 3, -(w.y + 2), Math.min(7, w.hw / 2), 2, '#d8f4d8'); });
+      g2.globalAlpha = 1;
+      drawLabel(g2, r, K, X, G.label);
+      if (G.band) { r(-G.neckHW, -(G.band.top + G.band.h), G.neckHW * 2, G.band.h, K.band); r(-G.neckHW, -(G.band.top + G.band.h), G.neckHW * 2, 1, K.labelHi); }
+      if (capOn) drawCap(r, K, G);
     })),
     /* seen through green glass, the liquor is nearly black */
     liquid: (D && D.bottleLiquid) || { base: '#2a180a', mid: '#3c2410', hi: '#8a5a24', edge: '#180e06', foam: '#e9c98a' }
   };
 
-  /* ---- the room --------------------------------------------------------- */
+/* ---- the room --------------------------------------------------------- */
   function table() {
     R(0, 0, BW, BH, C.wood);
     for (let y = 0; y < BH; y += 7) R(0, y, BW, 1, y % 14 ? C.woodHi : C.wood);
@@ -97,7 +73,7 @@ export function makeArt(g, D) {
     for (let y = 255; y < BH; y += 6) R(0, y, BW, 1, '#33200f');
   }
   const shadow = (x, y, w) => { g.globalAlpha = 0.35; R(x - w / 2, y, w, 4, '#000'); g.globalAlpha = 1; };
-  function capOnBar() { R(104, 238, 18, 8, C.cap); R(104, 238, 18, 2, C.capHi); R(102, 246, 22, 2, '#150f08'); }
+  function capOnBar() { drawCapOnBar(R, K, G, 104, 246); }
 
-  return { R, T, table, shadow, capOnBar, bottleSpec };
+  return { R, T, table, shadow, capOnBar, bottleSpec, geo: G };
 }

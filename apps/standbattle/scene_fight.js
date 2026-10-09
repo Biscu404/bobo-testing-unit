@@ -9,6 +9,7 @@ import { drawFightHUD } from './hud_fight.js';
 import { createRng } from './rng.js';
 import { text } from './font.js';
 import { px } from './draw.js';
+import { buttonsOf } from './input.js';
 
 export function fightScene(app) {
   let fight = null, view = null, cfg = null, ais = [null, null], paused = false, psel = 0, endDelay = 0, ended = false;
@@ -24,7 +25,7 @@ export function fightScene(app) {
       ais = (c.ais || []).map((p, k) => (c.humans[k] ? null : (c.makeAI ? c.makeAI(fight, k, p) : null)));
       app.dev.single = !(c.humans[0] && c.humans[1]);
       app.dev.release();
-      app.music(1);
+      app.music(1, c.defs.some(x => x && x.boss) ? 'boss' : (c.stage && c.stage.id) || 'alley');
       if (c.onStart) c.onStart(fight);
       app.fight = fight;
     },
@@ -58,6 +59,6 @@ export function fightScene(app) {
         text(g, 'UP / DOWN: CHOOSE   ENTER: OK   ESC: CONTINUE', W / 2, H / 2 + 56, { scale: 1, align: 'center', color: '#9FB0D8' });
       }
     },
-    hint() { return cfg && cfg.hint ? cfg.hint : 'WASD/ARROWS: MOVE (TAP UP/DOWN: SIDESTEP)  F G V B / K L , . : LP RP LK RK  LP+RP: THROW  ESC: PAUSE'; }
+    hint() { return cfg && cfg.hint ? cfg.hint : 'WASD/ARROWS: MOVE (TAP UP/DOWN: SIDESTEP)  ' + buttonsOf(app.dev.map, 'p1') + ' / ' + buttonsOf(app.dev.map, 'p2') + ': LP RP LK RK  LP+RP: THROW  ESC: PAUSE'; }
   };
 }

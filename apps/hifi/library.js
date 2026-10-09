@@ -58,9 +58,8 @@ export function stackFolders() {
 
   out.push(['BEKKEDAL', 'green', BEK.IDS.map(k => [BEK.NAMES[k], disc(BEK.song(Lang, k), 'green', 'BEKKEDAL')])]);
 
-  const sb = SB.song(Lang);
-  out.push(['STAND BATTLE', 'red', [['MORIOH (EXPLORE)', SB.layersFor(0)], ['MORIOH (COMBAT)', SB.layersFor(1)], ['MORIOH (TENSION)', SB.layersFor(2)]]
-    .map(([n, lay]) => [n, disc(sb, 'red', 'STAND BATTLE ARENA', lay)])]);
+  /* Stand Battle's seven tunes, with every layer in (the menus, the select, the four places of Morioh and the boss) */
+  out.push(['STAND BATTLE', 'red', SB.IDS.map(k => [SB.NAMES[k], disc(SB.song(Lang, k), 'red', 'STAND BATTLE ARENA', SB.layersFor(2))])]);
 
   /* AfterEgypt: the title and the five ways, each with its arrangement filled in (the wind, the locusts and the stone are the flight's) */
   out.push(['AFTEREGYPT', 'amber', AE.IDS.map(k => [AE.NAMES[k], disc(AE.song(Lang, k), 'amber', 'AFTEREGYPT', AE.DISC_LAYERS)])]);

@@ -10,7 +10,7 @@ const LETTERS = ' ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 export function hiscoreScene(app) {
   let ch = [], pos = 0, rank = -1, phase = 'enter', t = 0;
   return {
-    enter() { ch = cleanInitials(app.meta.initials).split('').map(c => Math.max(0, LETTERS.indexOf(c))); pos = 0; rank = -1; phase = 'enter'; t = 0; app.music(0); },
+    enter() { ch = cleanInitials(app.meta.initials).split('').map(c => Math.max(0, LETTERS.indexOf(c))); pos = 0; rank = -1; phase = 'enter'; t = 0; app.music(0, 'menu'); },
     update(dt) {
       t += dt / 1000;
       let n;

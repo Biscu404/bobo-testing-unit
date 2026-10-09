@@ -132,6 +132,13 @@ function wireDeskContextMenu(desk) {
 }
 
 /* put every icon back on the grid, left edge first, top to bottom */
+/* what lives on the desk without being an icon (the cheese, kernel/cheese.js) needs to know which cells the icons have: the grid, and the cells taken, as "column,row" */
+export function deskIconCells() {
+  const { w, h } = deskDims(), g = gridOf(w, h), taken = new Set();
+  iconEls.forEach(rec => { if (rec.x != null) { const c = cellOf(rec.x, rec.y); taken.add(c.c + ',' + c.r); } });
+  return { cols: g.cols, rows: g.rows, taken };
+}
+
 /* ---- what the desktop's elephant may do to the icons (kernel/pet.js) ---------------------------------------------------
    He can see where each one is, and move one to the nearest free cell to where he pushed it. The move slides (the .petmoved
    class carries the transition) and is remembered like any other: put somewhere by hand, it stays there. */

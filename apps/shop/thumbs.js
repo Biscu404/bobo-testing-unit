@@ -4,6 +4,7 @@ import { drawPlant } from '../garden/art.js';
 import { thumbMini } from '../../kernel/pet_art.js';
 import { sampleStroke } from '../crayon/brushes.js';
 import { POTS, LOGOS } from '../../kernel/cos_data.js';
+import { drawGoose, PAL16 } from '../goose_art.js';
 
 function dimCol(hex, k) {
   const n = parseInt(hex.slice(1), 16);
@@ -16,14 +17,17 @@ function cssFirstColor(str, fallback) {
   return m ? m[0] : fallback;
 }
 
-export function drawDave(cv, t) {
+/* `perch`, when a goose is on his head (Thea's present: one shop in twenty): { name, flip, by } is its frame, which way it faces and how far down it has come, and the canvas is taller by GOOSE_ROOM so he has room under it */
+export const GOOSE_ROOM = 14;
+export function drawDave(cv, t, perch) {
   if (!cv) return;
   const g = cv.getContext('2d');
   if (!g) return;
-  g.clearRect(0, 0, 48, 48);
+  const oy = perch ? GOOSE_ROOM : 0;
+  g.clearRect(0, 0, 48, 48 + oy);
   const y = Math.round(Math.sin(t) * 2);
   const arm = Math.round(Math.sin(t * 1.7) * 4);
-  const R = (x, yy, w, h, c) => { g.fillStyle = c; g.fillRect(x, yy + y, w, h); };
+  const R = (x, yy, w, h, c) => { g.fillStyle = c; g.fillRect(x, yy + y + oy, w, h); };
   /* the pot */
   R(14, 2, 20, 4, '#7a3d20');
   R(15, 6, 18, 9, '#a35a34');
@@ -53,6 +57,7 @@ export function drawDave(cv, t) {
   R(26, 40, 5, 7, '#3a2a5a');
   R(16, 45, 7, 3, '#1a1a1a');
   R(25, 45, 7, 3, '#1a1a1a');
+  if (perch) drawGoose((x, yy, w, h, c) => { g.fillStyle = PAL16[c]; g.fillRect(x, yy, w, h); }, 24, perch.by + y, perch.name, 1, perch.flip);
 }
 
 function drawPot(g, x, y, pot, s, k) {

@@ -1,5 +1,6 @@
 /* GARDEN — the picture of a pot, a plant and the sky over them. Whole pixels, no anti-aliasing; every function takes the canvas
    context it draws on and nothing else, so `scene.js` decides where things go. */
+import { cookie, runsOf } from '../gifts_art.js';
 const BAYER4 = [
   [0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]
 ];
@@ -94,6 +95,11 @@ export function drawPlant(g, cx, baseY, sp, stage, t, s, wig, dark) {
       R(-7, h + 4, 14, 3, c[1]);
       for (let i = -2; i <= 2; i++) R(i * 3 - 1, h + 7, 2, i % 2 ? 3 : 5, c[2]);
       R(-1, h + 3, 2, 2, c[0]);
+    } else if (sp.id === 'cookiebloom') {
+      /* Biscu's: cream petals round a cookie with a bite out of it, chips and all (the same cookie that is the Magen star when it is asked to be) */
+      R(-11, h + 12, 5, 7, c[2]); R(6, h + 12, 5, 7, c[2]); R(-5, h + 22, 10, 5, c[2]); R(-9, h + 19, 4, 4, c[2]); R(5, h + 19, 4, 4, c[2]);
+      const ink = { 0: '#2a1608', 6: c[1], 14: c[2] };
+      runsOf(cookie(16)).forEach(([x, y, n, d]) => R(-8 + x, h + 16 - y, n, 1, ink[d] || c[1]));
     } else if (sp.id === 'thirdroot') {
       R(-8, h + 4, 16, 3, c[1]); R(-6, h + 7, 12, 3, c[0]); R(-4, h + 10, 8, 3, c[2]); R(-2, h + 13, 4, 3, c[0]); R(-1, h + 16, 2, 3, '#ffffff');
     } else {

@@ -135,6 +135,7 @@ function tabs(g, V) {
 export function paint(g, V) {
   const { st, now, light, night } = V, rd = ROOM_DEFS[st.active];
   g.drawImage(gardenSky(W, H, light), 0, 0);
+  if (V.flyover) { V.flyover.step(V.dt); V.flyover.draw(g); }        /* Thea's geese, now and then, over the sky and under everything else */
   const gk = 0.35 + light * 0.65;
   ground(g, gk, V);
   const dry = potsAndPlants(g, V, gk, night);

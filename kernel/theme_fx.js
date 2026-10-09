@@ -3,8 +3,13 @@
    A colour scheme (kernel/cos_data.js SCHEMES: bg, fg, ok, hi, err, dim, acc) used to reach only the few stylesheet rules that read `var(--sch-*)`, so PAPER
    changed the terminal and left every game, every title bar and every canvas exactly as it was. Now a scheme is also a *gradient map*: an SVG filter that takes
    the brightness of every pixel under it and looks it up on the scheme's own ramp, black on the scheme's background, then its dim ink, its ink, its highlight
-   at white. It is laid over the whole window (title bar, frame, canvases, pictures), the menu bar, the taskbar, the icons and the desktop, so the machine is
-   one colour world, whether the scheme is worn by the whole machine or just by one window's [T].
+   at white. It is laid over the title bar of every window, the menu bar and the taskbar, so the chrome is one colour world, whether the scheme is worn by the whole
+   machine or just by one window's [T].
+
+   WHAT IT DRESSES, AND WHAT IT NEVER TOUCHES. A scheme dresses the machine's chrome and nothing that is inside an app: the title bar and the edge of every window, the
+   menu bar, the taskbar, the colour of the desktop, and the pop-ups (menus, toasts, dialogs: they read the six inks). The body of a window -- the terminal, the games, the
+   pictures, every canvas -- the icons, the elephant and a wallpaper keep their own colours, whatever scheme is worn. (It used to be laid over all of it, which left no app
+   looking like itself.) kernel/theme.css, "THE SCHEME DRESSES THE CHROME", is where the filter is applied.
 
    - The first `DEEP` of the ramp is where the background sits; the ramp is bg, dim, fg, hi at equal steps, in sRGB (color-interpolation-filters), so a
      light-on-dark scheme and a dark-on-light one (PAPER) are the same filter with the ends swapped.
@@ -35,6 +40,10 @@ export function mapColour(v, rgb) {
   const k = mixOf(v);
   return [0, 1, 2].map(c => m[c] * (1 - k) + rgb[c] * k);
 }
+
+/* what a VGA colour of the window's frame becomes under the scheme, as '#RRGGBB'. The title bar is filtered (it is an element); the edge of a window is a border, which no filter
+   reaches without also reaching the app inside it, so it is given the colour the same ramp would give it. */
+export const frameHex = (v, colour) => toHex(mapColour(v, hex(colour)));
 
 /* the desktop's own colour: the background with a good deal of the accent in it (VGA's is the blue it always was) */
 export function deskOf(v, id) {
@@ -69,8 +78,8 @@ export function install(schemes) {
 }
 
 /* The custom properties a scheme sets. On the ROOM (the machine's own scheme) that is the six inks, for what is not under a window and so not under the filter
-   (the pop-up menus, the toast, the pointer's own panels), plus the filter and the desktop's colour. On a WINDOW it is only the filter: the window keeps the
-   VGA inks (theme.css, `.win`), and the filter is what turns them into the scheme, so nothing is recoloured twice. */
+   (the pop-up menus, the toast, the pointer's own panels), plus the filter and the desktop's colour. On a WINDOW it is only the filter, which its title bar wears:
+   the window keeps the VGA inks (theme.css, `.win`), so nothing inside it is ever recoloured, and nothing is recoloured twice. */
 export function varsOf(s, forWindow) {
   const v = s.v, o = {};
   if (!forWindow) Object.assign(o, { '--sch-bg': v.bg, '--sch-fg': v.fg, '--sch-ok': v.ok, '--sch-hi': v.hi, '--sch-err': v.err, '--sch-dim': v.dim, '--sch-acc': v.acc, '--sch-desk': deskOf(v, s.id) });

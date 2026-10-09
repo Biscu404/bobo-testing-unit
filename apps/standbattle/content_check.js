@@ -12,7 +12,7 @@ import { SCENES as BG } from './background.js';
 import { EVENT_HOOKS } from './hooks.js';
 import { defaultMeta, createSaveStore } from './save.js';
 import { qualifies, insert, sortTable, rankOf, cleanInitials } from './hiscore.js';
-import { DEFAULT_KEYMAP, createDevices } from './input.js';
+import { DEFAULT_KEYMAP, SHARED_KEYMAP, createDevices, buttonsOf } from './input.js';
 import { scoreMatch, createSession, TIER_MULT, CONTINUES } from './session.js';
 import { matchSun, clearSun, BASE } from './pay.js';
 import { RULES } from './rules.js';
@@ -100,10 +100,21 @@ ok(ladderProfile('easy', 5, 6).reaction === TIERS.normal.reaction && ladderProfi
 {
   const dup = (map) => { const keys = Object.keys(map.p1).concat(Object.keys(map.p2)); return keys.length !== new Set(keys).size; };
   ok(!dup(DEFAULT_KEYMAP) && Object.keys(DEFAULT_KEYMAP.p1).length === 8 && Object.keys(DEFAULT_KEYMAP.p2).length === 8, 'the default keys: eight for each player and no key twice');
-  const d = createDevices(); d.bindKey('p1', 'LP', 'KeyK');
-  ok(d.keyFor('p1', 'LP') === 'KeyK' && d.keyFor('p2', 'LP') === null, 'rebinding takes a key from whoever had it');
-  d.reset(); ok(d.keyFor('p1', 'LP') === 'KeyF', 'DEFAULTS puts them back');
-  d.keyDown('KeyF'); ok(d.bits(0) === 16, 'a key down is a bit'); d.keyUp('KeyF'); d.single = false; d.keyDown('KeyK'); ok(d.bits(1) === 16 && d.bits(0) === 0, 'in a two-player game each side of the keyboard is its own player');
+  const d = createDevices(); d.bindKey('p1', 'LP', 'KeyK'); d.bindKey('p2', 'RP', 'KeyI');
+  ok(d.keyFor('p1', 'LP') === 'KeyK' && d.keyFor('p1', 'RK') === null && d.keyFor('p2', 'RP') === 'KeyI' && d.keyFor('p1', 'RP') === null && d.keyFor('p1', 'LK') === 'KeyJ', 'rebinding takes a key from whoever had it');
+  d.reset(); ok(d.keyFor('p1', 'LP') === 'KeyU', 'DEFAULTS puts them back');
+  d.keyDown('KeyU'); ok(d.bits(0) === 16, 'a key down is a bit'); d.keyUp('KeyU'); d.single = false; d.keyDown('Numpad4'); ok(d.bits(1) === 16 && d.bits(0) === 0, 'in a two-player game each side of the keyboard is its own player');
+  d.share(); ok(d.keyFor('p1', 'LP') === 'KeyF' && d.keyFor('p2', 'LP') === 'KeyK', 'SHARED KEYBOARD is the old one-hand-each split');
+  ok(createDevices(SHARED_KEYMAP).keyFor('p1', 'LP') === 'KeyU', 'a save that holds exactly the old defaults was never changed by its owner: it gets the new ones');
+  ok(createDevices({ p1: Object.assign({}, SHARED_KEYMAP.p1, { KeyF: 'RP', KeyG: 'LP' }) }).keyFor('p1', 'LP') === 'KeyG', 'a save the owner did change is kept');
+  /* The default is for two hands: the left steers, the right fights; the four buttons are a block (hands over feet, left over left) under the right hand's index and middle fingers */
+  const LEFT = new Set('QWERTASDFGZXCVB'), RIGHT = new Set('YUIOPHJKLNM'), key = c => c.replace(/^Key/, ''), at = a => key(Object.keys(DEFAULT_KEYMAP.p1).find(k => DEFAULT_KEYMAP.p1[k] === a));
+  ok(['left', 'right', 'up', 'down'].every(a => LEFT.has(at(a))), 'the left hand steers (' + ['left', 'right', 'up', 'down'].map(at).join(' ') + ')');
+  ok(['LP', 'RP', 'LK', 'RK'].every(a => RIGHT.has(at(a))), 'the right hand fights (' + buttonsOf(DEFAULT_KEYMAP, 'p1') + ')');
+  const ROWS = ['QWERTYUIOP', 'ASDFGHJKL;', 'ZXCVBNM,./'], OFF = [0, 0.25, 0.75], pos = k => { const r = ROWS.findIndex(x => x.includes(k)); return { r, x: ROWS[r].indexOf(k) + OFF[r] }; };
+  const [lp, rp, lk, rk] = ['LP', 'RP', 'LK', 'RK'].map(a => pos(at(a)));
+  ok(lp.r === rp.r && lk.r === rk.r && lk.r === lp.r + 1 && rp.x - lp.x === 1 && rk.x - lk.x === 1 && Math.abs(lk.x - lp.x) <= 0.5, 'the buttons are a two-by-two block: punches over kicks, left over left');
+  ok(buttonsOf(DEFAULT_KEYMAP, 'p1') === 'U I J K' && buttonsOf(DEFAULT_KEYMAP, 'p2') === 'NP4 NP5 NP1 NP2', 'the buttons read back as the player would say them');
 }
 ok(STAGE_IDS.length === 4 && STAGE_IDS.every(i => BG[i]) && STAGE_IDS.some(i => STAGES[i].rule === 'ring') && STAGE_IDS.some(i => STAGES[i].rule === 'walls'), 'four stages, each a place the background can draw, both rules in use');
 

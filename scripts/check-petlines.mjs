@@ -10,7 +10,7 @@ import path from 'node:path';
 const ROOT = path.resolve(import.meta.dirname, '..');
 const L = await import(pathToFileURL(path.join(ROOT, 'kernel/pet_lines.js')));
 const V = await import(pathToFileURL(path.join(ROOT, 'kernel/pet_visit.js')));
-const { LINES, PUSH_LINES, GOODBYES_DAY, GOODBYES_NIGHT, WAKES, WAKES_NEAR, HOME_LINES, DOOR_LINES, choose } = L;
+const { LINES, PUSH_LINES, GOODBYES_DAY, GOODBYES_NIGHT, WAKES, WAKES_NEAR, HOME_LINES, DOOR_LINES, CHEESE_LINES, CHEESE_DONE, choose } = L;
 
 let fails = 0;
 const ok = (c, m) => { if (!c) { fails++; console.log('FAIL  ' + m); } };
@@ -30,9 +30,10 @@ const OLD = 16;
 ok(LINES.length >= OLD + 50, 'at least fifty more idle lines than the sixteen he began with (' + LINES.length + ')');
 ok(GOODBYES_DAY.length >= 8 && GOODBYES_NIGHT.length >= 5, 'goodbyes: ' + GOODBYES_DAY.length + ' for the day, ' + GOODBYES_NIGHT.length + ' for the late hours');
 ok(WAKES.length >= 3 && WAKES_NEAR.length >= 2 && HOME_LINES.length >= 2 && DOOR_LINES.length >= 2 && PUSH_LINES.length >= 5, 'enough ways to wake, go in, open the door and push an icon');
+ok(CHEESE_LINES.length >= 6 && CHEESE_DONE.length >= 3 && new Set(CHEESE_LINES.concat(CHEESE_DONE)).size === CHEESE_LINES.length + CHEESE_DONE.length, 'and to eat cheese: ' + CHEESE_LINES.length + ' things to say over a wedge and ' + CHEESE_DONE.length + ' for the last, none twice');
 
 const seen = new Map();
-const pools = { LINES, PUSH_LINES, GOODBYES_DAY, GOODBYES_NIGHT, WAKES, WAKES_NEAR, HOME_LINES, DOOR_LINES };
+const pools = { LINES, PUSH_LINES, GOODBYES_DAY, GOODBYES_NIGHT, WAKES, WAKES_NEAR, HOME_LINES, DOOR_LINES, CHEESE_LINES, CHEESE_DONE };
 for (const [name, pool] of Object.entries(pools)) {
   everyLine(pool).forEach(([i, t]) => {
     ok(typeof t === 'string' && t.length > 3, name + '[' + i + '] answers a line');

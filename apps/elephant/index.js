@@ -12,6 +12,8 @@ import { ELEPHANT } from '../../kernel/cos_data.js';
 import { drawWear } from './wear.js';
 import { scopedListeners, whenGone } from '../lifecycle.js';
 import { talked, heard, placed } from './trophy_calls.js';
+import { eatPose, EAT_SECS, PICK_AT, CHEW_FROM, drawPile, drawWedge, nextEatIn } from '../cheese_art.js';
+import { createGeese } from './geese.js';
 
 export default {
   open() {
@@ -105,6 +107,8 @@ export default {
         }
       }
       const disc = (cx, cy, r, c) => oval(cx, cy, r, r, c);
+      /* Thea's geese: on the oasis, and in the sky (apps/elephant/geese.js) */
+      const geese = createGeese(R);
 
       /* what he has on (kernel/pet.js keeps it, so the elephant on the desktop wears the same), and whether he is out of the window */
       let wear = Pet.wear();
@@ -278,6 +282,7 @@ export default {
           const w = Math.min(16 + i * 3, hw);
           R(Math.min(240 + hw - w, 356 - i * 5) + Math.round(Math.sin(t * 1.1 + i) * 3), y, w, 2, 15);
         }
+        geese.draw('oase');
         palm(52, 240, t, 0, 96);
         palm(438, 236, t, 1.7, 108);
         palm(96, 224, t, 3.4, 74);
@@ -376,6 +381,7 @@ export default {
         bank(t * 5,  56,  0.55, 15);
         bank(t * 9,  126, 0.8,  15);
         bank(t * 15, 238, 1.05, 15);
+        geese.draw('sky');
         /* the one he is standing on */
         B(112, 258, 256, 40, 15, 19);
         B(150, 246, 180, 30, 15, 14);
@@ -470,8 +476,10 @@ export default {
          into a tic. When he is thinking he curls the end of his trunk up and
          looks past you; when he is talking the tip bobs on the syllables.
          ========================================================================== */
-      function drawEle(t, phase) {
-        const br   = Math.round(Math.sin(t * 0.7) * 1.6);
+      /* `eat` (apps/cheese_art.js eatPose): the trunk goes down to the pile of cheese beside him, comes up with a wedge, brings it to his mouth, and he chews */
+      function drawEle(t, phase, eat) {
+        const E = eat || null;
+        const br   = Math.round(Math.sin(t * 0.7) * 1.6) + (E && E.chew ? Math.round(Math.sin(t * 22) * 1.5) : 0);
         /* the ears do not slide, they fan: what changes is how wide they are,
            which is what an ear actually does when it moves towards you */
         const ear  = Math.round(Math.sin(t * 0.57) * 4);
@@ -529,18 +537,22 @@ export default {
 
         /* The trunk: eight slabs, tapering, each leaning a little further than
            the one above it, so the end of it moves and the root does not. */
+        let tipX = 240, tipY = 270;
         for (let i = 0; i < 8; i++) {
           const k = i / 7;
           const w = Math.round(30 - k * 16);
           const curl = think ? -Math.max(0, i - 3) * 9 : 0;
-          const y = 184 + br + i * 11 + curl;
-          const off = Math.round(sway * k * k) + (think ? Math.round(Math.max(0, i - 3) * 5) : 0);
+          const y = 184 + br + i * 11 + curl - (E ? Math.round(E.curl * Math.max(0, i - 2) * 14) : 0);
+          const off = Math.round(sway * k * k) + (think ? Math.round(Math.max(0, i - 3) * 5) : 0) + (E ? Math.round(E.lean * 128 * k * k + E.curl * 14 * k) : 0);
           const x = Math.round(240 - w / 2 + off);
           R(x - 1, y, w + 2, 12, 0);
           R(x, y, w, 11, 7);
           R(x, y + 8, w, 3, 8);
           if (i < 4) R(x + 2, y + 1, 4, 6, 15);
+          tipX = x + w / 2; tipY = y + 6;
         }
+        if (E && E.wedge) drawWedge(R, Math.round(tipX - 7), Math.round(tipY - 8), 1);                       /* the piece he is holding */
+        if (E && E.chew) for (let i = 0; i < 4; i++) R(224 + ((t * 70 + i * 41) % 30), 200 + ((t * 45 + i * 17) % 44), 2, 2, 14);          /* crumbs */
         /* the tusks: two short white curves outside the trunk. They are the
            one part of him that never moves at all. */
         [[226, -1], [254, 1]].forEach(v => {
@@ -784,7 +796,7 @@ export default {
         return ELE_QUOTES[i];
       }
 
-      let place = 0, placeT = 0;
+      let place = 0, placeT = 0, eatT = -1, eatAt = nextEatIn(), ate = false, chewTick = -1;
       let phase = 'think', pT = 0, wait = 1.4;      /* he notices you arrive */
       let msg = ELE_HELLO, shown = 0, spoke = 0, first = true, openStep = 0;
 
@@ -923,9 +935,23 @@ export default {
         }
 
         const away = Pet.isOut();
+        /* Gheghe's cheese (kernel/cheese.js): while there is any in his window he eats a wedge of it now and then (he goes on talking: his words stay up until you ask for others) */
+        const CH = window.Cheese;
+        if (CH && CH.appBites() > 0 && !away && !arr) {
+          if (eatT < 0) { eatAt -= step; if (eatAt <= 0) { eatT = 0; ate = false; chewTick = -1; } }
+          else {
+            eatT += step;
+            const k = eatT / EAT_SECS;
+            if (!ate && k >= PICK_AT) { ate = true; CH.eat('app'); Snd.tone(210, 70, { type: 'triangle', to: 150, vol: 0.03 }); }
+            if (k >= CHEW_FROM && k < 0.96 && Math.floor(eatT * 6) !== chewTick) { chewTick = Math.floor(eatT * 6); Snd.tone(150 + Math.random() * 40, 45, { type: 'triangle', vol: 0.012 }); }
+            if (eatT >= EAT_SECS) { eatT = -1; eatAt = nextEatIn(); }
+          }
+        } else if (eatT >= 0 && !(CH && CH.appBites() > 0)) eatT = -1;
         stepMotes(step);
+        geese.step(step, P.id);
         (PLACE_FN[P.id] || placeSun)(t);
-        if (!away) { if (arr) drawArriving(t, arr); else drawEle(t, phase); }
+        if (CH && CH.appBites() > 0 && !away) drawPile(R, 338, 230, CH.appBites(), 2);                  /* his cheese, beside him on the ground */
+        if (!away) { if (arr) drawArriving(t, arr); else drawEle(t, phase, eatT >= 0 ? eatPose(eatT / EAT_SECS) : null); }
         drawMotes(P.mote);
         overlay(P.id, t);
         if (away) awayNote();
