@@ -9,7 +9,7 @@ import { makeGlass3D, setLiquor } from './glass3d.js';
 import { drinkById, paletteOf } from './drinks.js';
 import { DRINKS } from '../../kernel/cos_data.js';
 import { scopedListeners, whenGone } from '../lifecycle.js';
-import { poured, drank } from './trophy_calls.js';
+import { poured, drank, loreKnock } from './trophy_calls.js';
 import { STYLES, styleOf } from './styles.js';
 
 const JAG_KEY = 'templeos.bottle.v1';
@@ -46,8 +46,9 @@ export default {
     bar.className = 'appbar';
     const bDrink = document.createElement('button'); bDrink.className = 'appbtn';
     const bBuy = document.createElement('button'); bBuy.className = 'appbtn'; bBuy.textContent = 'BUY A NEW BOTTLE';
+    const bLore = document.createElement('button'); bLore.className = 'appbtn';
     const info = document.createElement('span'); info.className = 'godword';
-    bar.appendChild(bDrink); bar.appendChild(bBuy); bar.appendChild(info);
+    bar.appendChild(bDrink); bar.appendChild(bBuy); bar.appendChild(bLore); bar.appendChild(info);
     body.appendChild(wrap); body.appendChild(bar);
 
     const g = cv.getContext('2d');
@@ -84,7 +85,7 @@ export default {
       JSON.stringify({ ml: S.ml, drunk: S.drunk, bottles: S.bottles, glass: S.gls.vol > 0.55 ? 1 : 0, drink: drink.id, shelf: S.shelf })); } catch (e) {} };
     const say = t => { S.note = t; S.noteT = 3; };
     const full = () => S.gls.vol > 0.55;
-    const fx = { sfx, get glassSurf() { return S.glassSurf; } };
+    const fx = { sfx, get glassSurf() { return S.glassSurf; }, faint: () => { if (window.Drunk && window.Drunk.knockOut && window.Drunk.knockOut()) loreKnock(); } };
     let pouringSnd = false;
 
     /* ---- the picture ---------------------------------------------------- */
@@ -176,7 +177,7 @@ export default {
 
     /* ---- what a click does ----------------------------------------------- */
     function next() {
-      if (full()) { startDrink(S); sfx.sip(); return true; }
+      if (full()) { S.lore = !!(window.Drunk && window.Drunk.loreOn && window.Drunk.loreOn() && drink.abv > 0); startDrink(S); sfx.sip(); return true; }
       if (S.ml < JAG_SHOT) { say('EMPTY. BUY ANOTHER ONE.'); sfx.deny(); return false; }
       startPour(S); sfx.cap(); return true;
     }
@@ -203,8 +204,24 @@ export default {
       setDrink(own[(own.findIndex(d => d.id === drink.id) + 1) % own.length]);
       cv.focus();
     });
-    L.on(window, 'cos-changed', () => refreshBar());
-    refreshBar();
+    /* LORE ACCURATE: earned by passing out five times and owning every bottle there is to find, then a switch. Until then it is a dashed button that says how far off it is. */
+    function refreshLore() {
+      const D = window.Drunk, st = D && D.loreStatus ? D.loreStatus() : null;
+      if (!st) { bLore.style.display = 'none'; return; }
+      bLore.style.display = '';
+      bLore.disabled = !st.unlocked;
+      bLore.textContent = !st.unlocked ? 'LORE ACCURATE: LOCKED' : 'LORE ACCURATE: ' + (D.loreOn() ? 'ON' : 'OFF');
+      bLore.title = !st.unlocked ? 'PASS OUT FIVE TIMES (' + st.blackouts + ' OF ' + st.needBlackouts + ') AND OWN EVERY BOTTLE (' + st.bottles + ' OF ' + st.of + ').'
+        : 'THE FIRST SIP OF ANYTHING WITH ALCOHOL IN IT KNOCKS YOU OUT. THE CORDIAL IS STILL SAFE.';
+    }
+    bLore.addEventListener('click', () => {
+      if (S.phase !== 'idle' || !window.Drunk) return;
+      const on = window.Drunk.setLore(!window.Drunk.loreOn());
+      say(on ? 'LORE ACCURATE. ONE SIP AND YOU ARE DOWN.' : 'LORE ACCURATE IS OFF. YOU CAN HOLD IT AGAIN.'); sfx.cork(); refreshLore(); cv.focus();
+    });
+    L.on(window, 'cos-changed', () => { refreshBar(); refreshLore(); });
+    L.on(window, 'lore-changed', refreshLore);
+    refreshBar(); refreshLore();
 
     /* a click is for now. While a measure is being poured or drunk, or while whoever
        it is gets their breath back, it does nothing at all: nothing is kept for later,
@@ -237,10 +254,10 @@ export default {
       S.phase = 'idle'; S.drunk++; S.rest = BREATHER;
       S.gls.vol = Math.min(S.gls.vol, 0.03);
       sfx.down(); sfx.ahh(); save();
-      if (window.Drunk) window.Drunk.drink(drink.strength);
+      if (window.Drunk && !S.lore) window.Drunk.drink(drink.strength);                  /* with LORE ACCURATE on, the first swallow was the whole journey */
       drank(drink.id, drink.strength);
       const lines = JAG_LINES[window.Drunk ? window.Drunk.stage() : 'SOBER'] || JAG_LINES.SOBER;
-      say(lines[S.drunk % lines.length]);
+      say(S.lore ? 'LORE ACCURATE. ONE SIP.' : lines[S.drunk % lines.length]);
     }
 
     /* ---- the simulation --------------------------------------------------- */

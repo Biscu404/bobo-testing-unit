@@ -1,7 +1,7 @@
 /* THE BOTTLE's trophies (docs/achievements/games-2.md). The app is a dry, rueful comedy about a bottle, so these reward the journey, restraint and the collection of drinks, never speed or
    quantity: there is deliberately no "pass out fast" and no "drink N bottles". Data only: trophy_calls.js is where the app (and kernel/drunk.js, which owns the journey) tell the ledger.
    Events: pour, drink { drink, units }, glow (five minutes at WARM or TIPSY after at least three measures), limit (ABOUT TO GO, then drained to SOBER with no blackout in between),
-   blackout. Sets: tasted (the drinks drunk a measure of), scenes (the blackout scenes seen). Counter cordial (measures of the cordial). */
+   blackout, lore (the first sip of a drink with alcohol in it knocked the drinker out, LORE ACCURATE on). Sets: tasted (the drinks drunk a measure of), scenes (the blackout scenes seen). Counter cordial (measures of the cordial). */
 import { t, secret, rule } from '../trophy_kit.js';
 import { DRINKS } from '../../kernel/cos_data.js';
 const on = rule.on;
@@ -19,6 +19,7 @@ export const TROPHIES = [
   t('bt_flight6', 'A FLIGHT', 'S', 'E', 'Drink a measure of six different drinks.', rule.sets('tasted', 6)),
   t('bt_flight9', 'THE WHOLE SHELF', 'G', 'E', 'Drink a measure of every drink Dave sells.', rule.sets('tasted', DRINKS.filter(d => !d.reward).length)),
   t('bt_lights', 'LIGHTS OUT', 'B', 'J', 'Pass out once.', on('blackout')),
+  t('bt_lore', 'ONE SIP IS ENOUGH', 'S', 'J', 'Be knocked out by a single sip with LORE ACCURATE switched on.', on('lore')),
   secret('bt_dreams', 'THIRTY DREAMS', 'G', 'E', 'The machine has thirty dreams. It does not repeat itself until it has had them all.', 'See all thirty blackout scenes.', rule.sets('scenes', SCENES_TOTAL))
 ];
 

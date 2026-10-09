@@ -19,7 +19,7 @@ const TH_UP = 0.5, TH_MAX = 1.9;                 /* how far it is tipped on the 
 export const restPose = () => Object.assign({}, REST);
 
 export function startDrink(S) {
-  S.phase = 'drink'; S.t = 0; S.gulpAt = -9; S.gulps = 0; S.pending = 0; S.sipDrops = [];
+  S.phase = 'drink'; S.t = 0; S.gulpAt = -9; S.gulps = 0; S.pending = 0; S.sipDrops = []; S.faintAt = null;
   /* the hand this measure is drunk with: one of fifteen, by how drunk it is (styles.js); the sober one is the way it always went */
   S.sty = S.forceStyle != null ? STYLES[S.forceStyle] : styleOf(sway());
   S.sched = schedule(S.sty, DRINK_LEN, 1);
@@ -34,6 +34,8 @@ export function drinkStep(S, dt, fx) {
   if (t < T_UP) { const e = ease(t / T_UP); lift = e; th = TH_UP * e; }
   else if (t < T_TIP) { lift = 1; th = lerp(TH_UP, TH_MAX, ease((t - T_UP) / (T_TIP - T_UP))); }
   else { const e = ease((t - T_TIP) / (DRINK_LEN - T_TIP)); lift = 1 - e; th = TH_MAX * (1 - e); }
+  /* LORE ACCURATE (S.lore, set by the app for a drink with something in it): the first swallow is all it takes, and the glass goes out of the hand */
+  if (S.faintAt != null) { const k = ease(clamp((tr - S.faintAt) / 0.45, 0, 1)); lift *= 1 - k; th = lerp(th, 2.2, k); }
   const near = Math.min(1, lift * 2);
   /* a hand is not steady, and each of the fifteen is unsteady in its own way: it shakes, ... */
   const shake = st.shake * near;
@@ -56,6 +58,7 @@ export function drinkStep(S, dt, fx) {
   /* a swallow for every fifth of the glass that goes over the edge */
   while (S.pending >= 0.17) {
     S.pending -= 0.17; S.gulps++; S.gulpAt = t;
+    if (S.lore && S.faintAt == null) { S.faintAt = tr; if (fx.faint) fx.faint(); }
     fx.sfx.gulp(S.gulps);
     if (window.Drunk && window.Drunk.gulp) window.Drunk.gulp();
   }

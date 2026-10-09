@@ -11,6 +11,7 @@ export const poured = () => guard(() => TR.emit('pour', {}));
 export const drank = (drinkId, units) => guard(() => { TR.mark('tasted', drinkId); if (drinkId === 'cordial') TR.add('cordial'); TR.emit('drink', { drink: drinkId, units: units }); });
 export const scene = id => guard(() => TR.mark('scenes', id));
 export const blackedOut = () => guard(() => TR.emit('blackout', {}));
+export const loreKnock = () => guard(() => TR.emit('lore', {}));
 
 /* the journey, watched: `step` is called once a frame with the stage the drunk is at and whether the lights are out; `measure` once for every measure with something in it */
 export function createStageWatch(emit) {
