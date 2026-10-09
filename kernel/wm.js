@@ -9,6 +9,7 @@ import { attachFit } from './canvas_fit.js';
 import { Studio } from './studio.js';
 import { sys } from './trophy_hook.js';
 import { TITLE_COLORS } from './win_skins.js';
+import { link as linkPalette, unlink as unlinkPalette, group as paletteGroup, follow as paletteFollow, closeAll as closePalettes } from './palette.js';
 
 let zTop = 100;
 let cascadeN = 0;
@@ -44,12 +45,13 @@ function compactZ() {
   zTop = Z_BASE + live.length;
 }
 export function raise(win) {
-  if (!(+win.style.zIndex && +win.style.zIndex === zTop)) {
-    if (zTop >= Z_MAX) compactZ();
-    zTop++;
-    win.style.zIndex = zTop;
+  /* a palette is raised with its owner (kernel/palette.js): the group goes up together, the owner first and the one touched last, and the owner is the active window */
+  const set = paletteGroup(win), top = set[set.length - 1];
+  if (!(+top.style.zIndex && +top.style.zIndex === zTop)) {
+    if (zTop + set.length - 1 >= Z_MAX) compactZ();
+    set.forEach(w => { zTop++; w.style.zIndex = zTop; });
   }
-  openWins.forEach(o => o.btn.classList.toggle('active', o.win === win));
+  openWins.forEach(o => o.btn.classList.toggle('active', o.win === set[0]));
 }
 
 export function createWindow(opts) {
@@ -62,7 +64,9 @@ export function createWindow(opts) {
   win.style.width = w + 'px';
   win.style.height = h + 'px';
 
-  const pos = nextCascade(w, h);
+  /* a palette (opts.owner: the element of the window it belongs to) is put where it is asked, never in the cascade */
+  const palette = !!opts.owner;
+  const pos = opts.at || nextCascade(w, h);
   win.style.left = pos.x + 'px';
   win.style.top  = pos.y + 'px';
 
@@ -97,6 +101,7 @@ export function createWindow(opts) {
   x.textContent = '[X]';
 
   bar.appendChild(t);
+  if (palette) linkPalette(win, opts.owner);
 
   /* [T]: this window's own scheme. The choice is kept per app (templeos.wintheme.v1), so the next time that app opens it wears it again. */
   let winScheme = null;
@@ -110,7 +115,7 @@ export function createWindow(opts) {
     if (app) { const m = themes(); if (winScheme) m[app] = winScheme; else delete m[app]; try { localStorage.setItem(THEME_KEY, JSON.stringify(m)); } catch (e) { /* kept for this sitting */ } }
   };
   let th = null;
-  if (opts.appId) {
+  if (opts.appId && !palette) {
     th = document.createElement('span');
     th.className = 'th';
     th.textContent = '[T]';
@@ -157,9 +162,10 @@ export function createWindow(opts) {
   const btn = document.createElement('div');
   btn.className = 'tbtn';
   btn.textContent = opts.title;
-  document.getElementById('tasks').appendChild(btn);
+  if (!palette) document.getElementById('tasks').appendChild(btn);        /* a palette is not on the taskbar: its owner is */
 
   function minimize() {
+    paletteFollow(win, true);
     win.classList.add('hidden');
     btn.classList.add('min');
     btn.classList.remove('active');
@@ -167,6 +173,7 @@ export function createWindow(opts) {
   }
 
   function unminimize() {
+    paletteFollow(win, false);
     win.classList.remove('hidden');
     btn.classList.remove('min');
     raise(win);
@@ -242,17 +249,18 @@ export function createWindow(opts) {
   const fit = attachFit(win, body, () => full);
   fbtn.addEventListener('mousedown', ev => { ev.stopPropagation(); toggleFull(); });
   bar.addEventListener('dblclick', ev => {
+    if (palette) return;
     if (ev.target === x || ev.target === mbtn || ev.target === fbtn || ev.target.className === 'th' || ev.target.className === 'z') return;
     toggleFull();
   });
   window.addEventListener('resize', fitScaled);
-  const zoom = opts.zoomable === false ? null : attachZoom({
+  const zoom = opts.zoomable === false || palette ? null : attachZoom({
     win, body, bar, before: bar.querySelector('.th') || mbtn,
     key: () => (rec && rec.appId) || opts.appId || null,
     isActive: () => btn.classList.contains('active') && !win.classList.contains('hidden')
   });
   const onKey = ev => {
-    if (ev.key !== 'F11' || !btn.classList.contains('active') || win.classList.contains('hidden')) return;
+    if (palette || ev.key !== 'F11' || !btn.classList.contains('active') || win.classList.contains('hidden')) return;
     ev.preventDefault();
     toggleFull();
   };
@@ -265,7 +273,7 @@ export function createWindow(opts) {
     else { raise(win); Snd.select(); }
   });
 
-  rec = { win: win, btn: btn, title: opts.title, kind: opts.kind || 'text',
+  rec = { win: win, btn: btn, title: opts.title, kind: opts.kind || 'text', palette: palette,
           appId: opts.appId || null, id: nextTaskId(), born: Date.now(), close: null,
           setFull: setFull, toggleFull: toggleFull, rightClick: !!opts.rightClick };
   openWins.push(rec);
@@ -283,7 +291,9 @@ export function createWindow(opts) {
       if (type === 'mousedown') raise(win);
     }, true));
 
-  function closeWin() {
+  function closeWin(withOwner) {
+    closePalettes(win);
+    if (palette) unlinkPalette(win);
     win.remove();
     btn.remove();
     const i = openWins.indexOf(rec);
@@ -296,8 +306,10 @@ export function createWindow(opts) {
     document.removeEventListener('mouseup', onUp);
     Snd.close();
     announceWins();
+    if (opts.onClose) opts.onClose({ withOwner: withOwner === true });
   }
   rec.close = closeWin;
+  win._close = closeWin;
 
   x.addEventListener('mousedown', ev => { ev.stopPropagation(); closeWin(); });
 
@@ -393,7 +405,7 @@ async function openNew(appId, args) {
        so the mixer knows who is running */
     const before = openWins.slice();
     const res = await app.open(args);
-    openWins.forEach(r => { if (before.indexOf(r) < 0 && !r.appId) { r.appId = appId; r.rightClick = r.rightClick || !!app.rightClick; } });
+    openWins.forEach(r => { if (before.indexOf(r) < 0 && !r.appId && !r.palette) { r.appId = appId; r.rightClick = r.rightClick || !!app.rightClick; } });
     announceWins();
     return res;
   }

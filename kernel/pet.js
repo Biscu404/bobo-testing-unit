@@ -109,7 +109,7 @@ function recAbs(rec) {
   const r = rec.win.getBoundingClientRect(), o = d.getBoundingClientRect(), bar = rec.win.querySelector('.titlebar');
   return { x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height, th: bar ? bar.offsetHeight : 20 };
 }
-const winsNow = () => openWins.map(r => ({ appId: r.appId, hidden: r.win.classList.contains('hidden'), active: r.btn.classList.contains('active'), z: +r.win.style.zIndex || 0, rec: r }));
+const winsNow = () => openWins.filter(r => !r.palette).map(r => ({ appId: r.appId, hidden: r.win.classList.contains('hidden'), active: r.btn.classList.contains('active'), z: +r.win.style.zIndex || 0, rec: r }));
 const visitTarget = () => { const t = pickTarget(winsNow()); return t ? t.rec : null; };
 const poolFor = (table, appId) => (table[appId] || []).concat(table._ || []);
 function startVisit(rec) {
