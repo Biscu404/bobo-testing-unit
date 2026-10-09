@@ -1288,6 +1288,8 @@ textarea.editor {
 .shopcard.eq .bt { background: #00AAAA; color: #000000; }
 .shopfoot { padding: 2px 6px; background: #AA00AA; color: #FFFF55; display: flex; }
 .shopfoot .r { margin-left: auto; color: var(--phos); }
+.shopfoot .shopopen { margin-left: 10px; padding: 0 6px; background: #FFFF55; color: #000000; cursor: var(--cur-hand, pointer); }
+.shopfoot .shopopen:hover { background: #FFFFFF; }
 
 /* Dave's farewell (kernel/dave_box.js): the box he leaves on the desktop when the shop window shuts. In the shop's own colours. It sits over
    the windows and under the menus and the toast, in the corner of the desktop, takes no key, and goes by itself. */

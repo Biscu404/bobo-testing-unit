@@ -295,7 +295,7 @@ a counter-hit sting, a round-start bell, a KO boom and a round-end sting, a cont
   removed on first load.
 * **Trophies** go through `trophies_bridge.js` (rewritten for the new events; `setSink` lets a test hear what it emits). The old 24 were reworked into the new modes and 23 were added: **47** in all, 26 bronze, 15 silver, 6 gold,
   two of them secret (`trophies.js`, `scripts/check-trophies.mjs`, the catalogue in `docs/achievements/games-2.md`). `trophy_check.js` plays a witness through the sim for each trophy a fight can earn and shows that a near miss does not.
-  The ledger is 417 trophies and about 139,000 SUN; the completion table in `kernel/trophy_rewards.js` follows the renamed ones (FIVE LADDERS 1,200, PERFECT MATCH 500, HARD, AND STILL STANDING 700).
+  The ledger is 419 trophies and about 139,600 SUN; the completion table in `kernel/trophy_rewards.js` follows the renamed ones (FIVE LADDERS 1,200, PERFECT MATCH 500, HARD, AND STILL STANDING 700).
 * **Pay** (`pay.js`, `scripts/check-sun.mjs`): a won arcade match pays 100 + 30 for every stage already cleared (+25 a flawless round), a ladder cleared +1,000, versus CPU 80, survival 60 a win, time attack 600 (+300 under four
   minutes), all times the tier (0.5 / 1 / 2); nothing for a fight lost or for two people fighting each other; every payment in the last half hour takes 10 % off the next, down to 40 %. Three NORMAL ladders in an hour
   pay about 2,800 SUN, in the middle of the band the SUN check holds every game to.

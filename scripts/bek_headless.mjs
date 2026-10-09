@@ -55,6 +55,7 @@ export class FakeEl {
     this.tagName = String(tag || 'div').toLowerCase();
     this.children = [];
     this.style = {};
+    this.dataset = {};                      /* the canvas says how it is to be fitted (cv.dataset.fit) */
     this.classList = { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false };
     this._listeners = Object.create(null);
     this.width = 0; this.height = 0;

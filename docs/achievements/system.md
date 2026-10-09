@@ -139,6 +139,7 @@ whole point is that it is for one person.
 |---|---|---|---|---|---|---|
 | sys_konami | THE TEN KEYS* | (hint) *The old code. Ten of them.* Enter the Konami code. | E | B | - | konami |
 | sys_eden | IT WAS ENOUGH | Run Eden.HC from the garden the ten keys opened. | C | S | - | holyc{file:'Eden.HC'} |
+| sys_credits | FIVE LOOKS AT FOUR FACES* | (hint) *They like to be looked at, and they notice who does.* Open CREDITS.EXE for the fifth time. | J | B | - | credits{n>=5} |
 
 ---
 

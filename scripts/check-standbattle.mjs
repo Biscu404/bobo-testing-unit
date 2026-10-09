@@ -35,6 +35,10 @@ const focus = () => page.focus('canvas.sbcanvas');
 const fighters = () => A(app => app.fight ? { phase: app.fight.phase, tick: app.fight.tick, x: app.fight.fighters.map(f => Math.round(f.x)), state: app.fight.fighters.map(f => f.state), hp: app.fight.fighters.map(f => f.hp), moves: app.fight.fighters.map(f => f.stats.hits + f.stats.whiffs + f.stats.blocks), round: app.fight.round } : null);
 const intoFight = async () => { for (let i = 0; i < 12 && await scene() !== 'fight'; i++) { await key('Enter'); await page.waitForTimeout(250); } return waitScene('fight', 4000); };
 const untilFighting = async () => { const t0 = Date.now(); while (Date.now() - t0 < 9000) { const f = await fighters(); if (f && f.phase === 'fight') return true; await page.waitForTimeout(100); } return false; };
+/* the main menu is two columns (apps/standbattle/scene_menu.js: FIGHT's five, then TRAINING, MOVE LIST, RECORDS, OPTIONS and the difficulty row), read from the app itself so a reordering cannot leave this behind;
+   a menu that has just been entered has its cursor on the first row of the first column */
+const menuLabels = await page.evaluate(() => import('/apps/standbattle/scene_menu.js').then(m => m.MENU_COLS.map(c => c.map(i => i.label))));
+const menuTo = async label => { for (let c = 0; c < menuLabels.length; c++) { const r = menuLabels[c].indexOf(label); if (r >= 0) { if (c) await key('ArrowRight'); for (let i = 0; i < r; i++) await key('ArrowDown'); return true; } } return false; };
 
 await focus();
 ok(await waitScene('title', 8000), 'the app opens on its title');
@@ -77,7 +81,7 @@ ok(await waitScene('menu', 3000), 'PAUSE, QUIT TO MENU leaves the fight for the 
 ok(await A(app => app.session === null && app.fight === null), 'the abandoned run is gone, no fight is left running');
 
 /* ---- training ---- */
-for (let i = 0; i < 5; i++) await key('ArrowDown');
+await menuTo('TRAINING');
 await key('Enter');
 ok(await waitScene('select', 3000), 'TRAINING goes to the select');
 await key('Enter'); await key('Enter');
@@ -93,12 +97,12 @@ await page.evaluate(() => 0);
 await A(app => app.go('menu'));
 
 /* ---- versus 2P: both players pick, then the place ---- */
-await key('ArrowDown');
+await menuTo('VERSUS');
 await key('Enter');
 ok(await waitScene('select', 3000), 'VERSUS goes to the select');
 await key('ArrowRight');
 await key('KeyU');                                    /* player 1: LP is "OK" */
-await key('KeyK');                                    /* player 2: LP is "OK" */
+await key('Numpad4');                                 /* player 2: LP (numpad 4) is "OK" */
 await shot('09-versus-stage');
 await key('Enter');
 ok(await intoFight(), 'VERSUS: both pick, player 1 picks the place, the fight begins');
@@ -116,15 +120,15 @@ await A(app => { app.dev.single = true; app.go('menu'); });
 /* ---- a second player joins an arcade run ---- */
 await key('Enter');
 ok(await waitScene('select', 3000), 'ARCADE goes to the select again');
-await key('KeyK');
+await key('Numpad4');
 ok(await A(app => app.sceneName === 'select' && app.dev.single === false), 'a second player who presses a button on their keys joins in');
 await shot('11-pickup');
 await A(app => { app.dev.single = true; app.go('menu'); });
 
 /* ---- the other screens ---- */
-for (const [n, label] of [[6, 'movelist'], [7, 'records'], [8, 'options']]) {
+for (const [item, label] of [['MOVE LIST', 'movelist'], ['RECORDS', 'records'], ['OPTIONS', 'options']]) {
   await A(app => app.go('menu'));
-  for (let i = 0; i < n; i++) await key('ArrowDown');
+  await menuTo(item);
   await key('Enter');
   ok(await waitScene(label, 3000), label.toUpperCase() + ' opens');
   await page.waitForTimeout(250);

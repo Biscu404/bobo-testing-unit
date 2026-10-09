@@ -45,6 +45,10 @@ function curURL(mask, style, hx, hy) {
   return url;
 }
 
+/* where the pictures bought from Dave are kept: a folder on the desktop (kernel/cos.js `shelve`) */
+const BACKDROPS_DIR = '::/Backdrops', GATHER_KEY = 'templeos.backdrops.folder.v1';
+const backdropFile = it => it.name.replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '') + '.PNG';
+
 const Cos = {
   st: null,
   preview: null,        /* { cat, id } while the mouse is over a shop card */
@@ -76,6 +80,7 @@ const Cos = {
     try { window.addEventListener('backdrop-seen', ev => this.tell('wall', ev.detail.id)); } catch (e) { /* no window */ }
     /* Dave leaves a box on the desktop when the shop window shuts (kernel/dave_box.js); it waits for the window list to say so */
     import('./dave_box.js').then(m => m.DaveBox.watch()).catch(() => {});
+    this.gather();                                                                   /* pictures bought before there was a folder are brought out to it */
   },
 
   /* the items a shelf shows: a backdrop is not there until a blackout has dealt it (or it is already owned) */
@@ -151,15 +156,37 @@ const Cos = {
     this.subs.forEach(f => { try { f(cat, id); } catch (e) {} });
     try { window.dispatchEvent(new CustomEvent('cos-changed', { detail: { cat, id, reward: !!reward } })); } catch (e) {}
   },
-  /* a backdrop is also a picture you own: it goes into ::/Home/Backdrops as a file */
+  /* a backdrop is also a picture you own: it goes into the BACKDROPS folder on the desktop (::/Backdrops) as a file, where every picture bought lives together. Opened from there
+     (double-click, or right-click: BACKGROUND STYLE) it can be the desktop in any of the five fits: fill, fit, stretch, centre or tile */
+  backdropsDir: BACKDROPS_DIR,
   async shelve(it) {
     try {
       const { fs } = await import('./vfs.js');
-      const path = '::/Home/Backdrops/' + it.name.replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '') + '.PNG';
-      await fs.write(path, { type: 'image', content: '', src: it.src });
-      window.dispatchEvent(new CustomEvent('vfs-changed', { detail: { dir: '::/Home/Backdrops' } }));
-      window.dispatchEvent(new CustomEvent('vfs-changed', { detail: { dir: '::/Home' } }));
+      await fs.write(BACKDROPS_DIR + '/' + backdropFile(it), { type: 'image', content: '', src: it.src });
+      this.announce();
     } catch (e) {}
+  },
+  announce() {
+    try { ['::', BACKDROPS_DIR].forEach(dir => window.dispatchEvent(new CustomEvent('vfs-changed', { detail: { dir } }))); } catch (e) { /* no window */ }
+  },
+  /* once, for a machine that bought backdrops before the folder: they were put in ::/Home/Backdrops. They are brought out to the desktop folder (moved, so there are not two), and any that
+     are missing altogether are made again from the shop's own picture. */
+  async gather() {
+    try { if (localStorage.getItem(GATHER_KEY)) return; } catch (e) { return; }
+    const owned = this.owned('wall').map(id => this.find('wall', id)).filter(Boolean);
+    if (!owned.length) return;                                   /* the first purchase makes the folder by itself */
+    try {
+      const { fs } = await import('./vfs.js');
+      await import('./vfs_ops.js');
+      for (const it of owned) {
+        const name = backdropFile(it), to = BACKDROPS_DIR + '/' + name, from = '::/Home/Backdrops/' + name;
+        if (await fs.stat(to)) continue;
+        if (await fs.stat(from)) await fs.move(from, BACKDROPS_DIR);
+        else await fs.write(to, { type: 'image', content: '', src: it.src });
+      }
+      try { localStorage.setItem(GATHER_KEY, '1'); } catch (e) { /* tried again next time */ }
+      this.announce();
+    } catch (e) { /* the shop works without it */ }
   },
   equip(cat, id) {
     if (!this.has(cat, id)) return false;

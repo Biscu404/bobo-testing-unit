@@ -153,6 +153,7 @@ coordinates") lives in `bekkedal-art.md`.
   and the cast walks home or away afterwards. `scripts/smoke.mjs` asserts the player's square did not move and the box opened.
 - `looks.js`, `actors_look.js` — what a gift looks like once it is somebody's (`S.look`, save v21): a sweater and a scarf are worn, a cup, a bouquet, a basket of berries are held while
   they rest, the item the hands already carry at a chore is theirs if they were given it. `LOOKS` in `life_data.js` is the table.
+- `geese.js` — Thea's geese (the credits' third gift; only once `gifts().has('goose')`): two or three on the deep water (`W`) of the lake, the fjord and the vidda tarn, started four to twelve squares from you, keeping about three squares away, putting their heads under now and then, and honking, quietly, if you are within earshot. They are the shared goose (`apps/goose_art.js`, `goose_life.js`: the small frames, behaviour pure) in the valley's own ramps (`palette.js`: `SNO`, `STO`, `WAR`, `WAT`), no alpha, never a literal colour; nothing is saved and nothing is asked of `S`. `index.js` steps them with the frame and draws them in the one depth-sorted pass with the people. `geese_check.js` holds all of it.
 - `hint.js` — what SPACE would do at the square in front of you, as the one line the HUD shows (`hintFor`, pure, the rules of `act()` read as questions), and the bag's footer saying how to
   hold a gift out and what happens next (`GIFT_HELP`). Before this nothing said that SPACE from the bag held the gift out, and the only sign was a line at the bottom of the screen.
 - `scene.js` — the heart-event runner: whether one fires here and now, which
@@ -290,7 +291,7 @@ still load without throwing.
 
 ## Checks
 
-Run all seventeen before claiming anything is done:
+Run all eighteen before claiming anything is done:
 
 - `node apps/bekkedal/tile_check.js` — terrain variation field is
   deterministic, uniform and aperiodic. Full paragraph: `.claude/rules/bekkedal-art.md`.
@@ -362,6 +363,7 @@ Run all seventeen before claiming anything is done:
   sleep is indoors and not on any map, errands are never a shopkeeper's and always end at the post they left, nobody jumps between two squares in a step (except the festival
   walk, which `schedule.js` caps itself), the same day and person give the same answer, and a gift is shown worn or held as `LOOKS` says.
 - `node apps/bekkedal/hint_check.js` — the hint line: a line for everything SPACE does (a person by name, a gift by what it is, a locked door, a plot at each stage, a tool only where it has a use), none for what it does nothing with, and both languages in capitals everywhere.
+- `node apps/bekkedal/geese_check.js` — the geese on the water: only deep water holds one (never the shore or a pier), they start near you and apart, they stay afloat and keep out of the way over twenty minutes, every colour is a ramp's, no alpha.
 - `node apps/bekkedal/music_check.js` — the director: where the first tune is drawn from, that
   a tune is heard through before another follows it, that a change is arranged once and lands at the
   end of the pass, that the order is an order, and what a change of place and the dark do.
