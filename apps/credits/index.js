@@ -1,23 +1,25 @@
 /* CREDITS.EXE -- the credit screen, opened by CREDITS in the terminal. The creator stands in the middle, in a halo of
    light; the three playtesters stand in a row along the bottom, each with a cross behind. Four portraits, pressed to
    the sixteen colours (assets/credits/, made by scripts/make-credit-art.py). The canvas is fixed and fits the window
-   in whole pixels (kernel/canvas_fit.js). */
-import { W, H, TEMPLE, sky, cross, INK, PAL_CSS } from './draw.js';
+   in whole pixels (kernel/canvas_fit.js). Where each stands comes from the size of its picture (layout.js), so a wider
+   crop at 96 or 128 pixels is simply drawn at the multiple that suits its box. */
+import { INK, PAL_CSS, sky, cross } from './draw.js';
+import { W, H, CAST, place, haloOf, crossOf, wordsOf } from './layout.js';
 
-/* the creator's portrait is the big one; the playtesters are in a row beneath, each two times its pixels */
-const CAST = [
-  { id: 'teiteotei', x: 224, y: 44, s: 3, name: 'TEITEOTEI', role: 'THE CREATOR' },
-  { id: 'biscu',     x: 43,  y: 350, s: 2, name: 'BISCU' },
-  { id: 'gheghe',    x: 256, y: 350, s: 2, name: 'GHEGHE' },
-  { id: 'thea',      x: 469, y: 350, s: 2, name: 'THEA' }
-];
-const PORTRAIT = 64;
+const load = id => new Promise(done => {
+  const im = new Image();
+  im.onload = () => done(im);
+  im.onerror = () => done(null);
+  im.src = 'assets/credits/' + id + '.png';
+});
+
+let live = null;                                                  /* the one open window's token: a picture that arrives after the window closed is not drawn */
 
 export default {
   id: 'credits',
   title: 'CREDITS.EXE',
   width: 700,
-  height: 600,
+  height: 640,
   resizable: true,
   fluid: true,
   mount(root, ctx) {
@@ -32,30 +34,26 @@ export default {
     root.appendChild(cv);
     const g = cv.getContext('2d');
     g.imageSmoothingEnabled = false;
+    const font = px => px + 'px VT323, monospace';
+    const me = live = {};
 
-    /* the ground and the light first, then the crosses behind the playtesters, then the portraits, then the words */
-    sky(g, TEMPLE);
-    CAST.slice(1).forEach(p => cross(g, p.x + PORTRAIT, p.y - 60, 198, 180, p.y - 28));
-    const font = (px) => px + 'px VT323, monospace';
-    g.textAlign = 'center';
-    const words = () => {
+    /* the pictures first (their sizes decide where everything stands), then the ground and the light, the crosses behind the playtesters, the portraits, the words */
+    Promise.all(CAST.map(c => load(c.id))).then(ims => {
+      if (live !== me) return;
+      const sizes = {};
+      CAST.forEach((c, i) => { if (ims[i]) sizes[c.id] = [ims[i].naturalWidth, ims[i].naturalHeight]; });
+      const at = place(sizes);
+      sky(g, haloOf(at.teiteotei));
+      CAST.slice(1).forEach(c => { const x = crossOf(at[c.id]); cross(g, x.cx, x.top, x.height, x.armW, x.armY); });
+      g.textAlign = 'center';
       g.font = font(26); g.fillStyle = PAL_CSS(INK.yellow);
       g.fillText('CREDITS', W / 2, 26);
-      CAST.forEach(p => {
-        const cx = p.x + PORTRAIT * p.s / 2, below = p.y + PORTRAIT * p.s + 6;
-        if (p.role) { g.font = font(26); g.fillStyle = PAL_CSS(INK.white); g.fillText(p.name, cx, below + 20); g.font = font(18); g.fillStyle = PAL_CSS(INK.yellow); g.fillText(p.role, cx, below + 38); }
-        else { g.font = font(20); g.fillStyle = PAL_CSS(INK.white); g.fillText(p.name, cx, below + 20); }
+      CAST.forEach((c, i) => {
+        const p = at[c.id];
+        if (ims[i]) g.drawImage(ims[i], p.x, p.y, p.w, p.h);                     /* a whole multiple of its pixels, never smoothed */
+        wordsOf(p).forEach(w => { g.font = font(w.px); g.fillStyle = PAL_CSS(INK[w.ink]); g.fillText(w.t, p.cx, w.y); });
       });
-    };
-    words();
-
-    /* every portrait is drawn at a whole multiple of its pixels, never smoothed */
-    Promise.all(CAST.map(p => new Promise(done => {
-      const im = new Image();
-      im.onload = () => { g.drawImage(im, p.x, p.y, PORTRAIT * p.s, PORTRAIT * p.s); done(); };
-      im.onerror = () => done();
-      im.src = 'assets/credits/' + p.id + '.png';
-    })));
+    });
   },
-  unmount() {}
+  unmount() { live = null; }
 };
