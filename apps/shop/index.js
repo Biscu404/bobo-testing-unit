@@ -80,12 +80,18 @@ export default {
       footEl.innerHTML = '';
       const l = document.createElement('span');
       l.textContent = 'YOU HAVE ' + window.Economy.balance() + ' SUN';
+      /* the pictures you have bought are all in one folder on the desktop; a button on the shelf opens it */
+      if (cat === 'wall' && window.Cos.owned('wall').length) {
+        const open = document.createElement('span');
+        open.className = 'shopopen'; open.textContent = 'OPEN THE BACKDROPS FOLDER';
+        open.addEventListener('mousedown', ev => { ev.stopPropagation(); if (window.Snd) window.Snd.click(); say('THEY ARE ALL IN THERE. OPEN ONE, RIGHT-CLICK, BACKGROUND STYLE: FILL, FIT, STRETCH, CENTRE, TILE. I HAVE OPINIONS ABOUT TILE.'); ctx.openWindow('folder', { path: window.Cos.backdropsDir }).catch(() => {}); });
+        footEl.appendChild(l); footEl.appendChild(open);
+      } else footEl.appendChild(l);
       const r = document.createElement('span');
       r.className = 'r';
       const n = keys.reduce((a, k) => a + window.Cos.owned(k).length, 0);
       const tot = keys.reduce((a, k) => a + window.Cos.shelf(k).length, 0);
       r.textContent = n + ' / ' + tot + ' OWNED';
-      footEl.appendChild(l);
       footEl.appendChild(r);
     }
 
@@ -186,7 +192,7 @@ export default {
       }
       window.Cos.equip(cat, it.id);
       if (window.Snd) window.Snd.click();
-      say(c.kind === 'wall' ? 'THERE. YOUR DESKTOP IS A PICTURE NOW. THE FILE IS IN HOME, BACKDROPS.' : 'THERE. LOOK AT YOU.');
+      say(c.kind === 'wall' ? 'THERE. YOUR DESKTOP IS A PICTURE NOW. THE FILE IS IN THE BACKDROPS FOLDER ON THE DESKTOP, WHERE YOU CAN PICK HOW IT FITS.' : 'THERE. LOOK AT YOU.');
       fill();
     }
 
@@ -203,7 +209,7 @@ export default {
       if (it.joke) return 'YOU ACTUALLY BOUGHT IT. I HAVE TO CLOSE THE SHOP. I HAVE TO GO AND LIE DOWN.';
       if (c === 'seed') return 'SEEDS! IN A POT! I\'VE HEARD OF IT!';
       if (c === 'frame') return 'IT\'S ON THE MACHINE ALREADY. DON\'T ASK HOW. ASK LATER.';
-      if (c === 'wall') return 'ON THE DESKTOP. AND A COPY IN YOUR FILES, IN CASE YOU GET TIRED OF IT AND WANT IT BACK.';
+      if (c === 'wall') return 'ON THE DESKTOP. EVERY PICTURE YOU BUY LIVES IN THE BACKDROPS FOLDER: OPEN ONE AND PICK FILL, FIT, STRETCH, CENTRE OR TILE.';
       if (c === 'drink') return it.strength === 0 ? 'JUICE! GOOD FOR YOU! DISGUSTING!' : 'ONE BOTTLE, FULL. THE BUTTON IS IN THE BOTTLE. DRINK RESPONSIBLY. OR AT ALL.';
       if (c === 'crayon' || c === 'garage') return 'IT\'S IN THE APP ALREADY. I SNUCK IT IN WHILE YOU WERE LOOKING AT THE PRICE.';
       if (c === 'elephant') return it.id === 'pet' ? 'HE\'S OUT. HE\'S OUT! I TOLD HIM NOT TO. HE NEVER LISTENS.' : 'HE LOOKS WONDERFUL. HE ALWAYS DID. NOW IT\'S OFFICIAL.';
